@@ -69,6 +69,7 @@ tools/                scripts and generators
 | `Files` | `IFileStorage` — Azure Blob (Cloud) and file share (OnPremise) |
 | `Secrets` | `ISecretStore` — Key Vault (Cloud) and an encrypted local file (OnPremise) |
 | `Observability` | Serilog, OpenTelemetry over OTLP, health checks |
+| `Jobs` | Hangfire with the tenant carried from enqueue to execution, plus per-tenant fan-out |
 
 ### Deployment profiles
 
@@ -83,6 +84,46 @@ nobody needs Azure credentials to start a service.
 ```bash
 docker compose -f infra/docker/compose.yml up -d    # SQL Server, Redis, RabbitMQ, MinIO, Seq
 ```
+
+## Frontend
+
+An Nx workspace (`frontend/`) with Angular 22 standalone components, signals and PrimeNG.
+
+```bash
+cd frontend
+npm ci
+npx nx serve hrms-web                      # dev server
+npx nx run-many -t lint test build --all   # the full gate
+```
+
+| Library | Holds |
+|---|---|
+| `@gggs/core/auth` | Session loaded from the BFF, `authGuard`, tenant switching |
+| `@gggs/core/permissions` | `PermissionStore`, `*gggsHasPermission`, `permissionGuard` |
+| `@gggs/core/tenant` | Tenant context and contrast-checked branding |
+| `@gggs/core/http` | Credentials, CSRF, correlation-id and error interceptors |
+| `@gggs/core/layout` | Shell and the permission-filtered navigation manifest |
+| `@gggs/shared/ui` | Page header, empty state and other primitives |
+| `@gggs/shared/data-table` | Server-paged table wrapping PrimeNG |
+| `@gggs/shared/models` | API and session contracts |
+| `@gggs/features/*` | One lazily loaded library per feature area |
+
+**Rules the lint enforces** (`@nx/enforce-module-boundaries`, see [ADR-10](docs/adr/0010-frontend-stack.md)):
+
+- Features may use `core` and `shared`, **never another feature**. Two features needing the same
+  thing promote it to `shared`.
+- `shared` may not reach back into `core` or a feature.
+- Only the app composes features together.
+- Features never import PrimeNG directly — they use `shared/ui` and `shared/data-table`, so an
+  accessibility fix lands in one wrapper rather than in every screen.
+
+**Permission-gated UI is not a security control.** `*gggsHasPermission` and `permissionGuard` decide
+what is worth showing; the API enforces the same permission on every call. A hidden button is one
+devtools click from being visible.
+
+The navigation sidebar is generated from `NAVIGATION` in `@gggs/core/layout`, filtered by the user's
+permissions and the tenant's licensed features. Adding a screen means adding an entry with its
+permission — there is no separate menu to keep in step.
 
 ## The rules that matter
 

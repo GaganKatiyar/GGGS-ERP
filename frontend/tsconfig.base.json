@@ -1,0 +1,30 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "rootDir": ".",
+    "sourceMap": true,
+    "declaration": false,
+    "moduleResolution": "bundler",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "es2015",
+    "module": "esnext",
+    "lib": ["es2020", "dom"],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "strict": false,
+    "paths": {
+      "@gggs/core/auth": ["./libs/core/auth/src/index.ts"],
+      "@gggs/core/tenant": ["./libs/core/tenant/src/index.ts"],
+      "@gggs/core/permissions": ["./libs/core/permissions/src/index.ts"],
+      "@gggs/core/http": ["./libs/core/http/src/index.ts"],
+      "@gggs/core/layout": ["./libs/core/layout/src/index.ts"],
+      "@gggs/shared/ui": ["./libs/shared/ui/src/index.ts"],
+      "@gggs/shared/models": ["./libs/shared/models/src/index.ts"],
+      "@gggs/shared/data-table": ["./libs/shared/data-table/src/index.ts"],
+      "@gggs/features/dashboard": ["./libs/features/dashboard/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "tmp"]
+}

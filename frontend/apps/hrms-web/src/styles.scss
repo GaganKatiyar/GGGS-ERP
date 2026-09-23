@@ -1,0 +1,61 @@
+@use 'primeicons/primeicons.css';
+
+/*
+ * Design tokens.
+ *
+ * Declared as custom properties so tenant branding is a value swap at runtime rather than a
+ * rebuild, and so dark mode redefines the same names instead of duplicating rules.
+ */
+:root {
+  --gggs-color-primary: #1d4ed8;
+  --gggs-color-primary-subtle: #e7f0ff;
+  --gggs-color-surface: #f6f7f9;
+  --gggs-color-surface-raised: #ffffff;
+  --gggs-color-surface-hover: #eef1f5;
+  --gggs-color-border: #e2e5ea;
+  --gggs-color-text: #1f2430;
+  --gggs-color-text-muted: #5b6472;
+  --gggs-color-warning-subtle: #fff4e5;
+  --gggs-color-warning-strong: #8a5300;
+}
+
+.gggs-dark {
+  --gggs-color-primary: #93b4ff;
+  --gggs-color-primary-subtle: #1b2a4a;
+  --gggs-color-surface: #12151c;
+  --gggs-color-surface-raised: #1a1f29;
+  --gggs-color-surface-hover: #232a37;
+  --gggs-color-border: #2c3441;
+  --gggs-color-text: #e7eaf0;
+  --gggs-color-text-muted: #9aa4b5;
+  --gggs-color-warning-subtle: #3a2a10;
+  --gggs-color-warning-strong: #ffcc80;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  color: var(--gggs-color-text);
+  background: var(--gggs-color-surface);
+}
+
+/* Users who ask for less motion get less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

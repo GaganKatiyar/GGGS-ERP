@@ -1,0 +1,20 @@
+{
+  "name": "core-tenant",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/core/tenant/src",
+  "prefix": "gggs",
+  "projectType": "library",
+  "tags": ["type:data-access", "scope:core"],
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "coverage/libs/core/tenant"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

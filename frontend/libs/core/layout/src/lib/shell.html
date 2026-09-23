@@ -1,0 +1,76 @@
+<div class="shell" [class.shell--collapsed]="isSidebarCollapsed()">
+  <header class="shell__header">
+    <button
+      type="button"
+      class="shell__menu-toggle"
+      (click)="toggleSidebar()"
+      [attr.aria-expanded]="!isSidebarCollapsed()"
+      aria-controls="shell-sidebar"
+      aria-label="Toggle navigation"
+    >
+      <i class="pi pi-bars" aria-hidden="true"></i>
+    </button>
+
+    <span class="shell__tenant">{{ tenant.name() }}</span>
+
+    <div class="shell__spacer"></div>
+
+    @if (session.user(); as user) { @if (user.isImpersonating) {
+    <!-- Support access is never invisible: the person being acted for must be able to see it. -->
+    <span class="shell__impersonation" role="status">
+      <i class="pi pi-eye" aria-hidden="true"></i>
+      Support session
+    </span>
+    }
+
+    <span class="shell__user">{{ user.displayName }}</span>
+    <button type="button" class="shell__sign-out" (click)="signOut()">
+      Sign out
+    </button>
+    }
+  </header>
+
+  <nav id="shell-sidebar" class="shell__sidebar" aria-label="Main">
+    <ul class="nav">
+      @for (item of navigation(); track item.label) {
+      <li class="nav__item">
+        @if (item.route) {
+        <a
+          class="nav__link"
+          [routerLink]="item.route"
+          routerLinkActive="nav__link--active"
+          [routerLinkActiveOptions]="{ exact: false }"
+        >
+          <i class="nav__icon {{ item.icon }}" aria-hidden="true"></i>
+          <span class="nav__label">{{ item.label }}</span>
+        </a>
+        } @else {
+        <span class="nav__group">
+          <i class="nav__icon {{ item.icon }}" aria-hidden="true"></i>
+          <span class="nav__label">{{ item.label }}</span>
+        </span>
+        } @if (item.children?.length) {
+        <ul class="nav nav--nested">
+          @for (child of item.children; track child.label) {
+          <li class="nav__item">
+            <a
+              class="nav__link"
+              [routerLink]="child.route"
+              routerLinkActive="nav__link--active"
+            >
+              <i class="nav__icon {{ child.icon }}" aria-hidden="true"></i>
+              <span class="nav__label">{{ child.label }}</span>
+            </a>
+          </li>
+          }
+        </ul>
+        }
+      </li>
+      }
+    </ul>
+  </nav>
+
+  <main class="shell__content" tabindex="-1">
+    <router-outlet />
+  </main>
+</div>

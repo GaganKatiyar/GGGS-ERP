@@ -57,3 +57,7 @@ desktop.ini
 
 # Local development scratch (docker volumes, on-prem storage and secret files)
 .local/
+
+# Nx
+.nx/cache
+.nx/workspace-data
