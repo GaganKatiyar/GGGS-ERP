@@ -27,6 +27,20 @@ public sealed class TenantContextMiddleware(RequestDelegate next, ILogger<Tenant
             return;
         }
 
+        // Platform staff belong to no customer. Their console manages tenants from the outside, so
+        // requiring one would make the tenant list unreachable - and inventing a tenant for them
+        // would be worse, because it would put platform operations inside a customer's boundary.
+        //
+        // The scope this grants is not a licence to read HR data: platform permissions cover the
+        // registry and commercial records only, and reaching into a tenant's own data still needs
+        // an explicit, audited support grant.
+        if (IsPlatformUser(context.User))
+        {
+            using IDisposable platformScope = tenantSetter.BeginPlatformScope("platform-console");
+            await next(context);
+            return;
+        }
+
         string? rawTenantId = context.User.FindFirstValue(GggsClaims.TenantId);
         if (!Guid.TryParse(rawTenantId, out Guid tenantId) || tenantId == Guid.Empty)
         {
@@ -58,6 +72,13 @@ public sealed class TenantContextMiddleware(RequestDelegate next, ILogger<Tenant
             await next(context);
         }
     }
+
+    /// <summary>
+    /// Platform staff are identified by the user-type claim the Identity service issues, not by a
+    /// role name or an email domain - either of which a tenant could arrange to match.
+    /// </summary>
+    private static bool IsPlatformUser(ClaimsPrincipal user)
+        => string.Equals(user.FindFirstValue(GggsClaims.UserType), "Platform", StringComparison.Ordinal);
 
     private void WarnOnSuppliedTenantHeaders(HttpContext context)
     {

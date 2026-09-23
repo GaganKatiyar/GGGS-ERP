@@ -1,6 +1,7 @@
 using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Domain.Exceptions;
 using Gggs.BuildingBlocks.Security;
+using Gggs.BuildingBlocks.Web;
 using Gggs.Sample.Api.Domain;
 using Gggs.Sample.Api.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -50,10 +51,12 @@ public static class SampleEndpoints
     }
 
     private static async Task<Ok<PagedResult<SampleRecordResponse>>> ListAsync(
-        [AsParameters] PageRequest request,
+        [AsParameters] PageQuery page,
         SampleDbContext database,
         CancellationToken cancellationToken)
     {
+        PageRequest request = page.ToPageRequest();
+
         // No tenant predicate is written here on purpose: the global query filter adds it, and the
         // database's security policy enforces it regardless of what this query says.
         IQueryable<SampleRecord> query = database.SampleRecords.AsNoTracking();

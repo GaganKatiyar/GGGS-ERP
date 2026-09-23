@@ -43,7 +43,7 @@ builder.Services.AddAuthentication().AddJwtBearer();
 builder.Services.AddOptions<SampleTenantOptions>()
     .Bind(builder.Configuration.GetSection(SampleTenantOptions.SectionName));
 builder.Services.AddSingleton<ITenantRegistry, ConfiguredTenantRegistry>();
-builder.Services.AddScoped<IPermissionProvider, ClaimsPermissionProvider>();
+builder.Services.AddClaimsPermissionProvider();
 
 builder.Services.AddScoped<TenantAuditSaveChangesInterceptor>();
 builder.Services.AddScoped<TenantSessionContextInterceptor>();

@@ -1,7 +1,4 @@
-using System.Security.Claims;
 using Gggs.BuildingBlocks.MultiTenancy;
-using Gggs.BuildingBlocks.Security;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 
 namespace Gggs.Sample.Api.Infrastructure;
@@ -37,42 +34,3 @@ public sealed class SampleTenantOptions
     public IList<TenantInfo> Tenants { get; } = [];
 }
 
-/// <summary>
-/// Reads permissions from <c>perm</c> claims for the harness.
-/// <para>
-/// Phase 1 replaces this with the Identity-backed provider that caches the effective set in Redis
-/// under the token's permission version - claims cannot carry hundreds of codes, and a revoked role
-/// must take effect before the token expires.
-/// </para>
-/// </summary>
-public sealed class ClaimsPermissionProvider(IHttpContextAccessor httpContextAccessor) : IPermissionProvider
-{
-    public Task<PermissionSet> GetCurrentAsync(CancellationToken cancellationToken = default)
-    {
-        ClaimsPrincipal? user = httpContextAccessor.HttpContext?.User;
-        if (user?.Identity?.IsAuthenticated != true)
-        {
-            return Task.FromResult(PermissionSet.Empty);
-        }
-
-        PermissionGrant[] grants =
-        [
-            .. user.FindAll("perm").Select(claim => new PermissionGrant
-            {
-                Code = claim.Value,
-                Scope = Enum.TryParse(user.FindFirstValue("scope_" + claim.Value), out DataScope scope)
-                    ? scope
-                    : DataScope.Tenant,
-            })
-        ];
-
-        int version = int.TryParse(user.FindFirstValue(GggsClaims.PermissionVersion), out int parsed) ? parsed : 1;
-        return Task.FromResult(new PermissionSet(grants, version));
-    }
-
-    public Task<PermissionSet> GetForUserAsync(Guid userId, CancellationToken cancellationToken = default)
-        => GetCurrentAsync(cancellationToken);
-
-    public Task InvalidateAsync(Guid userId, CancellationToken cancellationToken = default)
-        => Task.CompletedTask;
-}

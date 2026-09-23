@@ -9,6 +9,7 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Caching\Gggs.BuildingBlocks.Caching.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Messaging\Gggs.BuildingBlocks.Messaging.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Persistence\Gggs.BuildingBlocks.Persistence.csproj" />
+    <ProjectReference Include="..\Gggs.Platform.Application\Gggs.Platform.Application.csproj" />
     <ProjectReference Include="..\Gggs.Platform.Domain\Gggs.Platform.Domain.csproj" />
   </ItemGroup>
 
