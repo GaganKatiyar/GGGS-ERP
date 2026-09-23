@@ -1,0 +1,102 @@
+# On-premise deployment.
+#
+# What a customer runs on their own server. The application images are identical to the ones in our
+# cloud; only the profile and the backing services differ (ADR-11).
+#
+# Customers who already run SQL Server, RabbitMQ or Redis point the connection strings at those and
+# remove the corresponding service here. The defaults exist so a first install works unattended.
+#
+#   docker compose -f compose.onprem.yml --env-file gggs.env up -d
+#
+name: gggs
+
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+  environment: &service-environment
+    ASPNETCORE_ENVIRONMENT: Production
+    # The switch that selects every on-premise adapter: file storage instead of Blob, the encrypted
+    # local secret file instead of Key Vault, RabbitMQ instead of Service Bus.
+    Gggs__Platform__DeploymentProfile: OnPremise
+    Gggs__Telemetry__OtlpEndpoint: ${GGGS_OTLP_ENDPOINT:-http://seq:5341/ingest/otlp/v1/traces}
+    Gggs__Storage__FileSystem__RootPath: /var/gggs/storage
+    Gggs__Secrets__File__FilePath: /var/gggs/secrets/secrets.protected.json
+    ConnectionStrings__RabbitMq: amqp://${GGGS_RABBIT_USER:-gggs}:${GGGS_RABBIT_PASSWORD}@rabbitmq:5672
+    ConnectionStrings__Redis: redis:6379
+  volumes:
+    # Documents and the secret file live on the host, so a container rebuild never touches them.
+    - gggs-storage:/var/gggs/storage
+    - gggs-secrets:/var/gggs/secrets
+    # Data Protection keys: lose these and every stored secret becomes unreadable. They are in the
+    # backup checklist in README.md for exactly that reason.
+    - gggs-dataprotection:/root/.aspnet/DataProtection-Keys
+  depends_on:
+    rabbitmq:
+      condition: service_healthy
+    redis:
+      condition: service_started
+
+services:
+  gateway:
+    <<: *service-defaults
+    image: ${GGGS_REGISTRY:-gggs}/gateway:${GGGS_VERSION:-latest}
+    environment:
+      <<: *service-environment
+      ConnectionStrings__SampleDb: ${GGGS_SQL_CONNECTION}
+    ports:
+      - '${GGGS_HTTP_PORT:-8080}:8080'
+    healthcheck:
+      test: ['CMD-SHELL', 'exec 3<>/dev/tcp/localhost/8080 && echo -e "GET /health/live HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3 && head -1 <&3 | grep -q 200']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+  # One worker host runs the outbox relay and the scheduled jobs. Kept separate from the API so
+  # message delivery and nightly accruals do not compete with user requests.
+  worker:
+    <<: *service-defaults
+    image: ${GGGS_REGISTRY:-gggs}/worker:${GGGS_VERSION:-latest}
+    environment:
+      <<: *service-environment
+      ConnectionStrings__SampleDb: ${GGGS_SQL_CONNECTION}
+      ConnectionStrings__JobsDb: ${GGGS_SQL_CONNECTION}
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${GGGS_RABBIT_USER:-gggs}
+      RABBITMQ_DEFAULT_PASS: ${GGGS_RABBIT_PASSWORD}
+    volumes:
+      - gggs-rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--save', '60', '1', '--loglevel', 'warning']
+    volumes:
+      - gggs-redis:/data
+
+  # Log and trace viewer. Customers with their own collector set GGGS_OTLP_ENDPOINT and remove this.
+  seq:
+    image: datalust/seq:latest
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: 'Y'
+    ports:
+      - '${GGGS_SEQ_PORT:-5341}:80'
+    volumes:
+      - gggs-seq:/data
+
+volumes:
+  gggs-storage:
+  gggs-secrets:
+  gggs-dataprotection:
+  gggs-rabbitmq:
+  gggs-redis:
+  gggs-seq:

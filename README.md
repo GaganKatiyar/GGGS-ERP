@@ -70,6 +70,7 @@ tools/                scripts and generators
 | `Secrets` | `ISecretStore` — Key Vault (Cloud) and an encrypted local file (OnPremise) |
 | `Observability` | Serilog, OpenTelemetry over OTLP, health checks |
 | `Jobs` | Hangfire with the tenant carried from enqueue to execution, plus per-tenant fan-out |
+| `Messaging` | Integration events, transactional outbox and inbox, Service Bus and RabbitMQ transports |
 
 ### Deployment profiles
 
