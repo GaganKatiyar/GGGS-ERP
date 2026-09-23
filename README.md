@@ -7,8 +7,13 @@ The architecture this is built from lives in
 [`docs/architecture/architecture.md`](docs/architecture/architecture.md). Read §3 (multi-tenancy),
 §9 (tenant isolation) and §22 (roadmap) before writing code.
 
-**Status: Phase 0 (foundation).** The building blocks, the proving harness and the test gates are in
-place. Phase 1 (Tenant, Identity, Organization, Employee) starts next.
+**Status: Phase 0 complete.** Eleven building blocks, the Angular workspace, the proving harness,
+the test gates and both deployment profiles are in place. 59 backend tests and 12 frontend tests
+pass. Phase 1 (Tenant, Identity, Organization, Employee) starts next.
+
+Known gaps carried into Phase 1: the Bicep templates are unvalidated and still need private
+endpoints and Front Door (see [infra/README.md](infra/README.md)), and `dotnet test` cannot run the
+suites on this SDK (see below).
 
 ## Prerequisites
 
