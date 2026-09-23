@@ -1,6 +1,8 @@
 using System.Reflection;
 using Gggs.BuildingBlocks.Caching;
 using Gggs.BuildingBlocks.Files;
+using Gggs.BuildingBlocks.Messaging;
+using Gggs.BuildingBlocks.Messaging.Transports;
 using Gggs.BuildingBlocks.Secrets;
 using Shouldly;
 
@@ -23,6 +25,7 @@ public sealed class DeploymentProfileRuleTests
     private static readonly string[] AdapterAssemblies =
     [
         "Gggs.BuildingBlocks.Files",
+        "Gggs.BuildingBlocks.Messaging",
         "Gggs.BuildingBlocks.Secrets",
     ];
 
@@ -65,6 +68,7 @@ public sealed class DeploymentProfileRuleTests
     {
         AssertHasBothProfiles<IFileStorage>(typeof(AzureBlobFileStorage), typeof(FileSystemFileStorage));
         AssertHasBothProfiles<ISecretStore>(typeof(KeyVaultSecretStore), typeof(ProtectedFileSecretStore));
+        AssertHasBothProfiles<IMessageTransport>(typeof(AzureServiceBusTransport), typeof(RabbitMqTransport));
 
         // Caching is intentionally single-implementation: HybridCache with Redis behind it in the
         // cloud and in-process on a single-node install. There is no vendor API in the code path.

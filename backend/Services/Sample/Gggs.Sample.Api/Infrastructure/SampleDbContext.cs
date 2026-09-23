@@ -1,3 +1,4 @@
+using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Persistence;
 using Gggs.Sample.Api.Domain;
@@ -37,6 +38,10 @@ public sealed class SampleDbContext(DbContextOptions<SampleDbContext> options, I
                 .IsUnique()
                 .HasFilter("[IsDeleted] = 0");
         });
+
+        // The outbox lives in this service's own database, because the guarantee depends on it
+        // sharing a transaction with the business change.
+        modelBuilder.AddGggsMessagingModel();
 
         base.OnModelCreating(modelBuilder);
     }

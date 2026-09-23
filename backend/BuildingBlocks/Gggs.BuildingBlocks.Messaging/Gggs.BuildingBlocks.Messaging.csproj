@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.BuildingBlocks.Messaging</RootNamespace>
+    <Description>
+      Integration events, the transactional outbox and inbox, and the transport port with Azure
+      Service Bus (Cloud) and RabbitMQ (OnPremise) adapters. One of the projects allowed to
+      reference a cloud vendor SDK.
+    </Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Gggs.BuildingBlocks.Application\Gggs.BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\Gggs.BuildingBlocks.Domain\Gggs.BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\Gggs.BuildingBlocks.MultiTenancy\Gggs.BuildingBlocks.MultiTenancy.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <PackageReference Include="RabbitMQ.Client" />
+  </ItemGroup>
+
+</Project>

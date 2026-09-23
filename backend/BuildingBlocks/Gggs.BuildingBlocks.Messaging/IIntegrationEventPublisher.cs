@@ -1,0 +1,105 @@
+using System.Text.Json;
+using Gggs.BuildingBlocks.Application;
+using Gggs.BuildingBlocks.MultiTenancy;
+using Microsoft.EntityFrameworkCore;
+
+namespace Gggs.BuildingBlocks.Messaging;
+
+/// <summary>
+/// Publishes an integration event.
+/// <para>
+/// The only messaging type application code ever names. It does not send anything: it stages the
+/// message, and the caller's own <c>SaveChanges</c> commits the business change and the message
+/// together. Swapping the transport - or adopting a messaging framework later - happens behind
+/// this interface without touching a handler.
+/// </para>
+/// </summary>
+public interface IIntegrationEventPublisher
+{
+    /// <summary>
+    /// Stages an event for publication. It is sent after the current transaction commits; if the
+    /// transaction rolls back, the message goes with it and no consumer ever sees an event for
+    /// something that did not happen.
+    /// </summary>
+    void Publish<TEvent>(TEvent integrationEvent, Guid? causationId = null)
+        where TEvent : IntegrationEvent;
+}
+
+/// <summary>
+/// Writes staged events into the service's own outbox table.
+/// <para>
+/// Nothing is sent here, deliberately. Publishing inside a handler is the mistake this design
+/// exists to prevent: it either loses messages when the process dies before the commit, or emits
+/// messages for work that then rolls back. Both are worse than a few seconds of delivery latency.
+/// </para>
+/// </summary>
+public sealed class OutboxIntegrationEventPublisher(
+    DbContext dbContext,
+    ITenantContext tenantContext,
+    ICurrentUser currentUser,
+    TimeProvider timeProvider) : IIntegrationEventPublisher
+{
+    /// <summary>
+    /// Web defaults, so payloads are camelCase like the APIs. Fixed rather than configurable: the
+    /// serialized shape is part of the contract between services.
+    /// </summary>
+    internal static readonly JsonSerializerOptions SerializerOptions =
+        new(JsonSerializerDefaults.Web);
+
+    public void Publish<TEvent>(TEvent integrationEvent, Guid? causationId = null)
+        where TEvent : IntegrationEvent
+    {
+        ArgumentNullException.ThrowIfNull(integrationEvent);
+
+        var envelope = new MessageEnvelope
+        {
+            MessageId = integrationEvent.MessageId,
+            TenantId = tenantContext.TenantId,
+            MessageType = MessageTypeName.For<TEvent>(),
+            SchemaVersion = integrationEvent.SchemaVersion,
+            OccurredDate = integrationEvent.OccurredDate,
+            CorrelationId = currentUser.CorrelationId,
+            CausationId = causationId,
+            ActorUserId = currentUser.IsAuthenticated ? currentUser.UserId : null,
+            Payload = JsonSerializer.Serialize(integrationEvent, SerializerOptions),
+        };
+
+        dbContext.Set<OutboxMessage>().Add(
+            OutboxMessage.Create(envelope, timeProvider.GetUtcNow().UtcDateTime));
+    }
+}
+
+/// <summary>
+/// Turns an event type into the stable name used for routing and stored in the outbox.
+/// <para>
+/// A CLR type name would tie the wire contract to our namespaces, so renaming a class or moving it
+/// between projects would break every consumer. Events declare their own name instead.
+/// </para>
+/// </summary>
+public static class MessageTypeName
+{
+    public static string For<TEvent>() => For(typeof(TEvent));
+
+    public static string For(Type eventType)
+    {
+        ArgumentNullException.ThrowIfNull(eventType);
+
+        MessageTypeAttribute? attribute = (MessageTypeAttribute?)Attribute.GetCustomAttribute(
+            eventType,
+            typeof(MessageTypeAttribute));
+
+        return attribute?.Name
+            ?? throw new InvalidOperationException(
+                $"Integration event '{eventType.Name}' must declare [MessageType(\"gggs.<service>.<entity>.<event>\")]. " +
+                "The name is a published contract and cannot be derived from the class name.");
+    }
+}
+
+/// <summary>Declares the wire name of an integration event, e.g. <c>gggs.corehr.employee.hired</c>.</summary>
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public sealed class MessageTypeAttribute(string name) : Attribute
+{
+    public string Name { get; } = string.IsNullOrWhiteSpace(name)
+        ? throw new ArgumentException("Message type name is required.", nameof(name))
+        : name;
+}

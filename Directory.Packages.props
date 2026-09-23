@@ -23,7 +23,9 @@
   <ItemGroup Label="Cloud adapters (Cloud profile only; on-premise uses the file/local equivalents)">
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <PackageVersion Include="Azure.Security.KeyVault.Secrets" Version="4.11.1" />
+    <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.20.2" />
     <PackageVersion Include="Azure.Storage.Blobs" Version="12.29.2" />
+    <PackageVersion Include="RabbitMQ.Client" Version="7.2.2" />
   </ItemGroup>
 
   <ItemGroup Label="Data">

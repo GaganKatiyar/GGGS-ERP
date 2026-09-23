@@ -23,6 +23,98 @@ namespace Gggs.Sample.Api.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Gggs.BuildingBlocks.Messaging.InboxMessage", b =>
+                {
+                    b.Property<Guid>("MessageId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ConsumerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("ProcessedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("MessageId", "ConsumerName");
+
+                    b.HasIndex("ProcessedDate")
+                        .HasDatabaseName("IX_InboxMessage_ProcessedDate");
+
+                    b.ToTable("InboxMessage", "messaging");
+                });
+
+            modelBuilder.Entity("Gggs.BuildingBlocks.Messaging.OutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("CausationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("MessageType")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("NextAttemptDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateTime>("OccurredDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("PublishedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("int");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("OccurredDate", "Id")
+                        .HasDatabaseName("CIX_OutboxMessage_OccurredDate");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("OccurredDate", "Id"));
+
+                    b.HasIndex("TenantId", "PublishedDate")
+                        .HasDatabaseName("IX_OutboxMessage_TenantId_PublishedDate");
+
+                    b.HasIndex("Status", "NextAttemptDate", "OccurredDate")
+                        .HasDatabaseName("IX_OutboxMessage_Pending")
+                        .HasFilter("[Status] = 0");
+
+                    b.ToTable("OutboxMessage", "messaging");
+                });
+
             modelBuilder.Entity("Gggs.Sample.Api.Domain.SampleRecord", b =>
                 {
                     b.Property<Guid>("Id")

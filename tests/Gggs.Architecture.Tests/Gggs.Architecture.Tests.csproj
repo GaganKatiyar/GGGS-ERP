@@ -8,6 +8,7 @@
     <ProjectReference Include="..\..\backend\BuildingBlocks\Gggs.BuildingBlocks.Caching\Gggs.BuildingBlocks.Caching.csproj" />
     <ProjectReference Include="..\..\backend\BuildingBlocks\Gggs.BuildingBlocks.Domain\Gggs.BuildingBlocks.Domain.csproj" />
     <ProjectReference Include="..\..\backend\BuildingBlocks\Gggs.BuildingBlocks.Files\Gggs.BuildingBlocks.Files.csproj" />
+    <ProjectReference Include="..\..\backend\BuildingBlocks\Gggs.BuildingBlocks.Messaging\Gggs.BuildingBlocks.Messaging.csproj" />
     <ProjectReference Include="..\..\backend\BuildingBlocks\Gggs.BuildingBlocks.Secrets\Gggs.BuildingBlocks.Secrets.csproj" />
     <ProjectReference Include="..\..\backend\BuildingBlocks\Gggs.BuildingBlocks.Persistence\Gggs.BuildingBlocks.Persistence.csproj" />
     <ProjectReference Include="..\..\backend\BuildingBlocks\Gggs.BuildingBlocks.Security\Gggs.BuildingBlocks.Security.csproj" />

@@ -1,5 +1,6 @@
 using System.Reflection;
 using Gggs.BuildingBlocks.Domain.Abstractions;
+using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.Persistence;
 using Gggs.Sample.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -20,23 +21,47 @@ public sealed class IsolationRuleTests
 {
     private static readonly Assembly SampleService = typeof(SampleDbContext).Assembly;
 
+    /// <summary>
+    /// Infrastructure tables that deliberately are not tenant-owned. Each entry is a decision, not
+    /// an oversight, so adding one is a visible change in a pull request.
+    /// </summary>
+    private static readonly Dictionary<Type, string> TenantOwnershipExemptions = new()
+    {
+        [typeof(OutboxMessage)] =
+            "The relay reads it across tenants in a platform scope; a query filter or RLS policy " +
+            "would leave it seeing an empty table and publishing nothing.",
+        [typeof(InboxMessage)] =
+            "Deduplication happens before a tenant context exists for the incoming message.",
+    };
+
     [Fact]
-    public void EveryPersistedEntity_IsTenantOwned()
+    public void EveryBusinessEntity_IsTenantOwned()
     {
         // A table without a TenantId cannot be isolated by the query filter or by row-level
-        // security, so entities are tenant-owned unless they are deliberately platform-wide.
-        IEnumerable<Type> entityTypes = DiscoverMappedEntityTypes();
-
+        // security, so entities are tenant-owned unless they are deliberately exempt.
         List<string> offenders =
         [
-            .. entityTypes
+            .. DiscoverMappedEntityTypes()
                 .Where(type => !typeof(ITenantOwned).IsAssignableFrom(type))
+                .Where(type => !TenantOwnershipExemptions.ContainsKey(type))
                 .Select(type => type.FullName!)
         ];
 
         offenders.ShouldBeEmpty(
             $"these entities are missing TenantId: {string.Join(", ", offenders)}. " +
-            "Platform-wide reference tables must be declared in the platform database instead.");
+            "If that is deliberate, add it to TenantOwnershipExemptions with the reason.");
+    }
+
+    [Fact]
+    public void ExemptInfrastructureTables_StillRecordTheirTenant()
+    {
+        // Being outside the filter is not the same as losing the tenant: an outbox row still has to
+        // say which tenant its message belongs to, or consumers could not restore the context.
+        foreach (Type exempt in TenantOwnershipExemptions.Keys)
+        {
+            exempt.GetProperty("TenantId").ShouldNotBeNull(
+                $"{exempt.Name} is exempt from tenant ownership but must still carry a TenantId column.");
+        }
     }
 
     [Fact]
