@@ -5,7 +5,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\backend\Services\Identity\Gggs.Identity.Application\Gggs.Identity.Application.csproj" />
     <ProjectReference Include="..\..\..\backend\Services\Identity\Gggs.Identity.Domain\Gggs.Identity.Domain.csproj" />
+    <ProjectReference Include="..\..\..\backend\Services\Identity\Gggs.Identity.Infrastructure\Gggs.Identity.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

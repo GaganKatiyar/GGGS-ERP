@@ -15,7 +15,9 @@
   </Folder>
   <Folder Name="/Services/" />
   <Folder Name="/Services/Identity/">
+    <Project Path="Services/Identity/Gggs.Identity.Application/Gggs.Identity.Application.csproj" />
     <Project Path="Services/Identity/Gggs.Identity.Domain/Gggs.Identity.Domain.csproj" />
+    <Project Path="Services/Identity/Gggs.Identity.Infrastructure/Gggs.Identity.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/Services/Platform/">
     <Project Path="Services/Platform/Gggs.Platform.Api/Gggs.Platform.Api.csproj" />
