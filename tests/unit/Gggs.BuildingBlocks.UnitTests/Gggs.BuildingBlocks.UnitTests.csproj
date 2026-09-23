@@ -7,6 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\backend\BuildingBlocks\Gggs.BuildingBlocks.Domain\Gggs.BuildingBlocks.Domain.csproj" />
     <ProjectReference Include="..\..\..\backend\BuildingBlocks\Gggs.BuildingBlocks.Files\Gggs.BuildingBlocks.Files.csproj" />
+    <ProjectReference Include="..\..\..\backend\BuildingBlocks\Gggs.BuildingBlocks.Jobs\Gggs.BuildingBlocks.Jobs.csproj" />
     <ProjectReference Include="..\..\..\backend\BuildingBlocks\Gggs.BuildingBlocks.MultiTenancy\Gggs.BuildingBlocks.MultiTenancy.csproj" />
     <ProjectReference Include="..\..\..\backend\BuildingBlocks\Gggs.BuildingBlocks.Persistence\Gggs.BuildingBlocks.Persistence.csproj" />
     <ProjectReference Include="..\..\..\backend\BuildingBlocks\Gggs.BuildingBlocks.Security\Gggs.BuildingBlocks.Security.csproj" />
@@ -14,6 +15,7 @@
 
   <ItemGroup>
     <PackageReference Include="xunit.v3" />
+    <PackageReference Include="NSubstitute" />
     <PackageReference Include="Shouldly" />
   </ItemGroup>
 

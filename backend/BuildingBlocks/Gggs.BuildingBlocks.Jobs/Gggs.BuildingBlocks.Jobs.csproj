@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.BuildingBlocks.Jobs</RootNamespace>
+    <Description>
+      Background jobs on Hangfire, with the tenant carried from enqueue to execution and per-tenant
+      fan-out for platform-wide schedules.
+    </Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Gggs.BuildingBlocks.MultiTenancy\Gggs.BuildingBlocks.MultiTenancy.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Hangfire.AspNetCore" />
+    <PackageReference Include="Hangfire.SqlServer" />
+  </ItemGroup>
+
+</Project>

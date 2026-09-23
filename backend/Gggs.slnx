@@ -4,6 +4,7 @@
     <Project Path="BuildingBlocks/Gggs.BuildingBlocks.Caching/Gggs.BuildingBlocks.Caching.csproj" />
     <Project Path="BuildingBlocks/Gggs.BuildingBlocks.Domain/Gggs.BuildingBlocks.Domain.csproj" />
     <Project Path="BuildingBlocks/Gggs.BuildingBlocks.Files/Gggs.BuildingBlocks.Files.csproj" />
+    <Project Path="BuildingBlocks/Gggs.BuildingBlocks.Jobs/Gggs.BuildingBlocks.Jobs.csproj" />
     <Project Path="BuildingBlocks/Gggs.BuildingBlocks.MultiTenancy/Gggs.BuildingBlocks.MultiTenancy.csproj" />
     <Project Path="BuildingBlocks/Gggs.BuildingBlocks.Observability/Gggs.BuildingBlocks.Observability.csproj" />
     <Project Path="BuildingBlocks/Gggs.BuildingBlocks.Persistence/Gggs.BuildingBlocks.Persistence.csproj" />

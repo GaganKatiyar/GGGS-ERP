@@ -60,6 +60,11 @@
   <ItemGroup Label="Jobs">
     <PackageVersion Include="Hangfire.AspNetCore" Version="1.8.25" />
     <PackageVersion Include="Hangfire.SqlServer" Version="1.8.25" />
+    <!--
+      Hangfire.SqlServer still resolves Newtonsoft.Json 11.0.1, which carries a known high-severity
+      advisory (GHSA-5crp-9r3c-p9vr). Central transitive pinning forces it forward for every project.
+    -->
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
   </ItemGroup>
 
   <ItemGroup Label="Testing">

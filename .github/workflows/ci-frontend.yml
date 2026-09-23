@@ -1,0 +1,45 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [main]
+    paths: ['frontend/**', '.github/workflows/ci-frontend.yml']
+  pull_request:
+    paths: ['frontend/**', '.github/workflows/ci-frontend.yml']
+
+defaults:
+  run:
+    working-directory: frontend
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Nx compares against the base commit to decide what actually changed.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Set Nx base and head
+        uses: nrwl/nx-set-shas@v4
+
+      - name: Lint, test and build what changed
+        run: npx nx affected -t lint test build --parallel=3
+
+      - name: Check formatting
+        run: npx nx format:check
+
+      - name: Audit dependencies
+        # Advisory: a transitive dev-dependency advisory should not block a release train,
+        # but it should be visible on every pull request.
+        run: npm audit --audit-level=high || true
