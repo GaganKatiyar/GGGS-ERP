@@ -1,9 +1,13 @@
 <Solution>
   <Folder Name="/BuildingBlocks/">
     <Project Path="BuildingBlocks/Gggs.BuildingBlocks.Application/Gggs.BuildingBlocks.Application.csproj" />
+    <Project Path="BuildingBlocks/Gggs.BuildingBlocks.Caching/Gggs.BuildingBlocks.Caching.csproj" />
     <Project Path="BuildingBlocks/Gggs.BuildingBlocks.Domain/Gggs.BuildingBlocks.Domain.csproj" />
+    <Project Path="BuildingBlocks/Gggs.BuildingBlocks.Files/Gggs.BuildingBlocks.Files.csproj" />
     <Project Path="BuildingBlocks/Gggs.BuildingBlocks.MultiTenancy/Gggs.BuildingBlocks.MultiTenancy.csproj" />
+    <Project Path="BuildingBlocks/Gggs.BuildingBlocks.Observability/Gggs.BuildingBlocks.Observability.csproj" />
     <Project Path="BuildingBlocks/Gggs.BuildingBlocks.Persistence/Gggs.BuildingBlocks.Persistence.csproj" />
+    <Project Path="BuildingBlocks/Gggs.BuildingBlocks.Secrets/Gggs.BuildingBlocks.Secrets.csproj" />
     <Project Path="BuildingBlocks/Gggs.BuildingBlocks.Security/Gggs.BuildingBlocks.Security.csproj" />
     <Project Path="BuildingBlocks/Gggs.BuildingBlocks.Web/Gggs.BuildingBlocks.Web.csproj" />
   </Folder>

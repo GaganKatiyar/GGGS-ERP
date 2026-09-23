@@ -1,22 +1,42 @@
 using Gggs.BuildingBlocks.Application;
+using Gggs.BuildingBlocks.Application.Hosting;
+using Gggs.BuildingBlocks.Caching;
+using Gggs.BuildingBlocks.Files;
 using Gggs.BuildingBlocks.MultiTenancy;
+using Gggs.BuildingBlocks.Observability;
 using Gggs.BuildingBlocks.Persistence;
 using Gggs.BuildingBlocks.Persistence.Interceptors;
+using Gggs.BuildingBlocks.Secrets;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
-using Gggs.Sample.Api.Domain;
 using Gggs.Sample.Api.Endpoints;
 using Gggs.Sample.Api.Infrastructure;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
+
+const string ServiceName = "sample";
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // ---------------------------------------------------------------------------------------------
 // Composition. Every service host wires the same building blocks in the same order, so tenancy,
-// authorization and error handling behave identically across the platform.
+// authorization, telemetry and error handling behave identically across the platform.
+//
+// The deployment profile is read first, because it decides which infrastructure adapters are
+// registered below. Nothing after this line knows whether it is running on Azure or on a
+// customer's own server.
 // ---------------------------------------------------------------------------------------------
+GggsPlatformOptions platform = builder.AddGggsPlatformOptions(ServiceName);
+
+builder.AddGggsLogging(ServiceName);
+builder.AddGggsTelemetry(ServiceName);
+builder.AddGggsHealthChecks();
+
 builder.Services.AddGggsMultiTenancy();
+builder.Services.AddGggsCaching(builder.Configuration, ServiceName);
+builder.Services.AddGggsFileStorage(builder.Configuration, platform.DeploymentProfile);
+builder.Services.AddGggsSecretStore(builder.Configuration, platform.DeploymentProfile);
 builder.Services.AddGggsAuthorization(builder.Configuration);
 builder.Services.AddAuthentication().AddJwtBearer();
 
@@ -43,7 +63,10 @@ builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<SampleDbCont
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddOpenApi();
-builder.Services.AddHealthChecks().AddDbContextCheck<SampleDbContext>("sample-db");
+
+// Readiness includes the database: an instance that cannot reach it should leave the rotation
+// rather than serve errors.
+builder.Services.AddHealthChecks().AddDbContextCheck<SampleDbContext>("sample-db", tags: ["ready"]);
 
 WebApplication app = builder.Build();
 
@@ -57,7 +80,12 @@ app.UseAuthentication();
 app.UseGggsTenantContext();
 app.UseAuthorization();
 
-app.MapHealthChecks("/health");
+// Probes must answer without a token - a load balancer has none - so they opt out of the
+// deny-by-default fallback explicitly. They report status only, never component detail.
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = check => check.Tags.Contains("live") })
+    .AllowAnonymous();
+app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") })
+    .AllowAnonymous();
 app.MapSampleEndpoints();
 
 if (app.Environment.IsDevelopment())

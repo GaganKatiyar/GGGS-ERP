@@ -11,6 +11,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Caching\Gggs.BuildingBlocks.Caching.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Files\Gggs.BuildingBlocks.Files.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Observability\Gggs.BuildingBlocks.Observability.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Secrets\Gggs.BuildingBlocks.Secrets.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Persistence\Gggs.BuildingBlocks.Persistence.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Web\Gggs.BuildingBlocks.Web.csproj" />
   </ItemGroup>

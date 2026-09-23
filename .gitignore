@@ -54,3 +54,6 @@ __azurite*
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# Local development scratch (docker volumes, on-prem storage and secret files)
+.local/

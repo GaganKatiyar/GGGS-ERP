@@ -65,6 +65,24 @@ tools/                scripts and generators
 | `Security` | Permission catalog, `[RequirePermission]`, data scopes, step-up authentication |
 | `Persistence` | `GggsDbContext`, tenant/audit interceptors, RLS helpers, Dapper factory |
 | `Web` | Problem details, correlation ids, deny-by-default endpoint validation |
+| `Caching` | Tenant-scoped cache over HybridCache; no raw-key API exists |
+| `Files` | `IFileStorage` — Azure Blob (Cloud) and file share (OnPremise) |
+| `Secrets` | `ISecretStore` — Key Vault (Cloud) and an encrypted local file (OnPremise) |
+| `Observability` | Serilog, OpenTelemetry over OTLP, health checks |
+
+### Deployment profiles
+
+The platform ships to Azure **and** to customer-run servers from one codebase.
+`Gggs:Platform:DeploymentProfile` (`Cloud` | `OnPremise`) selects the adapters at startup, and
+**application code never references a cloud vendor SDK** — `DeploymentProfileRuleTests` fails the
+build if it does. See [ADR-11](docs/adr/0011-deployment-profiles.md).
+
+Local development runs the **OnPremise** profile on purpose: those adapters get exercised daily, and
+nobody needs Azure credentials to start a service.
+
+```bash
+docker compose -f infra/docker/compose.yml up -d    # SQL Server, Redis, RabbitMQ, MinIO, Seq
+```
 
 ## The rules that matter
 

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.BuildingBlocks.Files</RootNamespace>
+    <Description>
+      Document storage port with a Cloud adapter (Azure Blob) and an OnPremise adapter (file share).
+      This is one of the projects allowed to reference an Azure SDK; see the adapter architecture test.
+    </Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Gggs.BuildingBlocks.Application\Gggs.BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\Gggs.BuildingBlocks.MultiTenancy\Gggs.BuildingBlocks.MultiTenancy.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" />
+    <PackageReference Include="Azure.Storage.Blobs" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+  </ItemGroup>
+
+</Project>

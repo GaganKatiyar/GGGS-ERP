@@ -1,0 +1,87 @@
+# Local development infrastructure.
+#
+# These are the same components an on-premise install runs, which is the point: developers exercise
+# the OnPremise adapters daily instead of discovering them only when a customer install fails.
+# The cloud profile swaps SQL Server for Azure SQL, RabbitMQ for Service Bus, Redis for Azure Cache,
+# MinIO for Blob Storage and Seq for Azure Monitor - no application code changes.
+#
+#   docker compose -f infra/docker/compose.yml up -d
+#
+name: gggs-local
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: gggs-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Local(Dev)Password1"
+      MSSQL_PID: Developer
+    ports: ["1433:1433"]
+    volumes: ["sqlserver-data:/var/opt/mssql"]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    container_name: gggs-redis
+    ports: ["6379:6379"]
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes: ["redis-data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: gggs-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: gggs
+      RABBITMQ_DEFAULT_PASS: "Local(Dev)Password1"
+    # 5672 for the broker, 15672 for the management UI.
+    ports: ["5672:5672", "15672:15672"]
+    volumes: ["rabbitmq-data:/var/lib/rabbitmq"]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    # Stands in for Blob Storage locally and is a real option for on-premise installs that want
+    # object storage instead of a file share.
+    image: minio/minio:latest
+    container_name: gggs-minio
+    environment:
+      MINIO_ROOT_USER: gggs
+      MINIO_ROOT_PASSWORD: "Local(Dev)Password1"
+    command: server /data --console-address ":9001"
+    ports: ["9000:9000", "9001:9001"]
+    volumes: ["minio-data:/data"]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  seq:
+    # OTLP collector and log viewer. The services emit plain OpenTelemetry, so this is
+    # interchangeable with Grafana, Jaeger or Azure Monitor.
+    image: datalust/seq:latest
+    container_name: gggs-seq
+    environment:
+      ACCEPT_EULA: "Y"
+    ports: ["5341:80", "5342:5341"]
+    volumes: ["seq-data:/data"]
+
+volumes:
+  sqlserver-data:
+  redis-data:
+  rabbitmq-data:
+  minio-data:
+  seq-data:
