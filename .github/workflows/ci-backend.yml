@@ -1,0 +1,80 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+    paths: ['backend/**', 'tests/**', 'Directory.*.props', 'global.json', 'NuGet.config', '.github/workflows/ci-backend.yml']
+  pull_request:
+    paths: ['backend/**', 'tests/**', 'Directory.*.props', 'global.json', 'NuGet.config', '.github/workflows/ci-backend.yml']
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  TESTINGPLATFORM_TELEMETRY_OPTOUT: 1
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      # Real SQL Server: row-level security, session context and block predicates cannot be
+      # verified against an in-memory provider, and those are what tenant isolation rests on.
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: 'Y'
+          MSSQL_SA_PASSWORD: ${{ secrets.CI_SQL_PASSWORD || 'Ci(Pipeline)Password1' }}
+          MSSQL_PID: Developer
+        ports: ['1433:1433']
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$MSSQL_SA_PASSWORD\" -Q 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore backend/Gggs.slnx
+
+      - name: Build
+        run: dotnet build backend/Gggs.slnx --no-restore --configuration Release
+
+      - name: Verify formatting
+        run: dotnet format backend/Gggs.slnx --verify-no-changes --no-restore
+
+      - name: Run tests
+        shell: pwsh
+        env:
+          # The isolation suite picks this up instead of starting its own container.
+          GGGS_TEST_SQL: Server=localhost,1433;User Id=sa;Password=${{ secrets.CI_SQL_PASSWORD || 'Ci(Pipeline)Password1' }};TrustServerCertificate=True;Encrypt=False
+        run: ./tools/run-tests.ps1
+
+      - name: Check for vulnerable packages
+        run: |
+          dotnet list backend/Gggs.slnx package --vulnerable --include-transitive 2>&1 | tee vulnerable.txt
+          if grep -q "has the following vulnerable packages" vulnerable.txt; then
+            echo "::error::Vulnerable NuGet packages detected"
+            exit 1
+          fi
+
+  codeql:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
+      - run: dotnet build backend/Gggs.slnx --configuration Release
+      - uses: github/codeql-action/analyze@v3

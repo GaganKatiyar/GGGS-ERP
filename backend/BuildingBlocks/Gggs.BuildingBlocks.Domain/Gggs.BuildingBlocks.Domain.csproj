@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.BuildingBlocks.Domain</RootNamespace>
+    <Description>Domain primitives shared by every GGGS HRMS service. References nothing outside the BCL.</Description>
+  </PropertyGroup>
+
+</Project>

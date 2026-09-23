@@ -1,0 +1,56 @@
+## Build output
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+artifacts/
+publish/
+*.user
+*.suo
+.vs/
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+## .NET
+project.lock.json
+*.nuget.props
+*.nuget.targets
+msbuild.log
+TestResults/
+coverage/
+*.coverage
+*.trx
+
+## Node / Angular
+node_modules/
+dist/
+.angular/
+.nx/
+npm-debug.log*
+yarn-error.log*
+.pnpm-store/
+
+## Local config & secrets  (NEVER commit secrets)
+appsettings.Local.json
+appsettings.*.Local.json
+*.env
+.env.*
+!.env.example
+secrets.json
+*.pfx
+*.p12
+*.key
+
+## Infrastructure / local data
+.docker-data/
+*.mdf
+*.ldf
+azurite/
+__blobstorage__/
+__queuestorage__/
+__azurite*
+
+## OS
+Thumbs.db
+desktop.ini
+.DS_Store

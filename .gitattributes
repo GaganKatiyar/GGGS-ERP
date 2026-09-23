@@ -1,0 +1,16 @@
+# Normalize to LF in the repository. CI runs on Linux, developers on Windows; letting each
+# platform write its own endings turns every file into a diff.
+* text=auto eol=lf
+
+*.sln    text eol=crlf
+*.slnx   text eol=lf
+*.cmd    text eol=crlf
+*.bat    text eol=crlf
+*.ps1    text eol=crlf
+*.sh     text eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
+*.dll binary
