@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\backend\Services\Platform\Gggs.Platform.Infrastructure\Gggs.Platform.Infrastructure.csproj" />
     <ProjectReference Include="..\..\backend\Services\Sample\Gggs.Sample.Api\Gggs.Sample.Api.csproj" />
   </ItemGroup>
 

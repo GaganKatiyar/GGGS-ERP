@@ -16,6 +16,19 @@ public interface ITenantOwned
     Guid TenantId { get; }
 }
 
+/// <summary>
+/// Marks a table that deliberately belongs to no tenant: the tenant registry itself, subscription
+/// plans, the permission catalog, published compliance packs.
+/// <para>
+/// Declared explicitly rather than inferred from the absence of <see cref="ITenantOwned"/>, because
+/// "this table has no TenantId" is either a considered decision or the most serious bug in a
+/// multi-tenant system, and the two must not look alike in a pull request.
+/// </para>
+/// </summary>
+public interface IPlatformOwned
+{
+}
+
 /// <summary>Rows are never physically deleted by application code; retention jobs do that.</summary>
 public interface ISoftDeletable
 {

@@ -14,10 +14,15 @@
     <Project Path="BuildingBlocks/Gggs.BuildingBlocks.Web/Gggs.BuildingBlocks.Web.csproj" />
   </Folder>
   <Folder Name="/Services/" />
+  <Folder Name="/Services/Platform/">
+    <Project Path="Services/Platform/Gggs.Platform.Domain/Gggs.Platform.Domain.csproj" />
+    <Project Path="Services/Platform/Gggs.Platform.Infrastructure/Gggs.Platform.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/Services/Sample/">
     <Project Path="Services/Sample/Gggs.Sample.Api/Gggs.Sample.Api.csproj" />
   </Folder>
   <Project Path="../tests/Gggs.Architecture.Tests/Gggs.Architecture.Tests.csproj" />
   <Project Path="../tests/Gggs.TenantIsolation.Tests/Gggs.TenantIsolation.Tests.csproj" />
   <Project Path="../tests/unit/Gggs.BuildingBlocks.UnitTests/Gggs.BuildingBlocks.UnitTests.csproj" />
+  <Project Path="../tests/unit/Gggs.Platform.UnitTests/Gggs.Platform.UnitTests.csproj" />
 </Solution>
