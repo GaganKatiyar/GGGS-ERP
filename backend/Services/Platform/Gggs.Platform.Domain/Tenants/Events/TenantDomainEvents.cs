@@ -1,3 +1,4 @@
+using Gggs.BuildingBlocks.Domain.Abstractions;
 using Gggs.BuildingBlocks.Domain.Events;
 
 namespace Gggs.Platform.Domain.Tenants.Events;

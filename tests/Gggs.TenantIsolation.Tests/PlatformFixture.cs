@@ -1,5 +1,6 @@
 using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Caching;
+using Gggs.BuildingBlocks.Domain.Abstractions;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Persistence.Interceptors;
 using Gggs.Platform.Domain.Subscriptions;
@@ -11,7 +12,6 @@ using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using DomainIsolationTier = Gggs.Platform.Domain.Tenants.TenantIsolationTier;
 
 namespace Gggs.TenantIsolation.Tests;
 
@@ -121,7 +121,7 @@ public sealed class PlatformFixture : IAsyncLifetime
         string code,
         bool activate,
         bool withSubscription,
-        DomainIsolationTier tier = DomainIsolationTier.Pooled)
+        TenantIsolationTier tier = TenantIsolationTier.Pooled)
     {
         await using PlatformDbContext context = CreateContext();
 

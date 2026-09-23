@@ -4,10 +4,6 @@ using Gggs.Platform.Domain.Subscriptions;
 using Gggs.Platform.Domain.Tenants;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using DomainIsolationTier = Gggs.Platform.Domain.Tenants.TenantIsolationTier;
-using DomainTenantStatus = Gggs.Platform.Domain.Tenants.TenantStatus;
-using SharedIsolationTier = Gggs.BuildingBlocks.MultiTenancy.TenantIsolationTier;
-using SharedTenantStatus = Gggs.BuildingBlocks.MultiTenancy.TenantStatus;
 
 namespace Gggs.Platform.Infrastructure;
 
@@ -94,10 +90,8 @@ public sealed class PlatformTenantRegistry(
             Id = tenant.Id,
             Code = tenant.Code,
             Name = tenant.Name,
-            Status = MapStatus(tenant.Status),
-            IsolationTier = tenant.IsolationTier == DomainIsolationTier.Dedicated
-                ? SharedIsolationTier.Dedicated
-                : SharedIsolationTier.Pooled,
+            Status = tenant.Status,
+            IsolationTier = tenant.IsolationTier,
             DataRegion = tenant.DataRegion,
             CountryCode = tenant.CountryCode,
             DefaultTimeZone = tenant.DefaultTimeZone,
@@ -145,16 +139,4 @@ public sealed class PlatformTenantRegistry(
         return [.. subscription.ResolveFeatures(plan, today)];
     }
 
-    private static SharedTenantStatus MapStatus(DomainTenantStatus status) => status switch
-    {
-        DomainTenantStatus.Provisioning => SharedTenantStatus.Provisioning,
-        DomainTenantStatus.Active => SharedTenantStatus.Active,
-        DomainTenantStatus.Suspended => SharedTenantStatus.Suspended,
-        DomainTenantStatus.Offboarding => SharedTenantStatus.Offboarding,
-        DomainTenantStatus.Archived => SharedTenantStatus.Archived,
-        DomainTenantStatus.Purged => SharedTenantStatus.Purged,
-
-        // A status the shared contract does not know about must not be treated as operational.
-        _ => SharedTenantStatus.Suspended,
-    };
 }

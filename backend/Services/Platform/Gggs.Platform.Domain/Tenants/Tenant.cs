@@ -4,34 +4,6 @@ using Gggs.Platform.Domain.Tenants.Events;
 
 namespace Gggs.Platform.Domain.Tenants;
 
-/// <summary>Where a tenant is in its life (architecture §3.4).</summary>
-public enum TenantStatus
-{
-    /// <summary>Created, but its databases and seed data are still being set up.</summary>
-    Provisioning = 1,
-
-    Active = 2,
-
-    /// <summary>Billing lapsed or the customer asked us to pause. Data intact, nobody can sign in.</summary>
-    Suspended = 3,
-
-    /// <summary>Leaving. Read-only while their export is prepared and the grace period runs.</summary>
-    Offboarding = 4,
-
-    /// <summary>Exported and grace period over. Data still present, awaiting purge.</summary>
-    Archived = 5,
-
-    /// <summary>Data destroyed. The row remains so the code can never be reused.</summary>
-    Purged = 6,
-}
-
-/// <summary>Pooled or dedicated database (ADR-01).</summary>
-public enum TenantIsolationTier
-{
-    Pooled = 1,
-    Dedicated = 2,
-}
-
 /// <summary>
 /// A customer organization: the isolation boundary the whole platform is built around.
 /// <para>

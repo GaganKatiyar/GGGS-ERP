@@ -1,22 +1,6 @@
+using Gggs.BuildingBlocks.Domain.Abstractions;
+
 namespace Gggs.BuildingBlocks.MultiTenancy;
-
-/// <summary>Lifecycle states from the tenant provisioning saga (§3.4).</summary>
-public enum TenantStatus
-{
-    Provisioning = 1,
-    Active = 2,
-    Suspended = 3,
-    Offboarding = 4,
-    Archived = 5,
-    Purged = 6,
-}
-
-/// <summary>Pooled (shared database) or dedicated database per ADR-01.</summary>
-public enum TenantIsolationTier
-{
-    Pooled = 1,
-    Dedicated = 2,
-}
 
 /// <summary>
 /// The slice of tenant configuration every service needs on each request. Served from the Platform

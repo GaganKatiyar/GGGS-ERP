@@ -1,12 +1,10 @@
+using Gggs.BuildingBlocks.Domain.Abstractions;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.Platform.Domain.Subscriptions;
 using Gggs.Platform.Domain.Tenants;
 using Gggs.Platform.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
-using DomainIsolationTier = Gggs.Platform.Domain.Tenants.TenantIsolationTier;
-using SharedIsolationTier = Gggs.BuildingBlocks.MultiTenancy.TenantIsolationTier;
-using SharedTenantStatus = Gggs.BuildingBlocks.MultiTenancy.TenantStatus;
 
 namespace Gggs.TenantIsolation.Tests;
 
@@ -30,7 +28,7 @@ public sealed class PlatformRegistryTests(PlatformFixture fixture)
 
         resolved.ShouldNotBeNull();
         resolved.Code.ShouldBe("resolve-ok");
-        resolved.Status.ShouldBe(SharedTenantStatus.Active);
+        resolved.Status.ShouldBe(TenantStatus.Active);
         resolved.IsOperational.ShouldBeTrue();
         resolved.EnabledFeatures.ShouldContain("Payroll");
         resolved.HasFeature("payroll").ShouldBeTrue("feature checks are case-insensitive");
@@ -45,7 +43,7 @@ public sealed class PlatformRegistryTests(PlatformFixture fixture)
         TenantInfo? resolved = await fixture.CreateRegistry().GetAsync(tenant.Id, TestContext.Current.CancellationToken);
 
         resolved.ShouldNotBeNull();
-        resolved.Status.ShouldBe(SharedTenantStatus.Provisioning);
+        resolved.Status.ShouldBe(TenantStatus.Provisioning);
         resolved.IsOperational.ShouldBeFalse();
     }
 
@@ -113,7 +111,7 @@ public sealed class PlatformRegistryTests(PlatformFixture fixture)
         TenantInfo? resolved = await fixture.CreateRegistry().GetAsync(tenant.Id, TestContext.Current.CancellationToken);
 
         resolved.ShouldNotBeNull();
-        resolved.Status.ShouldBe(SharedTenantStatus.Suspended);
+        resolved.Status.ShouldBe(TenantStatus.Suspended);
         resolved.IsOperational.ShouldBeFalse();
     }
 
@@ -122,12 +120,12 @@ public sealed class PlatformRegistryTests(PlatformFixture fixture)
     {
         // The connection resolver reads this to decide which database to open.
         (Tenant tenant, _) = await fixture.SeedTenantAsync(
-            "resolve-dedicated", activate: true, withSubscription: true, tier: DomainIsolationTier.Dedicated);
+            "resolve-dedicated", activate: true, withSubscription: true, tier: TenantIsolationTier.Dedicated);
 
         TenantInfo? resolved = await fixture.CreateRegistry().GetAsync(tenant.Id, TestContext.Current.CancellationToken);
 
         resolved.ShouldNotBeNull();
-        resolved.IsolationTier.ShouldBe(SharedIsolationTier.Dedicated);
+        resolved.IsolationTier.ShouldBe(TenantIsolationTier.Dedicated);
     }
 
     [Fact]
