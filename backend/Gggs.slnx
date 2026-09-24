@@ -15,6 +15,7 @@
   </Folder>
   <Folder Name="/Services/" />
   <Folder Name="/Services/Identity/">
+    <Project Path="Services/Identity/Gggs.Identity.Api/Gggs.Identity.Api.csproj" />
     <Project Path="Services/Identity/Gggs.Identity.Application/Gggs.Identity.Application.csproj" />
     <Project Path="Services/Identity/Gggs.Identity.Domain/Gggs.Identity.Domain.csproj" />
     <Project Path="Services/Identity/Gggs.Identity.Infrastructure/Gggs.Identity.Infrastructure.csproj" />
@@ -30,6 +31,7 @@
     <Project Path="Services/Sample/Gggs.Sample.Api/Gggs.Sample.Api.csproj" />
   </Folder>
   <Project Path="../tests/Gggs.Architecture.Tests/Gggs.Architecture.Tests.csproj" />
+  <Project Path="../tests/Gggs.Identity.IntegrationTests/Gggs.Identity.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Platform.IntegrationTests/Gggs.Platform.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.TenantIsolation.Tests/Gggs.TenantIsolation.Tests.csproj" />
   <Project Path="../tests/unit/Gggs.BuildingBlocks.UnitTests/Gggs.BuildingBlocks.UnitTests.csproj" />
