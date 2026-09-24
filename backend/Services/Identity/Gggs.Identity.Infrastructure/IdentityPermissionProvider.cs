@@ -57,12 +57,18 @@ public sealed class IdentityPermissionProvider(
             return PermissionSet.Empty;
         }
 
-        return await cache.GetOrCreateAsync(
+        // A plain snapshot is cached rather than the PermissionSet itself. PermissionSet is a
+        // behaviour type with a constructor the serializer cannot bind to, and more generally a
+        // rich type crossing a cache boundary is a type that has to survive being serialized -
+        // which is a constraint worth keeping off the domain.
+        PermissionSnapshot snapshot = await cache.GetOrCreateAsync(
             CacheAreas.Permissions,
             $"{userId:N}:v{user.PermissionVersion}",
             async token => await ResolveAsync(userId, user.PermissionVersion, token),
             CacheDuration,
             cancellationToken);
+
+        return new PermissionSet(snapshot.Grants, snapshot.PermissionVersion);
     }
 
     public async Task InvalidateAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -74,7 +80,7 @@ public sealed class IdentityPermissionProvider(
         logger.LogInformation("Permission cache invalidated after a change affecting user {UserId}.", userId);
     }
 
-    private async Task<PermissionSet> ResolveAsync(Guid userId, int permissionVersion, CancellationToken cancellationToken)
+    private async Task<PermissionSnapshot> ResolveAsync(Guid userId, int permissionVersion, CancellationToken cancellationToken)
     {
         List<UserRole> grants = await dbContext.UserRoles
             .AsNoTracking()
@@ -83,7 +89,7 @@ public sealed class IdentityPermissionProvider(
 
         if (grants.Count == 0)
         {
-            return new PermissionSet([], permissionVersion);
+            return new PermissionSnapshot([], permissionVersion);
         }
 
         List<Guid> roleIds = [.. grants.Select(grant => grant.RoleId).Distinct()];
@@ -95,6 +101,18 @@ public sealed class IdentityPermissionProvider(
 
         DateOnly today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
 
-        return PermissionResolver.Resolve(grants, roles, today, permissionVersion);
+        PermissionSet resolved = PermissionResolver.Resolve(grants, roles, today, permissionVersion);
+        return new PermissionSnapshot([.. resolved.All], permissionVersion);
     }
 }
+
+/// <summary>
+/// The cacheable form of a permission set: plain data with a parameterless-friendly shape.
+/// <para>
+/// Separate from <see cref="PermissionSet"/> on purpose. Anything stored in a distributed cache has
+/// to round-trip through JSON, and discovering that only when a second instance reads the entry -
+/// rather than at compile time - is how a cache bug reaches production looking like an
+/// authorization outage.
+/// </para>
+/// </summary>
+public sealed record PermissionSnapshot(IReadOnlyList<PermissionGrant> Grants, int PermissionVersion);

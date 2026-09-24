@@ -60,6 +60,7 @@ builder.Services.AddDbContext<SampleDbContext>((serviceProvider, options) =>
 });
 builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<SampleDbContext>());
 
+builder.Services.AddGggsJson();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddOpenApi();

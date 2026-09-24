@@ -81,6 +81,9 @@ builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<IdentityDbCo
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPasswordPolicyRepository, PasswordPolicyRepository>();
 builder.Services.AddScoped<SignInService>();
+builder.Services.AddScoped<Gggs.Identity.Application.Users.UserManagementService>();
+builder.Services.AddScoped<Gggs.Identity.Application.Users.IRoleRepository, RoleRepository>();
+builder.Services.AddSingleton<Gggs.Identity.Application.Users.IInvitationTokenGenerator, InvitationTokenGenerator>();
 builder.Services.AddScoped<TenantDiscoveryService>();
 
 // This service owns permission resolution, so it uses the real provider rather than the temporary
@@ -100,6 +103,7 @@ builder.Services.AddHttpClient<ITenantRegistry, PlatformTenantRegistryClient>(cl
 
 builder.Services.AddScoped<ITenantDomainResolver, PlatformTenantDomainResolver>();
 
+builder.Services.AddGggsJson();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddOpenApi();
@@ -119,6 +123,8 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check 
     .AllowAnonymous();
 
 app.MapAuthenticationEndpoints();
+app.MapUserEndpoints();
+app.MapRoleEndpoints();
 
 if (app.Environment.IsDevelopment())
 {

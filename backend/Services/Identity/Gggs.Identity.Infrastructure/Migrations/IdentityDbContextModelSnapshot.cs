@@ -402,6 +402,12 @@ namespace Gggs.Identity.Infrastructure.Migrations
                     b.Property<Guid?>("EmployeeId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime?>("InvitationTokenExpiresDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("InvitationTokenHash")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 

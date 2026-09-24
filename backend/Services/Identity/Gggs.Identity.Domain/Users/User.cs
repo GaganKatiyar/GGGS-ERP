@@ -127,6 +127,18 @@ public sealed class User : TenantAggregateRoot
     /// <summary>Previous password hashes, so a policy can refuse reuse.</summary>
     public IReadOnlyCollection<PasswordHistoryEntry> PasswordHistory => _passwordHistory;
 
+    /// <summary>
+    /// Hash of the outstanding invitation or reset token.
+    /// <para>
+    /// The token itself is never stored. It goes to the user's inbox and nowhere else, so a copy of
+    /// this database does not let anyone take over the accounts that have not signed in yet -
+    /// which, just after a tenant is provisioned, is all of them.
+    /// </para>
+    /// </summary>
+    public string? InvitationTokenHash { get; private set; }
+
+    public DateTime? InvitationTokenExpiresDate { get; private set; }
+
     /// <summary>Whether this account can sign in at all right now.</summary>
     public bool CanSignIn => Status is UserStatus.Active or UserStatus.Invited;
 
@@ -157,8 +169,34 @@ public sealed class User : TenantAggregateRoot
     }
 
     /// <summary>
+    /// Records an invitation or password-reset token, given only its hash.
+    /// <para>
+    /// Issuing a new one invalidates any outstanding token, so a forwarded or intercepted
+    /// invitation stops working the moment a fresh one is sent.
+    /// </para>
+    /// </summary>
+    public void SetInvitationToken(string tokenHash, DateTime expiresDate)
+    {
+        InvitationTokenHash = Guard.NotNullOrWhiteSpace(tokenHash);
+        InvitationTokenExpiresDate = expiresDate;
+    }
+
+    /// <summary>
+    /// Whether a supplied token hash matches the outstanding one and is still valid.
+    /// <para>
+    /// The comparison is ordinal over hashes the caller computed, so no secret is reconstructed
+    /// here; timing is handled where the hash is produced.
+    /// </para>
+    /// </summary>
+    public bool IsInvitationTokenValid(string tokenHash, DateTime now)
+        => InvitationTokenHash is not null
+            && InvitationTokenExpiresDate is not null
+            && InvitationTokenExpiresDate > now
+            && string.Equals(InvitationTokenHash, tokenHash, StringComparison.Ordinal);
+
+    /// <summary>
     /// Completes an invitation by setting the first password. The caller has already checked the
-    /// invitation token; this only enforces the account rules.
+    /// invitation token; this enforces the account rules and consumes the token.
     /// </summary>
     public void CompleteInvitation(string passwordHash, DateTime now)
     {
@@ -172,7 +210,17 @@ public sealed class User : TenantAggregateRoot
         Status = UserStatus.Active;
         RotateSecurityStamp();
 
+        // Single use: an invitation link that still works after the account is live is a standing
+        // way in for anyone who saw the email.
+        ClearInvitationToken();
+
         _passwordHistory.Add(new PasswordHistoryEntry(passwordHash, now));
+    }
+
+    private void ClearInvitationToken()
+    {
+        InvitationTokenHash = null;
+        InvitationTokenExpiresDate = null;
     }
 
     /// <summary>
@@ -251,6 +299,9 @@ public sealed class User : TenantAggregateRoot
         PasswordHash = passwordHash;
         PasswordChangedDate = now;
         RotateSecurityStamp();
+
+        // A reset token that survives the reset would let whoever triggered it come back later.
+        ClearInvitationToken();
 
         _passwordHistory.Add(new PasswordHistoryEntry(passwordHash, now));
         TrimPasswordHistory(policy.HistoryCount);

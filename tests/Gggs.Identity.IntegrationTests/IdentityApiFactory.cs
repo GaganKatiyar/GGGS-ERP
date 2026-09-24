@@ -1,6 +1,9 @@
+using System.Net.Http.Json;
 using Gggs.BuildingBlocks.Domain.Abstractions;
 using Gggs.BuildingBlocks.MultiTenancy;
+using Gggs.BuildingBlocks.Security;
 using Gggs.Identity.Application.Authentication;
+using Gggs.Identity.Domain.Roles;
 using Gggs.Identity.Domain.Users;
 using Gggs.Identity.Infrastructure;
 using Microsoft.AspNetCore.Hosting;
@@ -68,6 +71,64 @@ public sealed class IdentityApiFactory : WebApplicationFactory<Program>, IAsyncL
         }
 
         await SeedUserAsync(SeededUserEmail, SeededPassword);
+        await SeedAdministratorAsync();
+    }
+
+    /// <summary>The administrator these tests act as.</summary>
+    public static Guid AdminUserId { get; private set; }
+
+    public const string AdminEmail = "admin@testco.example";
+    public const string AdminPassword = "administrator passphrase 1";
+
+    /// <summary>
+    /// An administrator whose permissions come from a real role.
+    /// <para>
+    /// Nothing is stubbed: the Identity service resolves permissions from role grants in the
+    /// database, so these tests exercise the same path a real administrator does.
+    /// </para>
+    /// </summary>
+    private async Task SeedAdministratorAsync()
+    {
+        using IServiceScope scope = Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<ITenantContextSetter>().SetTenant(SeededTenantId);
+
+        IdentityDbContext context = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        IPasswordHasher hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+
+        Role role = Role.Create("Tenant Administrator", "Full administrative control", isSystem: true, templateCode: "TENANT_ADMIN");
+        role.Grant(Permissions.Admin.UserView, DataScope.Tenant);
+        role.Grant(Permissions.Admin.UserInvite, DataScope.Tenant);
+        role.Grant(Permissions.Admin.UserManage, DataScope.Tenant);
+        role.Grant(Permissions.Admin.UserLock, DataScope.Tenant);
+        role.Grant(Permissions.Admin.RoleView, DataScope.Tenant);
+        role.Grant(Permissions.Admin.RoleManage, DataScope.Tenant);
+
+        User admin = User.Invite(AdminEmail, "Test Administrator", UserType.TenantUser, null, DateTime.UtcNow);
+        admin.CompleteInvitation(hasher.Hash(AdminPassword), DateTime.UtcNow);
+        AdminUserId = admin.Id;
+
+        context.Roles.Add(role);
+        context.Users.Add(admin);
+        context.UserRoles.Add(UserRole.Grant(admin.Id, role.Id, DateOnly.FromDateTime(DateTime.UtcNow)));
+
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>A client already signed in as the administrator.</summary>
+    public async Task<HttpClient> CreateAdminClientAsync()
+    {
+        HttpClient client = CreateWebClient();
+
+        HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { Email = AdminEmail, Password = AdminPassword, TenantCode = SeededTenantCode });
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException($"The test administrator could not sign in: {response.StatusCode}.");
+        }
+
+        return client;
     }
 
     public override async ValueTask DisposeAsync()

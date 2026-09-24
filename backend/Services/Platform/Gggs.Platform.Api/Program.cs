@@ -64,6 +64,7 @@ builder.Services.AddScoped<ITenantRepository, TenantRepository>();
 builder.Services.AddScoped<IPlanRepository, PlanRepository>();
 builder.Services.AddScoped<TenantProvisioningService>();
 
+builder.Services.AddGggsJson();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddOpenApi();
