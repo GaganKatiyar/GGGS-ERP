@@ -35,6 +35,13 @@ public sealed class MessagingOptions
     /// <summary>Topic or exchange every integration event is published to.</summary>
     public string TopicName { get; set; } = "gggs-events";
 
+    /// <summary>
+    /// This service's subscription. One per consuming service, so each gets its own copy of every
+    /// message and its own dead-letter queue - a handler failing in one service must not stop
+    /// another from receiving the same event.
+    /// </summary>
+    public string SubscriptionName { get; set; } = "unknown";
+
     /// <summary>How many outbox rows the relay drains per pass.</summary>
     public int OutboxBatchSize { get; set; } = 100;
 

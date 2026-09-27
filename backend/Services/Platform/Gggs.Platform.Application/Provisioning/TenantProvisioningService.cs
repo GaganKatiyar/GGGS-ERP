@@ -139,7 +139,8 @@ public sealed class TenantProvisioningService(
             tenant.DefaultTimeZone,
             tenant.DefaultCurrency,
             tenant.DefaultLocale,
-            tenant.DataRegion));
+            tenant.DataRegion,
+            request.AdministratorEmail));
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

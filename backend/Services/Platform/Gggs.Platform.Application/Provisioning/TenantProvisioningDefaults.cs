@@ -17,25 +17,16 @@ namespace Gggs.Platform.Application.Provisioning;
 /// </summary>
 public static class TenantProvisioningDefaults
 {
-    /// <summary>
-    /// Role templates every tenant is created with, matching §8.5 of the architecture.
-    /// <para>
-    /// Created as editable copies rather than links to a shared definition, so our changing a
-    /// template later never silently widens access inside a live customer.
-    /// </para>
-    /// </summary>
-    public static IReadOnlyList<RoleTemplate> Roles { get; } =
-    [
-        new("TENANT_ADMIN", "Tenant Administrator", "Full administrative control of this organization.", IsAssignedToFirstUser: true),
-        new("HR_ADMIN", "HR Administrator", "Manages employees, organization structure and HR policies."),
-        new("HR_MANAGER", "HR Manager", "Manages employees and approvals within their branch or entity."),
-        new("PAYROLL_ADMIN", "Payroll Administrator", "Runs payroll and manages salary structures."),
-        new("FINANCE_USER", "Finance User", "Approves expenses and reviews payroll cost reports."),
-        new("DEPARTMENT_MANAGER", "Department Manager", "Manages their department: approvals, goals and reports."),
-        new("TEAM_LEAD", "Team Lead", "Approves leave and attendance for their direct reports."),
-        new("EMPLOYEE", "Employee", "Self-service access to their own records.", IsDefaultForNewEmployees: true),
-        new("AUDITOR", "Auditor", "Read-only access across the organization, including the audit log."),
-    ];
+    /*
+     * Roles are deliberately not listed here.
+     *
+     * They were, briefly, and it was wrong: a role is a set of permission codes, and a list of
+     * role names in a service that cannot see the permission catalog is a list nobody can check.
+     * They now live in Gggs.Identity.Application.Provisioning.RoleTemplates, next to the endpoints
+     * that enforce them. The same reasoning will move leave types into the Time service and
+     * workflow definitions into Workflow once those exist; what stays here is only what Platform
+     * itself owns.
+     */
 
     /// <summary>
     /// Leave types most organizations need on day one. Deliberately short: a long list of types
@@ -83,16 +74,6 @@ public static class TenantProvisioningDefaults
         new("EXPENSE_CLAIM", "Expense claim approval", "ReportingManager"),
     ];
 }
-
-/// <summary>A role seeded into a new tenant.</summary>
-/// <param name="IsAssignedToFirstUser">Given to the administrator created during provisioning.</param>
-/// <param name="IsDefaultForNewEmployees">Granted automatically when an employee gets a user account.</param>
-public sealed record RoleTemplate(
-    string Code,
-    string Name,
-    string Description,
-    bool IsAssignedToFirstUser = false,
-    bool IsDefaultForNewEmployees = false);
 
 public sealed record LeaveTypeTemplate(string Code, string Name, bool IsPaid);
 

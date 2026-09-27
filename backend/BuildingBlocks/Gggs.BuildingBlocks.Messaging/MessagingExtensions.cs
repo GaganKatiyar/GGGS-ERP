@@ -4,6 +4,7 @@ using Gggs.BuildingBlocks.Messaging.Transports;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using RabbitMQ.Client;
 
@@ -28,6 +29,8 @@ public static class MessagingExtensions
         services.AddOptions<MessagingOptions>()
             .Bind(configuration.GetSection(MessagingOptions.SectionName))
             .ValidateOnStart();
+
+        services.TryAddSingleton<IntegrationEventRegistry>();
 
         // The publisher writes through the service's own DbContext, so the message and the
         // business change share one transaction.
@@ -72,6 +75,40 @@ public static class MessagingExtensions
         });
 
         services.AddSingleton<IMessageTransport, AzureServiceBusTransport>();
+        return services;
+    }
+
+    /// <summary>
+    /// Declares an event this service consumes, and the handler that processes it.
+    /// <para>
+    /// Registering the type is what makes the subscriber bind to it, so an event with no handler
+    /// is simply never delivered here rather than piling up unread.
+    /// </para>
+    /// </summary>
+    public static IServiceCollection AddGggsEventConsumer<TEvent, TConsumer>(this IServiceCollection services)
+        where TEvent : IntegrationEvent
+        where TConsumer : class, IIntegrationEventConsumer<TEvent>
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.TryAddSingleton<IntegrationEventRegistry>();
+        services.AddScoped<IIntegrationEventConsumer<TEvent>, TConsumer>();
+
+        // Resolved immediately so the registry is populated before the consumer starts; a handler
+        // registered but not bound would look wired up and receive nothing.
+        using ServiceProvider provider = services.BuildServiceProvider();
+        provider.GetRequiredService<IntegrationEventRegistry>().Register<TEvent>();
+
+        return services;
+    }
+
+    /// <summary>Adds the subscriber that delivers registered events to their handlers.</summary>
+    public static IServiceCollection AddGggsEventSubscriber<TDbContext>(this IServiceCollection services)
+        where TDbContext : DbContext
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.AddHostedService<IntegrationEventSubscriber<TDbContext>>();
         return services;
     }
 

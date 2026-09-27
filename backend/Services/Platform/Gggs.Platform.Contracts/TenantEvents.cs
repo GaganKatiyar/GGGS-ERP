@@ -28,7 +28,14 @@ public sealed record TenantProvisionedIntegrationEvent(
     string DefaultTimeZone,
     string DefaultCurrency,
     string DefaultLocale,
-    string DataRegion) : IntegrationEvent;
+    string DataRegion,
+
+    /// <summary>
+    /// Who the first administrator invitation goes to. Carried on the event because Identity is
+    /// the service that creates accounts and it has no other way to learn this - the address was
+    /// given for exactly this purpose and reaches one consumer.
+    /// </summary>
+    string AdministratorEmail) : IntegrationEvent;
 
 /// <summary>
 /// The tenant is live. Sent after every service has reported its seeding complete, so anything

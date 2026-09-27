@@ -299,6 +299,16 @@ public interface IRoleRepository
     /// <summary>Users holding a permission through any active grant. Used for last-administrator checks.</summary>
     Task<IReadOnlyList<Guid>> GetUserIdsWithPermissionAsync(string permissionCode, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// The tenant's roles that came from a template, keyed by template code.
+    /// <para>
+    /// Seeding reads this to tell a fresh tenant from one being seeded a second time, which is the
+    /// whole of its idempotency: the provisioning event is delivered at least once and is re-run by
+    /// hand when a step fails.
+    /// </para>
+    /// </summary>
+    Task<IReadOnlyDictionary<string, Role>> GetTemplateRolesAsync(CancellationToken cancellationToken = default);
+
     void Add(Role role);
 
     void AddGrant(UserRole grant);

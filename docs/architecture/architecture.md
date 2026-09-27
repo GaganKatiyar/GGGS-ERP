@@ -691,6 +691,44 @@ The Identity Service is the **only token issuer** that APIs trust. Each tenant's
 | Finance User | expense.approve/reimburse, payroll.view-summary, GL export, travel advance | LegalEntity |
 | Auditor | *.view + audit.log.view, **read-only**, time-boxed (`ValidTo`) | Tenant |
 
+The authoritative list is now code: `Gggs.Identity.Application.Provisioning.RoleTemplates`, which
+pairs each template with its exact permission codes and data scopes. It lives in Identity rather
+than in the Platform service that drives provisioning, because a list of role names in a service
+that cannot see the permission catalog is a list nobody can check.
+
+Two implemented decisions differ from the abridged table above, and both are deliberate:
+
+- **No seeded role gets `employee.bank.*`, `employee.identity-document.*` or any `*.export`
+  permission** - not even Tenant Admin, and not HR Admin despite the row above. Those reach a
+  person's money, their government identifiers, or every record at once. A customer grants them in
+  one edit; nobody receives them because of a default we shipped.
+- **Only Tenant Admin gets `admin.role.manage`.** Whoever can change what a role means can grant
+  themselves anything, so exactly one seeded role has it, and a unit test asserts that.
+
+Seeding runs in `Gggs.Identity.Worker` from the `TenantProvisioned` event and is idempotent in a
+specific way: a repeat run creates only missing roles and **never re-grants permissions on a role
+that already exists**. Topping a role back up to the template would let the redelivery of an old
+message silently undo an administrator's decision to narrow it.
+
+#### Bootstrapping the first administrator
+
+The one circularity in the model: only a tenant's own administrator can invite anyone, and at
+provisioning nobody is signed in. Seeding creates the administrator's account in `Invited` status
+**with no invitation token**, because nothing can deliver one yet and a token minted here would be a
+live credential its owner never received.
+
+`POST /api/v1/tenants/{tenantId}/administrator-invitation` (Identity, permission
+`platform.tenant.manage`, audited) issues one on demand. Its reach is deliberately tiny: it works
+only for an account still in `Invited` status that holds the seeded administrator role, so it stops
+working the moment the customer completes the invitation, and it exposes no HR data. When the
+Notification service lands, the invitation is sent at seeding time and this endpoint becomes a
+support tool rather than the normal path.
+
+Still missing, and needed before platform staff can use any of this in anger: **platform users have
+no permission source**. `PermissionResolver` reads tenant role grants, and `Role.Grant` refuses
+platform-only codes by design, so no account can currently hold `platform.*` outside the test
+harness.
+
 ---
 
 ## 9. Tenant isolation strategy (defence in depth)

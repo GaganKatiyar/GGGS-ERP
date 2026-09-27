@@ -61,6 +61,21 @@ public sealed class RoleRepository(IdentityDbContext dbContext, TimeProvider tim
         ];
     }
 
+    public async Task<IReadOnlyDictionary<string, Role>> GetTemplateRolesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        List<Role> roles = await dbContext.Roles
+            .Where(role => role.TemplateCode != null)
+            .ToListAsync(cancellationToken);
+
+        // Tracked, not AsNoTracking: seeding tops up the permissions of a role it finds already
+        // there, and an untracked entity would make those edits silently do nothing.
+        return roles
+            .Where(role => role.TemplateCode is not null)
+            .GroupBy(role => role.TemplateCode!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+    }
+
     public void Add(Role role) => dbContext.Roles.Add(role);
 
     public void AddGrant(UserRole grant) => dbContext.UserRoles.Add(grant);

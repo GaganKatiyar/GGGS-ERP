@@ -85,6 +85,7 @@ builder.Services.AddScoped<Gggs.Identity.Application.Users.UserManagementService
 builder.Services.AddScoped<Gggs.Identity.Application.Users.IRoleRepository, RoleRepository>();
 builder.Services.AddSingleton<Gggs.Identity.Application.Users.IInvitationTokenGenerator, InvitationTokenGenerator>();
 builder.Services.AddScoped<TenantDiscoveryService>();
+builder.Services.AddScoped<Gggs.Identity.Application.Provisioning.TenantBootstrapService>();
 
 // This service owns permission resolution, so it uses the real provider rather than the temporary
 // claims-based one the other services are still on.
@@ -125,6 +126,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check 
 app.MapAuthenticationEndpoints();
 app.MapUserEndpoints();
 app.MapRoleEndpoints();
+app.MapTenantBootstrapEndpoints();
 
 if (app.Environment.IsDevelopment())
 {
