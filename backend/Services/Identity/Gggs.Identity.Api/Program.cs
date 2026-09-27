@@ -125,6 +125,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check 
 
 app.MapAuthenticationEndpoints();
 app.MapUserEndpoints();
+app.MapMeEndpoints();
 app.MapRoleEndpoints();
 app.MapTenantBootstrapEndpoints();
 

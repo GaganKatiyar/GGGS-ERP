@@ -23,4 +23,10 @@ public static class GggsClaims
 
     /// <summary>Set when a platform support user is acting inside a tenant under a support grant.</summary>
     public const string Impersonator = "imp";
+
+    /// <summary>The user's own language preference, which wins over the tenant default. OIDC name.</summary>
+    public const string Locale = "locale";
+
+    /// <summary>The user's own IANA time zone, which wins over the tenant default. OIDC name.</summary>
+    public const string TimeZone = "zoneinfo";
 }

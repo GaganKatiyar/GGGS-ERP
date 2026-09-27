@@ -13,6 +13,14 @@ import { withPermissions } from '@gggs/core/permissions';
  */
 export const appRoutes: Route[] = [
   {
+    // Outside the shell and outside the guard: the shell needs a session to render its navigation,
+    // and a guard on the page you are sent to when you have no session is a redirect loop.
+    path: 'sign-in',
+    loadComponent: () =>
+      import('./pages/sign-in-page').then((m) => m.SignInPage),
+    title: 'Sign in',
+  },
+  {
     path: '',
     component: Shell,
     canActivate: [authGuard],

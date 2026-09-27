@@ -13,6 +13,9 @@
     <Project Path="BuildingBlocks/Gggs.BuildingBlocks.Security/Gggs.BuildingBlocks.Security.csproj" />
     <Project Path="BuildingBlocks/Gggs.BuildingBlocks.Web/Gggs.BuildingBlocks.Web.csproj" />
   </Folder>
+  <Folder Name="/Gateway/">
+    <Project Path="Gateway/Gggs.Gateway.Bff/Gggs.Gateway.Bff.csproj" />
+  </Folder>
   <Folder Name="/Services/" />
   <Folder Name="/Services/Identity/">
     <Project Path="Services/Identity/Gggs.Identity.Api/Gggs.Identity.Api.csproj" />
@@ -32,6 +35,7 @@
     <Project Path="Services/Sample/Gggs.Sample.Api/Gggs.Sample.Api.csproj" />
   </Folder>
   <Project Path="../tests/Gggs.Architecture.Tests/Gggs.Architecture.Tests.csproj" />
+  <Project Path="../tests/Gggs.Gateway.IntegrationTests/Gggs.Gateway.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Identity.IntegrationTests/Gggs.Identity.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Platform.IntegrationTests/Gggs.Platform.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.TenantIsolation.Tests/Gggs.TenantIsolation.Tests.csproj" />

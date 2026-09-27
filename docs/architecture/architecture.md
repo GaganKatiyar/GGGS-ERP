@@ -643,6 +643,46 @@ The Identity Service is the **only token issuer** that APIs trust. Each tenant's
 ### 8.2 Flows
 
 - **Web (BFF)**: SPA → `/bff/login?tenant=acme` → BFF starts an OIDC Authorization Code + PKCE flow with Identity → (optional redirect to the tenant's Entra ID) → Identity issues tokens → the BFF keeps tokens in a server-side session store (Redis, encrypted) and gives the browser a `__Host-gggs` cookie (`HttpOnly; Secure; SameSite=Strict`). The BFF proxies `/api/*` and attaches the bearer token. **The browser never sees a token.**
+
+**As built (local accounts, no OIDC server yet).** The shape above is the target; what runs today
+reaches the same guarantee by a shorter route, and is written here because it is what a developer
+will find in the code:
+
+1. The SPA's own `/sign-in` page collects email, password and organisation code and `POST`s them to
+   `/bff/login`. There is no redirect to start, because with local accounts there is no upstream
+   provider to redirect to.
+2. The gateway calls Identity's `POST /api/v1/auth/sign-in`, and captures the `__Host-gggs-identity`
+   cookie Identity issues. That cookie is the **upstream credential**.
+3. The credential is stored server-side in `BffSessionStore` (Redis, or in-process memory with a
+   startup warning when Redis is absent), keyed by 256 bits of randomness. The store holds a hash of
+   that key, so a dump of the cache is not a set of usable sessions.
+4. The browser receives only `__Host-gggs-session`: `HttpOnly`, `Secure`, `SameSite=Strict`, root
+   path, no domain, no expiry. **The browser never holds a token or an upstream cookie** - asserted
+   on the wire by `BffSessionTests`, including that the upstream `Set-Cookie` is dropped rather than
+   relayed.
+5. `GET /bff/user` returns Identity's `/api/v1/me/session` - user, tenant, features and effective
+   permissions - read through on every call rather than cached in the session, so a role change or a
+   suspended tenant bites on the next page load.
+6. `/api/*` is proxied by YARP, which attaches the stored credential per request.
+
+When the OIDC server ships, step 2 becomes an authorization-code exchange and the credential becomes
+an access token with a refresh token beside it. Steps 3 to 6 do not change, which is why the
+credential is handled in one place (`IdentityClient`) rather than inline.
+
+Two session protections beyond the cookie attributes: an **idle timeout** (30 minutes, as a sliding
+cache expiry) inside an **absolute ceiling** (12 hours, checked explicitly because a sliding window
+would otherwise renew past it), and the session is **bound to the browser that signed in** by a
+user-agent hash. A key presented from elsewhere ends the session rather than being allowed through,
+and a test replays one to prove it.
+
+Signing out deletes the store record, so the cookie cannot be replayed afterwards. That is the
+difference between revoking a session and asking a browser to forget one.
+
+**Not yet reachable through the gateway: every service except Identity.** Platform and the services
+after it authenticate with JWT bearer tokens, and the gateway holds an Identity session cookie, which
+they will not accept. The proxy routes therefore cover Identity only. Closing this is the same piece
+of work as OpenIddict token issuance - it is not a separate gap, and it is the reason the
+platform-admin console cannot be wired up yet.
 - **Mobile**: Auth Code + PKCE in the system browser. Refresh tokens are stored in the secure enclave.
 - **Service-to-service**: Azure managed identity / client credentials with per-service audiences. Internal calls also forward the user token (or an OBO-exchanged downscoped token) so the user's context flows downstream.
 - **Public API (Phase 5)**: client credentials per `iam.ApiClient`, scoped to a single tenant, fronted by Azure API Management.

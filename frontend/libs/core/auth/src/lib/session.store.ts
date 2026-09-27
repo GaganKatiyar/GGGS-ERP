@@ -6,6 +6,27 @@ import { firstValueFrom } from 'rxjs';
 
 export type SessionState = 'unknown' | 'authenticated' | 'anonymous';
 
+/** Credentials as the sign-in page collects them. */
+export interface PasswordSignInRequest {
+  readonly email: string;
+  readonly password: string;
+  /** Usually taken from the subdomain; optional for customers with a verified email domain. */
+  readonly tenantCode?: string;
+}
+
+/**
+ * What the gateway says about an attempt.
+ *
+ * `errorCode` is what the page switches on. There is deliberately only one code for a wrong address
+ * and a wrong password, because telling them apart would let anyone find out who has an account.
+ */
+export interface PasswordSignInResult {
+  readonly succeeded: boolean;
+  readonly errorCode?: string;
+  readonly mustChangePassword?: boolean;
+  readonly lockoutEndDate?: string;
+}
+
 /**
  * The signed-in user, loaded from the BFF.
  *
@@ -49,15 +70,57 @@ export class SessionStore {
     }
   }
 
-  /** Sends the user to the BFF's login endpoint, which starts the OIDC flow. */
+  /**
+   * Sends the user to the sign-in page.
+   *
+   * An in-app navigation, not a redirect to the gateway: with local accounts the credentials are
+   * collected by our own page and posted to `/bff/login`. Federation will add a second path that
+   * does redirect - the gateway starting an OIDC flow at the customer's provider - and both will end
+   * at the same place, a session cookie set by the gateway.
+   */
   signIn(returnUrl: string = window.location.pathname): void {
-    window.location.href = `/bff/login?returnUrl=${encodeURIComponent(returnUrl)}`;
+    const target =
+      returnUrl && returnUrl !== '/sign-in'
+        ? `/sign-in?returnUrl=${encodeURIComponent(returnUrl)}`
+        : '/sign-in';
+
+    window.location.href = target;
   }
 
-  /** Full-page navigation so the BFF can clear its cookie and sign out of the upstream provider. */
-  signOut(): void {
-    this.clear();
-    window.location.href = '/bff/logout';
+  /**
+   * Signs in with a password.
+   *
+   * The response carries no credential: the gateway sets an httpOnly cookie and the session is then
+   * read from `/bff/user`, so there is one description of a session rather than two that can drift.
+   */
+  async signInWithPassword(
+    request: PasswordSignInRequest,
+  ): Promise<PasswordSignInResult> {
+    const result = await firstValueFrom(
+      this.http.post<PasswordSignInResult>('/bff/login', request),
+    );
+
+    if (result.succeeded) {
+      await this.load();
+    }
+
+    return result;
+  }
+
+  /**
+   * Ends the session, then reloads.
+   *
+   * A POST rather than a navigation, because signing out changes state and the gateway refuses
+   * unsafe requests without the CSRF header - which a plain navigation cannot send. The reload is
+   * what guarantees no store, cache or open screen keeps the previous user's data.
+   */
+  async signOut(): Promise<void> {
+    try {
+      await firstValueFrom(this.http.post<void>('/bff/logout', {}));
+    } finally {
+      this.clear();
+      window.location.href = '/sign-in';
+    }
   }
 
   /**

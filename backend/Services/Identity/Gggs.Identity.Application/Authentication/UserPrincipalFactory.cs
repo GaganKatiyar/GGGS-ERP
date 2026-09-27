@@ -89,12 +89,12 @@ public static class UserPrincipalFactory
 
         if (user.PreferredLocale is not null)
         {
-            claims.Add(new Claim("locale", user.PreferredLocale));
+            claims.Add(new Claim(GggsClaims.Locale, user.PreferredLocale));
         }
 
         if (user.TimeZone is not null)
         {
-            claims.Add(new Claim("zoneinfo", user.TimeZone));
+            claims.Add(new Claim(GggsClaims.TimeZone, user.TimeZone));
         }
 
         return new ClaimsPrincipal(new ClaimsIdentity(claims, authenticationScheme, ClaimTypes.Name, ClaimTypes.Role));

@@ -42,7 +42,7 @@ export class Shell {
   }
 
   protected signOut(): void {
-    this.session.signOut();
+    void this.session.signOut();
   }
 
   private isVisible(item: NavItem): boolean {

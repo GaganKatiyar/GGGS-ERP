@@ -108,8 +108,9 @@ export const errorInterceptor: HttpInterceptorFn = (
           : { status: error.status, title: error.statusText };
 
       if (error.status === 401) {
-        // The session expired or was revoked. A full navigation restarts the OIDC flow.
-        window.location.href = `/bff/login?returnUrl=${encodeURIComponent(router.url)}`;
+        // The session expired or was revoked. A full navigation rather than a router one, so every
+        // store and cache holding the previous session's data is discarded with the page.
+        window.location.href = `/sign-in?returnUrl=${encodeURIComponent(router.url)}`;
         return throwError(() => new ApiError(error.status, problem));
       }
 
