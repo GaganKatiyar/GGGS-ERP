@@ -78,7 +78,7 @@ public sealed class TenantContextMiddleware(RequestDelegate next, ILogger<Tenant
     /// role name or an email domain - either of which a tenant could arrange to match.
     /// </summary>
     private static bool IsPlatformUser(ClaimsPrincipal user)
-        => string.Equals(user.FindFirstValue(GggsClaims.UserType), "Platform", StringComparison.Ordinal);
+        => string.Equals(user.FindFirstValue(GggsClaims.UserType), GggsClaims.UserTypes.Platform, StringComparison.Ordinal);
 
     private void WarnOnSuppliedTenantHeaders(HttpContext context)
     {

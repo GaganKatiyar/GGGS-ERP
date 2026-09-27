@@ -162,6 +162,8 @@ public sealed class OutboxTests(SqlServerFixture fixture)
 
         public Guid? ImpersonatorUserId => null;
 
+        public bool IsPlatformStaff => false;
+
         public string? IpAddress => "127.0.0.1";
 
         public string? UserAgent => "outbox-tests";

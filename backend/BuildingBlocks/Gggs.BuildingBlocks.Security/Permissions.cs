@@ -21,6 +21,14 @@ public static class Permissions
         public const string FeatureManage = "platform.feature.manage";
         public const string HealthView = "platform.health.view";
         public const string SupportAccessRequest = "platform.support-access.request";
+
+        /// <summary>Viewing and managing our own staff and what they may do. Held sparingly.</summary>
+        public const string StaffView = "platform.staff.view";
+        public const string StaffInvite = "platform.staff.invite";
+        public const string StaffManage = "platform.staff.manage";
+
+        /// <summary>Creating and editing platform roles - deciding what any platform account may do.</summary>
+        public const string RoleManage = "platform.role.manage";
     }
 
     /// <summary>Tenant administration: users, roles, settings and configuration.</summary>

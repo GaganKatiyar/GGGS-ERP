@@ -115,6 +115,182 @@ namespace Gggs.Identity.Infrastructure.Migrations
                     b.ToTable("OutboxMessage", "messaging");
                 });
 
+            modelBuilder.Entity("Gggs.Identity.Domain.PlatformStaff.PlatformRole", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.PrimitiveCollection<string>("PermissionCodes")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("PermissionCodes");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("TemplateCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedName")
+                        .IsUnique()
+                        .HasDatabaseName("UX_PlatformRole_NormalizedName");
+
+                    b.ToTable("PlatformRole", "iam");
+                });
+
+            modelBuilder.Entity("Gggs.Identity.Domain.PlatformStaff.PlatformRoleAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid>("PlatformRoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PlatformStaffId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlatformRoleId")
+                        .HasDatabaseName("IX_PlatformRoleAssignment_PlatformRoleId");
+
+                    b.HasIndex("PlatformStaffId")
+                        .HasDatabaseName("IX_PlatformRoleAssignment_PlatformStaffId");
+
+                    b.HasIndex("PlatformStaffId", "PlatformRoleId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_PlatformRoleAssignment_Assignment");
+
+                    b.ToTable("PlatformRoleAssignment", "iam");
+                });
+
+            modelBuilder.Entity("Gggs.Identity.Domain.PlatformStaff.PlatformStaffMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("AccessFailedCount")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime?>("InvitationTokenExpiresDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("InvitationTokenHash")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("LastLoginDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateTime?>("LockoutEndDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("NormalizedEmail")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime?>("PasswordChangedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PermissionVersion")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("SecurityStamp")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedEmail")
+                        .IsUnique()
+                        .HasDatabaseName("UX_PlatformStaff_NormalizedEmail");
+
+                    b.ToTable("PlatformStaff", "iam");
+                });
+
             modelBuilder.Entity("Gggs.Identity.Domain.Roles.Role", b =>
                 {
                     b.Property<Guid>("Id")
@@ -702,6 +878,35 @@ namespace Gggs.Identity.Infrastructure.Migrations
                     b.HasIndex("ApplicationId", "Status", "Subject", "Type");
 
                     b.ToTable("OpenIddictTokens", "oidc");
+                });
+
+            modelBuilder.Entity("Gggs.Identity.Domain.PlatformStaff.PlatformStaffMember", b =>
+                {
+                    b.OwnsMany("Gggs.Identity.Domain.PlatformStaff.PasswordHistoryEntry", "PasswordHistory", b1 =>
+                        {
+                            b1.Property<Guid>("PlatformStaffMemberId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAddOrUpdate();
+
+                            b1.Property<DateTime>("CreatedDate");
+
+                            b1.Property<string>("PasswordHash")
+                                .IsRequired();
+
+                            b1.HasKey("PlatformStaffMemberId", "__synthesizedOrdinal");
+
+                            b1.ToTable("PlatformStaff", "iam");
+
+                            b1
+                                .ToJson("PasswordHistory")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.WithOwner()
+                                .HasForeignKey("PlatformStaffMemberId");
+                        });
+
+                    b.Navigation("PasswordHistory");
                 });
 
             modelBuilder.Entity("Gggs.Identity.Domain.Roles.Role", b =>

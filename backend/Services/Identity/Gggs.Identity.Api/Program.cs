@@ -105,6 +105,19 @@ builder.Services.AddSingleton<Gggs.Identity.Application.Users.IInvitationTokenGe
 builder.Services.AddScoped<TenantDiscoveryService>();
 builder.Services.AddScoped<Gggs.Identity.Application.Provisioning.TenantBootstrapService>();
 
+builder.Services.AddScoped<Gggs.Identity.Application.PlatformStaff.IPlatformStaffRepository, PlatformStaffRepository>();
+builder.Services.AddScoped<Gggs.Identity.Application.PlatformStaff.IPlatformRoleRepository, PlatformRoleRepository>();
+builder.Services.AddScoped<Gggs.Identity.Application.PlatformStaff.PlatformStaffSignInService>();
+builder.Services.AddScoped<Gggs.Identity.Application.PlatformStaff.PlatformStaffManagementService>();
+
+builder.Services.AddOptions<PlatformBootstrapOptions>()
+    .Bind(builder.Configuration.GetSection(PlatformBootstrapOptions.SectionName));
+
+// Order matters: the bootstrap seeder needs the PLATFORM_STAFF_ADMINISTRATOR role to already exist.
+// IHostedService.StartAsync runs in registration order, so the role seeder is registered first.
+builder.Services.AddHostedService<PlatformRoleSeeder>();
+builder.Services.AddHostedService<PlatformStaffBootstrapSeeder>();
+
 // This service owns permission resolution, so it uses the real provider rather than the temporary
 // claims-based one the other services are still on.
 builder.Services.AddScoped<IPermissionProvider, IdentityPermissionProvider>();
@@ -147,6 +160,7 @@ app.MapMeEndpoints();
 app.MapTokenEndpoints();
 app.MapRoleEndpoints();
 app.MapTenantBootstrapEndpoints();
+app.MapPlatformStaffEndpoints();
 
 if (app.Environment.IsDevelopment())
 {

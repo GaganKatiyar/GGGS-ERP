@@ -698,10 +698,54 @@ browser that signed in** by a user-agent hash. Signing out revokes the refresh t
 deletes the store record, so the cookie cannot be replayed - the difference between revoking a
 session and asking a browser to forget one.
 
-**Still missing: platform staff have no permission source.** `PermissionResolver` reads tenant role
-grants and `Role.Grant` refuses platform-only codes by design, so no real account can hold
-`platform.*`. The Platform service is now reachable through the gateway and validates tokens
-correctly, but its endpoints will refuse everyone until platform-staff roles exist.
+#### Platform staff: a second identity, not a tenant with no tenant
+
+Closed, and closed by a separate model rather than by relaxing the one above. `User` is a
+`TenantAggregateRoot`: the save interceptor stamps its `TenantId` from `ITenantContext.TenantId` on
+every insert, which throws when unresolved, platform scope or not. There is no code path in which a
+`User` row can exist without a tenant, so platform staff - our own ops and support people, who
+belong to no customer - are not `User`s wearing an empty tenant. They are a second aggregate,
+`PlatformStaffMember`, marked `IPlatformOwned` like `Tenant` and `Plan` already are: no `TenantId`
+column, no tenant query filter, and none of the tenant interceptor's stamping logic applies to it at
+all. `PlatformRole` and `PlatformRoleAssignment` are its role model, simpler than the tenant one on
+purpose - platform permissions (`platform.*`) are never anchored to a branch or department, because
+there is no organization above a tenant to anchor to, so there is no `DataScope` to narrow and no
+expiry to check.
+
+**One token endpoint, two disjoint tables.** `/connect/token`'s password grant resolves to a tenant
+user or a platform staff member by the presence of `tenant_code`, decided once, before either table
+is touched: naming a tenant goes straight to tenant discovery exactly as before, and naming none is
+what the platform console sends. The two are never both queried for one request, so there is no
+question of which wins if an address happened to exist in both. A platform token carries `utyp:
+Platform` and *no* `tid` claim - its absence is not an omission to fill in, it is the exact signal
+`TenantContextMiddleware` already read for this (`IsPlatformUser`) before any platform account
+existed to issue one. Permissions are resolved through the same per-request mechanism as tenant
+users, from `IdentityPermissionProvider.GetForPlatformStaffAsync`, cached under
+`IGggsCache.GetOrCreatePlatformAsync` rather than the tenant-scoped cache - the ordinary
+`GetOrCreateAsync` builds its key from `ITenantContext.TenantId`, which is exactly what a platform
+request has none of.
+
+**Seeded roles, not templates.** `PlatformRoleSeeder` keeps `PLATFORM_STAFF_ADMINISTRATOR` and
+`PLATFORM_SUPPORT` in sync with `PlatformRoleTemplates` on every startup, and - unlike tenant role
+seeding - tops permissions back up as well as adding what's missing. There is no tenant here who
+might have deliberately narrowed a role; these two are the platform's own definition of itself, and
+drift between the code and the database is an unfinished deploy, not a decision to respect.
+`PLATFORM_STAFF_ADMINISTRATOR` is the only seeded role holding `platform.staff.manage` and
+`platform.role.manage`, and `PlatformStaffManagementService` refuses to leave that permission held
+by nobody - the same "last administrator" shape as the tenant rule, one level up, pinned by a unit
+test rather than an integration one because the platform staff table has no tenant to isolate a
+test's seeded accounts from every other test's.
+
+**The bootstrap-of-bootstraps.** Only platform staff can invite platform staff, and on a fresh
+deployment there is no platform staff. `PlatformStaffBootstrapSeeder` reads
+`Gggs:Identity:PlatformBootstrap:AdministratorEmail` at startup and, if no account with that address
+exists yet, creates one holding `PLATFORM_STAFF_ADMINISTRATOR` and logs its invitation token at
+`Critical` - never to a database column or an API response, because this is the single most powerful
+credential the platform has and the log is the only place it will ever exist. Idempotent across
+restarts: once the address has an account, the setting has nothing left to do.
+
+**Still open:** no UI for any of this yet (the Platform console has nothing to sign into), and
+`PlatformStaffEndpoints`/`TokenEndpoints` are the only places this model is reachable today.
 - **Mobile**: Auth Code + PKCE in the system browser. Refresh tokens are stored in the secure enclave.
 - **Service-to-service**: Azure managed identity / client credentials with per-service audiences. Internal calls also forward the user token (or an OBO-exchanged downscoped token) so the user's context flows downstream.
 - **Public API (Phase 5)**: client credentials per `iam.ApiClient`, scoped to a single tenant, fronted by Azure API Management.

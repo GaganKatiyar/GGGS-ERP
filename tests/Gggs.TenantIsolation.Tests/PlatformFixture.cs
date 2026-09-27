@@ -168,6 +168,8 @@ public sealed class PlatformFixture : IAsyncLifetime
 
         public Guid? ImpersonatorUserId => null;
 
+        public bool IsPlatformStaff => false;
+
         public string? IpAddress => "127.0.0.1";
 
         public string? UserAgent => "platform-tests";

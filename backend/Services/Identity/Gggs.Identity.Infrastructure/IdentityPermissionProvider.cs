@@ -2,6 +2,8 @@ using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Caching;
 using Gggs.BuildingBlocks.Security;
 using Gggs.Identity.Application.Authorization;
+using Gggs.Identity.Application.PlatformStaff;
+using Gggs.Identity.Domain.PlatformStaff;
 using Gggs.Identity.Domain.Roles;
 using Gggs.Identity.Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -34,9 +36,18 @@ public sealed class IdentityPermissionProvider(
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(30);
 
     public async Task<PermissionSet> GetCurrentAsync(CancellationToken cancellationToken = default)
-        => currentUser.IsAuthenticated
-            ? await GetForUserAsync(currentUser.UserId, cancellationToken)
-            : PermissionSet.Empty;
+    {
+        if (!currentUser.IsAuthenticated)
+        {
+            return PermissionSet.Empty;
+        }
+
+        // Two disjoint tables, so which one to ask is decided before either is touched - the same
+        // rule the token endpoint uses to decide which one to sign in against in the first place.
+        return currentUser.IsPlatformStaff
+            ? await GetForPlatformStaffAsync(currentUser.UserId, cancellationToken)
+            : await GetForUserAsync(currentUser.UserId, cancellationToken);
+    }
 
     public async Task<PermissionSet> GetForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
@@ -71,6 +82,46 @@ public sealed class IdentityPermissionProvider(
         return new PermissionSet(snapshot.Grants, snapshot.PermissionVersion);
     }
 
+    /// <summary>The platform staff equivalent of <see cref="GetForUserAsync"/>. Simpler: no tenant filter, no anchoring, no expiry.</summary>
+    public async Task<PermissionSet> GetForPlatformStaffAsync(Guid platformStaffId, CancellationToken cancellationToken = default)
+    {
+        PlatformStaffMember? member = await dbContext.PlatformStaff
+            .AsNoTracking()
+            .FirstOrDefaultAsync(candidate => candidate.Id == platformStaffId, cancellationToken);
+
+        if (member is null)
+        {
+            return PermissionSet.Empty;
+        }
+
+        if (!member.CanSignIn)
+        {
+            logger.LogInformation("Platform staff {PlatformStaffId} is {Status}; no permissions are granted.", platformStaffId, member.Status);
+            return PermissionSet.Empty;
+        }
+
+        // The platform-scoped cache, not the tenant-scoped one: a platform staff request never
+        // resolves a tenant, and the ordinary GetOrCreateAsync builds its key from
+        // ITenantContext.TenantId, which throws exactly because none was resolved. The key space is
+        // also naturally separate from every tenant user's, so there is no question of one
+        // identity's cached grants ever answering for the other's.
+        PermissionSnapshot snapshot = await cache.GetOrCreatePlatformAsync(
+            CacheAreas.Permissions,
+            $"staff:{platformStaffId:N}:v{member.PermissionVersion}",
+            async token => await ResolvePlatformStaffAsync(platformStaffId, member.PermissionVersion, token),
+            CacheDuration,
+            cancellationToken);
+
+        return new PermissionSet(snapshot.Grants, snapshot.PermissionVersion);
+    }
+
+    /// <summary>
+    /// Tenant-scoped, like <see cref="IGggsCache.RemoveAreaAsync"/> underneath it - nothing calls
+    /// this for a platform staff change today, since <c>PlatformStaffManagementService</c> only
+    /// bumps the permission version, and a version-suffixed key is already unreachable once the
+    /// version changes. If a caller ever needs to force-invalidate a platform staff member's cache
+    /// without bumping the version, this method is not yet that caller's friend.
+    /// </summary>
     public async Task InvalidateAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         // Drops the whole area rather than one key. The version-suffixed key for this user is
@@ -102,6 +153,32 @@ public sealed class IdentityPermissionProvider(
         DateOnly today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
 
         PermissionSet resolved = PermissionResolver.Resolve(grants, roles, today, permissionVersion);
+        return new PermissionSnapshot([.. resolved.All], permissionVersion);
+    }
+
+    private async Task<PermissionSnapshot> ResolvePlatformStaffAsync(
+        Guid platformStaffId,
+        int permissionVersion,
+        CancellationToken cancellationToken)
+    {
+        List<PlatformRoleAssignment> grants = await dbContext.PlatformRoleAssignments
+            .AsNoTracking()
+            .Where(grant => grant.PlatformStaffId == platformStaffId)
+            .ToListAsync(cancellationToken);
+
+        if (grants.Count == 0)
+        {
+            return new PermissionSnapshot([], permissionVersion);
+        }
+
+        List<Guid> roleIds = [.. grants.Select(grant => grant.PlatformRoleId).Distinct()];
+
+        Dictionary<Guid, PlatformRole> roles = await dbContext.PlatformRoles
+            .AsNoTracking()
+            .Where(role => roleIds.Contains(role.Id))
+            .ToDictionaryAsync(role => role.Id, cancellationToken);
+
+        PermissionSet resolved = PlatformPermissionResolver.Resolve(grants, roles, permissionVersion);
         return new PermissionSnapshot([.. resolved.All], permissionVersion);
     }
 }

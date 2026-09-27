@@ -20,6 +20,16 @@ public interface ICurrentUser
     /// <summary>True for platform staff acting through a support grant; recorded on every audit row.</summary>
     Guid? ImpersonatorUserId { get; }
 
+    /// <summary>
+    /// True when the caller is one of our own staff rather than a tenant user.
+    /// <para>
+    /// Platform staff are a separate identity (<c>PlatformStaffMember</c>, not <c>User</c>) with
+    /// their own role and permission tables, so anything resolving "what can this caller do" has to
+    /// branch on this before it decides which table to ask.
+    /// </para>
+    /// </summary>
+    bool IsPlatformStaff { get; }
+
     string? IpAddress { get; }
 
     string? UserAgent { get; }

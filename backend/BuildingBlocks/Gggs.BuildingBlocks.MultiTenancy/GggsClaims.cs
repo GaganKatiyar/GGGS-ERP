@@ -29,4 +29,25 @@ public static class GggsClaims
 
     /// <summary>The user's own IANA time zone, which wins over the tenant default. OIDC name.</summary>
     public const string TimeZone = "zoneinfo";
+
+    /// <summary>
+    /// Values the <see cref="UserType"/> claim takes.
+    /// <para>
+    /// Compared literally rather than parsed as an enum, because the principal factory that emits
+    /// them and the middleware that reads them belong to different aggregates (<c>User</c> and
+    /// <c>PlatformStaffMember</c>) with no shared enum type - a shared string constant is what
+    /// keeps the two from drifting apart instead.
+    /// </para>
+    /// </summary>
+    public static class UserTypes
+    {
+        public const string TenantUser = "TenantUser";
+
+        /// <summary>
+        /// What <see cref="TenantContextMiddleware"/> looks for to grant platform scope. Anyone
+        /// issuing a token with this value is asserting platform staff, so it is issued from
+        /// exactly one place: the platform staff sign-in path.
+        /// </summary>
+        public const string Platform = "Platform";
+    }
 }

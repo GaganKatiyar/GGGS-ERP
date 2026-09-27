@@ -21,6 +21,11 @@ public sealed class HttpCurrentUser(IHttpContextAccessor httpContextAccessor) : 
 
     public Guid? ImpersonatorUserId => ParseGuid(User?.FindFirstValue(GggsClaims.Impersonator));
 
+    public bool IsPlatformStaff => string.Equals(
+        User?.FindFirstValue(GggsClaims.UserType),
+        GggsClaims.UserTypes.Platform,
+        StringComparison.Ordinal);
+
     public string? IpAddress => httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
 
     public string? UserAgent => httpContextAccessor.HttpContext?.Request.Headers.UserAgent.ToString();
@@ -46,6 +51,8 @@ public sealed class SystemCurrentUser(Guid userId, string? correlationId = null)
     public bool IsAuthenticated => true;
 
     public Guid? ImpersonatorUserId => null;
+
+    public bool IsPlatformStaff => false;
 
     public string? IpAddress => null;
 

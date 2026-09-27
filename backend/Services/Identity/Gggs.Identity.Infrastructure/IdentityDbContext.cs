@@ -1,6 +1,7 @@
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Persistence;
+using Gggs.Identity.Domain.PlatformStaff;
 using Gggs.Identity.Domain.Roles;
 using Gggs.Identity.Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -40,6 +41,16 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
     public DbSet<UserRole> UserRoles => Set<UserRole>();
 
     public DbSet<PasswordPolicy> PasswordPolicies => Set<PasswordPolicy>();
+
+    /// <summary>
+    /// Our own staff. Deliberately not tenant-owned; see <see cref="PlatformStaffMember"/> for why
+    /// it is a separate aggregate rather than a <see cref="User"/> with no tenant.
+    /// </summary>
+    public DbSet<PlatformStaffMember> PlatformStaff => Set<PlatformStaffMember>();
+
+    public DbSet<PlatformRole> PlatformRoles => Set<PlatformRole>();
+
+    public DbSet<PlatformRoleAssignment> PlatformRoleAssignments => Set<PlatformRoleAssignment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -137,6 +148,70 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
                 .HasDatabaseName("UX_PasswordPolicy_TenantId")
                 .IsUnique()
                 .HasFilter("[IsDeleted] = 0");
+        });
+
+        modelBuilder.Entity<PlatformStaffMember>(entity =>
+        {
+            entity.ToTable("PlatformStaff");
+            entity.Property(member => member.Email).HasMaxLength(256).IsRequired();
+            entity.Property(member => member.NormalizedEmail).HasMaxLength(256).IsRequired();
+            entity.Property(member => member.DisplayName).HasMaxLength(200).IsRequired();
+            entity.Property(member => member.SecurityStamp).HasMaxLength(64).IsRequired();
+            entity.Property(member => member.Status).HasConversion<byte>();
+
+            // Global, not per-tenant: there is exactly one platform, so an address can hold at
+            // most one platform staff account, unlike a tenant user's per-tenant uniqueness.
+            entity.HasIndex(member => member.NormalizedEmail)
+                .HasDatabaseName("UX_PlatformStaff_NormalizedEmail")
+                .IsUnique();
+
+            entity.OwnsMany(member => member.PasswordHistory, history =>
+            {
+                history.ToJson("PasswordHistory");
+            });
+            entity.Navigation(member => member.PasswordHistory).UsePropertyAccessMode(PropertyAccessMode.Field);
+
+            entity.Ignore(member => member.DomainEvents);
+        });
+
+        modelBuilder.Entity<PlatformRole>(entity =>
+        {
+            entity.ToTable("PlatformRole");
+            entity.Property(role => role.Name).HasMaxLength(100).IsRequired();
+            entity.Property(role => role.NormalizedName).HasMaxLength(100).IsRequired();
+            entity.Property(role => role.Description).HasMaxLength(500);
+            entity.Property(role => role.TemplateCode).HasMaxLength(50);
+
+            entity.HasIndex(role => role.NormalizedName)
+                .HasDatabaseName("UX_PlatformRole_NormalizedName")
+                .IsUnique();
+
+            // A JSON array rather than a join table: read as a whole on every permission check,
+            // never queried by element, and a table would mean a migration for every role change.
+            entity.PrimitiveCollection(role => role.PermissionCodes)
+                .HasColumnName("PermissionCodes")
+                .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+            entity.Ignore(role => role.DomainEvents);
+        });
+
+        modelBuilder.Entity<PlatformRoleAssignment>(entity =>
+        {
+            entity.ToTable("PlatformRoleAssignment");
+
+            entity.HasIndex(grant => grant.PlatformStaffId)
+                .HasDatabaseName("IX_PlatformRoleAssignment_PlatformStaffId");
+
+            entity.HasIndex(grant => grant.PlatformRoleId)
+                .HasDatabaseName("IX_PlatformRoleAssignment_PlatformRoleId");
+
+            // The same role granted to the same person twice is a duplicate, not a second grant -
+            // there is no anchor or date range here to tell two such rows apart.
+            entity.HasIndex(grant => new { grant.PlatformStaffId, grant.PlatformRoleId })
+                .HasDatabaseName("UX_PlatformRoleAssignment_Assignment")
+                .IsUnique();
+
+            entity.Ignore(grant => grant.DomainEvents);
         });
 
         modelBuilder.AddGggsMessagingModel();
