@@ -474,7 +474,7 @@ Format: **Table** — key columns · FKs · unique (UX) · indexes (IX). All hav
 - `ScimToken` — for Entra SCIM provisioning, hashed.
 - `SupportAccessGrant` — GrantedByUserId (tenant admin), PlatformUserId, Reason, ValidFrom, ValidTo, Scope (read-only/full) · IX (TenantId, PlatformUserId, ValidTo).
 
-**Organization (`org`, Core HR)**
+**Organization (`org`, Core HR)** — built, in `Gggs.CoreHr.*` (§Organization module below covers what actually shipped and where it differs from this spec):
 - `LegalEntity` — Code, Name, RegistrationNo, TaxRegistrationJson (country-specific IDs), CountryCode, Currency, AddressJson, LogoDocumentId, CompliancePackCode · UX (TenantId, Code).
 - `BusinessUnit` — Code, Name, HeadEmployeeId · UX (TenantId, Code).
 - `Branch` — LegalEntityId FK, Code, Name, AddressJson, CountryCode, StateCode, TimeZone, GeoLat, GeoLng, GeoFenceMeters · UX (TenantId, Code) · IX (TenantId, LegalEntityId).
@@ -483,8 +483,40 @@ Format: **Table** — key columns · FKs · unique (UX) · indexes (IX). All hav
 - `Designation` — Code, Title, JobFamily, JobLevel · UX (TenantId, Code).
 - `Grade` — Code, Name, Rank INT, SalaryBandMin, SalaryBandMax, Currency · UX (TenantId, Code).
 - `CostCenter` — Code, Name, GLCode, OwnerEmployeeId, ParentCostCenterId · UX (TenantId, Code).
-- `Position` (optional) — Code, DesignationId, DepartmentId, BranchId, IsBudgeted, Status (Vacant/Filled/Frozen) · UX (TenantId, Code).
-- `Skill` — Name, Category · UX (TenantId, Name).
+- `Position` (optional) — Code, DesignationId, DepartmentId, BranchId, IsBudgeted, Status (Vacant/Filled/Frozen) · UX (TenantId, Code). **Not built yet.**
+- `Skill` — Name, Category · UX (TenantId, Name). **Not built yet** - waits on Employee.
+
+#### Organization module: as built, and where it departs from the spec above
+
+`Department.OrgPath HIERARCHYID` did not ship. Maintaining a materialized path or a `HIERARCHYID`
+means rewriting every descendant's path when a subtree moves, and that rewrite spans aggregates -
+it is not something `Department.MoveUnder` can do to itself, and EF Core has no first-class
+`HIERARCHYID` mapping to lean on. `Department` and `CostCenter` (which has the identical
+tree-plus-reparent shape) use a plain adjacency list (`ParentDepartmentId` / `ParentCostCenterId`)
+instead. "This department and everything under it" is a recursive CTE seeded from that column at
+the point a caller actually needs it - the data-scope filter for "my department and below," which
+nothing consumes yet - rather than a column either aggregate maintains. Moving to `HIERARCHYID`
+later changes that query, not the aggregate.
+
+What a plain adjacency list cannot check by looking at one row is whether a reparent closes a cycle
+- moving Engineering under its own grandchild Platform, say. `DepartmentService.MoveAsync` and
+`CostCenterService.MoveAsync` walk from the proposed new parent up to the root before allowing a
+move, refusing if the node being moved appears in that walk. Pinned by a unit test with a hand-built
+three-level tree rather than a seeded database, because the walk's correctness is exactly what a
+three-node fixture is suited to show.
+
+Composite same-tenant foreign keys (§9, layer 4) are used throughout this module -
+`Branch → LegalEntity`, `Location → Branch`, `Department → CostCenter`/`BusinessUnit`, the two
+self-referencing parent columns - each as `HasForeignKey(x => new { x.TenantId, x.XId })
+.HasPrincipalKey(x => new { x.TenantId, x.Id })`. This was the first module to actually wire that
+layer up in code: Identity's and Platform's foreign keys predate it and are single-column today,
+relying on the other three layers alone. Worth closing there too, but out of scope for this pass.
+
+**Not built**: `Position`, `Skill`, custom fields, lookups, number sequences, and - the load-bearing
+gap - `Employee` and `EmploymentRecord` themselves. `BusinessUnit.HeadEmployeeId`,
+`Department.HeadEmployeeId`, `CostCenter.OwnerEmployeeId` are plain `Guid?` with no FK yet, because
+the table they would point at does not exist; they gain a composite same-tenant FK the same way
+`Branch → LegalEntity` has one once Employee lands.
 
 **Employee (`emp`)**
 - `EmployeeAddress` — EmployeeId FK, Type (Current/Permanent), AddressLine1Enc…, City, StateCode, CountryCode, PostalCode.

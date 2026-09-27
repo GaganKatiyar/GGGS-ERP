@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.CoreHr.Application</RootNamespace>
+    <Description>Organization and employee use cases: the rules that decide what may be created, moved or changed.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Application\Gggs.BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\Gggs.CoreHr.Domain\Gggs.CoreHr.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -35,9 +35,6 @@ builder.Services.AddGggsCaching(builder.Configuration, ServiceName);
 builder.Services.AddGggsSecretStore(builder.Configuration, platform.DeploymentProfile);
 builder.Services.AddGggsAuthorization(builder.Configuration);
 
-// Temporary: permissions come from token claims until the Identity service lands, at which point
-// this call is replaced by the Redis-backed provider that honours role revocation.
-builder.Services.AddClaimsPermissionProvider();
 // Bearer tokens only: nothing navigates to this service, so there is no cookie to accept.
 builder.Services.AddGggsTokenValidation(builder.Configuration);
 

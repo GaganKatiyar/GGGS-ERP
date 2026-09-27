@@ -24,6 +24,12 @@
     <Project Path="Services/Identity/Gggs.Identity.Infrastructure/Gggs.Identity.Infrastructure.csproj" />
     <Project Path="Services/Identity/Gggs.Identity.Worker/Gggs.Identity.Worker.csproj" />
   </Folder>
+  <Folder Name="/Services/CoreHr/">
+    <Project Path="Services/CoreHr/Gggs.CoreHr.Api/Gggs.CoreHr.Api.csproj" />
+    <Project Path="Services/CoreHr/Gggs.CoreHr.Application/Gggs.CoreHr.Application.csproj" />
+    <Project Path="Services/CoreHr/Gggs.CoreHr.Domain/Gggs.CoreHr.Domain.csproj" />
+    <Project Path="Services/CoreHr/Gggs.CoreHr.Infrastructure/Gggs.CoreHr.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/Services/Platform/">
     <Project Path="Services/Platform/Gggs.Platform.Api/Gggs.Platform.Api.csproj" />
     <Project Path="Services/Platform/Gggs.Platform.Application/Gggs.Platform.Application.csproj" />
@@ -35,11 +41,13 @@
     <Project Path="Services/Sample/Gggs.Sample.Api/Gggs.Sample.Api.csproj" />
   </Folder>
   <Project Path="../tests/Gggs.Architecture.Tests/Gggs.Architecture.Tests.csproj" />
+  <Project Path="../tests/Gggs.CoreHr.IntegrationTests/Gggs.CoreHr.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Gateway.IntegrationTests/Gggs.Gateway.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Identity.IntegrationTests/Gggs.Identity.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Platform.IntegrationTests/Gggs.Platform.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.TenantIsolation.Tests/Gggs.TenantIsolation.Tests.csproj" />
   <Project Path="../tests/unit/Gggs.BuildingBlocks.UnitTests/Gggs.BuildingBlocks.UnitTests.csproj" />
+  <Project Path="../tests/unit/Gggs.CoreHr.UnitTests/Gggs.CoreHr.UnitTests.csproj" />
   <Project Path="../tests/unit/Gggs.Identity.UnitTests/Gggs.Identity.UnitTests.csproj" />
   <Project Path="../tests/unit/Gggs.Platform.UnitTests/Gggs.Platform.UnitTests.csproj" />
 </Solution>

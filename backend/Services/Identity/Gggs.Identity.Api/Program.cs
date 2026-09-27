@@ -125,13 +125,10 @@ builder.Services.AddScoped<IPermissionProvider, IdentityPermissionProvider>();
 builder.Services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
 builder.Services.AddSingleton<IBreachedPasswordChecker, NoOpBreachedPasswordChecker>();
 
-// Tenant lookups go to the Platform service. Registered here as an HTTP client so Identity holds
-// no copy of the tenant registry - one source of truth for who exists and whether they are active.
-builder.Services.AddHttpClient<ITenantRegistry, PlatformTenantRegistryClient>(client =>
-{
-    client.BaseAddress = new Uri(builder.Configuration["Gggs:Services:Platform"] ?? "http://platform");
-    client.Timeout = TimeSpan.FromSeconds(5);
-});
+// Tenant lookups go to the Platform service, through the same client every downstream service
+// uses - Identity holds no copy of the tenant registry, so there is one source of truth for who
+// exists and whether they are active.
+builder.Services.AddGggsRemoteTenantRegistry(builder.Configuration);
 
 builder.Services.AddScoped<ITenantDomainResolver, PlatformTenantDomainResolver>();
 

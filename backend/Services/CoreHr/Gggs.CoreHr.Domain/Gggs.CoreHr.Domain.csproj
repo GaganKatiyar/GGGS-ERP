@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.CoreHr.Domain</RootNamespace>
+    <Description>Organization structure and employee records: the shared core every other module reads.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Domain\Gggs.BuildingBlocks.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
