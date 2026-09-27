@@ -64,6 +64,9 @@ builder.Services.AddScoped<OrganizationService>();
 builder.Services.AddScoped<DepartmentService>();
 builder.Services.AddScoped<CostCenterService>();
 
+builder.Services.AddScoped<Gggs.CoreHr.Application.Employees.IEmployeeRepository, EmployeeRepository>();
+builder.Services.AddScoped<Gggs.CoreHr.Application.Employees.EmployeeService>();
+
 builder.Services.AddGggsJson();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -84,6 +87,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check 
     .AllowAnonymous();
 
 app.MapOrganizationEndpoints();
+app.MapEmployeeEndpoints();
 
 if (app.Environment.IsDevelopment())
 {

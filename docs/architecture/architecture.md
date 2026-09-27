@@ -512,11 +512,10 @@ self-referencing parent columns - each as `HasForeignKey(x => new { x.TenantId, 
 layer up in code: Identity's and Platform's foreign keys predate it and are single-column today,
 relying on the other three layers alone. Worth closing there too, but out of scope for this pass.
 
-**Not built**: `Position`, `Skill`, custom fields, lookups, number sequences, and - the load-bearing
-gap - `Employee` and `EmploymentRecord` themselves. `BusinessUnit.HeadEmployeeId`,
-`Department.HeadEmployeeId`, `CostCenter.OwnerEmployeeId` are plain `Guid?` with no FK yet, because
-the table they would point at does not exist; they gain a composite same-tenant FK the same way
-`Branch → LegalEntity` has one once Employee lands.
+**Not built**: `Position`, `Skill`, custom fields, lookups, number sequences. `Employee` and
+`EmploymentRecord` have since landed (see below), but `BusinessUnit.HeadEmployeeId`,
+`Department.HeadEmployeeId`, `CostCenter.OwnerEmployeeId` are still plain `Guid?` with no FK - adding
+one now is a follow-up to this pass, not a blocked one, since the table they'd point at exists today.
 
 **Employee (`emp`)**
 - `EmployeeAddress` — EmployeeId FK, Type (Current/Permanent), AddressLine1Enc…, City, StateCode, CountryCode, PostalCode.
@@ -531,6 +530,68 @@ the table they would point at does not exist; they gain a composite same-tenant 
 - `EmployeeEvent` — EmployeeId FK, EventType (Hired, Confirmed, Transferred, Promoted, Resigned, Exited, Rehired…), EffectiveDate, PayloadJson, SourceRef · IX (TenantId, EmployeeId, EffectiveDate). This is the business-readable history timeline; temporal tables provide the field-level history.
 - `EmployeeExit` — EmployeeId FK, ResignationDate, RequestedLastDay, ApprovedLastDay, ExitType, ReasonCode, IsRehireEligible, WorkflowInstanceId, ClearanceStatus, FnFStatus.
 - `ReportingLine` — closure table (EmployeeId, ManagerEmployeeId, Depth) · PK (TenantId, ManagerEmployeeId, EmployeeId) · IX (TenantId, EmployeeId).
+
+#### Employee module: as built, and where it departs from the spec above
+
+`Employee` shipped deliberately thin. Everything the DDL above puts in dedicated sub-resource tables
+- `EmployeeAddress`, `EmergencyContact`, `EmployeeDependent`, `EmployeeEducation`,
+`EmployeeExperience`, `EmployeeSkill`, `EmployeeBankAccount`, `EmployeeIdentityDocument`,
+`EmployeeTaxProfile` - is not built. Most of that list is either genuinely sensitive PII (bank
+account, national identifiers, date of birth) that the spec requires encrypted at rest with a
+per-tenant key, or points at things that don't exist yet (`Skill`, `cfg.CustomFieldDefinition`,
+`doc.Document`). The encryption building block does not exist. Adding those columns unencrypted
+would be worse than not having the fields at all, so `Employee` carries only what is safe to hold in
+the clear today: names, work email, status, joining/confirmation/exit dates. The same reasoning
+applies to `EmployeeEvent` (a business-readable timeline distinct from field-level history) and
+`ref.EmployeeSnapshot` in every downstream service (Time, Payroll, Talent, Spend, Workflow are not
+built yet, so nothing consumes it) - neither is published. No integration events leave the outbox
+yet either: `Employee.Raise` records `EmployeeHiredDomainEvent`/`EmployeeConfirmedDomainEvent`/
+`EmployeeExitedDomainEvent` on the aggregate exactly as every other module's domain events do, but
+nothing has wired Core HR onto `AddGggsMessaging`'s outbox relay the way Identity's provisioning
+consumer is. That is the actual prerequisite for `ref.EmployeeSnapshot`, not a gap in this module.
+
+`EmployeeTransferredDomainEvent` is defined but unused: transfers, promotions, manager changes and
+rehires all go through `EmploymentRecord`, and nothing downstream needs to react to one yet. Kept
+rather than deleted, so the shape is ready the day something does.
+
+`ReportingLine`, the closure table for "my team including indirect reports," did not ship either.
+`EmploymentRecord.ReportingManagerId` is the only reporting-chain data that exists; a "walk N levels
+up/down" query today means recursively following that column the same way `Department`'s adjacency
+list is walked, not a maintained closure table. The same trade-off as the Organization module's
+`OrgPath`: no aggregate maintains a query-optimized precomputed structure until something exercises
+it enough to prove the difference matters.
+
+The one temporal-table departure the Organization section didn't need to make: `emp.Employee` and
+`emp.EmploymentRecord` are ordinary tables, not `SYSTEM_VERSIONING = ON`. Every business-meaningful
+change to a person's job is already captured explicitly - a transfer, promotion or manager change
+opens a new `EmploymentRecord` and closes the old one rather than overwriting it in place - so the
+field-level "what did this row look like a minute ago" that temporal tables answer is not something
+anything in this codebase asks yet. `Correction` (fixing a typo in a record that was never live) is
+the one case that edits in place rather than opening a new record, and even there the audit
+interceptor (§16.1) captures the diff.
+
+Everything else follows the Organization module's precedent directly: `Employee` and
+`EmploymentRecord` are `TenantAggregateRoot`s with the standard filtered unique indexes (one open
+`EmploymentRecord` per employee, enforced by `UX_EmploymentRecord_Current` filtered on
+`IsCurrent = 1 AND IsDeleted = 0`); `EmploymentRecord`'s six organizational references (legal entity,
+branch, department, designation, grade, cost center) plus its two references back to `Employee`
+itself (`EmployeeId`, and separately `ReportingManagerId` - two distinct composite FKs to the same
+table, since EF Core needs each named and configured independently) are all composite same-tenant
+FKs, `OnDelete(DeleteBehavior.Restrict)`. `EmployeeService` checks every one of those references
+exists via `IOrganizationRepository`/`IEmployeeRepository` before touching either aggregate, the same
+discipline `OrganizationService.CreateBranch` etc. use for their own parent references - a typo'd
+department id is a clean 404, not a foreign-key violation surfacing as a 500.
+
+`EmploymentRecord.EffectiveTo` is inclusive, matching `UserRole.ValidTo`'s convention rather than
+introducing a second convention for "when does this row stop applying": `EndOn` takes the
+*successor's* `EffectiveFrom` and subtracts one day internally, rather than accepting an end date
+directly, specifically so a transfer effective 1 April closes the previous record on 31 March, not
+1 April - the one day both would otherwise claim to be current. `EmployeeService.ChangeAssignmentAsync`
+builds the successor `EmploymentRecord` (running `EmploymentRecord.Create`'s own guards - real
+organization references, not reporting to yourself) *before* calling `current.EndOn`, so a rejected
+transfer never leaves an employee with zero current records; this ordering has an integration test
+(`TransferringToAnAssignmentThatWouldMakeTheEmployeeTheirOwnManager_...`) asserting the original
+record is still open after the rejected call, not just that the call itself failed.
 
 **Configuration (`cfg`)**
 - `CustomFieldDefinition` — EntityType, FieldKey, Label (i18n JSON), DataType, OptionsJson, IsRequired, IsSearchable, IsSensitive, ValidationJson, SectionCode, DisplayOrder · UX (TenantId, EntityType, FieldKey).
