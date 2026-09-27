@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Gggs.DevSeed</RootNamespace>
+    <Description>
+      Provisions a demo tenant and a working tenant-admin account directly against the local
+      Platform and Identity databases, for signing in through the Angular app during local
+      development. Bypasses the async tenant-provisioning saga (Platform outbox -> RabbitMQ ->
+      Identity.Worker) on purpose: that path needs a running broker, and a developer who just wants
+      credentials to test the sign-in page does not need to stand one up. This tool is never
+      packaged or deployed - it exists only under tools/.
+    </Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\backend\Services\Platform\Gggs.Platform.Infrastructure\Gggs.Platform.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\backend\Services\Identity\Gggs.Identity.Infrastructure\Gggs.Identity.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

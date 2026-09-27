@@ -92,6 +92,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check 
 
 app.MapTenantEndpoints();
 app.MapTenantSettingEndpoints();
+app.MapInternalTenantEndpoints();
 
 if (app.Environment.IsDevelopment())
 {

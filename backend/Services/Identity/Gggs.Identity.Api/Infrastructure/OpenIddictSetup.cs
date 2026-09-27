@@ -131,8 +131,18 @@ public static class OpenIddictSetup
 
                 ConfigureCertificates(options, tokens, environment);
 
-                options.UseAspNetCore()
+                var aspNetCore = options.UseAspNetCore()
                     .EnableTokenEndpointPassthrough();
+
+                if (environment.IsDevelopment())
+                {
+                    // Development only, same reasoning as the signing certificate and the gateway
+                    // secret above: nobody runs TLS on their own machine, and OpenIddict refuses
+                    // every request outright without this. Outside development the real requirement
+                    // stands - HTTPS termination is the platform's job (Front Door/reverse proxy),
+                    // never something a service opts out of on its own.
+                    aspNetCore.DisableTransportSecurityRequirement();
+                }
             })
 
             // Identity validates its own tokens, so its API accepts the same bearer token every other

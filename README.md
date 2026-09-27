@@ -102,6 +102,10 @@ npx nx serve hrms-web                      # dev server
 npx nx run-many -t lint test build --all   # the full gate
 ```
 
+To actually sign in against the running backend rather than only build the SPA, see
+[docs/runbooks/local-dev-login.md](docs/runbooks/local-dev-login.md): three services, one seed
+command, no RabbitMQ or Redis required.
+
 | Library | Holds |
 |---|---|
 | `@gggs/core/auth` | Session loaded from the BFF, `authGuard`, tenant switching |

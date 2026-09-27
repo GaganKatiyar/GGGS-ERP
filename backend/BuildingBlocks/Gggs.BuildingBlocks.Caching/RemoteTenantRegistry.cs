@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,6 +30,20 @@ public sealed class RemoteTenantRegistry(
     ILogger<RemoteTenantRegistry> logger) : ITenantRegistry
 {
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// The wire format every service's API responds with (camelCase, string enums - see
+    /// <c>Gggs.BuildingBlocks.Web.JsonConfiguration</c>). Duplicated rather than referenced: this
+    /// project sits below <c>Web</c> in the dependency graph, and the two lines below are cheaper
+    /// to keep in step than a new project reference would be to justify. Deserializing with the
+    /// default options instead - as this class did before finding this the hard way, against a real
+    /// Platform host rather than a stub - leaves every enum property (Status, IsolationTier) at its
+    /// default value or throws outright, depending on the property's own default-ness.
+    /// </summary>
+    private static readonly JsonSerializerOptions ResponseJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() },
+    };
 
     public async Task<TenantInfo?> GetAsync(Guid tenantId, CancellationToken cancellationToken = default)
         => tenantId == Guid.Empty
@@ -71,7 +87,7 @@ public sealed class RemoteTenantRegistry(
             }
 
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<TenantInfo>(cancellationToken);
+            return await response.Content.ReadFromJsonAsync<TenantInfo>(ResponseJsonOptions, cancellationToken);
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
         {

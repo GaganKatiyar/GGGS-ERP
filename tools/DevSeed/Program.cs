@@ -1,0 +1,200 @@
+using Gggs.BuildingBlocks.Application;
+using Gggs.BuildingBlocks.Domain.Abstractions;
+using Gggs.BuildingBlocks.MultiTenancy;
+using Gggs.BuildingBlocks.Persistence.Interceptors;
+using Gggs.BuildingBlocks.Security;
+using Gggs.Identity.Domain.Roles;
+using Gggs.Identity.Domain.Users;
+using Gggs.Identity.Infrastructure;
+using Gggs.Platform.Domain.Tenants;
+using Gggs.Platform.Infrastructure;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+
+// Provisions one demo tenant and one working tenant-admin account, so a developer can sign in
+// through the Angular app without standing up RabbitMQ or Identity.Worker. See the csproj summary
+// for why: the async provisioning saga is not needed to hand someone a working login.
+//
+//   dotnet run --project tools/DevSeed -- [tenantCode] [adminEmail] [adminPassword]
+
+string tenantCode = args.Length > 0 ? args[0] : "acme";
+string adminEmail = args.Length > 1 ? args[1] : $"admin@{tenantCode}.example";
+string adminPassword = args.Length > 2 ? args[2] : "Passw0rd!2026";
+
+string platformConnectionString = Environment.GetEnvironmentVariable("GGGS_PLATFORM_DB")
+    ?? "Server=localhost;Database=gggs_platform;Integrated Security=True;TrustServerCertificate=True;Encrypt=False";
+string identityConnectionString = Environment.GetEnvironmentVariable("GGGS_IDENTITY_DB")
+    ?? "Server=localhost;Database=gggs_identity;Integrated Security=True;TrustServerCertificate=True;Encrypt=False";
+
+Console.WriteLine($"Platform DB: {platformConnectionString}");
+Console.WriteLine($"Identity DB: {identityConnectionString}");
+
+Guid tenantId = await SeedTenantAsync(platformConnectionString, tenantCode);
+await SeedTenantAdminAsync(identityConnectionString, tenantId, adminEmail, adminPassword);
+
+Console.WriteLine();
+Console.WriteLine("Done. Sign in with:");
+Console.WriteLine($"  Organisation code: {tenantCode}");
+Console.WriteLine($"  Work email:        {adminEmail}");
+Console.WriteLine($"  Password:          {adminPassword}");
+
+static async Task<Guid> SeedTenantAsync(string connectionString, string tenantCode)
+{
+    var tenantContext = new TenantContext();
+    tenantContext.BeginPlatformScope("dev-seed");
+
+    DbContextOptions<PlatformDbContext> options = new DbContextOptionsBuilder<PlatformDbContext>()
+        .UseSqlServer(connectionString)
+        .Options;
+
+    await using var db = new PlatformDbContext(options, tenantContext);
+    await db.Database.MigrateAsync();
+
+    Tenant? existing = await db.Tenants.FirstOrDefaultAsync(t => t.Code == tenantCode);
+    if (existing is not null)
+    {
+        Console.WriteLine($"Tenant '{tenantCode}' already exists ({existing.Id}), status {existing.Status}.");
+        return existing.Id;
+    }
+
+    Tenant tenant = Tenant.Register(
+        tenantCode,
+        "Acme Manufacturing (dev seed)",
+        countryCode: "IN",
+        dataRegion: "centralindia",
+        defaultTimeZone: "Asia/Kolkata",
+        defaultCurrency: "INR",
+        defaultLocale: "en-IN",
+        TenantIsolationTier.Pooled,
+        DateTime.UtcNow);
+
+    // Never born Active (see Tenant.Register's own comment) - this is the seed tool standing in
+    // for every provisioning step the real saga would otherwise run.
+    tenant.CompleteProvisioning(DateTime.UtcNow);
+
+    db.Tenants.Add(tenant);
+    await db.SaveChangesAsync();
+
+    Console.WriteLine($"Tenant '{tenantCode}' created and activated ({tenant.Id}).");
+    return tenant.Id;
+}
+
+static async Task SeedTenantAdminAsync(string connectionString, Guid tenantId, string adminEmail, string adminPassword)
+{
+    // Migrations run under platform scope, matching IdentityDbContextFactory's design-time
+    // behaviour: they must see and alter every tenant's tables. The actual seed rows are
+    // tenant-owned, so they are written through a second context scoped to this one tenant -
+    // exactly the distinction TenantAuditSaveChangesInterceptor enforces at runtime.
+    var migrationTenantContext = new TenantContext();
+    migrationTenantContext.BeginPlatformScope("dev-seed");
+
+    DbContextOptions<IdentityDbContext> migrationOptions = new DbContextOptionsBuilder<IdentityDbContext>()
+        .UseSqlServer(connectionString)
+        .Options;
+
+    await using (var migrationDb = new IdentityDbContext(migrationOptions, migrationTenantContext))
+    {
+        await migrationDb.Database.MigrateAsync();
+    }
+
+    var tenantScopedContext = new TenantContext();
+    tenantScopedContext.SetTenant(tenantId);
+
+    // Two interceptors, matching what every running service registers on its DbContext, for the
+    // two halves of tenant isolation this write has to satisfy:
+    //  - TenantSessionContextInterceptor sets SESSION_CONTEXT so SQL Server's RLS predicate
+    //    admits the write at all;
+    //  - TenantAuditSaveChangesInterceptor stamps TenantId on the new rows themselves. Without it
+    //    they would carry Guid.Empty (nothing else sets it - that is infrastructure's job, not the
+    //    domain's), and the RLS predicate would then reject them anyway even with a correct
+    //    session context, since the row's own TenantId would never match it.
+    DbContextOptions<IdentityDbContext> writeOptions = new DbContextOptionsBuilder<IdentityDbContext>()
+        .UseSqlServer(connectionString)
+        .AddInterceptors(
+            new TenantSessionContextInterceptor(tenantScopedContext),
+            new TenantAuditSaveChangesInterceptor(tenantScopedContext, new SeedActor(), TimeProvider.System))
+        .Options;
+
+    await using var db = new IdentityDbContext(writeOptions, tenantScopedContext);
+
+    string normalizedEmail = adminEmail.Trim().ToUpperInvariant();
+    User? existingUser = await db.Users.FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
+    if (existingUser is not null)
+    {
+        Console.WriteLine($"User '{adminEmail}' already exists ({existingUser.Id}) - leaving it as is.");
+        return;
+    }
+
+    Role role = Role.Create(
+        "Tenant Administrator",
+        "Full administrative control, seeded for local development.",
+        isSystem: true,
+        templateCode: "TENANT_ADMIN");
+
+    // A generous grant, not a minimal one: the point of this account is to see the whole app
+    // shell working, not to exercise least-privilege scenarios.
+    foreach (string permission in new[]
+    {
+        Permissions.Admin.UserView,
+        Permissions.Admin.UserManage,
+        Permissions.Admin.UserInvite,
+        Permissions.Admin.UserLock,
+        Permissions.Admin.RoleView,
+        Permissions.Admin.RoleManage,
+        Permissions.Admin.SettingView,
+        Permissions.Admin.SettingManage,
+        Permissions.Organization.View,
+        Permissions.Organization.Manage,
+        Permissions.Organization.LegalEntityManage,
+        Permissions.Organization.DepartmentManage,
+        Permissions.Employee.View,
+        Permissions.Employee.Create,
+        Permissions.Employee.Edit,
+        Permissions.Employee.EmploymentManage,
+        Permissions.Employee.HistoryView,
+        Permissions.Employee.ExitManage,
+    })
+    {
+        role.Grant(permission, DataScope.Tenant);
+    }
+
+    var hasher = new Pbkdf2PasswordHasher(NullLogger<Pbkdf2PasswordHasher>.Instance);
+
+    User admin = User.Invite(adminEmail, "Dev Administrator", UserType.TenantUser, employeeId: null, DateTime.UtcNow);
+    admin.CompleteInvitation(hasher.Hash(adminPassword), DateTime.UtcNow);
+
+    db.Roles.Add(role);
+    db.Users.Add(admin);
+    db.UserRoles.Add(UserRole.Grant(admin.Id, role.Id, DateOnly.FromDateTime(DateTime.UtcNow)));
+
+    await db.SaveChangesAsync();
+
+    Console.WriteLine($"Tenant admin '{adminEmail}' created ({admin.Id}) with role '{role.Name}'.");
+}
+
+/// <summary>
+/// No human is behind this write. IsAuthenticated is true here specifically so
+/// <see cref="TenantAuditSaveChangesInterceptor"/> stamps <see cref="SystemUsers.Migration"/> as
+/// CreatedBy rather than the generic <see cref="SystemUsers.System"/> it falls back to when
+/// IsAuthenticated is false - this really is seed data, not a background job.
+/// </summary>
+file sealed class SeedActor : ICurrentUser
+{
+    public Guid UserId => SystemUsers.Migration;
+
+    public Guid? EmployeeId => null;
+
+    public Guid? SessionId => null;
+
+    public bool IsAuthenticated => true;
+
+    public Guid? ImpersonatorUserId => null;
+
+    public bool IsPlatformStaff => false;
+
+    public string? IpAddress => null;
+
+    public string? UserAgent => null;
+
+    public string? CorrelationId => null;
+}
