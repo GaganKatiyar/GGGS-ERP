@@ -64,7 +64,14 @@ public static class UserPrincipalFactory
 
             // Step-up checks compare this against the clock, so sensitive actions can demand a
             // recent authentication rather than merely a valid token.
-            new("auth_time", authenticatedAt.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture)),
+            //
+            // Typed as an integer, not left as a bare string. It is a NumericDate in OIDC, and the
+            // token issuer rejects a principal whose auth_time is not typed that way - so a plain
+            // string claim here fails token issuance while working fine for the cookie.
+            new(
+                "auth_time",
+                authenticatedAt.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
+                ClaimValueTypes.Integer64),
         ];
 
         // Platform staff belong to no customer, and the absence of the claim is what the tenant

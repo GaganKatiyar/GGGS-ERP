@@ -4,6 +4,7 @@ using Gggs.BuildingBlocks.Persistence;
 using Gggs.Identity.Domain.Roles;
 using Gggs.Identity.Domain.Users;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace Gggs.Identity.Infrastructure;
 
@@ -20,6 +21,15 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
     : GggsDbContext(options, tenantContext)
 {
     public const string Schema = "iam";
+
+    /// <summary>
+    /// Schema for the OIDC server's own tables.
+    /// <para>
+    /// Kept apart from <c>iam</c> because these are not our tables: their shape is OpenIddict's, and
+    /// a migration of theirs should be visibly separate from a migration of ours.
+    /// </para>
+    /// </summary>
+    public const string OpenIddictSchema = "oidc";
 
     protected override string DefaultSchema => Schema;
 
@@ -130,6 +140,21 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
         });
 
         modelBuilder.AddGggsMessagingModel();
+
+        // The OIDC server's applications, authorizations, scopes and tokens.
+        //
+        // Deliberately not tenant-owned, for the same reason the outbox is not: the token endpoint
+        // runs before any tenant context exists - it is what establishes who the caller is - so a
+        // tenant query filter here would make every token lookup return nothing. Isolation comes from
+        // the tenant claim inside each token, which is issued from the user record and cannot be
+        // asked for.
+        modelBuilder.UseOpenIddict();
+
+        foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes()
+            .Where(type => type.ClrType.Namespace?.StartsWith("OpenIddict", StringComparison.Ordinal) == true))
+        {
+            entityType.SetSchema(OpenIddictSchema);
+        }
 
         base.OnModelCreating(modelBuilder);
     }

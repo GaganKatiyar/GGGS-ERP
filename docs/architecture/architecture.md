@@ -11,7 +11,7 @@
 | ADR-01 | Tenancy model | **Hybrid: pooled shared DB + shared schema (TenantId + SQL RLS) by default, with dedicated DB per tenant for Enterprise/regulated tenants** | Schema-per-tenant (migration and ops pain) |
 | ADR-02 | Service granularity | **Ten domain/support services plus a BFF gateway**, grouped by business capability, not one per module | 15+ micro-services (too much distributed overhead) |
 | ADR-03 | Data ownership | Database per service. Modules inside a service get their own SQL schema | Shared HR database (creates coupling) |
-| ADR-04 | Identity | **Platform OIDC server (OpenIddict + ASP.NET Core Identity)** that federates to each tenant's Entra ID / OIDC / SAML | Using Entra ID directly as the only IdP |
+| ADR-04 | Identity | **Platform OIDC server (OpenIddict)** that federates to each tenant's Entra ID / OIDC / SAML. Built: token endpoint with the password and refresh-token grants; the authorization-code flow lands with federation | Using Entra ID directly as the only IdP |
 | ADR-05 | Browser auth | **BFF pattern**: httpOnly cookie in the browser, tokens kept server-side | Tokens stored in the SPA |
 | ADR-06 | Messaging | Azure Service Bus (prod) / RabbitMQ (dev) through **MassTransit + transactional outbox/inbox** | Kafka (not needed at this scale) |
 | ADR-07 | Workflow | **Custom declarative approval engine** (JsonLogic conditions) + Hangfire timers | Elsa / Camunda / Temporal |
@@ -644,45 +644,64 @@ The Identity Service is the **only token issuer** that APIs trust. Each tenant's
 
 - **Web (BFF)**: SPA → `/bff/login?tenant=acme` → BFF starts an OIDC Authorization Code + PKCE flow with Identity → (optional redirect to the tenant's Entra ID) → Identity issues tokens → the BFF keeps tokens in a server-side session store (Redis, encrypted) and gives the browser a `__Host-gggs` cookie (`HttpOnly; Secure; SameSite=Strict`). The BFF proxies `/api/*` and attaches the bearer token. **The browser never sees a token.**
 
-**As built (local accounts, no OIDC server yet).** The shape above is the target; what runs today
-reaches the same guarantee by a shorter route, and is written here because it is what a developer
-will find in the code:
+**As built.** The shape above is what runs, with one substitution that is worth naming because a
+developer will meet it in the code: there is no authorization-code redirect yet, so the gateway uses
+the **OAuth password grant** against Identity's token endpoint.
 
 1. The SPA's own `/sign-in` page collects email, password and organisation code and `POST`s them to
-   `/bff/login`. There is no redirect to start, because with local accounts there is no upstream
-   provider to redirect to.
-2. The gateway calls Identity's `POST /api/v1/auth/sign-in`, and captures the `__Host-gggs-identity`
-   cookie Identity issues. That cookie is the **upstream credential**.
-3. The credential is stored server-side in `BffSessionStore` (Redis, or in-process memory with a
-   startup warning when Redis is absent), keyed by 256 bits of randomness. The store holds a hash of
-   that key, so a dump of the cache is not a set of usable sessions.
+   `/bff/login`.
+2. The gateway - a confidential client, `gggs-bff`, with a secret - exchanges them at
+   `POST /connect/token` for an access token (JWT, 10 minutes) and a refresh token (12 hours).
+3. Both are stored server-side in `BffSessionStore` (Redis, or in-process memory with a startup
+   warning when Redis is absent), keyed by 256 bits of randomness. The store holds a hash of that
+   key, so a dump of the cache is not a set of usable sessions.
 4. The browser receives only `__Host-gggs-session`: `HttpOnly`, `Secure`, `SameSite=Strict`, root
-   path, no domain, no expiry. **The browser never holds a token or an upstream cookie** - asserted
-   on the wire by `BffSessionTests`, including that the upstream `Set-Cookie` is dropped rather than
-   relayed.
-5. `GET /bff/user` returns Identity's `/api/v1/me/session` - user, tenant, features and effective
-   permissions - read through on every call rather than cached in the session, so a role change or a
-   suspended tenant bites on the next page load.
-6. `/api/*` is proxied by YARP, which attaches the stored credential per request.
+   path, no domain, no expiry. **The browser never holds a token** - asserted on the wire by
+   `BffSessionTests`.
+5. `/api/*` is proxied by YARP, which attaches `Authorization: Bearer` from the session on each hop.
+   Every service validates the token itself; the gateway authorizes nothing.
 
-When the OIDC server ships, step 2 becomes an authorization-code exchange and the credential becomes
-an access token with a refresh token beside it. Steps 3 to 6 do not change, which is why the
-credential is handled in one place (`IdentityClient`) rather than inline.
+*Why the password grant, and when it goes.* It is available only to this first-party confidential
+client, which collected the credential on its own page, so nothing is delegated to a third party.
+The alternative - an authorization-code redirect - requires Identity to host its own login UI, work
+that only pays for itself once there is a federated provider to redirect to. When Entra ID
+federation lands, `IdentityClient.SignInAsync` is what changes; nothing downstream of it is. The
+grant is disabled at that point rather than left enabled beside the code flow.
+
+*Token handling.* Access tokens carry `sub`, `tid`, `emp`, `sid`, `pv`, `amr` and `auth_time`, and
+**no permissions** (§8.4). Refresh tokens are one-time with reuse detection: presenting one twice
+revokes the whole chain. Two things make that safe in a browser:
+
+- The gateway serialises refreshes per session (`SessionTokenRefresher`), so the six parallel calls
+  a dashboard makes on load produce one exchange rather than six.
+- Identity allows a 30-second reuse leeway, covering the remaining race between gateway replicas. A
+  token replayed minutes later is still caught, which is what theft actually looks like.
+
+Without both, a user would be signed out by their own page loading. `TokenRefreshTests` forces a
+refresh on every request by widening the margin past the token lifetime, rather than waiting ten real
+minutes for a test nobody would run.
+
+*The issuer must be configured.* `Gggs:Identity:Tokens:Issuer` is required outside development, on
+both the server and the validation side. Left unset, the issuer is inferred from whichever host the
+request arrived on - so a token minted through the public address is rejected when the same service
+sees it arrive on an internal one, which is exactly what happens the first time it sits behind a
+gateway.
+
+*Signing keys.* A certificate thumbprint is required outside development. The development
+certificate is regenerated per machine and invalidates every outstanding token on restart, which is
+fine locally and would be a silent outage anywhere else.
 
 Two session protections beyond the cookie attributes: an **idle timeout** (30 minutes, as a sliding
 cache expiry) inside an **absolute ceiling** (12 hours, checked explicitly because a sliding window
-would otherwise renew past it), and the session is **bound to the browser that signed in** by a
-user-agent hash. A key presented from elsewhere ends the session rather than being allowed through,
-and a test replays one to prove it.
+would otherwise renew past it, and not extended by a refresh), and the session is **bound to the
+browser that signed in** by a user-agent hash. Signing out revokes the refresh token upstream and
+deletes the store record, so the cookie cannot be replayed - the difference between revoking a
+session and asking a browser to forget one.
 
-Signing out deletes the store record, so the cookie cannot be replayed afterwards. That is the
-difference between revoking a session and asking a browser to forget one.
-
-**Not yet reachable through the gateway: every service except Identity.** Platform and the services
-after it authenticate with JWT bearer tokens, and the gateway holds an Identity session cookie, which
-they will not accept. The proxy routes therefore cover Identity only. Closing this is the same piece
-of work as OpenIddict token issuance - it is not a separate gap, and it is the reason the
-platform-admin console cannot be wired up yet.
+**Still missing: platform staff have no permission source.** `PermissionResolver` reads tenant role
+grants and `Role.Grant` refuses platform-only codes by design, so no real account can hold
+`platform.*`. The Platform service is now reachable through the gateway and validates tokens
+correctly, but its endpoints will refuse everyone until platform-staff roles exist.
 - **Mobile**: Auth Code + PKCE in the system browser. Refresh tokens are stored in the secure enclave.
 - **Service-to-service**: Azure managed identity / client credentials with per-service audiences. Internal calls also forward the user token (or an OBO-exchanged downscoped token) so the user's context flows downstream.
 - **Public API (Phase 5)**: client credentials per `iam.ApiClient`, scoped to a single tenant, fronted by Azure API Management.

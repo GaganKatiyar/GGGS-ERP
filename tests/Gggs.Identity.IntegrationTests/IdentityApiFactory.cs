@@ -64,14 +64,27 @@ public sealed class IdentityApiFactory : WebApplicationFactory<Program>, IAsyncL
         builder.InitialCatalog = DatabaseName;
         ConnectionString = builder.ConnectionString;
 
-        using (IServiceScope migrationScope = Services.CreateScope())
-        {
-            IdentityDbContext context = migrationScope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-            await context.Database.MigrateAsync();
-        }
+        // Migrated through a standalone context rather than one resolved from Services, because
+        // touching Services starts the host - and the host registers the OAuth client at startup,
+        // which needs tables this migration is about to create. In a real deployment migrations are a
+        // pre-deployment step for the same reason; this keeps the test in that order.
+        await MigrateAsync();
 
         await SeedUserAsync(SeededUserEmail, SeededPassword);
         await SeedAdministratorAsync();
+    }
+
+    private async Task MigrateAsync()
+    {
+        var options = new DbContextOptionsBuilder<IdentityDbContext>()
+            .UseSqlServer(ConnectionString)
+            .Options;
+
+        var tenantContext = new TenantContext();
+        tenantContext.BeginPlatformScope("test-migration");
+
+        await using var context = new IdentityDbContext(options, tenantContext);
+        await context.Database.MigrateAsync();
     }
 
     /// <summary>The administrator these tests act as.</summary>
@@ -217,6 +230,11 @@ public sealed class IdentityApiFactory : WebApplicationFactory<Program>, IAsyncL
                 ["Gggs:Platform:DeploymentProfile"] = "OnPremise",
                 ["Gggs:Secrets:File:FilePath"] = Path.Combine(Path.GetTempPath(), $"{DatabaseName}-secrets.json"),
                 ["Gggs:Security:EnforceStepUp"] = "false",
+
+                // A fixed issuer, as in any deployment behind a gateway: the same token is minted on
+                // a request to https://localhost and validated on one proxied to http://identity, and
+                // an inferred issuer would make the second reject the first.
+                ["Gggs:Identity:Tokens:Issuer"] = "https://localhost/",
             });
         });
 

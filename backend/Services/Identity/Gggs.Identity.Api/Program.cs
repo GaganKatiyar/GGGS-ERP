@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
+using OpenIddict.Validation.AspNetCore;
 
 const string ServiceName = "identity";
 
@@ -32,13 +33,30 @@ builder.Services.AddGggsCaching(builder.Configuration, ServiceName);
 builder.Services.AddGggsSecretStore(builder.Configuration, platform.DeploymentProfile);
 builder.Services.AddGggsAuthorization(builder.Configuration);
 
+builder.Services.AddGggsOpenIddict(builder.Configuration, builder.Environment);
+
 // The session cookie this service issues after a successful sign-in.
 //
 // httpOnly and SameSite=Strict: the cookie is the credential, so nothing on the page may read it
 // and no cross-site request may carry it. The __Host- prefix binds it to this exact origin, which
 // stops a compromised sibling subdomain from writing a cookie this service would accept.
 builder.Services
-    .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddAuthentication(options =>
+    {
+        // Two ways in, and the difference matters. A bearer token is what the gateway and every
+        // service-to-service caller present; the cookie exists only for this service's own sign-in
+        // exchange, which has to set something before a token exists. Bearer is the default, so an
+        // endpoint that says nothing gets the stricter of the two.
+        options.DefaultAuthenticateScheme = GggsAuthenticationSchemes.Any;
+        options.DefaultChallengeScheme = GggsAuthenticationSchemes.Any;
+    })
+    .AddPolicyScheme(GggsAuthenticationSchemes.Any, GggsAuthenticationSchemes.Any, options =>
+    {
+        options.ForwardDefaultSelector = context =>
+            context.Request.Headers.Authorization.Count > 0
+                ? OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme
+                : CookieAuthenticationDefaults.AuthenticationScheme;
+    })
     .AddCookie(options =>
     {
         options.Cookie.Name = "__Host-gggs-identity";
@@ -126,6 +144,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check 
 app.MapAuthenticationEndpoints();
 app.MapUserEndpoints();
 app.MapMeEndpoints();
+app.MapTokenEndpoints();
 app.MapRoleEndpoints();
 app.MapTenantBootstrapEndpoints();
 

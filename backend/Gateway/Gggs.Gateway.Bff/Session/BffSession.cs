@@ -8,18 +8,24 @@ namespace Gggs.Gateway.Bff.Session;
 /// an extension, or a cross-site injection - finds no credential to take, because there is none
 /// there to find.
 /// </para>
-/// <para>
-/// <see cref="UpstreamCredential"/> is Identity's own session cookie today and will be an access
-/// token once the OIDC server ships. Both are bearer credentials from the browser's point of view,
-/// and both are handled the same way: stored here, attached by the proxy, never serialized to the
-/// client.
-/// </para>
 /// </summary>
 public sealed record BffSession
 {
     public required Guid UserId { get; init; }
 
-    public required string UpstreamCredential { get; init; }
+    /// <summary>
+    /// The bearer token the proxy attaches. Short-lived by design, because nothing can revoke one
+    /// once it is issued - its lifetime is the window in which a removed role still works.
+    /// </summary>
+    public required string AccessToken { get; init; }
+
+    /// <summary>
+    /// Exchanged for a new access token when that one expires, so the browser keeps working for hours
+    /// without the password being held anywhere.
+    /// </summary>
+    public required string RefreshToken { get; init; }
+
+    public required DateTimeOffset AccessTokenExpiresAt { get; init; }
 
     /// <summary>Absent for platform staff, who belong to no customer.</summary>
     public Guid? TenantId { get; init; }
@@ -40,6 +46,15 @@ public sealed record BffSession
     /// carries a different user agent, and the mismatch is worth refusing and recording.
     /// </summary>
     public string? UserAgentHash { get; init; }
+
+    /// <summary>
+    /// Whether the access token should be exchanged before the next call.
+    /// <para>
+    /// Refreshed early rather than on expiry: a token that expires while a request is in flight
+    /// produces a 401 the user sees, and the margin costs nothing.
+    /// </para>
+    /// </summary>
+    public bool NeedsRefresh(DateTimeOffset now, TimeSpan margin) => now.Add(margin) >= AccessTokenExpiresAt;
 }
 
 /// <summary>Gateway session settings.</summary>
@@ -61,4 +76,10 @@ public sealed class BffSessionOptions
     /// deployment behind a proxy that rewrites user agents.
     /// </summary>
     public bool BindToUserAgent { get; set; } = true;
+
+    /// <summary>
+    /// How far before expiry the access token is exchanged. Long enough that an in-flight request
+    /// cannot outlive its own token.
+    /// </summary>
+    public TimeSpan RefreshMargin { get; set; } = TimeSpan.FromSeconds(60);
 }

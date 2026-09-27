@@ -36,7 +36,9 @@ public sealed class BffSessionStore(
     public async Task<string> CreateAsync(
         Guid userId,
         Guid? tenantId,
-        string upstreamCredential,
+        string accessToken,
+        string refreshToken,
+        DateTimeOffset accessTokenExpiresAt,
         string? userAgent,
         CancellationToken cancellationToken = default)
     {
@@ -47,7 +49,9 @@ public sealed class BffSessionStore(
         {
             UserId = userId,
             TenantId = tenantId,
-            UpstreamCredential = upstreamCredential,
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
+            AccessTokenExpiresAt = accessTokenExpiresAt,
             SignedInAt = now,
             LastSeenAt = now,
             AbsoluteExpiresAt = now.Add(_options.AbsoluteTimeout),
@@ -56,6 +60,42 @@ public sealed class BffSessionStore(
 
         await WriteAsync(sessionKey, session, cancellationToken);
         return sessionKey;
+    }
+
+    /// <summary>
+    /// Replaces the tokens after a refresh, keeping everything else about the session.
+    /// <para>
+    /// The absolute expiry is deliberately not extended. Refreshing proves the session is in use, not
+    /// that the person authenticated again - and a ceiling that moves every ten minutes is no ceiling.
+    /// </para>
+    /// </summary>
+    public async Task<BffSession> UpdateTokensAsync(
+        string sessionKey,
+        BffSession session,
+        string accessToken,
+        string refreshToken,
+        DateTimeOffset accessTokenExpiresAt,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        BffSession updated = session with
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
+            AccessTokenExpiresAt = accessTokenExpiresAt,
+        };
+
+        await WriteAsync(sessionKey, updated, cancellationToken);
+        return updated;
+    }
+
+    /// <summary>Reads a session without sliding its idle window, for a refresh re-check under a lock.</summary>
+    public async Task<BffSession?> PeekAsync(string sessionKey, CancellationToken cancellationToken = default)
+    {
+        byte[]? stored = await cache.GetAsync(CacheKeyFor(sessionKey), cancellationToken);
+
+        return stored is null ? null : JsonSerializer.Deserialize<BffSession>(stored, SerializerOptions);
     }
 
     /// <summary>

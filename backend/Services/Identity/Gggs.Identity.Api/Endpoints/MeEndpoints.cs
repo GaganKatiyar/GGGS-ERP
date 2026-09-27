@@ -77,6 +77,16 @@ public sealed record SessionResponse
     public IReadOnlyList<TenantSummaryResponse> AvailableTenants { get; init; } = [];
 }
 
+/// <summary>
+/// Just the permissions, for the services that ask.
+/// <para>
+/// Separate from the session document because the caller is different: this is another service
+/// resolving what the bearer of a token may do, on every request that needs a decision, so it carries
+/// nothing it does not need.
+/// </para>
+/// </summary>
+public sealed record PermissionsResponse(int PermissionVersion, IReadOnlyList<PermissionGrantResponse> Permissions);
+
 /// <summary>What the signed-in user may know about themselves.</summary>
 public static class MeEndpoints
 {
@@ -92,7 +102,30 @@ public static class MeEndpoints
             .WithTags("Me")
             .RequireAuthorization();
 
+        // Called by every other service on requests that need an authorization decision, which makes
+        // it the busiest endpoint on the platform. Deliberately trivial: read the cached set and
+        // return it.
+        endpoints.MapGet("/api/v1/me/permissions", GetPermissionsAsync)
+            .WithName("CurrentPermissions")
+            .WithTags("Me")
+            .RequireAuthorization();
+
         return endpoints;
+    }
+
+    private static async Task<Ok<PermissionsResponse>> GetPermissionsAsync(
+        IPermissionProvider permissions,
+        CancellationToken cancellationToken)
+    {
+        PermissionSet held = await permissions.GetCurrentAsync(cancellationToken);
+
+        return TypedResults.Ok(new PermissionsResponse(
+            held.PermissionVersion,
+            [
+                .. held.All
+                    .OrderBy(grant => grant.Code, StringComparer.Ordinal)
+                    .Select(grant => new PermissionGrantResponse(grant.Code, grant.Scope.ToString(), grant.ScopeId))
+            ]));
     }
 
     private static async Task<Ok<SessionResponse>> GetSessionAsync(

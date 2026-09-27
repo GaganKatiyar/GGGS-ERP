@@ -31,12 +31,20 @@ public sealed record BffLoginResponse
 {
     public required bool Succeeded { get; init; }
 
-    /// <summary>Stable code the UI switches on, never the message text.</summary>
+    /// <summary>
+    /// Stable code the UI switches on, never the message text.
+    /// <para>
+    /// <c>INVALID_CREDENTIALS</c> covers a wrong password, an unknown address and a tenant that does
+    /// not exist, deliberately. <c>ACCOUNT_LOCKED</c> is the one distinguishable case, because a user
+    /// who cannot get in for fifteen minutes needs to know rather than retrying and extending it.
+    /// </para>
+    /// <para>
+    /// There is no "must change password" or lockout-until field here. The OAuth token endpoint has no
+    /// room for either, and inventing a channel for them would mean a second sign-in path to keep
+    /// correct. They belong on the session document, where the client already looks.
+    /// </para>
+    /// </summary>
     public string? ErrorCode { get; init; }
-
-    public bool MustChangePassword { get; init; }
-
-    public DateTime? LockoutEndDate { get; init; }
 }
 
 /// <summary>
@@ -80,11 +88,13 @@ public static class BffAuthEndpoints
             await sessions.RemoveAsync(existing, cancellationToken);
         }
 
-        SignInUpstreamResult result = await identity.SignInAsync(
-            new SignInUpstreamRequest(body.Email, body.Password, body.TenantCode),
+        TokenResult result = await identity.SignInAsync(
+            body.Email,
+            body.Password,
+            body.TenantCode,
             cancellationToken);
 
-        if (!result.Succeeded || result.Credential is null)
+        if (!result.Succeeded || result.AccessToken is null || result.RefreshToken is null)
         {
             // No detail beyond the code, and the same code whether the address is unknown or the
             // password is wrong: anything finer is a way to find out who has an account here.
@@ -92,11 +102,10 @@ public static class BffAuthEndpoints
             {
                 Succeeded = false,
                 ErrorCode = result.ErrorCode ?? "INVALID_CREDENTIALS",
-                LockoutEndDate = result.LockoutEndDate,
             });
         }
 
-        JsonElement? session = await identity.GetSessionAsync(result.Credential, cancellationToken);
+        JsonElement? session = await identity.GetSessionAsync(result.AccessToken, cancellationToken);
 
         if (session is null)
         {
@@ -112,17 +121,15 @@ public static class BffAuthEndpoints
         string sessionKey = await sessions.CreateAsync(
             ReadGuid(session.Value, "userId") ?? Guid.Empty,
             ReadTenantId(session.Value),
-            result.Credential,
+            result.AccessToken,
+            result.RefreshToken,
+            result.AccessTokenExpiresAt,
             context.Request.Headers.UserAgent.ToString(),
             cancellationToken);
 
         SessionResolutionMiddleware.SetCookie(context, sessionKey);
 
-        return TypedResults.Ok(new BffLoginResponse
-        {
-            Succeeded = true,
-            MustChangePassword = result.MustChangePassword,
-        });
+        return TypedResults.Ok(new BffLoginResponse { Succeeded = true });
     }
 
     private static async Task<NoContent> LogoutAsync(
@@ -138,7 +145,7 @@ public static class BffAuthEndpoints
 
         if (session is not null)
         {
-            await identity.SignOutAsync(session.UpstreamCredential, cancellationToken);
+            await identity.SignOutAsync(session.RefreshToken, cancellationToken);
         }
 
         if (sessionKey is not null)
@@ -178,7 +185,7 @@ public static class BffAuthEndpoints
             return TypedResults.Unauthorized();
         }
 
-        JsonElement? upstream = await identity.GetSessionAsync(session.UpstreamCredential, cancellationToken);
+        JsonElement? upstream = await identity.GetSessionAsync(session.AccessToken, cancellationToken);
 
         if (upstream is null)
         {

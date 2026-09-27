@@ -13,6 +13,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -181,6 +182,16 @@ public sealed class PlatformApiFactory : WebApplicationFactory<Program>, IAsyncL
             // The registry normally reads the database; here it also has to see tenants the test
             // has just created, so the real implementation is kept and only its cache is local.
             services.AddSingleton<IMessageTransportStub>(new MessageTransportStub());
+
+            // Permissions come from the test principal rather than from the Identity service.
+            //
+            // In production this host resolves them over HTTP by forwarding the caller's bearer
+            // token, which is exactly what these tests do not have: the identity is faked by a test
+            // authentication scheme, and there is no Identity service to ask. What is being tested
+            // here is the Platform API's own behaviour, and standing up a second service to grant a
+            // permission the test already decided on would prove nothing extra.
+            services.RemoveAll<IPermissionProvider>();
+            services.AddScoped<IPermissionProvider, ClaimsPermissionProvider>();
         });
 
         builder.ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning));

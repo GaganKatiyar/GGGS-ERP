@@ -15,10 +15,11 @@ public sealed class SessionResolutionMiddleware(RequestDelegate next)
     /// </summary>
     public const string CookieName = "__Host-gggs-session";
 
-    public async Task InvokeAsync(HttpContext context, BffSessionStore sessions)
+    public async Task InvokeAsync(HttpContext context, BffSessionStore sessions, SessionTokenRefresher refresher)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(sessions);
+        ArgumentNullException.ThrowIfNull(refresher);
 
         if (context.Request.Cookies.TryGetValue(CookieName, out string? sessionKey)
             && !string.IsNullOrWhiteSpace(sessionKey))
@@ -36,7 +37,19 @@ public sealed class SessionResolutionMiddleware(RequestDelegate next)
             }
             else
             {
-                context.Features.Set(new BffSessionFeature(sessionKey, session));
+                // Refreshed here rather than in the proxy, so the endpoints and the proxy both see a
+                // token that is good for the whole request, and so a session that cannot be kept alive
+                // is treated as anonymous once rather than failing halfway through.
+                BffSession? fresh = await refresher.EnsureFreshAsync(sessionKey, session, context.RequestAborted);
+
+                if (fresh is null)
+                {
+                    ClearCookie(context);
+                }
+                else
+                {
+                    context.Features.Set(new BffSessionFeature(sessionKey, fresh));
+                }
             }
         }
 

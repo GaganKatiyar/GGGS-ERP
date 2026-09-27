@@ -38,7 +38,12 @@ builder.Services.AddGggsAuthorization(builder.Configuration);
 // Temporary: permissions come from token claims until the Identity service lands, at which point
 // this call is replaced by the Redis-backed provider that honours role revocation.
 builder.Services.AddClaimsPermissionProvider();
-builder.Services.AddAuthentication().AddJwtBearer();
+// Bearer tokens only: nothing navigates to this service, so there is no cookie to accept.
+builder.Services.AddGggsTokenValidation(builder.Configuration);
+
+// Permissions come from Identity per request rather than from the token, so a role removed a minute
+// ago takes effect now instead of whenever the token happens to expire.
+builder.Services.AddGggsRemotePermissions(builder.Configuration);
 
 builder.Services.AddScoped<TenantAuditSaveChangesInterceptor>();
 builder.Services.AddScoped<TenantSessionContextInterceptor>();

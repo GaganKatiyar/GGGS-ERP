@@ -39,6 +39,13 @@ builder.Services.AddOptions<SecurityHeaderOptions>()
     .Bind(builder.Configuration.GetSection(SecurityHeaderOptions.SectionName))
     .ValidateOnStart();
 
+builder.Services.AddOptions<IdentityClientOptions>()
+    .Bind(builder.Configuration.GetSection(IdentityClientOptions.SectionName))
+    .Validate(
+        options => builder.Environment.IsDevelopment() || !string.IsNullOrWhiteSpace(options.ClientSecret),
+        "Gggs:Bff:Identity:ClientSecret is required outside development.")
+    .ValidateOnStart();
+
 string? redis = builder.Configuration.GetConnectionString("Redis");
 
 if (string.IsNullOrWhiteSpace(redis))
@@ -59,6 +66,7 @@ else
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<BffSessionStore>();
+builder.Services.AddSingleton<SessionTokenRefresher>();
 
 // Resilience on the Identity call: a sign-in that hangs holds a browser request open, and the
 // default pipeline turns that into a fast failure the SPA can report.
@@ -75,14 +83,14 @@ builder.Services.AddReverseProxy()
         context.AddRequestTransform(async transform =>
         {
             // The credential is attached here and only here. The browser never sent one and never
-            // receives one; the proxy supplies it from the session record on every hop.
+            // receives one; the proxy supplies it from the session record on every hop, by which point
+            // the session middleware has already made sure it has not expired.
             Gggs.Gateway.Bff.Session.BffSession? session = transform.HttpContext.GetSession();
 
             if (session is not null)
             {
-                (string name, string value) = IdentityClient.CredentialHeader(session.UpstreamCredential);
-                transform.ProxyRequest.Headers.Remove(name);
-                transform.ProxyRequest.Headers.Add(name, value);
+                transform.ProxyRequest.Headers.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", session.AccessToken);
             }
 
             await ValueTask.CompletedTask;
