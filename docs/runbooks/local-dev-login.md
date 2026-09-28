@@ -8,14 +8,12 @@ none of them are needed to reach a sign-in page and see the app shell.
 
 **Covers**: signing in as a tenant administrator and using the app shell, dashboard,
 Organization screens (legal entities, branches, departments, designations, grades, cost centers)
-and Employee screens (directory, hire, transfer, confirm, exit) with a full permission set.
+and the full Employee lifecycle (directory, hire, transfer, promote, change manager, confirm,
+serve notice, exit, rehire) with a full permission set.
 
-**Does not cover**: Promote, serve-notice, rehire and change-manager have no screen yet -
-`EmployeesApi` has the methods, but nothing routes to them (transfer and confirm/exit already
-demonstrate the same two patterns - effective-dating and a terminal state - so the remaining
-actions are lower priority). Business units and locations have no Organization screen either,
-since neither sits on the hire path. Everything else in the roadmap beyond Core HR (Time, Payroll,
-Talent, …) has no frontend at all yet.
+**Does not cover**: Business units and locations have no Organization screen, since neither sits
+on the hire path. Everything else in the roadmap beyond Core HR (Time, Payroll, Talent, …) has no
+frontend at all yet.
 
 ## One-time setup
 
