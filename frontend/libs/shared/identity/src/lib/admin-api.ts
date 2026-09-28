@@ -9,13 +9,18 @@ import type {
   PagedResult,
   PermissionCatalogItem,
   Role,
+  TenantSettingItem,
+  UpsertTenantSettingRequest,
   UserListItem,
 } from '@gggs/shared/models';
 import { firstValueFrom } from 'rxjs';
 
 /**
- * Users, roles and the permission catalog, over the gateway's `/api/v1/{users,roles,permissions}`
- * routes.
+ * Users, roles, the permission catalog and tenant settings, over the gateway's
+ * `/api/v1/{users,roles,permissions,settings}` routes - the first three from Identity, the last
+ * from Platform. The frontend does not care which service answers which route (that split is the
+ * gateway's job to hide), so one client for everything "administration" touches, matching how
+ * `OrgReferenceApi` bundles six backend aggregate types behind one class for the same reason.
  *
  * Lives in `shared`, not inside the admin feature, for two independent reasons:
  *  - `completeInvitation` is called by `apps/hrms-web`'s own complete-invitation page, which sits
@@ -121,6 +126,25 @@ export class AdminApi {
   listPermissionCatalog(): Promise<readonly PermissionCatalogItem[]> {
     return firstValueFrom(
       this.http.get<readonly PermissionCatalogItem[]>('/api/v1/permissions'),
+    );
+  }
+
+  listSettings(): Promise<readonly TenantSettingItem[]> {
+    return firstValueFrom(
+      this.http.get<readonly TenantSettingItem[]>('/api/v1/settings'),
+    );
+  }
+
+  upsertSetting(
+    module: string,
+    key: string,
+    request: UpsertTenantSettingRequest,
+  ): Promise<TenantSettingItem> {
+    return firstValueFrom(
+      this.http.put<TenantSettingItem>(
+        `/api/v1/settings/${encodeURIComponent(module)}/${encodeURIComponent(key)}`,
+        request,
+      ),
     );
   }
 }

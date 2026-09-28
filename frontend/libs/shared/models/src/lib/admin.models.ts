@@ -75,3 +75,20 @@ export interface PermissionCatalogItem {
   readonly action: string;
   readonly isSensitive: boolean;
 }
+
+/**
+ * One tenant setting: a module-scoped key holding a JSON value, mirroring
+ * `Gggs.Platform.Api.Endpoints.TenantSettingEndpoints`.
+ *
+ * No module has a defined settings schema yet, so the value is opaque JSON rather than typed
+ * fields - the server validates only that it parses, not what shape it takes.
+ */
+export interface TenantSettingItem {
+  readonly module: string;
+  readonly key: string;
+  readonly valueJson: string;
+}
+
+export interface UpsertTenantSettingRequest {
+  readonly valueJson: string;
+}

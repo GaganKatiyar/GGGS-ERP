@@ -5,6 +5,7 @@ import { UserListPage } from './users/user-list-page';
 import { UserRolesPage } from './users/user-roles-page';
 import { RoleDetailPage } from './roles/role-detail-page';
 import { RoleListPage } from './roles/role-list-page';
+import { TenantSettingsPage } from './settings/tenant-settings-page';
 
 /** Lazily loaded by the shell at `/admin/*`; see `NAVIGATION`'s "Administration" entry. */
 export const ADMIN_ROUTES: Routes = [
@@ -38,5 +39,11 @@ export const ADMIN_ROUTES: Routes = [
     component: RoleDetailPage,
     title: 'Role',
     ...withPermissions(['admin.role.view']),
+  },
+  {
+    path: 'settings',
+    component: TenantSettingsPage,
+    title: 'Settings',
+    ...withPermissions(['admin.setting.view']),
   },
 ];
