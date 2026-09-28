@@ -122,24 +122,14 @@ static async Task SeedTenantAdminAsync(string connectionString, Guid tenantId, s
 
     await using var db = new IdentityDbContext(writeOptions, tenantScopedContext);
 
-    string normalizedEmail = adminEmail.Trim().ToUpperInvariant();
-    User? existingUser = await db.Users.FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
-    if (existingUser is not null)
-    {
-        Console.WriteLine($"User '{adminEmail}' already exists ({existingUser.Id}) - leaving it as is.");
-        return;
-    }
-
-    Role role = Role.Create(
-        "Tenant Administrator",
-        "Full administrative control, seeded for local development.",
-        isSystem: true,
-        templateCode: "TENANT_ADMIN");
-
     // A generous grant, not a minimal one: the point of this account is to see the whole app
-    // shell working, not to exercise least-privilege scenarios.
-    foreach (string permission in new[]
-    {
+    // shell working, not to exercise least-privilege scenarios. Re-applied below even for an
+    // account that already exists - Role.Grant replaces rather than duplicates a code it already
+    // holds, so this list is the account's actual permission set after every run, not just its
+    // set at first creation. Without that, a permission added here after someone's first seed
+    // would silently never reach their already-seeded account.
+    string[] grantedPermissions =
+    [
         Permissions.Admin.UserView,
         Permissions.Admin.UserManage,
         Permissions.Admin.UserInvite,
@@ -167,7 +157,44 @@ static async Task SeedTenantAdminAsync(string connectionString, Guid tenantId, s
         Permissions.Notification.InboxManage,
         Permissions.Notification.TemplateView,
         Permissions.Notification.TemplateManage,
-    })
+    ];
+
+    string normalizedEmail = adminEmail.Trim().ToUpperInvariant();
+    User? existingUser = await db.Users.FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
+    if (existingUser is not null)
+    {
+        Guid? existingRoleId = await db.UserRoles
+            .Where(userRole => userRole.UserId == existingUser.Id)
+            .Select(userRole => (Guid?)userRole.RoleId)
+            .FirstOrDefaultAsync();
+
+        Role? existingRole = existingRoleId is { } roleId
+            ? await db.Roles.FirstOrDefaultAsync(r => r.Id == roleId)
+            : null;
+
+        if (existingRole is null)
+        {
+            Console.WriteLine($"User '{adminEmail}' already exists ({existingUser.Id}) with no role to reconcile - leaving it as is.");
+            return;
+        }
+
+        foreach (string permission in grantedPermissions)
+        {
+            existingRole.Grant(permission, DataScope.Tenant);
+        }
+
+        await db.SaveChangesAsync();
+        Console.WriteLine($"User '{adminEmail}' already exists ({existingUser.Id}) - its role's permissions were reconciled to the current list.");
+        return;
+    }
+
+    Role role = Role.Create(
+        "Tenant Administrator",
+        "Full administrative control, seeded for local development.",
+        isSystem: true,
+        templateCode: "TENANT_ADMIN");
+
+    foreach (string permission in grantedPermissions)
     {
         role.Grant(permission, DataScope.Tenant);
     }
