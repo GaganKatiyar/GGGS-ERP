@@ -11,6 +11,7 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Security\Gggs.BuildingBlocks.Security.csproj" />
     <!-- Another service's published contract, which is the only part of it we are allowed to see. -->
     <ProjectReference Include="..\..\Platform\Gggs.Platform.Contracts\Gggs.Platform.Contracts.csproj" />
+    <ProjectReference Include="..\Gggs.Identity.Contracts\Gggs.Identity.Contracts.csproj" />
     <ProjectReference Include="..\Gggs.Identity.Domain\Gggs.Identity.Domain.csproj" />
   </ItemGroup>
 

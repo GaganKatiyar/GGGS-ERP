@@ -19,16 +19,29 @@ and tenant admins/auditors read it back through `GET /api/v1/audit/logs` (no fro
 handles upload, list-by-owner, download and delete through `IFileStorage` (the local file-share
 adapter locally; Azure Blob in the cloud profile), gated by `document.file.*` permissions - no
 malware scanning yet (nothing populates `ScanStatus` beyond `Skipped`), no re-upload-as-new-version,
-and no frontend screen. 351 backend tests and 61 frontend tests pass. See
-[docs/runbooks/local-dev-login.md](docs/runbooks/local-dev-login.md) to run the whole stack and
-sign in. Still ahead in Phase 1: Notification v1 (does not exist as a backend service yet).
+and no frontend screen. **Notification v1** completes Phase 1's backend service list: a new
+`Gggs.Notification` service renders `{{ key }}`-placeholder templates (not Scriban - every published
+version had multiple high/critical advisories when this was built, so this ships plain substitution
+instead, swappable behind the same renderer signature later) into in-app rows and queued emails,
+sent through a plain-SMTP `IEmailSender` that logs instead of failing when no mail server is
+configured. `Gggs.Notification.Worker` is its first real consumer:
+`UserInvitedIntegrationEvent` (new - Identity previously raised `UserInvitedDomainEvent` into a
+buffer nothing drained) now reaches an actual "welcome, set your password" notification. A user's
+own inbox (`GET /api/v1/notifications`, mark read/read-all, unread count) and template
+administration are both built; no frontend screen, no SMS/WhatsApp/push (Phase 1's own scope is
+email + in-app only), no delivery-webhook tracking. 388 backend tests and 61 frontend tests pass.
+See [docs/runbooks/local-dev-login.md](docs/runbooks/local-dev-login.md) to run the whole stack and
+sign in. Every Phase 1 backend service from the roadmap now exists; what is left in Phase 1 is
+frontend screens (Documents, the audit log, notification preferences) and the Business
+units/locations Organization screens.
 
 Known gaps: the Bicep templates are unvalidated and still need private endpoints and Front Door
 (see [infra/README.md](infra/README.md)); `dotnet test` cannot run the suites on this SDK (see
-below); the async tenant-provisioning saga (Platform → RabbitMQ → Identity.Worker) and audit
-capture (any service → RabbitMQ → `Platform.Worker`) are both built but need a running broker,
-so neither is exercised by the local-dev-login path - see that runbook for what does and does not
-reach `platform.AuditLog` without one.
+below); the async tenant-provisioning saga (Platform → RabbitMQ → Identity.Worker), audit capture
+(any service → RabbitMQ → `Platform.Worker`) and notification dispatch (Identity →
+RabbitMQ → `Notification.Worker`) are all built but need a running broker, so none of them is
+exercised by the local-dev-login path - see that runbook for what does and does not reach
+`platform.AuditLog` / an actual inbox row without one.
 
 ## Prerequisites
 

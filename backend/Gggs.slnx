@@ -20,6 +20,7 @@
   <Folder Name="/Services/Identity/">
     <Project Path="Services/Identity/Gggs.Identity.Api/Gggs.Identity.Api.csproj" />
     <Project Path="Services/Identity/Gggs.Identity.Application/Gggs.Identity.Application.csproj" />
+    <Project Path="Services/Identity/Gggs.Identity.Contracts/Gggs.Identity.Contracts.csproj" />
     <Project Path="Services/Identity/Gggs.Identity.Domain/Gggs.Identity.Domain.csproj" />
     <Project Path="Services/Identity/Gggs.Identity.Infrastructure/Gggs.Identity.Infrastructure.csproj" />
     <Project Path="Services/Identity/Gggs.Identity.Worker/Gggs.Identity.Worker.csproj" />
@@ -36,6 +37,13 @@
     <Project Path="Services/Documents/Gggs.Documents.Domain/Gggs.Documents.Domain.csproj" />
     <Project Path="Services/Documents/Gggs.Documents.Infrastructure/Gggs.Documents.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/Services/Notification/">
+    <Project Path="Services/Notification/Gggs.Notification.Api/Gggs.Notification.Api.csproj" />
+    <Project Path="Services/Notification/Gggs.Notification.Application/Gggs.Notification.Application.csproj" />
+    <Project Path="Services/Notification/Gggs.Notification.Domain/Gggs.Notification.Domain.csproj" />
+    <Project Path="Services/Notification/Gggs.Notification.Infrastructure/Gggs.Notification.Infrastructure.csproj" />
+    <Project Path="Services/Notification/Gggs.Notification.Worker/Gggs.Notification.Worker.csproj" />
+  </Folder>
   <Folder Name="/Services/Platform/">
     <Project Path="Services/Platform/Gggs.Platform.Api/Gggs.Platform.Api.csproj" />
     <Project Path="Services/Platform/Gggs.Platform.Application/Gggs.Platform.Application.csproj" />
@@ -51,6 +59,7 @@
   <Project Path="../tests/Gggs.CoreHr.IntegrationTests/Gggs.CoreHr.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Documents.IntegrationTests/Gggs.Documents.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Gateway.IntegrationTests/Gggs.Gateway.IntegrationTests.csproj" />
+  <Project Path="../tests/Gggs.Notification.IntegrationTests/Gggs.Notification.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Identity.IntegrationTests/Gggs.Identity.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Platform.IntegrationTests/Gggs.Platform.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.TenantIsolation.Tests/Gggs.TenantIsolation.Tests.csproj" />
@@ -58,5 +67,6 @@
   <Project Path="../tests/unit/Gggs.CoreHr.UnitTests/Gggs.CoreHr.UnitTests.csproj" />
   <Project Path="../tests/unit/Gggs.Documents.UnitTests/Gggs.Documents.UnitTests.csproj" />
   <Project Path="../tests/unit/Gggs.Identity.UnitTests/Gggs.Identity.UnitTests.csproj" />
+  <Project Path="../tests/unit/Gggs.Notification.UnitTests/Gggs.Notification.UnitTests.csproj" />
   <Project Path="../tests/unit/Gggs.Platform.UnitTests/Gggs.Platform.UnitTests.csproj" />
 </Solution>

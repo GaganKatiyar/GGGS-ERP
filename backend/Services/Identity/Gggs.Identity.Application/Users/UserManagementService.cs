@@ -1,7 +1,10 @@
 using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Domain.Exceptions;
+using Gggs.BuildingBlocks.Messaging;
+using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Security;
 using Gggs.Identity.Application.Authentication;
+using Gggs.Identity.Contracts;
 using Gggs.Identity.Domain.Roles;
 using Gggs.Identity.Domain.Users;
 using Microsoft.Extensions.Logging;
@@ -27,6 +30,8 @@ public sealed class UserManagementService(
     IBreachedPasswordChecker breachChecker,
     IInvitationTokenGenerator tokenGenerator,
     ICurrentUser currentUser,
+    IIntegrationEventPublisher publisher,
+    ITenantContext tenantContext,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
     ILogger<UserManagementService> logger)
@@ -70,6 +75,10 @@ public sealed class UserManagementService(
 
             roles.AddGrant(UserRole.Grant(user.Id, role.Id, DateOnly.FromDateTime(now)));
         }
+
+        publisher.Publish(new UserInvitedIntegrationEvent(
+            user.Id, user.Email, user.DisplayName, token, now.Add(InvitationLifetime),
+            tenantContext.Tenant?.Code ?? string.Empty));
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

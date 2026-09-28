@@ -155,4 +155,13 @@ public static class Permissions
         public const string Export = "report.report.export";
         public const string ScheduleManage = "report.schedule.manage";
     }
+
+    /// <summary>A user's own notification inbox, and administering templates.</summary>
+    public static class Notification
+    {
+        public const string InboxView = "notification.inbox.view";
+        public const string InboxManage = "notification.inbox.manage";
+        public const string TemplateView = "notification.template.view";
+        public const string TemplateManage = "notification.template.manage";
+    }
 }

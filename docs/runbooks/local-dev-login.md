@@ -15,10 +15,10 @@ permissions), and tenant settings (a raw module + key + JSON editor - no module 
 settings schema yet) with a full permission set.
 
 **Does not cover**: Business units and locations have no Organization screen, since neither sits
-on the hire path. The audit log and the Documents service (upload/list/download/delete) are both
-reachable through the gateway but have no frontend screen yet - exercise them with `curl` or the
-OpenAPI page. Everything else in the roadmap beyond Core HR and Identity (Time, Payroll,
-Talent, …) has no
+on the hire path. The audit log, the Documents service (upload/list/download/delete) and the
+Notification service (a user's own inbox, template administration) are all reachable through the
+gateway but have no frontend screen yet - exercise them with `curl` or the OpenAPI page. Everything
+else in the roadmap beyond Core HR and Identity (Time, Payroll, Talent, …) has no
 frontend at all yet.
 
 ## One-time setup
@@ -27,21 +27,23 @@ frontend at all yet.
    test suite uses - see the repository README's prerequisites).
 2. `npm ci` inside `frontend/` if you have not already.
 
-## Every time: six terminals + one seed command
+## Every time: seven terminals + one seed command
 
 ```bash
 # 1. Seed a tenant and a tenant-admin account directly in the databases (creates them if they
 #    do not exist, applies migrations, and is safe to re-run - it leaves an existing tenant/user
 #    alone rather than erroring). Only covers Platform and Identity - see the next step for the
-#    other two databases.
+#    other databases.
 dotnet run --project tools/DevSeed -- acme admin@acme.example "Passw0rd!2026"
 
-# CoreHr's and the Documents service's own databases need their migrations applied once too
-# (DevSeed does not touch either):
+# CoreHr's, the Documents service's and the Notification service's own databases need their
+# migrations applied once too (DevSeed does not touch any of them):
 dotnet ef database update --project backend/Services/CoreHr/Gggs.CoreHr.Infrastructure \
   --startup-project backend/Services/CoreHr/Gggs.CoreHr.Infrastructure
 dotnet ef database update --project backend/Services/Documents/Gggs.Documents.Infrastructure \
   --startup-project backend/Services/Documents/Gggs.Documents.Infrastructure
+dotnet ef database update --project backend/Services/Notification/Gggs.Notification.Infrastructure \
+  --startup-project backend/Services/Notification/Gggs.Notification.Infrastructure
 
 # 2. Platform (terminal 1)
 cd backend/Services/Platform/Gggs.Platform.Api
@@ -59,14 +61,20 @@ ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5103 dotnet 
 cd backend/Services/Documents/Gggs.Documents.Api
 ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5104 dotnet run
 
-# 6. Gateway (terminal 5)
+# 6. Notification - a user's own inbox and template administration (terminal 5)
+cd backend/Services/Notification/Gggs.Notification.Api
+ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5105 dotnet run
+
+# 7. Gateway (terminal 6)
 cd backend/Gateway/Gggs.Gateway.Bff
 ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5100 dotnet run
 
-# 7. Angular (terminal 6)
+# 8. Angular (terminal 7)
 cd frontend
 npx nx serve hrms-web
 ```
+
+`Gggs.Notification.Worker` is not in this list on purpose - see the next section.
 
 (PowerShell: replace `ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5102 dotnet run`
 with `$env:ASPNETCORE_ENVIRONMENT='Development'; $env:ASPNETCORE_URLS='http://localhost:5102'; dotnet run`.)
@@ -105,6 +113,20 @@ same as the tenant-provisioning saga does, and this runbook does not start one. 
 consumes them; `audit.AuditLog` (`platform` schema) stays empty until either `Gggs.Platform.Worker`
 runs against a real broker, or a test seeds rows directly the way
 `tests/Gggs.Platform.IntegrationTests/AuditEndpointTests.cs` does.
+
+## Why inviting a user does not actually send an email in this setup
+
+`UserManagementService.InviteAsync` stages a `UserInvitedIntegrationEvent` into Identity's own
+outbox - same shape, same "needs no broker" story as the audit trail above. Turning that into an
+in-app row and a queued email is `Gggs.Notification.Worker`'s job (`UserInvitedConsumer` →
+`NotificationDispatchService`), and this runbook does not start it either. The invitation itself
+still works: `InviteAsync` returns the token directly in its response, which is what
+`complete-invitation` already relies on (see the "Covers" list above) - the notification is a
+second, currently-inert path to the same link, not the only one. Even with the worker running, no
+template exists for `user.invited` until one is created through `POST
+/api/v1/notifications/templates` (Notification never ships a platform default - see
+`NotificationTemplate`'s own remarks), and even with a template, no SMTP host is configured by
+default, so `SmtpEmailSender` logs the rendered email instead of sending it.
 
 ## Why this bypasses the async tenant-provisioning saga
 

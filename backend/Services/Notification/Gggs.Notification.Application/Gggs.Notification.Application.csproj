@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Notification.Application</RootNamespace>
+    <Description>Rendering and dispatching notifications: templates, the in-app inbox and the outbound email queue.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Application\Gggs.BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Messaging\Gggs.BuildingBlocks.Messaging.csproj" />
+    <!-- Another service's published contract, which is the only part of it we are allowed to see. -->
+    <ProjectReference Include="..\..\Identity\Gggs.Identity.Contracts\Gggs.Identity.Contracts.csproj" />
+    <ProjectReference Include="..\Gggs.Notification.Domain\Gggs.Notification.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

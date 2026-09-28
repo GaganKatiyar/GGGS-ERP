@@ -1,6 +1,7 @@
 using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Application.Hosting;
 using Gggs.BuildingBlocks.Caching;
+using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Observability;
 using Gggs.BuildingBlocks.Persistence;
@@ -96,6 +97,13 @@ builder.Services.AddDbContext<IdentityDbContext>((serviceProvider, options) =>
 });
 
 builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<IdentityDbContext>());
+
+// This host never ran the subscriber, so it never needed the publisher either - until
+// UserManagementService started raising UserInvitedIntegrationEvent. Every other *.Api project
+// registers this unconditionally for exactly that reason: an API stages messages even when it
+// never runs the relay.
+builder.Services.AddGggsMessaging<IdentityDbContext>(builder.Configuration, platform.DeploymentProfile);
+
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPasswordPolicyRepository, PasswordPolicyRepository>();
 builder.Services.AddScoped<SignInService>();
