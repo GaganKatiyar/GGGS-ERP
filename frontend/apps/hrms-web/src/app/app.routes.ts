@@ -21,6 +21,16 @@ export const appRoutes: Route[] = [
     title: 'Sign in',
   },
   {
+    // Also outside the shell and the guard, for the same reason: the invitee has no session, and
+    // never will until this page succeeds.
+    path: 'complete-invitation',
+    loadComponent: () =>
+      import('./pages/complete-invitation-page').then(
+        (m) => m.CompleteInvitationPage,
+      ),
+    title: 'Set your password',
+  },
+  {
     path: '',
     component: Shell,
     canActivate: [authGuard],
@@ -44,6 +54,14 @@ export const appRoutes: Route[] = [
         ...withPermissions(['employee.profile.view']),
         loadChildren: () =>
           import('@gggs/features/employees').then((m) => m.EMPLOYEES_ROUTES),
+      },
+      {
+        path: 'admin',
+        // Matches NAVIGATION's "Administration" group: any one of the three lets someone in, and
+        // each child route narrows further to the specific permission it actually needs.
+        ...withPermissions(['admin.user.view', 'admin.role.view', 'admin.setting.view']),
+        loadChildren: () =>
+          import('@gggs/features/admin').then((m) => m.ADMIN_ROUTES),
       },
       {
         path: 'forbidden',

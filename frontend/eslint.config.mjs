@@ -75,6 +75,7 @@ export default [
                 'scope:dashboard',
                 'scope:organization',
                 'scope:employees',
+                'scope:admin',
               ],
             },
             {
@@ -111,6 +112,14 @@ export default [
                 'scope:core',
                 'scope:shared',
                 'scope:employees',
+              ],
+            },
+            {
+              sourceTag: 'scope:admin',
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:shared',
+                'scope:admin',
               ],
             },
           ],

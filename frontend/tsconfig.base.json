@@ -30,7 +30,9 @@
       "@gggs/features/employees": ["./libs/features/employees/src/index.ts"],
       "@gggs/shared/org-reference": [
         "./libs/shared/org-reference/src/index.ts"
-      ]
+      ],
+      "@gggs/features/admin": ["./libs/features/admin/src/index.ts"],
+      "@gggs/shared/identity": ["./libs/shared/identity/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

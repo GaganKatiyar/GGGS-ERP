@@ -5,6 +5,7 @@ using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.Identity.Application.Authentication;
 using Gggs.Identity.Application.Users;
+using Gggs.Identity.Domain.Roles;
 using Gggs.Identity.Domain.Users;
 using Gggs.Identity.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -73,6 +74,7 @@ public static class UserEndpoints
         group.MapPost("/{userId:guid}/disable", DisableAsync).WithName("DisableUser").RequirePermission(Permissions.Admin.UserLock);
         group.MapPost("/{userId:guid}/enable", EnableAsync).WithName("EnableUser").RequirePermission(Permissions.Admin.UserLock);
         group.MapPost("/{userId:guid}/unlock", UnlockAsync).WithName("UnlockUser").RequirePermission(Permissions.Admin.UserLock);
+        group.MapGet("/{userId:guid}/roles", GetRolesAsync).WithName("GetUserRoles").RequirePermission(Permissions.Admin.UserView);
         group.MapPut("/{userId:guid}/roles", SetRolesAsync).WithName("SetUserRoles").RequirePermission(Permissions.Admin.UserManage);
 
         // Changing your own password needs no permission beyond being signed in - everyone must be
@@ -231,5 +233,26 @@ public static class UserEndpoints
 
         await users.SetRolesAsync(userId, body.RoleIds, cancellationToken);
         return TypedResults.NoContent();
+    }
+
+    /// <summary>
+    /// The role ids a "set roles" screen needs to know which boxes are already checked.
+    /// <para>
+    /// <see cref="SetRolesAsync"/> replaces a user's roles wholesale - there is no "add one role"
+    /// endpoint - so an editor that does not first know what is already granted would clear every
+    /// existing grant the moment it saved anything.
+    /// </para>
+    /// </summary>
+    private static async Task<Ok<IReadOnlyList<Guid>>> GetRolesAsync(
+        Guid userId,
+        IRoleRepository roles,
+        TimeProvider timeProvider,
+        CancellationToken cancellationToken)
+    {
+        DateOnly today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
+        IReadOnlyList<UserRole> grants = await roles.GetGrantsForUserAsync(userId, cancellationToken);
+
+        return TypedResults.Ok<IReadOnlyList<Guid>>(
+            [.. grants.Where(grant => grant.IsActiveOn(today)).Select(grant => grant.RoleId)]);
     }
 }
