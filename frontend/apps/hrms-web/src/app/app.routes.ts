@@ -57,9 +57,14 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'admin',
-        // Matches NAVIGATION's "Administration" group: any one of the three lets someone in, and
-        // each child route narrows further to the specific permission it actually needs.
-        ...withPermissions(['admin.user.view', 'admin.role.view', 'admin.setting.view']),
+        // Matches NAVIGATION's "Administration" group: any one of these lets someone in, and each
+        // child route narrows further to the specific permission it actually needs.
+        ...withPermissions([
+          'admin.user.view',
+          'admin.role.view',
+          'admin.setting.view',
+          'document.file.view',
+        ]),
         loadChildren: () =>
           import('@gggs/features/admin').then((m) => m.ADMIN_ROUTES),
       },

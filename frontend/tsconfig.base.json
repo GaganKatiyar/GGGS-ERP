@@ -32,7 +32,8 @@
         "./libs/shared/org-reference/src/index.ts"
       ],
       "@gggs/features/admin": ["./libs/features/admin/src/index.ts"],
-      "@gggs/shared/identity": ["./libs/shared/identity/src/index.ts"]
+      "@gggs/shared/identity": ["./libs/shared/identity/src/index.ts"],
+      "@gggs/shared/documents": ["./libs/shared/documents/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

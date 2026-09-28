@@ -230,7 +230,12 @@ export const NAVIGATION: readonly NavItem[] = [
   {
     label: 'Administration',
     icon: 'pi pi-cog',
-    permissions: ['admin.user.view', 'admin.role.view', 'admin.setting.view'],
+    permissions: [
+      'admin.user.view',
+      'admin.role.view',
+      'admin.setting.view',
+      'document.file.view',
+    ],
     children: [
       {
         label: 'Users',
@@ -267,6 +272,12 @@ export const NAVIGATION: readonly NavItem[] = [
         icon: 'pi pi-sliders-h',
         route: '/admin/settings',
         permissions: ['admin.setting.view'],
+      },
+      {
+        label: 'Document types',
+        icon: 'pi pi-file',
+        route: '/admin/document-types',
+        permissions: ['document.file.view'],
       },
     ],
   },

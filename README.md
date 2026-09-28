@@ -18,8 +18,10 @@ and tenant admins/auditors read it back through `GET /api/v1/audit/logs` (no fro
 **Document v1** is also built: a new `Gggs.Documents` service (`doc.DocumentType`/`doc.Document`)
 handles upload, list-by-owner, download and delete through `IFileStorage` (the local file-share
 adapter locally; Azure Blob in the cloud profile), gated by `document.file.*` permissions - no
-malware scanning yet (nothing populates `ScanStatus` beyond `Skipped`), no re-upload-as-new-version,
-and no frontend screen. **Notification v1** completes Phase 1's backend service list: a new
+malware scanning yet (nothing populates `ScanStatus` beyond `Skipped`), no re-upload-as-new-version.
+Its frontend now exists too: an upload/list/download/delete section on the Employee detail page,
+and document type administration at `/admin/document-types` (a type has to exist before anything
+can be uploaded). **Notification v1** completes Phase 1's backend service list: a new
 `Gggs.Notification` service renders `{{ key }}`-placeholder templates (not Scriban - every published
 version had multiple high/critical advisories when this was built, so this ships plain substitution
 instead, swappable behind the same renderer signature later) into in-app rows and queued emails,
@@ -31,9 +33,9 @@ own inbox (`GET /api/v1/notifications`, mark read/read-all, unread count) and te
 administration are both built; no frontend screen, no SMS/WhatsApp/push (Phase 1's own scope is
 email + in-app only), no delivery-webhook tracking. 388 backend tests and 61 frontend tests pass.
 See [docs/runbooks/local-dev-login.md](docs/runbooks/local-dev-login.md) to run the whole stack and
-sign in. Every Phase 1 backend service from the roadmap now exists; what is left in Phase 1 is
-frontend screens (Documents, the audit log, notification preferences) and the Business
-units/locations Organization screens.
+sign in. Every Phase 1 backend service from the roadmap now exists; what is left in Phase 1 is the
+audit log and notification-inbox frontend screens, and the Business units/locations Organization
+screens.
 
 Known gaps: the Bicep templates are unvalidated and still need private endpoints and Front Door
 (see [infra/README.md](infra/README.md)); `dotnet test` cannot run the suites on this SDK (see

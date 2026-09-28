@@ -158,6 +158,15 @@ static async Task SeedTenantAdminAsync(string connectionString, Guid tenantId, s
         Permissions.Employee.EmploymentManage,
         Permissions.Employee.HistoryView,
         Permissions.Employee.ExitManage,
+        Permissions.Document.View,
+        Permissions.Document.Upload,
+        Permissions.Document.Delete,
+        Permissions.Document.TypeManage,
+        Permissions.Audit.LogView,
+        Permissions.Notification.InboxView,
+        Permissions.Notification.InboxManage,
+        Permissions.Notification.TemplateView,
+        Permissions.Notification.TemplateManage,
     })
     {
         role.Grant(permission, DataScope.Tenant);

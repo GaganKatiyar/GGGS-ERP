@@ -1,8 +1,12 @@
+import { SlicePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { ApiError } from '@gggs/core/http';
 import { HasPermissionDirective } from '@gggs/core/permissions';
+import { DocumentsApi, documentDownloadUrl } from '@gggs/shared/documents';
 import { EmptyState, PageHeader } from '@gggs/shared/ui';
-import type { Employee, EmploymentRecord } from '@gggs/shared/models';
+import type { DocumentItem, DocumentTypeItem, Employee, EmploymentRecord } from '@gggs/shared/models';
 import { EmployeesApi } from '../data/employees-api';
 
 /**
@@ -13,7 +17,7 @@ import { EmployeesApi } from '../data/employees-api';
  */
 @Component({
   selector: 'gggs-employee-detail-page',
-  imports: [RouterLink, HasPermissionDirective, PageHeader, EmptyState],
+  imports: [RouterLink, ReactiveFormsModule, SlicePipe, HasPermissionDirective, PageHeader, EmptyState],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (isLoading()) {
@@ -129,6 +133,77 @@ import { EmployeesApi } from '../data/employees-api';
           </table>
         }
       </section>
+
+      <section class="panel" *gggsHasPermission="'document.file.view'">
+        <h2 class="panel__heading">Documents</h2>
+
+        <form
+          class="upload"
+          [formGroup]="uploadForm"
+          *gggsHasPermission="'document.file.upload'"
+          (ngSubmit)="upload(employee.id)"
+        >
+          <label class="field">
+            <span class="field__label">Document type</span>
+            <select formControlName="documentTypeCode">
+              <option value="" disabled>Choose a type…</option>
+              @for (type of documentTypes(); track type.id) {
+                <option [value]="type.code">{{ type.name }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="field__label">File</span>
+            <input type="file" (change)="onFileSelected($event)" required />
+          </label>
+
+          @if (uploadError()) {
+            <p class="field__error" role="alert">{{ uploadError() }}</p>
+          }
+
+          <button type="submit" class="btn btn--primary" [disabled]="isUploading() || !uploadFile()">
+            {{ isUploading() ? 'Uploading…' : 'Upload' }}
+          </button>
+        </form>
+
+        @if (isLoadingDocuments()) {
+          <p>Loading…</p>
+        } @else if (documents().length === 0) {
+          <gggs-empty-state title="No documents yet" />
+        } @else {
+          <table class="list-table">
+            <thead>
+              <tr>
+                <th scope="col">File</th>
+                <th scope="col">Size</th>
+                <th scope="col">Uploaded</th>
+                <th scope="col"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (document of documents(); track document.id) {
+                <tr>
+                  <td><a [href]="downloadUrl(document.id)" target="_blank" rel="noopener">{{ document.fileName }}</a></td>
+                  <td>{{ formatSize(document.sizeBytes) }}</td>
+                  <td>{{ document.createdDate | slice: 0 : 10 }}</td>
+                  <td>
+                    <button
+                      type="button"
+                      class="btn btn--danger"
+                      *gggsHasPermission="'document.file.delete'"
+                      [disabled]="isDeletingId() === document.id"
+                      (click)="deleteDocument(document.id)"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </section>
     } @else {
       <gggs-empty-state title="Employee not found" />
     }
@@ -220,10 +295,33 @@ import { EmployeesApi } from '../data/employees-api';
       color: var(--gggs-color-danger, #b3261e);
       font-size: 0.875rem;
     }
+
+    .upload {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 0.75rem;
+      margin-block-end: 1rem;
+      padding-block-end: 1rem;
+      border-bottom: 1px solid var(--gggs-color-border, #e2e5ea);
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      font-size: 0.875rem;
+    }
+
+    .field__label {
+      font-weight: 600;
+    }
   `,
 })
 export class EmployeeDetailPage {
   private readonly api = inject(EmployeesApi);
+  private readonly documentsApi = inject(DocumentsApi);
+  private readonly formBuilder = inject(FormBuilder);
 
   readonly id = input.required<string>();
 
@@ -233,8 +331,21 @@ export class EmployeeDetailPage {
   protected readonly isActing = signal(false);
   protected readonly actionError = signal<string | null>(null);
 
+  protected readonly isLoadingDocuments = signal(true);
+  protected readonly documents = signal<readonly DocumentItem[]>([]);
+  protected readonly documentTypes = signal<readonly DocumentTypeItem[]>([]);
+  protected readonly uploadFile = signal<File | null>(null);
+  protected readonly isUploading = signal(false);
+  protected readonly uploadError = signal<string | null>(null);
+  protected readonly isDeletingId = signal<string | null>(null);
+
+  protected readonly uploadForm = this.formBuilder.nonNullable.group({
+    documentTypeCode: ['', Validators.required],
+  });
+
   constructor() {
     void this.load();
+    void this.loadDocuments();
   }
 
   protected subtitle(employee: Employee): string {
@@ -274,4 +385,93 @@ export class EmployeeDetailPage {
       this.isLoading.set(false);
     }
   }
+
+  protected downloadUrl(documentId: string): string {
+    return documentDownloadUrl(documentId);
+  }
+
+  protected formatSize(sizeBytes: number): string {
+    if (sizeBytes < 1024) {
+      return `${sizeBytes} B`;
+    }
+
+    const kilobytes = sizeBytes / 1024;
+    return kilobytes < 1024 ? `${kilobytes.toFixed(1)} KB` : `${(kilobytes / 1024).toFixed(1)} MB`;
+  }
+
+  protected onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.uploadFile.set(input.files?.[0] ?? null);
+  }
+
+  protected async upload(ownerId: string): Promise<void> {
+    const file = this.uploadFile();
+
+    if (this.uploadForm.invalid || !file || this.isUploading()) {
+      this.uploadForm.markAllAsTouched();
+      return;
+    }
+
+    this.isUploading.set(true);
+    this.uploadError.set(null);
+
+    try {
+      const { documentTypeCode } = this.uploadForm.getRawValue();
+      await this.documentsApi.upload({
+        file,
+        documentTypeCode,
+        ownerType: 'Employee',
+        ownerId,
+      });
+
+      this.uploadForm.reset({ documentTypeCode: '' });
+      this.uploadFile.set(null);
+      await this.loadDocuments();
+    } catch (error) {
+      this.uploadError.set(describeUploadError(error));
+    } finally {
+      this.isUploading.set(false);
+    }
+  }
+
+  protected async deleteDocument(documentId: string): Promise<void> {
+    this.isDeletingId.set(documentId);
+
+    try {
+      await this.documentsApi.delete(documentId);
+      this.documents.update((current) => current.filter((document) => document.id !== documentId));
+    } finally {
+      this.isDeletingId.set(null);
+    }
+  }
+
+  private async loadDocuments(): Promise<void> {
+    this.isLoadingDocuments.set(true);
+
+    try {
+      const [documents, types] = await Promise.all([
+        this.documentsApi.listByOwner('Employee', this.id()),
+        this.documentsApi.listTypes(),
+      ]);
+
+      this.documents.set(documents);
+      this.documentTypes.set(types.filter((type) => type.isEmployeeUploadable));
+    } finally {
+      this.isLoadingDocuments.set(false);
+    }
+  }
+}
+
+function describeUploadError(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.errorCode === 'DOCUMENT_EXTENSION_NOT_ALLOWED') {
+      return 'That file type is not allowed for the chosen document type.';
+    }
+
+    if (error.errorCode === 'DOCUMENT_TOO_LARGE') {
+      return 'That file is larger than the chosen document type allows.';
+    }
+  }
+
+  return 'The file could not be uploaded. Please try again.';
 }
