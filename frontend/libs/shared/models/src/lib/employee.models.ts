@@ -91,3 +91,14 @@ export interface ExitEmployeeRequest {
   readonly exitDate: string;
   readonly wasAbsconded: boolean;
 }
+
+export interface RehireEmployeeRequest {
+  readonly dateOfJoining: string;
+  readonly assignment: AssignmentInput;
+}
+
+export interface ChangeReportingManagerRequest {
+  readonly effectiveFrom: string;
+  readonly newReportingManagerId?: string;
+  readonly reason?: string;
+}

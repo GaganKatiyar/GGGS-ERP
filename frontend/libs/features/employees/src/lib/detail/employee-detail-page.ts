@@ -20,20 +20,48 @@ import { EmployeesApi } from '../data/employees-api';
       <p>Loading…</p>
     } @else if (employee(); as employee) {
       <gggs-page-header [title]="employee.displayName" [subtitle]="subtitle(employee)">
-        <a [routerLink]="['/employees', employee.id, 'transfer']" class="btn" *gggsHasPermission="'employee.employment.manage'">
-          Transfer
-        </a>
+        @if (employee.status !== 'Exited' && employee.status !== 'Absconded') {
+          <a [routerLink]="['/employees', employee.id, 'transfer']" class="btn" *gggsHasPermission="'employee.employment.manage'">
+            Transfer
+          </a>
+          <a [routerLink]="['/employees', employee.id, 'promote']" class="btn" *gggsHasPermission="'employee.employment.manage'">
+            Promote
+          </a>
+          <a [routerLink]="['/employees', employee.id, 'change-manager']" class="btn" *gggsHasPermission="'employee.employment.manage'">
+            Change manager
+          </a>
+        }
         @if (employee.status === 'PreBoarding' || employee.status === 'Probation') {
           <a [routerLink]="['/employees', employee.id, 'confirm']" class="btn" *gggsHasPermission="'employee.employment.manage'">
             Confirm
           </a>
+        }
+        @if (employee.status !== 'OnNotice' && employee.status !== 'Exited' && employee.status !== 'Absconded') {
+          <button
+            type="button"
+            class="btn"
+            *gggsHasPermission="'employee.employment.manage'"
+            [disabled]="isActing()"
+            (click)="serveNotice()"
+          >
+            Serve notice
+          </button>
         }
         @if (employee.status !== 'Exited' && employee.status !== 'Absconded') {
           <a [routerLink]="['/employees', employee.id, 'exit']" class="btn btn--danger" *gggsHasPermission="'employee.exit.manage'">
             Record exit
           </a>
         }
+        @if (employee.status === 'Exited' || employee.status === 'Absconded') {
+          <a [routerLink]="['/employees', employee.id, 'rehire']" class="btn btn--primary" *gggsHasPermission="'employee.employment.manage'">
+            Rehire
+          </a>
+        }
       </gggs-page-header>
+
+      @if (actionError()) {
+        <p class="field__error" role="alert">{{ actionError() }}</p>
+      }
 
       <section class="panel">
         <h2 class="panel__heading">Profile</h2>
@@ -161,16 +189,36 @@ import { EmployeesApi } from '../data/employees-api';
       align-items: center;
       padding: 0.5rem 1rem;
       font-weight: 600;
+      font-family: inherit;
+      font-size: inherit;
       border-radius: 0.375rem;
       border: 1px solid var(--gggs-color-border, #e2e5ea);
       background: var(--gggs-color-surface-raised, #ffffff);
       text-decoration: none;
       color: inherit;
+      cursor: pointer;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
 
     .btn--danger {
       border-color: var(--gggs-color-danger, #b3261e);
       color: var(--gggs-color-danger, #b3261e);
+    }
+
+    .btn--primary {
+      background: var(--gggs-color-primary, #2f5fd6);
+      border-color: transparent;
+      color: #fff;
+    }
+
+    .field__error {
+      margin: 0 0 1rem;
+      color: var(--gggs-color-danger, #b3261e);
+      font-size: 0.875rem;
     }
   `,
 })
@@ -182,6 +230,8 @@ export class EmployeeDetailPage {
   protected readonly isLoading = signal(true);
   protected readonly employee = signal<Employee | null>(null);
   protected readonly history = signal<readonly EmploymentRecord[]>([]);
+  protected readonly isActing = signal(false);
+  protected readonly actionError = signal<string | null>(null);
 
   constructor() {
     void this.load();
@@ -189,6 +239,22 @@ export class EmployeeDetailPage {
 
   protected subtitle(employee: Employee): string {
     return `${employee.employeeCode} · ${employee.status}`;
+  }
+
+  /** The one action this page performs in place - it takes no input, so a whole route would be
+   * a page for a single confirm button. */
+  protected async serveNotice(): Promise<void> {
+    this.isActing.set(true);
+    this.actionError.set(null);
+
+    try {
+      const employee = await this.api.serveNotice(this.id());
+      this.employee.set(employee);
+    } catch {
+      this.actionError.set('This action could not be completed. Please try again.');
+    } finally {
+      this.isActing.set(false);
+    }
   }
 
   private async load(): Promise<void> {

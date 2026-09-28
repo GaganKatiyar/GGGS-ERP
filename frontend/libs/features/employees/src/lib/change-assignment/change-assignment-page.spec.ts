@@ -1,8 +1,8 @@
 import { ApiError } from '@gggs/core/http';
 import { describe, expect, it } from 'vitest';
-import { describeError } from './transfer-employee-page';
+import { describeError } from './change-assignment-page';
 
-describe('describeError (transfer)', () => {
+describe('describeError (transfer/promote)', () => {
   it('explains reporting-to-self in plain language, matching EmploymentRecord.Create\'s own guard', () => {
     expect(
       describeError(
@@ -25,7 +25,7 @@ describe('describeError (transfer)', () => {
 
   it('falls back to a generic message for anything else', () => {
     expect(describeError(new Error('network down'))).toBe(
-      'The transfer could not be completed. Please try again.',
+      'The change could not be completed. Please try again.',
     );
   });
 });

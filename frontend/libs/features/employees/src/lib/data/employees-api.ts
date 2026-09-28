@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type {
   ChangeAssignmentRequest,
+  ChangeReportingManagerRequest,
   ConfirmEmployeeRequest,
   Employee,
   EmployeeListItem,
@@ -9,6 +10,7 @@ import type {
   ExitEmployeeRequest,
   HireEmployeeRequest,
   PagedResult,
+  RehireEmployeeRequest,
 } from '@gggs/shared/models';
 import { firstValueFrom } from 'rxjs';
 
@@ -77,6 +79,21 @@ export class EmployeesApi {
   exit(id: string, request: ExitEmployeeRequest): Promise<Employee> {
     return firstValueFrom(
       this.http.post<Employee>(`/api/v1/employees/${id}/exit`, request),
+    );
+  }
+
+  rehire(id: string, request: RehireEmployeeRequest): Promise<Employee> {
+    return firstValueFrom(
+      this.http.post<Employee>(`/api/v1/employees/${id}/rehire`, request),
+    );
+  }
+
+  changeManager(
+    id: string,
+    request: ChangeReportingManagerRequest,
+  ): Promise<EmploymentRecord> {
+    return firstValueFrom(
+      this.http.post<EmploymentRecord>(`/api/v1/employees/${id}/change-manager`, request),
     );
   }
 }

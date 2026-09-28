@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
@@ -8,18 +8,20 @@ import { EmployeesApi } from '../data/employees-api';
 import { AssignmentFields } from '../shared/assignment-fields';
 
 /**
- * Transferring an employee: a new organizational assignment effective a chosen date.
+ * A new organizational assignment, effective a chosen date - what "transfer" and "promote" both
+ * are, on the server (`EmployeeService.ChangeAssignmentAsync`) and here.
  *
- * The same form and the same endpoint pattern covers a promotion too - the difference is which
- * fields the person actually changes, not a different screen - but this page only wires up
- * `/transfer`, since that is the one action the detail page currently offers a link to.
+ * One component rather than two near-identical ones: the only real difference between them is
+ * which endpoint is called and what the page is titled, both of which come from the route's own
+ * `data.mode` (bound as an input by the same `withComponentInputBinding()` that binds the `id`
+ * path parameter - see `app.config.ts`).
  */
 @Component({
-  selector: 'gggs-transfer-employee-page',
+  selector: 'gggs-change-assignment-page',
   imports: [ReactiveFormsModule, RouterLink, PageHeader, AssignmentFields],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <gggs-page-header title="Transfer employee" subtitle="Opens a new employment record effective the chosen date.">
+    <gggs-page-header [title]="title()" subtitle="Opens a new employment record effective the chosen date.">
       <a [routerLink]="['/employees', id()]" class="btn">Cancel</a>
     </gggs-page-header>
 
@@ -41,7 +43,7 @@ import { AssignmentFields } from '../shared/assignment-fields';
       }
 
       <button type="submit" class="btn btn--primary" [disabled]="isSaving()">
-        {{ isSaving() ? 'Saving…' : 'Transfer' }}
+        {{ isSaving() ? 'Saving…' : submitLabel() }}
       </button>
     </form>
   `,
@@ -99,12 +101,20 @@ import { AssignmentFields } from '../shared/assignment-fields';
     }
   `,
 })
-export class TransferEmployeePage {
+export class ChangeAssignmentPage {
   private readonly api = inject(EmployeesApi);
   private readonly formBuilder = inject(FormBuilder);
   private readonly router = inject(Router);
 
   readonly id = input.required<string>();
+  readonly mode = input.required<'transfer' | 'promote'>();
+
+  protected readonly title = computed(() =>
+    this.mode() === 'promote' ? 'Promote employee' : 'Transfer employee',
+  );
+  protected readonly submitLabel = computed(() =>
+    this.mode() === 'promote' ? 'Promote' : 'Transfer',
+  );
 
   protected readonly isSaving = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
@@ -135,23 +145,28 @@ export class TransferEmployeePage {
     this.errorMessage.set(null);
 
     const value = this.form.getRawValue();
+    const request = {
+      effectiveFrom: value.effectiveFrom ?? '',
+      reason: value.reason || undefined,
+      assignment: {
+        legalEntityId: value.assignment.legalEntityId ?? '',
+        branchId: value.assignment.branchId ?? '',
+        departmentId: value.assignment.departmentId ?? '',
+        designationId: value.assignment.designationId ?? '',
+        gradeId: value.assignment.gradeId || undefined,
+        costCenterId: value.assignment.costCenterId || undefined,
+        reportingManagerId: value.assignment.reportingManagerId || undefined,
+        employmentType: (value.assignment.employmentType ?? 'Permanent') as EmploymentType,
+        probationEndDate: value.assignment.probationEndDate || undefined,
+      },
+    };
 
     try {
-      await this.api.transfer(this.id(), {
-        effectiveFrom: value.effectiveFrom ?? '',
-        reason: value.reason || undefined,
-        assignment: {
-          legalEntityId: value.assignment.legalEntityId ?? '',
-          branchId: value.assignment.branchId ?? '',
-          departmentId: value.assignment.departmentId ?? '',
-          designationId: value.assignment.designationId ?? '',
-          gradeId: value.assignment.gradeId || undefined,
-          costCenterId: value.assignment.costCenterId || undefined,
-          reportingManagerId: value.assignment.reportingManagerId || undefined,
-          employmentType: (value.assignment.employmentType ?? 'Permanent') as EmploymentType,
-          probationEndDate: value.assignment.probationEndDate || undefined,
-        },
-      });
+      if (this.mode() === 'promote') {
+        await this.api.promote(this.id(), request);
+      } else {
+        await this.api.transfer(this.id(), request);
+      }
 
       await this.router.navigate(['/employees', this.id()]);
     } catch (error) {
@@ -177,5 +192,5 @@ export function describeError(error: unknown): string {
     }
   }
 
-  return 'The transfer could not be completed. Please try again.';
+  return 'The change could not be completed. Please try again.';
 }
