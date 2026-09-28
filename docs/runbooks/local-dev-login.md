@@ -6,15 +6,16 @@ none of them are needed to reach a sign-in page and see the app shell.
 
 ## What this does and does not cover
 
-**Covers**: signing in as a tenant administrator and seeing the app shell, dashboard and
-navigation with a full permission set.
+**Covers**: signing in as a tenant administrator and using the app shell, dashboard,
+Organization screens (legal entities, branches, departments, designations, grades, cost centers)
+and Employee screens (directory, hire, transfer, confirm, exit) with a full permission set.
 
-**Does not cover**: Organization or Employee screens. The `employees` route exists in
-`app.routes.ts` but currently loads the dashboard's routes as a placeholder - there is no
-dedicated feature library for either module yet (`frontend/libs/features/` only has `dashboard`).
-The backend for both (§ Core HR in `docs/architecture/architecture.md`) is built and tested through
-its own API and Swagger/OpenAPI; this runbook only gets you to the point of an authenticated
-browser session.
+**Does not cover**: Promote, serve-notice, rehire and change-manager have no screen yet -
+`EmployeesApi` has the methods, but nothing routes to them (transfer and confirm/exit already
+demonstrate the same two patterns - effective-dating and a terminal state - so the remaining
+actions are lower priority). Business units and locations have no Organization screen either,
+since neither sits on the hire path. Everything else in the roadmap beyond Core HR (Time, Payroll,
+Talent, …) has no frontend at all yet.
 
 ## One-time setup
 
@@ -22,13 +23,17 @@ browser session.
    test suite uses - see the repository README's prerequisites).
 2. `npm ci` inside `frontend/` if you have not already.
 
-## Every time: three terminals + one seed command
+## Every time: four terminals + one seed command
 
 ```bash
 # 1. Seed a tenant and a tenant-admin account directly in the databases (creates them if they
 #    do not exist, applies migrations, and is safe to re-run - it leaves an existing tenant/user
-#    alone rather than erroring).
+#    alone rather than erroring). Only covers Platform and Identity - see the next step for CoreHr.
 dotnet run --project tools/DevSeed -- acme admin@acme.example "Passw0rd!2026"
+
+# CoreHr's own database needs its migrations applied once too (DevSeed does not touch it):
+dotnet ef database update --project backend/Services/CoreHr/Gggs.CoreHr.Infrastructure \
+  --startup-project backend/Services/CoreHr/Gggs.CoreHr.Infrastructure
 
 # 2. Platform (terminal 1)
 cd backend/Services/Platform/Gggs.Platform.Api
@@ -38,11 +43,15 @@ ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5102 dotnet 
 cd backend/Services/Identity/Gggs.Identity.Api
 ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5101 dotnet run
 
-# 4. Gateway (terminal 3)
+# 4. Core HR - organization and employees (terminal 3)
+cd backend/Services/CoreHr/Gggs.CoreHr.Api
+ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5103 dotnet run
+
+# 5. Gateway (terminal 4)
 cd backend/Gateway/Gggs.Gateway.Bff
 ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5100 dotnet run
 
-# 5. Angular (terminal 4)
+# 6. Angular (terminal 5)
 cd frontend
 npx nx serve hrms-web
 ```
@@ -111,3 +120,16 @@ talking to each other, surfaced three things nothing had exercised before:
 
 None of these needed RabbitMQ, Redis or Docker - they were reachable the moment two real HTTP
 processes actually talked to each other, which nothing before this had done.
+
+A second pass, once the Organization and Employee screens above existed to actually drive it,
+surfaced two more:
+
+4. **The gateway had no route for Core HR at all** - only Identity and Platform were proxied.
+   Every org/employee endpoint was reachable directly against `CoreHr.Api`'s own port (which is
+   all its own integration tests ever do) but not through the gateway, which is the only door the
+   browser has. Fixed with a `corehr` cluster and one route per resource prefix in
+   `Gggs.Gateway.Bff/appsettings.json`.
+5. **`gggs-data-table`'s PrimeNG bindings failed AOT compilation** the first time an app actually
+   used the component (`[value]`/`[columns]` are typed as mutable arrays; the component's own
+   `rows()`/`visibleColumns()` returned `readonly T[]`). Nothing had used it outside its own lib
+   before the Employee and Legal Entity list screens did. Fixed with `.slice()` copies.
