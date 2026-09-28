@@ -15,10 +15,13 @@ settings. **Audit v1** is also built: every tenant-owned entity change is staged
 `AuditEntryIntegrationEvent` in the writing service's own outbox
 (`TenantAuditSaveChangesInterceptor`), `Gggs.Platform.Worker` consumes it into `platform.AuditLog`,
 and tenant admins/auditors read it back through `GET /api/v1/audit/logs` (no frontend viewer yet).
-332 backend tests and 61 frontend tests pass. See
+**Document v1** is also built: a new `Gggs.Documents` service (`doc.DocumentType`/`doc.Document`)
+handles upload, list-by-owner, download and delete through `IFileStorage` (the local file-share
+adapter locally; Azure Blob in the cloud profile), gated by `document.file.*` permissions - no
+malware scanning yet (nothing populates `ScanStatus` beyond `Skipped`), no re-upload-as-new-version,
+and no frontend screen. 351 backend tests and 61 frontend tests pass. See
 [docs/runbooks/local-dev-login.md](docs/runbooks/local-dev-login.md) to run the whole stack and
-sign in. Still ahead in Phase 1: Document v1 and Notification v1 (neither exists as a backend
-service yet).
+sign in. Still ahead in Phase 1: Notification v1 (does not exist as a backend service yet).
 
 Known gaps: the Bicep templates are unvalidated and still need private endpoints and Front Door
 (see [infra/README.md](infra/README.md)); `dotnet test` cannot run the suites on this SDK (see

@@ -15,7 +15,9 @@ permissions), and tenant settings (a raw module + key + JSON editor - no module 
 settings schema yet) with a full permission set.
 
 **Does not cover**: Business units and locations have no Organization screen, since neither sits
-on the hire path. Everything else in the roadmap beyond Core HR and Identity (Time, Payroll,
+on the hire path. The audit log and the Documents service (upload/list/download/delete) are both
+reachable through the gateway but have no frontend screen yet - exercise them with `curl` or the
+OpenAPI page. Everything else in the roadmap beyond Core HR and Identity (Time, Payroll,
 Talent, …) has no
 frontend at all yet.
 
@@ -25,17 +27,21 @@ frontend at all yet.
    test suite uses - see the repository README's prerequisites).
 2. `npm ci` inside `frontend/` if you have not already.
 
-## Every time: four terminals + one seed command
+## Every time: six terminals + one seed command
 
 ```bash
 # 1. Seed a tenant and a tenant-admin account directly in the databases (creates them if they
 #    do not exist, applies migrations, and is safe to re-run - it leaves an existing tenant/user
-#    alone rather than erroring). Only covers Platform and Identity - see the next step for CoreHr.
+#    alone rather than erroring). Only covers Platform and Identity - see the next step for the
+#    other two databases.
 dotnet run --project tools/DevSeed -- acme admin@acme.example "Passw0rd!2026"
 
-# CoreHr's own database needs its migrations applied once too (DevSeed does not touch it):
+# CoreHr's and the Documents service's own databases need their migrations applied once too
+# (DevSeed does not touch either):
 dotnet ef database update --project backend/Services/CoreHr/Gggs.CoreHr.Infrastructure \
   --startup-project backend/Services/CoreHr/Gggs.CoreHr.Infrastructure
+dotnet ef database update --project backend/Services/Documents/Gggs.Documents.Infrastructure \
+  --startup-project backend/Services/Documents/Gggs.Documents.Infrastructure
 
 # 2. Platform (terminal 1)
 cd backend/Services/Platform/Gggs.Platform.Api
@@ -49,11 +55,15 @@ ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5101 dotnet 
 cd backend/Services/CoreHr/Gggs.CoreHr.Api
 ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5103 dotnet run
 
-# 5. Gateway (terminal 4)
+# 5. Documents - upload, list, download, delete (terminal 4)
+cd backend/Services/Documents/Gggs.Documents.Api
+ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5104 dotnet run
+
+# 6. Gateway (terminal 5)
 cd backend/Gateway/Gggs.Gateway.Bff
 ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5100 dotnet run
 
-# 6. Angular (terminal 5)
+# 7. Angular (terminal 6)
 cd frontend
 npx nx serve hrms-web
 ```

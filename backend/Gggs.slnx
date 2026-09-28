@@ -30,6 +30,12 @@
     <Project Path="Services/CoreHr/Gggs.CoreHr.Domain/Gggs.CoreHr.Domain.csproj" />
     <Project Path="Services/CoreHr/Gggs.CoreHr.Infrastructure/Gggs.CoreHr.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/Services/Documents/">
+    <Project Path="Services/Documents/Gggs.Documents.Api/Gggs.Documents.Api.csproj" />
+    <Project Path="Services/Documents/Gggs.Documents.Application/Gggs.Documents.Application.csproj" />
+    <Project Path="Services/Documents/Gggs.Documents.Domain/Gggs.Documents.Domain.csproj" />
+    <Project Path="Services/Documents/Gggs.Documents.Infrastructure/Gggs.Documents.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/Services/Platform/">
     <Project Path="Services/Platform/Gggs.Platform.Api/Gggs.Platform.Api.csproj" />
     <Project Path="Services/Platform/Gggs.Platform.Application/Gggs.Platform.Application.csproj" />
@@ -43,12 +49,14 @@
   </Folder>
   <Project Path="../tests/Gggs.Architecture.Tests/Gggs.Architecture.Tests.csproj" />
   <Project Path="../tests/Gggs.CoreHr.IntegrationTests/Gggs.CoreHr.IntegrationTests.csproj" />
+  <Project Path="../tests/Gggs.Documents.IntegrationTests/Gggs.Documents.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Gateway.IntegrationTests/Gggs.Gateway.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Identity.IntegrationTests/Gggs.Identity.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Platform.IntegrationTests/Gggs.Platform.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.TenantIsolation.Tests/Gggs.TenantIsolation.Tests.csproj" />
   <Project Path="../tests/unit/Gggs.BuildingBlocks.UnitTests/Gggs.BuildingBlocks.UnitTests.csproj" />
   <Project Path="../tests/unit/Gggs.CoreHr.UnitTests/Gggs.CoreHr.UnitTests.csproj" />
+  <Project Path="../tests/unit/Gggs.Documents.UnitTests/Gggs.Documents.UnitTests.csproj" />
   <Project Path="../tests/unit/Gggs.Identity.UnitTests/Gggs.Identity.UnitTests.csproj" />
   <Project Path="../tests/unit/Gggs.Platform.UnitTests/Gggs.Platform.UnitTests.csproj" />
 </Solution>
