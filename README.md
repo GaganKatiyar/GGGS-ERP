@@ -9,11 +9,12 @@ The architecture this is built from lives in
 
 **Status: Phase 1 well under way.** Platform (tenants), Identity (users, roles, local sign-in) and
 Core HR (organization structure, employees) are built and tested end to end, including a working
-BFF gateway and Angular screens for Organization and the full Employee lifecycle. 323 backend
-tests and 51 frontend tests pass. See
+BFF gateway and Angular screens for Organization, the full Employee lifecycle, and Users/Roles
+administration (invite, complete-invitation, role permission editor). 323 backend tests and 57
+frontend tests pass. See
 [docs/runbooks/local-dev-login.md](docs/runbooks/local-dev-login.md) to run the whole stack and
-sign in. Still ahead in Phase 1: Document v1, Notification v1, Audit v1, and admin screens for
-users/roles.
+sign in. Still ahead in Phase 1: Document v1, Notification v1, Audit v1, and a tenant-settings
+admin screen.
 
 Known gaps: the Bicep templates are unvalidated and still need private endpoints and Front Door
 (see [infra/README.md](infra/README.md)); `dotnet test` cannot run the suites on this SDK (see

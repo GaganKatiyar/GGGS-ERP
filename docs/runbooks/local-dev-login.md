@@ -7,12 +7,15 @@ none of them are needed to reach a sign-in page and see the app shell.
 ## What this does and does not cover
 
 **Covers**: signing in as a tenant administrator and using the app shell, dashboard,
-Organization screens (legal entities, branches, departments, designations, grades, cost centers)
-and the full Employee lifecycle (directory, hire, transfer, promote, change manager, confirm,
-serve notice, exit, rehire) with a full permission set.
+Organization screens (legal entities, branches, departments, designations, grades, cost centers),
+the full Employee lifecycle (directory, hire, transfer, promote, change manager, confirm, serve
+notice, exit, rehire), and user/role administration (invite a user, complete their invitation from
+the link it hands back, enable/disable/unlock, manage their roles, create a role and grant/revoke
+its permissions) with a full permission set.
 
 **Does not cover**: Business units and locations have no Organization screen, since neither sits
-on the hire path. Everything else in the roadmap beyond Core HR (Time, Payroll, Talent, …) has no
+on the hire path. Tenant settings have no screen (`/admin/settings` is in the nav but unbuilt).
+Everything else in the roadmap beyond Core HR and Identity (Time, Payroll, Talent, …) has no
 frontend at all yet.
 
 ## One-time setup
@@ -131,3 +134,15 @@ surfaced two more:
    used the component (`[value]`/`[columns]` are typed as mutable arrays; the component's own
    `rows()`/`visibleColumns()` returned `readonly T[]`). Nothing had used it outside its own lib
    before the Employee and Legal Entity list screens did. Fixed with `.slice()` copies.
+
+A third pass, building the Admin (users/roles) screens, surfaced two more of the same shape:
+
+6. **`GET /api/v1/users/{id}/roles` did not exist.** `PUT .../roles` replaces a user's roles
+   wholesale - there is no "add one role" endpoint - so a roles editor had no way to know what was
+   already granted before it saved, which is exactly the kind of screen that clears access on
+   first use rather than the second. Added, reusing the same
+   `IRoleRepository.GetGrantsForUserAsync` the set-roles path already calls.
+7. **The gateway never routed `/api/v1/auth/*` at all.** Identity's sign-in cookie flow and the
+   BFF's own `/bff/login` never needed it, so nobody noticed that `complete-invitation`
+   (deliberately `AllowAnonymous`, deliberately outside the BFF's OIDC exchange) had no path
+   through the one door the browser has. Same shape as gap 4 above.
