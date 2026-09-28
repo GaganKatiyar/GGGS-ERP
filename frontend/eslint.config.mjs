@@ -73,6 +73,8 @@ export default [
                 'scope:core',
                 'scope:shared',
                 'scope:dashboard',
+                'scope:organization',
+                'scope:employees',
               ],
             },
             {
@@ -90,6 +92,25 @@ export default [
                 'scope:core',
                 'scope:shared',
                 'scope:dashboard',
+              ],
+            },
+            {
+              sourceTag: 'scope:organization',
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:shared',
+                'scope:organization',
+              ],
+            },
+            {
+              // Employees depends on organization's *types* only through shared (see
+              // libs/shared/models) - hiring needs a department id, not the organization feature's
+              // screens, so this stays a one-way boundary rather than a feature-to-feature import.
+              sourceTag: 'scope:employees',
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:shared',
+                'scope:employees',
               ],
             },
           ],

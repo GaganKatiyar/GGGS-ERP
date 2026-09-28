@@ -76,7 +76,7 @@ export interface DataTableQuery {
       </ng-template>
 
       <ng-template #body let-row let-columns="columns">
-        <tr>
+        <tr (click)="rowClick.emit(row)">
           @for (column of columns; track column.field) {
             <td [style.text-align]="column.align ?? 'left'">
               {{ row[column.field] }}
@@ -97,6 +97,12 @@ export interface DataTableQuery {
       </ng-template>
     </p-table>
   `,
+  styles: `
+    /* Harmless when nobody listens to (rowClick) - just an inert hover on an inert row. */
+    :host ::ng-deep .p-datatable-tbody > tr {
+      cursor: pointer;
+    }
+  `,
 })
 export class DataTable<T extends { id: string }> {
   readonly result = input<PagedResult<T> | null>(null);
@@ -109,9 +115,11 @@ export class DataTable<T extends { id: string }> {
    * Columns the caller has already filtered by permission. Filtering happens in the feature, which
    * knows which permission guards which field.
    */
-  readonly visibleColumns = computed(() => this.columns());
+  // PrimeNG's own [value]/[columns] inputs are typed as mutable arrays; .slice() copies rather
+  // than casts, so a caller's readonly array can never actually be mutated out from under it.
+  readonly visibleColumns = computed(() => this.columns().slice());
 
-  readonly rows = computed(() => this.result()?.items ?? []);
+  readonly rows = computed(() => (this.result()?.items ?? []).slice());
   readonly pageSize = computed(() => this.result()?.pageSize ?? 25);
 
   /**
@@ -130,6 +138,9 @@ export class DataTable<T extends { id: string }> {
   });
 
   readonly queryChange = output<DataTableQuery>();
+
+  /** Emits the row's own data when a row is clicked. A caller with no detail screen can ignore it. */
+  readonly rowClick = output<T>();
 
   protected handleLazyLoad(event: TableLazyLoadEvent): void {
     const pageSize = event.rows ?? this.pageSize();

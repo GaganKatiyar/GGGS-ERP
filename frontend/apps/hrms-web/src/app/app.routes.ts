@@ -32,10 +32,18 @@ export const appRoutes: Route[] = [
           import('@gggs/features/dashboard').then((m) => m.DASHBOARD_ROUTES),
       },
       {
+        path: 'org',
+        ...withPermissions(['org.structure.view']),
+        loadChildren: () =>
+          import('@gggs/features/organization').then(
+            (m) => m.ORGANIZATION_ROUTES,
+          ),
+      },
+      {
         path: 'employees',
         ...withPermissions(['employee.profile.view']),
         loadChildren: () =>
-          import('@gggs/features/dashboard').then((m) => m.DASHBOARD_ROUTES),
+          import('@gggs/features/employees').then((m) => m.EMPLOYEES_ROUTES),
       },
       {
         path: 'forbidden',

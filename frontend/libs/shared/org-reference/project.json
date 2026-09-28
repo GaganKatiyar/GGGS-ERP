@@ -1,0 +1,20 @@
+{
+  "name": "shared-org-reference",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/shared/org-reference/src",
+  "prefix": "gggs",
+  "projectType": "library",
+  "tags": ["type:data-access", "scope:shared"],
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "coverage/libs/shared/org-reference"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

@@ -170,6 +170,12 @@ export const NAVIGATION: readonly NavItem[] = [
         route: '/org/grades',
         permissions: ['org.structure.view'],
       },
+      {
+        label: 'Cost centers',
+        icon: 'pi pi-wallet',
+        route: '/org/cost-centers',
+        permissions: ['org.structure.view'],
+      },
     ],
   },
   {
