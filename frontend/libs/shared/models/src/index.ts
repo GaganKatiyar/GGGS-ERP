@@ -4,3 +4,4 @@ export * from './lib/organization.models';
 export * from './lib/employee.models';
 export * from './lib/admin.models';
 export * from './lib/document.models';
+export * from './lib/audit.models';

@@ -235,6 +235,7 @@ export const NAVIGATION: readonly NavItem[] = [
       'admin.role.view',
       'admin.setting.view',
       'document.file.view',
+      'audit.log.view',
     ],
     children: [
       {

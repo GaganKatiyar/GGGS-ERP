@@ -64,6 +64,7 @@ export const appRoutes: Route[] = [
           'admin.role.view',
           'admin.setting.view',
           'document.file.view',
+          'audit.log.view',
         ]),
         loadChildren: () =>
           import('@gggs/features/admin').then((m) => m.ADMIN_ROUTES),

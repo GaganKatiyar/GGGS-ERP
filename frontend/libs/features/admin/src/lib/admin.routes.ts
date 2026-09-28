@@ -7,6 +7,7 @@ import { RoleDetailPage } from './roles/role-detail-page';
 import { RoleListPage } from './roles/role-list-page';
 import { TenantSettingsPage } from './settings/tenant-settings-page';
 import { DocumentTypesPage } from './documents/document-types-page';
+import { AuditLogPage } from './audit/audit-log-page';
 
 /** Lazily loaded by the shell at `/admin/*`; see `NAVIGATION`'s "Administration" entry. */
 export const ADMIN_ROUTES: Routes = [
@@ -52,5 +53,11 @@ export const ADMIN_ROUTES: Routes = [
     component: DocumentTypesPage,
     title: 'Document types',
     ...withPermissions(['document.file.view']),
+  },
+  {
+    path: 'audit',
+    component: AuditLogPage,
+    title: 'Audit log',
+    ...withPermissions(['audit.log.view']),
   },
 ];

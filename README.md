@@ -31,10 +31,11 @@ configured. `Gggs.Notification.Worker` is its first real consumer:
 buffer nothing drained) now reaches an actual "welcome, set your password" notification. A user's
 own inbox (`GET /api/v1/notifications`, mark read/read-all, unread count) and template
 administration are both built; no frontend screen, no SMS/WhatsApp/push (Phase 1's own scope is
-email + in-app only), no delivery-webhook tracking. 388 backend tests and 61 frontend tests pass.
-See [docs/runbooks/local-dev-login.md](docs/runbooks/local-dev-login.md) to run the whole stack and
-sign in. Every Phase 1 backend service from the roadmap now exists; what is left in Phase 1 is the
-audit log and notification-inbox frontend screens, and the Business units/locations Organization
+email + in-app only), no delivery-webhook tracking. The audit log now has a frontend screen too
+(`/admin/audit` - filters plus an old/new value diff view). 388 backend tests and 61 frontend
+tests pass. See [docs/runbooks/local-dev-login.md](docs/runbooks/local-dev-login.md) to run the
+whole stack and sign in. Every Phase 1 backend service from the roadmap now exists; what is left in
+Phase 1 is the notification-inbox frontend screen and the Business units/locations Organization
 screens.
 
 Known gaps: the Bicep templates are unvalidated and still need private endpoints and Front Door

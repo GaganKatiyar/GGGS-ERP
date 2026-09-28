@@ -11,17 +11,18 @@ Organization screens (legal entities, branches, departments, designations, grade
 the full Employee lifecycle (directory, hire, transfer, promote, change manager, confirm, serve
 notice, exit, rehire), employee documents (upload, download, delete, from a new section on the
 Employee detail page), document type administration (`/admin/document-types` - create one before
-anything can be uploaded anywhere), user/role administration (invite a user, complete their
-invitation from the link it hands back, enable/disable/unlock, manage their roles, create a role
-and grant/revoke its permissions), and tenant settings (a raw module + key + JSON editor - no
-module has a defined settings schema yet) with a full permission set. `tools/DevSeed`'s seeded
-admin now holds the document, audit and notification permissions too, so all of this is reachable
-without hand-editing a role.
+anything can be uploaded anywhere), the audit log (`/admin/audit` - filter by entity type/id,
+action, service and date range; click a row for the old/new value diff), user/role administration
+(invite a user, complete their invitation from the link it hands back, enable/disable/unlock,
+manage their roles, create a role and grant/revoke its permissions), and tenant settings (a raw
+module + key + JSON editor - no module has a defined settings schema yet) with a full permission
+set. `tools/DevSeed`'s seeded admin now holds the document, audit and notification permissions
+too, so all of this is reachable without hand-editing a role.
 
 **Does not cover**: Business units and locations have no Organization screen, since neither sits
-on the hire path. The audit log and the Notification service (a user's own inbox, template
-administration) are both reachable through the gateway but have no frontend screen yet - exercise
-them with `curl` or the OpenAPI page. Everything else in the roadmap beyond Core HR and Identity
+on the hire path. The Notification service (a user's own inbox, template administration) is
+reachable through the gateway but has no frontend screen yet - exercise it with `curl` or the
+OpenAPI page. Everything else in the roadmap beyond Core HR and Identity
 (Time, Payroll, Talent, …) has no frontend at all yet.
 
 ## One-time setup
