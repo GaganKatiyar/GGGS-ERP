@@ -1,4 +1,5 @@
 using Gggs.BuildingBlocks.Application;
+using Gggs.BuildingBlocks.Application.Hosting;
 using Gggs.BuildingBlocks.Domain.Abstractions;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Persistence.Interceptors;
@@ -112,7 +113,11 @@ static async Task SeedTenantAdminAsync(string connectionString, Guid tenantId, s
         .UseSqlServer(connectionString)
         .AddInterceptors(
             new TenantSessionContextInterceptor(tenantScopedContext),
-            new TenantAuditSaveChangesInterceptor(tenantScopedContext, new SeedActor(), TimeProvider.System))
+            new TenantAuditSaveChangesInterceptor(
+                tenantScopedContext,
+                new SeedActor(),
+                new GggsPlatformOptions { ServiceName = "identity" },
+                TimeProvider.System))
         .Options;
 
     await using var db = new IdentityDbContext(writeOptions, tenantScopedContext);

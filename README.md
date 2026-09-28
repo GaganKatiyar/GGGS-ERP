@@ -11,15 +11,21 @@ The architecture this is built from lives in
 Core HR (organization structure, employees) are built and tested end to end, including a working
 BFF gateway and a full Angular admin console: Organization, the complete Employee lifecycle,
 Users/Roles administration (invite, complete-invitation, role permission editor), and tenant
-settings. 323 backend tests and 61 frontend tests pass. See
+settings. **Audit v1** is also built: every tenant-owned entity change is staged as an
+`AuditEntryIntegrationEvent` in the writing service's own outbox
+(`TenantAuditSaveChangesInterceptor`), `Gggs.Platform.Worker` consumes it into `platform.AuditLog`,
+and tenant admins/auditors read it back through `GET /api/v1/audit/logs` (no frontend viewer yet).
+332 backend tests and 61 frontend tests pass. See
 [docs/runbooks/local-dev-login.md](docs/runbooks/local-dev-login.md) to run the whole stack and
-sign in. Still ahead in Phase 1: Document v1, Notification v1 and Audit v1 (none of which exist as
-backend services yet).
+sign in. Still ahead in Phase 1: Document v1 and Notification v1 (neither exists as a backend
+service yet).
 
 Known gaps: the Bicep templates are unvalidated and still need private endpoints and Front Door
 (see [infra/README.md](infra/README.md)); `dotnet test` cannot run the suites on this SDK (see
-below); the async tenant-provisioning saga (Platform → RabbitMQ → Identity.Worker) is built but
-not exercised by the local-dev-login path, which seeds directly instead.
+below); the async tenant-provisioning saga (Platform → RabbitMQ → Identity.Worker) and audit
+capture (any service → RabbitMQ → `Platform.Worker`) are both built but need a running broker,
+so neither is exercised by the local-dev-login path - see that runbook for what does and does not
+reach `platform.AuditLog` without one.
 
 ## Prerequisites
 

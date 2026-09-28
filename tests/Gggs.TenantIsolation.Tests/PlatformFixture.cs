@@ -1,4 +1,5 @@
 using Gggs.BuildingBlocks.Application;
+using Gggs.BuildingBlocks.Application.Hosting;
 using Gggs.BuildingBlocks.Caching;
 using Gggs.BuildingBlocks.Domain.Abstractions;
 using Gggs.BuildingBlocks.MultiTenancy;
@@ -95,7 +96,11 @@ public sealed class PlatformFixture : IAsyncLifetime
             .UseSqlServer(ConnectionString)
             .AddInterceptors(
                 new TenantSessionContextInterceptor(tenantContext),
-                new TenantAuditSaveChangesInterceptor(tenantContext, new TestUser(), TimeProvider.System))
+                new TenantAuditSaveChangesInterceptor(
+                    tenantContext,
+                    new TestUser(),
+                    new GggsPlatformOptions { ServiceName = "platform" },
+                    TimeProvider.System))
             .Options;
 
         return new PlatformDbContext(options, tenantContext);

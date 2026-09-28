@@ -1,4 +1,5 @@
 using Gggs.BuildingBlocks.Application;
+using Gggs.BuildingBlocks.Application.Hosting;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Persistence.Interceptors;
 using Gggs.Sample.Api.Infrastructure;
@@ -100,6 +101,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
                 new TenantAuditSaveChangesInterceptor(
                     tenantContext,
                     currentUser ?? new SystemCurrentUserStub(),
+                    new GggsPlatformOptions { ServiceName = "sample" },
                     TimeProvider.System))
             .Options;
 

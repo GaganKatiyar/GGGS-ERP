@@ -1,6 +1,7 @@
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Persistence;
+using Gggs.Platform.Domain.Audit;
 using Gggs.Platform.Domain.Subscriptions;
 using Gggs.Platform.Domain.Tenants;
 using Microsoft.EntityFrameworkCore;
@@ -35,6 +36,8 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
     public DbSet<TenantSetting> TenantSettings => Set<TenantSetting>();
 
     public DbSet<TenantDatabase> TenantDatabases => Set<TenantDatabase>();
+
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -145,6 +148,26 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
             entity.HasIndex(database => new { database.TenantId, database.ServiceName })
                 .HasDatabaseName("UX_TenantDatabase_TenantId_ServiceName")
                 .IsUnique();
+        });
+
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.ToTable("AuditLog", table => table.HasComment(
+                "Append-only. Fed exclusively by AuditEntryConsumer; nothing else writes here."));
+            entity.Property(log => log.Service).HasMaxLength(50).IsRequired();
+            entity.Property(log => log.Action).HasMaxLength(30).IsRequired();
+            entity.Property(log => log.EntityType).HasMaxLength(200).IsRequired();
+            entity.Property(log => log.EntityId).HasMaxLength(100).IsRequired();
+            entity.Property(log => log.CorrelationId).HasMaxLength(100);
+
+            // The log viewer's two access paths: "everything about this record" and "everything
+            // in this window", both always scoped to one tenant first.
+            entity.HasIndex(log => new { log.TenantId, log.EntityType, log.EntityId, log.OccurredDate })
+                .HasDatabaseName("IX_AuditLog_TenantId_EntityType_EntityId_OccurredDate");
+            entity.HasIndex(log => new { log.TenantId, log.OccurredDate })
+                .HasDatabaseName("IX_AuditLog_TenantId_OccurredDate");
+
+            entity.Ignore(log => log.DomainEvents);
         });
 
         modelBuilder.AddGggsMessagingModel();

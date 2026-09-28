@@ -36,6 +36,7 @@
     <Project Path="Services/Platform/Gggs.Platform.Contracts/Gggs.Platform.Contracts.csproj" />
     <Project Path="Services/Platform/Gggs.Platform.Domain/Gggs.Platform.Domain.csproj" />
     <Project Path="Services/Platform/Gggs.Platform.Infrastructure/Gggs.Platform.Infrastructure.csproj" />
+    <Project Path="Services/Platform/Gggs.Platform.Worker/Gggs.Platform.Worker.csproj" />
   </Folder>
   <Folder Name="/Services/Sample/">
     <Project Path="Services/Sample/Gggs.Sample.Api/Gggs.Sample.Api.csproj" />

@@ -1,4 +1,6 @@
+using Gggs.Platform.Application.Audit;
 using Gggs.Platform.Application.Provisioning;
+using Gggs.Platform.Domain.Audit;
 using Gggs.Platform.Domain.Subscriptions;
 using Gggs.Platform.Domain.Tenants;
 using Microsoft.EntityFrameworkCore;
@@ -39,4 +41,17 @@ public sealed class PlanRepository(PlatformDbContext dbContext) : IPlanRepositor
         string normalized = planCode.Trim().ToUpperInvariant();
         return await dbContext.Plans.FirstOrDefaultAsync(plan => plan.Code == normalized, cancellationToken);
     }
+}
+
+public sealed class AuditLogRepository(PlatformDbContext dbContext) : IAuditLogRepository
+{
+    public async Task<bool> ExistsAsync(Guid auditLogId, CancellationToken cancellationToken = default)
+        // Bypasses the tenant filter deliberately: the consumer runs in the tenant scope the
+        // message named, which already matches, but a redelivery arriving after a tenant switch
+        // bug elsewhere should still be caught by id rather than silently pass a filtered query.
+        => await dbContext.AuditLogs
+            .IgnoreQueryFilters()
+            .AnyAsync(log => log.Id == auditLogId, cancellationToken);
+
+    public void Add(AuditLog auditLog) => dbContext.AuditLogs.Add(auditLog);
 }

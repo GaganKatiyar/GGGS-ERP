@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Platform.Worker</RootNamespace>
+    <UserSecretsId>gggs-platform-worker</UserSecretsId>
+    <Description>Platform's background half: consumes integration events (starting with the audit ledger) and relays its outbox.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Observability\Gggs.BuildingBlocks.Observability.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Secrets\Gggs.BuildingBlocks.Secrets.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Security\Gggs.BuildingBlocks.Security.csproj" />
+    <ProjectReference Include="..\Gggs.Platform.Infrastructure\Gggs.Platform.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

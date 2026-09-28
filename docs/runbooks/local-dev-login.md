@@ -84,6 +84,18 @@ password, in that order) - it provisions whatever you ask for.
   on `localhost` - browsers treat it as a secure context. Using `127.0.0.1` or any other hostname
   instead would break this.
 
+## Why the audit trail stays empty in this setup
+
+Every write through Platform, Identity or Core HR's `Api` process stages an
+`AuditEntryIntegrationEvent` into that service's own outbox (`TenantAuditSaveChangesInterceptor`) -
+that part needs no broker, same as any other outbox write. What turns those staged messages into
+rows a tenant admin can read from `GET /api/v1/audit/logs` is `Gggs.Platform.Worker`, which is a
+`*.Worker` process like `Gggs.Identity.Worker`: it needs RabbitMQ (or Azure Service Bus) reachable,
+same as the tenant-provisioning saga does, and this runbook does not start one. Rows stage; nothing
+consumes them; `audit.AuditLog` (`platform` schema) stays empty until either `Gggs.Platform.Worker`
+runs against a real broker, or a test seeds rows directly the way
+`tests/Gggs.Platform.IntegrationTests/AuditEndpointTests.cs` does.
+
 ## Why this bypasses the async tenant-provisioning saga
 
 The real path is Platform (outbox) → RabbitMQ → `Identity.Worker` → `TenantSeedingService`, which

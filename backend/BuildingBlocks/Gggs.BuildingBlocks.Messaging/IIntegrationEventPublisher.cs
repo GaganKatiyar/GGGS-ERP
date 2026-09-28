@@ -42,8 +42,13 @@ public sealed class OutboxIntegrationEventPublisher(
     /// <summary>
     /// Web defaults, so payloads are camelCase like the APIs. Fixed rather than configurable: the
     /// serialized shape is part of the contract between services.
+    /// <para>
+    /// Public rather than internal: <c>TenantAuditSaveChangesInterceptor</c> (a different
+    /// assembly) serializes <c>AuditEntryIntegrationEvent</c> the same way, and the two must never
+    /// drift - one writes messages this same shape has to deserialize back on the way out.
+    /// </para>
     /// </summary>
-    internal static readonly JsonSerializerOptions SerializerOptions =
+    public static readonly JsonSerializerOptions SerializerOptions =
         new(JsonSerializerDefaults.Web);
 
     public void Publish<TEvent>(TEvent integrationEvent, Guid? causationId = null)
