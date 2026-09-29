@@ -1,9 +1,9 @@
 /**
  * Organization structure, mirroring the DTOs in `Gggs.CoreHr.Api.Endpoints.OrganizationEndpoints`.
  *
- * Only the fields the v1 screens use are modelled - address, geo-fencing, business units and
- * locations exist on the server but have no screen yet, so their request/response shapes are not
- * reproduced here. Add them when the screen that needs them lands, rather than ahead of it.
+ * Only the fields the v1 screens use are modelled - address and geo-fencing exist on the server
+ * but have no screen yet, so their request/response shapes are not reproduced here. Add them when
+ * the screen that needs them lands, rather than ahead of it.
  */
 
 export interface LegalEntityListItem {
@@ -22,6 +22,18 @@ export interface CreateLegalEntityRequest {
   readonly registrationNumber?: string;
 }
 
+export interface BusinessUnitListItem {
+  readonly id: string;
+  readonly code: string;
+  readonly name: string;
+  readonly headEmployeeId?: string;
+}
+
+export interface CreateBusinessUnitRequest {
+  readonly code: string;
+  readonly name: string;
+}
+
 export interface BranchListItem {
   readonly id: string;
   readonly code: string;
@@ -36,6 +48,34 @@ export interface CreateBranchRequest {
   readonly legalEntityId: string;
   readonly countryCode: string;
   readonly timeZone: string;
+}
+
+/**
+ * Mirrors `Gggs.CoreHr.Domain.Organization.LocationType`. The API serializes every enum as its
+ * member name (`JsonConfiguration.Apply` adds a `JsonStringEnumConverter` globally), not its
+ * numeric value, so this is a string union, not the C# enum's underlying `int`.
+ */
+export type LocationType = 'Office' | 'Site' | 'Remote';
+
+export const LOCATION_TYPE_LABELS: Readonly<Record<LocationType, string>> = {
+  Office: 'Office',
+  Site: 'Site',
+  Remote: 'Remote',
+};
+
+export interface LocationListItem {
+  readonly id: string;
+  readonly code: string;
+  readonly name: string;
+  readonly branchId: string;
+  readonly locationType: LocationType;
+}
+
+export interface CreateLocationRequest {
+  readonly code: string;
+  readonly name: string;
+  readonly branchId: string;
+  readonly locationType: LocationType;
 }
 
 export interface DepartmentListItem {

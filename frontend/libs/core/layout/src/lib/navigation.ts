@@ -147,9 +147,21 @@ export const NAVIGATION: readonly NavItem[] = [
         permissions: ['org.structure.view'],
       },
       {
+        label: 'Business units',
+        icon: 'pi pi-sitemap',
+        route: '/org/business-units',
+        permissions: ['org.structure.view'],
+      },
+      {
         label: 'Branches',
         icon: 'pi pi-map-marker',
         route: '/org/branches',
+        permissions: ['org.structure.view'],
+      },
+      {
+        label: 'Locations',
+        icon: 'pi pi-map',
+        route: '/org/locations',
         permissions: ['org.structure.view'],
       },
       {

@@ -2,17 +2,21 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type {
   BranchListItem,
+  BusinessUnitListItem,
   CostCenterListItem,
   CreateBranchRequest,
+  CreateBusinessUnitRequest,
   CreateCostCenterRequest,
   CreateDepartmentRequest,
   CreateDesignationRequest,
   CreateGradeRequest,
   CreateLegalEntityRequest,
+  CreateLocationRequest,
   DepartmentListItem,
   DesignationListItem,
   GradeListItem,
   LegalEntityListItem,
+  LocationListItem,
   PagedResult,
 } from '@gggs/shared/models';
 import { firstValueFrom } from 'rxjs';
@@ -55,6 +59,22 @@ export class OrgReferenceApi {
     );
   }
 
+  // ---- Business units ----
+
+  listBusinessUnits(): Promise<readonly BusinessUnitListItem[]> {
+    return firstValueFrom(
+      this.http.get<readonly BusinessUnitListItem[]>('/api/v1/business-units'),
+    );
+  }
+
+  createBusinessUnit(
+    request: CreateBusinessUnitRequest,
+  ): Promise<BusinessUnitListItem> {
+    return firstValueFrom(
+      this.http.post<BusinessUnitListItem>('/api/v1/business-units', request),
+    );
+  }
+
   // ---- Branches ----
 
   listBranches(legalEntityId?: string): Promise<readonly BranchListItem[]> {
@@ -68,6 +88,22 @@ export class OrgReferenceApi {
   createBranch(request: CreateBranchRequest): Promise<BranchListItem> {
     return firstValueFrom(
       this.http.post<BranchListItem>('/api/v1/branches', request),
+    );
+  }
+
+  // ---- Locations ----
+
+  listLocations(branchId?: string): Promise<readonly LocationListItem[]> {
+    return firstValueFrom(
+      this.http.get<readonly LocationListItem[]>('/api/v1/locations', {
+        params: branchId ? { branchId } : {},
+      }),
+    );
+  }
+
+  createLocation(request: CreateLocationRequest): Promise<LocationListItem> {
+    return firstValueFrom(
+      this.http.post<LocationListItem>('/api/v1/locations', request),
     );
   }
 
