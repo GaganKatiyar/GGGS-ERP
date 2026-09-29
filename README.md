@@ -30,13 +30,18 @@ configured. `Gggs.Notification.Worker` is its first real consumer:
 `UserInvitedIntegrationEvent` (new - Identity previously raised `UserInvitedDomainEvent` into a
 buffer nothing drained) now reaches an actual "welcome, set your password" notification. A user's
 own inbox (`GET /api/v1/notifications`, mark read/read-all, unread count) and template
-administration are both built; no frontend screen, no SMS/WhatsApp/push (Phase 1's own scope is
-email + in-app only), no delivery-webhook tracking. The audit log now has a frontend screen too
+administration are both built, and the inbox now has a frontend screen too: `/notifications`
+(`libs/features/notifications`) lists a user's notifications and supports mark-one/mark-all-read,
+fed by a new `libs/shared/notifications` data-access lib (it sits in `shared/` rather than a
+feature lib because the header bell in `core/layout` needs it too, and `type:core` cannot depend
+on a feature library). The shell header now shows an unread-count badge, polled every 60 seconds.
+Template administration and SMS/WhatsApp/push (Phase 1's own scope is email + in-app only) still
+have no frontend, nor does delivery-webhook tracking. The audit log now has a frontend screen too
 (`/admin/audit` - filters plus an old/new value diff view). 388 backend tests and 61 frontend
-tests pass. See [docs/runbooks/local-dev-login.md](docs/runbooks/local-dev-login.md) to run the
-whole stack and sign in. Every Phase 1 backend service from the roadmap now exists; what is left in
-Phase 1 is the notification-inbox frontend screen and the Business units/locations Organization
-screens.
+tests pass (the two new notification libraries have no spec files yet - a gap, not a deliberate
+omission). See [docs/runbooks/local-dev-login.md](docs/runbooks/local-dev-login.md) to run the
+whole stack and sign in. Every Phase 1 backend service from the roadmap now exists with a working
+frontend screen; what is left in Phase 1 is the Business units/locations Organization screens.
 
 Known gaps: the Bicep templates are unvalidated and still need private endpoints and Front Door
 (see [infra/README.md](infra/README.md)); `dotnet test` cannot run the suites on this SDK (see

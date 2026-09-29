@@ -14,16 +14,16 @@ Employee detail page), document type administration (`/admin/document-types` - c
 anything can be uploaded anywhere), the audit log (`/admin/audit` - filter by entity type/id,
 action, service and date range; click a row for the old/new value diff), user/role administration
 (invite a user, complete their invitation from the link it hands back, enable/disable/unlock,
-manage their roles, create a role and grant/revoke its permissions), and tenant settings (a raw
-module + key + JSON editor - no module has a defined settings schema yet) with a full permission
-set. `tools/DevSeed`'s seeded admin now holds the document, audit and notification permissions
-too, so all of this is reachable without hand-editing a role.
+manage their roles, create a role and grant/revoke its permissions), tenant settings (a raw
+module + key + JSON editor - no module has a defined settings schema yet), and the notification
+inbox (`/notifications` - list, unread count badge in the header bell, mark one or all read) with
+a full permission set. `tools/DevSeed`'s seeded admin now holds the document, audit and
+notification permissions too, so all of this is reachable without hand-editing a role.
 
 **Does not cover**: Business units and locations have no Organization screen, since neither sits
-on the hire path. The Notification service (a user's own inbox, template administration) is
-reachable through the gateway but has no frontend screen yet - exercise it with `curl` or the
-OpenAPI page. Everything else in the roadmap beyond Core HR and Identity
-(Time, Payroll, Talent, …) has no frontend at all yet.
+on the hire path. Notification template administration (as opposed to the inbox) has no frontend
+screen yet - exercise it with `curl` or the OpenAPI page. Everything else in the roadmap beyond
+Core HR and Identity (Time, Payroll, Talent, …) has no frontend at all yet.
 
 ## One-time setup
 
