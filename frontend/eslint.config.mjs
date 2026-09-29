@@ -76,6 +76,7 @@ export default [
                 'scope:organization',
                 'scope:employees',
                 'scope:admin',
+                'scope:notifications',
               ],
             },
             {
@@ -120,6 +121,14 @@ export default [
                 'scope:core',
                 'scope:shared',
                 'scope:admin',
+              ],
+            },
+            {
+              sourceTag: 'scope:notifications',
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:shared',
+                'scope:notifications',
               ],
             },
           ],

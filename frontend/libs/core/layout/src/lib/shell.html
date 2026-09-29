@@ -23,6 +23,20 @@
     </span>
     }
 
+    @if (canSeeNotifications()) {
+    <a
+      class="shell__bell"
+      routerLink="/notifications"
+      routerLinkActive="shell__bell--active"
+      aria-label="Notifications"
+    >
+      <i class="pi pi-bell" aria-hidden="true"></i>
+      @if (unreadCount() > 0) {
+      <span class="shell__bell-badge">{{ unreadCount() }}</span>
+      }
+    </a>
+    }
+
     <span class="shell__user">{{ user.displayName }}</span>
     <button type="button" class="shell__sign-out" (click)="signOut()">
       Sign out

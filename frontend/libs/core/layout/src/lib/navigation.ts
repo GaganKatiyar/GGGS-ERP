@@ -185,6 +185,12 @@ export const NAVIGATION: readonly NavItem[] = [
     permissions: ['employee.profile.view'],
   },
   {
+    label: 'Notifications',
+    icon: 'pi pi-bell',
+    route: '/notifications',
+    permissions: ['notification.inbox.view'],
+  },
+  {
     label: 'Time',
     icon: 'pi pi-clock',
     permissions: ['attendance.record.view', 'leave.request.view'],

@@ -33,7 +33,9 @@
       ],
       "@gggs/features/admin": ["./libs/features/admin/src/index.ts"],
       "@gggs/shared/identity": ["./libs/shared/identity/src/index.ts"],
-      "@gggs/shared/documents": ["./libs/shared/documents/src/index.ts"]
+      "@gggs/shared/documents": ["./libs/shared/documents/src/index.ts"],
+      "@gggs/shared/notifications": ["./libs/shared/notifications/src/index.ts"],
+      "@gggs/features/notifications": ["./libs/features/notifications/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
