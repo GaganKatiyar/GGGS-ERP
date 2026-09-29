@@ -5,6 +5,7 @@ import { LeavePoliciesPage } from './policies/leave-policies-page';
 import { LeaveRequestsPage } from './requests/leave-requests-page';
 import { LeaveTypesPage } from './types/leave-types-page';
 import { MyLeavePage } from './my-leave/my-leave-page';
+import { TeamLeavePage } from './team/team-leave-page';
 
 /**
  * Lazily loaded by the shell at `/leave/*`; see `app.routes.ts` and `NAVIGATION`'s "Time" entry.
@@ -34,4 +35,9 @@ export const MY_LEAVE_ROUTES: Routes = [
 /** Mounted directly at `/holidays` - see `NAVIGATION`'s "Time" entry. */
 export const HOLIDAYS_ROUTES: Routes = [
   { path: '', component: HolidaysPage, title: 'Holidays' },
+];
+
+/** Mounted directly at `/team/leave` - see `NAVIGATION`'s "My Team" entry. */
+export const TEAM_LEAVE_ROUTES: Routes = [
+  { path: '', component: TeamLeavePage, title: 'Team leave' },
 ];

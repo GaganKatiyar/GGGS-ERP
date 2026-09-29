@@ -22,4 +22,11 @@ export class EmployeeReferenceApi {
       }),
     );
   }
+
+  /** Everyone whose current employment record reports to the caller - `GET /api/v1/employees/my-team`. */
+  listMyTeam(): Promise<readonly EmployeeListItem[]> {
+    return firstValueFrom(
+      this.http.get<readonly EmployeeListItem[]>('/api/v1/employees/my-team'),
+    );
+  }
 }

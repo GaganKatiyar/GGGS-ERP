@@ -3,6 +3,7 @@ import { withPermissions } from '@gggs/core/permissions';
 import { AttendanceDaysPage } from './days/attendance-days-page';
 import { MyAttendancePage } from './my-attendance/my-attendance-page';
 import { ShiftsPage } from './shifts/shifts-page';
+import { TeamAttendancePage } from './team/team-attendance-page';
 
 /**
  * Lazily loaded by the shell at `/attendance/*`; see `app.routes.ts` and `NAVIGATION`'s "Time"
@@ -21,4 +22,9 @@ export const ATTENDANCE_ROUTES: Routes = [
 /** Mounted directly at `/me/attendance` - see `NAVIGATION`'s "My Space" entry. */
 export const MY_ATTENDANCE_ROUTES: Routes = [
   { path: '', component: MyAttendancePage, title: 'My attendance' },
+];
+
+/** Mounted directly at `/team/attendance` - see `NAVIGATION`'s "My Team" entry. */
+export const TEAM_ATTENDANCE_ROUTES: Routes = [
+  { path: '', component: TeamAttendancePage, title: 'Team attendance' },
 ];

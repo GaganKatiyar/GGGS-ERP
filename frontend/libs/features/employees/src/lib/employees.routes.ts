@@ -8,6 +8,7 @@ import { ExitEmployeePage } from './exit/exit-employee-page';
 import { HireEmployeePage } from './hire/hire-employee-page';
 import { EmployeeListPage } from './list/employee-list-page';
 import { RehireEmployeePage } from './rehire/rehire-employee-page';
+import { TeamOverviewPage } from './team/team-overview-page';
 
 /**
  * `withPermissions` sets its own `data`; a route that also needs `data` (the transfer/promote
@@ -73,4 +74,9 @@ export const EMPLOYEES_ROUTES: Routes = [
     ...withPermissions(['employee.exit.manage']),
   },
   { path: ':id', component: EmployeeDetailPage, title: 'Employee' },
+];
+
+/** Mounted directly at `/team` - see `NAVIGATION`'s "My Team" entry. */
+export const TEAM_ROUTES: Routes = [
+  { path: '', component: TeamOverviewPage, title: 'My team' },
 ];

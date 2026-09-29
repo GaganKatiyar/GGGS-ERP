@@ -102,6 +102,26 @@ export const appRoutes: Route[] = [
           ),
       },
       {
+        path: 'team',
+        ...withPermissions(['employee.profile.view']),
+        loadChildren: () =>
+          import('@gggs/features/employees').then((m) => m.TEAM_ROUTES),
+      },
+      {
+        path: 'team/attendance',
+        ...withPermissions(['attendance.record.view']),
+        loadChildren: () =>
+          import('@gggs/features/attendance').then(
+            (m) => m.TEAM_ATTENDANCE_ROUTES,
+          ),
+      },
+      {
+        path: 'team/leave',
+        ...withPermissions(['leave.request.view']),
+        loadChildren: () =>
+          import('@gggs/features/leave').then((m) => m.TEAM_LEAVE_ROUTES),
+      },
+      {
         path: 'admin',
         // Matches NAVIGATION's "Administration" group: any one of these lets someone in, and each
         // child route narrows further to the specific permission it actually needs.
