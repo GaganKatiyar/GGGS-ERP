@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Time.Application</RootNamespace>
+    <Description>Leave requests, policy/eligibility rules, the ledger, and holiday calendars.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Application\Gggs.BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Messaging\Gggs.BuildingBlocks.Messaging.csproj" />
+    <!-- Other services' published contracts, which are the only part of them we are allowed to see. -->
+    <ProjectReference Include="..\..\CoreHr\Gggs.CoreHr.Contracts\Gggs.CoreHr.Contracts.csproj" />
+    <ProjectReference Include="..\..\Workflow\Gggs.Workflow.Contracts\Gggs.Workflow.Contracts.csproj" />
+    <ProjectReference Include="..\Gggs.Time.Domain\Gggs.Time.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

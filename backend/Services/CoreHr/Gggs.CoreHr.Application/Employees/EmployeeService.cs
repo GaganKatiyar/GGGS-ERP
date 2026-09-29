@@ -346,5 +346,6 @@ public sealed class EmployeeService(
             record.DesignationId,
             record.GradeId,
             record.ReportingManagerId,
+            employee.DateOfJoining,
             version);
 }

@@ -12,9 +12,10 @@ namespace Gggs.CoreHr.Contracts;
 
 /// <summary>
 /// An employee's current assignment changed - hire, transfer, promotion, or a reporting-manager
-/// change alone. One event shape for all four, because every consumer that cares (today: Workflow,
-/// resolving "who is this person's manager" for an approval step) only cares about the resulting
-/// state, not which of <c>EmploymentChangeType</c>'s reasons produced it.
+/// change alone. One event shape for all four, because every consumer that cares (Workflow,
+/// resolving "who is this person's manager" for an approval step; Time, checking leave
+/// eligibility against tenure) only cares about the resulting state, not which of
+/// <c>EmploymentChangeType</c>'s reasons produced it.
 /// <para>
 /// This is the source for every service's local <c>ref.EmployeeSnapshot</c> table
 /// (architecture.md §5.2) - a read-only, eventually-consistent copy of just enough employee data to
@@ -43,6 +44,14 @@ public sealed record EmployeeAssignmentChangedIntegrationEvent(
     Guid DesignationId,
     Guid? GradeId,
     Guid? ReportingManagerId,
+
+    /// <summary>Never changes after hire (a rehire's fresh <c>EmploymentRecord</c> still carries
+    /// the employee's original <c>Employee.DateOfJoining</c> unless the rehire itself reset it -
+    /// see <c>Employee.Rehire</c>), but travels on every republish of this event rather than being
+    /// fetched separately: Time's eligibility check (§7.2's <c>EligibleAfterDays</c>) needs it, and
+    /// it is one field, not worth a second event type to carry.</summary>
+    DateOnly DateOfJoining,
+
     int Version) : IntegrationEvent;
 
 /// <summary>

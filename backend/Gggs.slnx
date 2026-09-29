@@ -56,6 +56,13 @@
   <Folder Name="/Services/Sample/">
     <Project Path="Services/Sample/Gggs.Sample.Api/Gggs.Sample.Api.csproj" />
   </Folder>
+  <Folder Name="/Services/Time/">
+    <Project Path="Services/Time/Gggs.Time.Api/Gggs.Time.Api.csproj" />
+    <Project Path="Services/Time/Gggs.Time.Application/Gggs.Time.Application.csproj" />
+    <Project Path="Services/Time/Gggs.Time.Domain/Gggs.Time.Domain.csproj" />
+    <Project Path="Services/Time/Gggs.Time.Infrastructure/Gggs.Time.Infrastructure.csproj" />
+    <Project Path="Services/Time/Gggs.Time.Worker/Gggs.Time.Worker.csproj" />
+  </Folder>
   <Folder Name="/Services/Workflow/">
     <Project Path="Services/Workflow/Gggs.Workflow.Api/Gggs.Workflow.Api.csproj" />
     <Project Path="Services/Workflow/Gggs.Workflow.Application/Gggs.Workflow.Application.csproj" />
@@ -69,6 +76,7 @@
   <Project Path="../tests/Gggs.Documents.IntegrationTests/Gggs.Documents.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Gateway.IntegrationTests/Gggs.Gateway.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Notification.IntegrationTests/Gggs.Notification.IntegrationTests.csproj" />
+  <Project Path="../tests/Gggs.Time.IntegrationTests/Gggs.Time.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Workflow.IntegrationTests/Gggs.Workflow.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Identity.IntegrationTests/Gggs.Identity.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Platform.IntegrationTests/Gggs.Platform.IntegrationTests.csproj" />
@@ -79,5 +87,6 @@
   <Project Path="../tests/unit/Gggs.Identity.UnitTests/Gggs.Identity.UnitTests.csproj" />
   <Project Path="../tests/unit/Gggs.Notification.UnitTests/Gggs.Notification.UnitTests.csproj" />
   <Project Path="../tests/unit/Gggs.Platform.UnitTests/Gggs.Platform.UnitTests.csproj" />
+  <Project Path="../tests/unit/Gggs.Time.UnitTests/Gggs.Time.UnitTests.csproj" />
   <Project Path="../tests/unit/Gggs.Workflow.UnitTests/Gggs.Workflow.UnitTests.csproj" />
 </Solution>
