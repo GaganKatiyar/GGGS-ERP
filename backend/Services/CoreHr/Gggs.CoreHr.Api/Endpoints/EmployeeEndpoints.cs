@@ -98,6 +98,7 @@ public static class EmployeeEndpoints
         RouteGroupBuilder group = endpoints.MapGroup("/api/v1/employees").WithTags("Employees");
 
         group.MapGet("/", ListAsync).WithName("ListEmployees").RequirePermission(Permissions.Employee.View);
+        group.MapGet("/my-team", ListMyTeamAsync).WithName("ListMyTeam").RequirePermission(Permissions.Employee.View);
         group.MapGet("/{id:guid}", GetAsync).WithName("GetEmployee").RequirePermission(Permissions.Employee.View);
         group.MapGet("/{id:guid}/employment", GetEmploymentHistoryAsync)
             .WithName("GetEmploymentHistory")
@@ -146,6 +147,33 @@ public static class EmployeeEndpoints
             .ToListAsync(ct);
 
         return TypedResults.Ok(PagedResult.From(items, request, total));
+    }
+
+    /// <summary>
+    /// Everyone whose current employment record reports to the caller - `NAVIGATION`'s "My Team"
+    /// entries (`/team`, `/team/attendance`, `/team/leave`) all key off this, each then asking
+    /// their own module (Time) for the actual attendance/leave data per employee id. No pagination:
+    /// a direct-reports list is bounded by how many people one manager realistically has, unlike
+    /// the tenant-wide list `ListAsync` serves.
+    /// </summary>
+    private static async Task<Ok<IReadOnlyList<EmployeeListItem>>> ListMyTeamAsync(
+        ICurrentUser currentUser, CoreHrDbContext db, CancellationToken ct)
+    {
+        if (currentUser.EmployeeId is not { } managerId)
+        {
+            return TypedResults.Ok<IReadOnlyList<EmployeeListItem>>([]);
+        }
+
+        List<EmployeeListItem> items = await (
+            from employee in db.Employees.AsNoTracking()
+            join record in db.EmploymentRecords.AsNoTracking()
+                on employee.Id equals record.EmployeeId
+            where record.IsCurrent && record.ReportingManagerId == managerId
+            orderby employee.DisplayName
+            select new EmployeeListItem(employee.Id, employee.EmployeeCode, employee.DisplayName, employee.Status.ToString(), employee.DateOfJoining))
+            .ToListAsync(ct);
+
+        return TypedResults.Ok<IReadOnlyList<EmployeeListItem>>(items);
     }
 
     private static async Task<Results<Ok<EmployeeResponse>, NotFound>> GetAsync(Guid id, CoreHrDbContext db, CancellationToken ct)

@@ -33,6 +33,9 @@ public sealed class CoreHrApiFactory : WebApplicationFactory<Program>, IAsyncLif
     /// <summary>The tenant every test in this fixture acts as, so there is one caller identity to reason about.</summary>
     public static Guid SeededTenantId { get; } = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
+    /// <summary>The caller's own employee id, when a test needs one - see <see cref="CreateClientForEmployee"/>.</summary>
+    public static Guid CurrentEmployeeId { get; } = Guid.Parse("aaaaaaaa-1111-1111-1111-111111111111");
+
     public string DatabaseName { get; } =
         $"gggs_corehr_api_{DateTime.UtcNow:yyyyMMddHHmmss}_{Random.Shared.Next(1000, 9999)}";
 
@@ -85,6 +88,20 @@ public sealed class CoreHrApiFactory : WebApplicationFactory<Program>, IAsyncLif
         HttpClient client = CreateClient();
         client.DefaultRequestHeaders.Add(TestAuthHandler.TenantHeader, SeededTenantId.ToString());
         client.DefaultRequestHeaders.Add(TestAuthHandler.PermissionsHeader, string.Join(',', permissions));
+        return client;
+    }
+
+    /// <summary>Same as <see cref="CreateClientFor"/>, but the caller is also linked to
+    /// <paramref name="employeeId"/> (<see cref="CurrentEmployeeId"/> by default) - for endpoints
+    /// that read <c>ICurrentUser.EmployeeId</c> (e.g. "my team"). A test that needs the id to
+    /// resolve to a real <c>Employee</c> row (anything checking <c>ReportingManagerId</c> exists)
+    /// passes the id of an employee it already hired, rather than the constant.</summary>
+    public HttpClient CreateClientForEmployee(params string[] permissions) => CreateClientForEmployee(CurrentEmployeeId, permissions);
+
+    public HttpClient CreateClientForEmployee(Guid employeeId, params string[] permissions)
+    {
+        HttpClient client = CreateClientFor(permissions);
+        client.DefaultRequestHeaders.Add(TestAuthHandler.EmployeeHeader, employeeId.ToString());
         return client;
     }
 
@@ -175,6 +192,7 @@ public sealed class TestAuthHandler(
     public const string SchemeName = "Test";
     public const string TenantHeader = "X-Test-Tenant";
     public const string PermissionsHeader = "X-Test-Permissions";
+    public const string EmployeeHeader = "X-Test-Employee";
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
@@ -197,6 +215,11 @@ public sealed class TestAuthHandler(
                 .ToString()
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Select(permission => new Claim("perm", permission)));
+        }
+
+        if (Request.Headers.TryGetValue(EmployeeHeader, out Microsoft.Extensions.Primitives.StringValues employeeId))
+        {
+            claims.Add(new Claim(GggsClaims.EmployeeId, employeeId.ToString()));
         }
 
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, SchemeName));

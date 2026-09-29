@@ -308,6 +308,64 @@ public sealed class EmployeeEndpointTests(CoreHrApiFactory factory)
         body.ShouldContain("EMPLOYEE_ALREADY_LEFT");
     }
 
+    [Fact]
+    public async Task ListMyTeam_ReturnsEmployeesReportingToTheCaller()
+    {
+        string[] permissions =
+        [
+            Permissions.Employee.Create,
+            Permissions.Organization.LegalEntityManage,
+            Permissions.Organization.Manage,
+            Permissions.Organization.DepartmentManage,
+            Permissions.Employee.View,
+        ];
+
+        using HttpClient setupClient = factory.CreateClientFor(permissions);
+
+        OrgReferences org = await CreateOrgReferencesAsync(setupClient);
+        DateOnly joining = new(2026, 1, 15);
+
+        // The caller has to exist as a real Employee row before anything can report to them -
+        // EmployeeService's own reference check for ReportingManagerId requires it.
+        EmployeeResponse manager = await HireAsync(setupClient, org, "The", "Manager", joining);
+
+        using HttpClient client = factory.CreateClientForEmployee(manager.Id, permissions);
+
+        EmployeeResponse report = await HireAsync(client, org, "Priya", "Sharma", joining, reportingManagerId: manager.Id);
+
+        // Someone reporting to a different manager entirely - must not show up in the caller's team.
+        EmployeeResponse otherManager = await HireAsync(client, org, "Other", "Manager", joining);
+        await HireAsync(client, org, "Not", "OnMyTeam", joining, reportingManagerId: otherManager.Id);
+
+        HttpResponseMessage response = await client.GetAsync("/api/v1/employees/my-team", TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        List<EmployeeListItem>? team = await response.Content.ReadFromJsonAsync<List<EmployeeListItem>>(
+            JsonOptions, TestContext.Current.CancellationToken);
+
+        team.ShouldNotBeNull();
+        team.ShouldContain(x => x.Id == report.Id);
+        team.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ListMyTeam_WithNoLinkedEmployee_ReturnsAnEmptyList()
+    {
+        // CreateClientFor (not CreateClientForEmployee) issues no "emp" claim at all - an admin
+        // account with no employee profile of their own, same as ICurrentUser.EmployeeId's own
+        // remarks on why it is nullable.
+        using HttpClient client = factory.CreateClientFor(Permissions.Employee.View);
+
+        HttpResponseMessage response = await client.GetAsync("/api/v1/employees/my-team", TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        List<EmployeeListItem>? team = await response.Content.ReadFromJsonAsync<List<EmployeeListItem>>(
+            JsonOptions, TestContext.Current.CancellationToken);
+
+        team.ShouldNotBeNull();
+        team.ShouldBeEmpty();
+    }
+
     private static object ToAssignment(OrgReferences org, Guid? reportingManagerId = null) => new
     {
         LegalEntityId = org.LegalEntityId,
@@ -319,7 +377,8 @@ public sealed class EmployeeEndpointTests(CoreHrApiFactory factory)
     };
 
     private static async Task<EmployeeResponse> HireAsync(
-        HttpClient client, OrgReferences org, string firstName, string lastName, DateOnly dateOfJoining, string? code = null)
+        HttpClient client, OrgReferences org, string firstName, string lastName, DateOnly dateOfJoining,
+        string? code = null, Guid? reportingManagerId = null)
     {
         HttpResponseMessage response = await client.PostAsJsonAsync(
             "/api/v1/employees",
@@ -329,7 +388,7 @@ public sealed class EmployeeEndpointTests(CoreHrApiFactory factory)
                 FirstName = firstName,
                 LastName = lastName,
                 DateOfJoining = dateOfJoining,
-                Assignment = ToAssignment(org),
+                Assignment = ToAssignment(org, reportingManagerId),
             },
             TestContext.Current.CancellationToken);
 
