@@ -77,6 +77,9 @@ export default [
                 'scope:employees',
                 'scope:admin',
                 'scope:notifications',
+                'scope:leave',
+                'scope:workflow',
+                'scope:attendance',
               ],
             },
             {
@@ -129,6 +132,26 @@ export default [
                 'scope:core',
                 'scope:shared',
                 'scope:notifications',
+              ],
+            },
+            {
+              sourceTag: 'scope:leave',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:leave'],
+            },
+            {
+              sourceTag: 'scope:workflow',
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:shared',
+                'scope:workflow',
+              ],
+            },
+            {
+              sourceTag: 'scope:attendance',
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:shared',
+                'scope:attendance',
               ],
             },
           ],

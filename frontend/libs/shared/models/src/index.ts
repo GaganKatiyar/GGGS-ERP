@@ -6,3 +6,6 @@ export * from './lib/admin.models';
 export * from './lib/document.models';
 export * from './lib/audit.models';
 export * from './lib/notification.models';
+export * from './lib/leave.models';
+export * from './lib/workflow.models';
+export * from './lib/attendance.models';
