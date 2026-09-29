@@ -38,7 +38,10 @@
       "@gggs/features/notifications": ["./libs/features/notifications/src/index.ts"],
       "@gggs/features/leave": ["./libs/features/leave/src/index.ts"],
       "@gggs/features/workflow": ["./libs/features/workflow/src/index.ts"],
-      "@gggs/features/attendance": ["./libs/features/attendance/src/index.ts"]
+      "@gggs/features/attendance": ["./libs/features/attendance/src/index.ts"],
+      "@gggs/shared/employee-reference": [
+        "./libs/shared/employee-reference/src/index.ts"
+      ]
     }
   },
   "exclude": ["node_modules", "tmp"]
