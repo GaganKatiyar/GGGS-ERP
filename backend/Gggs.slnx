@@ -56,11 +56,20 @@
   <Folder Name="/Services/Sample/">
     <Project Path="Services/Sample/Gggs.Sample.Api/Gggs.Sample.Api.csproj" />
   </Folder>
+  <Folder Name="/Services/Workflow/">
+    <Project Path="Services/Workflow/Gggs.Workflow.Api/Gggs.Workflow.Api.csproj" />
+    <Project Path="Services/Workflow/Gggs.Workflow.Application/Gggs.Workflow.Application.csproj" />
+    <Project Path="Services/Workflow/Gggs.Workflow.Contracts/Gggs.Workflow.Contracts.csproj" />
+    <Project Path="Services/Workflow/Gggs.Workflow.Domain/Gggs.Workflow.Domain.csproj" />
+    <Project Path="Services/Workflow/Gggs.Workflow.Infrastructure/Gggs.Workflow.Infrastructure.csproj" />
+    <Project Path="Services/Workflow/Gggs.Workflow.Worker/Gggs.Workflow.Worker.csproj" />
+  </Folder>
   <Project Path="../tests/Gggs.Architecture.Tests/Gggs.Architecture.Tests.csproj" />
   <Project Path="../tests/Gggs.CoreHr.IntegrationTests/Gggs.CoreHr.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Documents.IntegrationTests/Gggs.Documents.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Gateway.IntegrationTests/Gggs.Gateway.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Notification.IntegrationTests/Gggs.Notification.IntegrationTests.csproj" />
+  <Project Path="../tests/Gggs.Workflow.IntegrationTests/Gggs.Workflow.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Identity.IntegrationTests/Gggs.Identity.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.Platform.IntegrationTests/Gggs.Platform.IntegrationTests.csproj" />
   <Project Path="../tests/Gggs.TenantIsolation.Tests/Gggs.TenantIsolation.Tests.csproj" />
@@ -70,4 +79,5 @@
   <Project Path="../tests/unit/Gggs.Identity.UnitTests/Gggs.Identity.UnitTests.csproj" />
   <Project Path="../tests/unit/Gggs.Notification.UnitTests/Gggs.Notification.UnitTests.csproj" />
   <Project Path="../tests/unit/Gggs.Platform.UnitTests/Gggs.Platform.UnitTests.csproj" />
+  <Project Path="../tests/unit/Gggs.Workflow.UnitTests/Gggs.Workflow.UnitTests.csproj" />
 </Solution>

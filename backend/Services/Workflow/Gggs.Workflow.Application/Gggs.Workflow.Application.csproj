@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Workflow.Application</RootNamespace>
+    <Description>The approval engine: starting instances, resolving approvers, acting on tasks.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Application\Gggs.BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Messaging\Gggs.BuildingBlocks.Messaging.csproj" />
+    <!-- Another service's published contract, which is the only part of it we are allowed to see. -->
+    <ProjectReference Include="..\..\CoreHr\Gggs.CoreHr.Contracts\Gggs.CoreHr.Contracts.csproj" />
+    <ProjectReference Include="..\Gggs.Workflow.Contracts\Gggs.Workflow.Contracts.csproj" />
+    <ProjectReference Include="..\Gggs.Workflow.Domain\Gggs.Workflow.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

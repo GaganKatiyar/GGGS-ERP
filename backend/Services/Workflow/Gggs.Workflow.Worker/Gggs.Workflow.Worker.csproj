@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Workflow.Worker</RootNamespace>
+    <UserSecretsId>gggs-workflow-worker</UserSecretsId>
+    <Description>Workflow's background half: consumes StartWorkflow commands and Core HR's employee snapshot events, and relays its own outbox.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Observability\Gggs.BuildingBlocks.Observability.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Secrets\Gggs.BuildingBlocks.Secrets.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Security\Gggs.BuildingBlocks.Security.csproj" />
+    <ProjectReference Include="..\Gggs.Workflow.Infrastructure\Gggs.Workflow.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
