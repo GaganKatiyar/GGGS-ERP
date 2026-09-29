@@ -28,6 +28,7 @@
   <Folder Name="/Services/CoreHr/">
     <Project Path="Services/CoreHr/Gggs.CoreHr.Api/Gggs.CoreHr.Api.csproj" />
     <Project Path="Services/CoreHr/Gggs.CoreHr.Application/Gggs.CoreHr.Application.csproj" />
+    <Project Path="Services/CoreHr/Gggs.CoreHr.Contracts/Gggs.CoreHr.Contracts.csproj" />
     <Project Path="Services/CoreHr/Gggs.CoreHr.Domain/Gggs.CoreHr.Domain.csproj" />
     <Project Path="Services/CoreHr/Gggs.CoreHr.Infrastructure/Gggs.CoreHr.Infrastructure.csproj" />
   </Folder>

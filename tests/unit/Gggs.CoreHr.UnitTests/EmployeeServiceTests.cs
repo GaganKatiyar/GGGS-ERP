@@ -1,5 +1,6 @@
 using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Domain.Exceptions;
+using Gggs.BuildingBlocks.Messaging;
 using Gggs.CoreHr.Application.Employees;
 using Gggs.CoreHr.Application.Organization;
 using Gggs.CoreHr.Domain.Employees;
@@ -126,6 +127,8 @@ public sealed class EmployeeServiceTests
         IEmployeeRepository employees = Substitute.For<IEmployeeRepository>();
         employees.GetAsync(employee.Id, Arg.Any<CancellationToken>()).Returns(employee);
         employees.GetCurrentEmploymentRecordAsync(employee.Id, Arg.Any<CancellationToken>()).Returns(current);
+        employees.GetEmploymentHistoryAsync(employee.Id, Arg.Any<CancellationToken>())
+            .Returns(new List<EmploymentRecord> { current });
 
         EmployeeService service = BuildService(employees, FakeOrganizationWithAllReferences());
         DateOnly transferDate = DateOfJoining.AddMonths(3);
@@ -140,7 +143,12 @@ public sealed class EmployeeServiceTests
     }
 
     private static EmployeeService BuildService(IEmployeeRepository employees, IOrganizationRepository organization)
-        => new(employees, organization, Substitute.For<IUnitOfWork>(), NullLogger<EmployeeService>.Instance);
+        => new(
+            employees,
+            organization,
+            Substitute.For<IIntegrationEventPublisher>(),
+            Substitute.For<IUnitOfWork>(),
+            NullLogger<EmployeeService>.Instance);
 
     private AssignmentDetails ValidAssignment(Guid? reportingManagerId = null)
         => new(_legalEntity.Id, _branch.Id, _department.Id, _designation.Id, null, null, reportingManagerId, EmploymentType.Permanent);

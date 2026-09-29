@@ -1,6 +1,8 @@
 using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Domain.Exceptions;
+using Gggs.BuildingBlocks.Messaging;
 using Gggs.CoreHr.Application.Organization;
+using Gggs.CoreHr.Contracts;
 using Gggs.CoreHr.Domain.Employees;
 using Gggs.CoreHr.Domain.Organization;
 using Microsoft.Extensions.Logging;
@@ -32,6 +34,7 @@ public sealed record AssignmentDetails(
 public sealed class EmployeeService(
     IEmployeeRepository employees,
     IOrganizationRepository organization,
+    IIntegrationEventPublisher publisher,
     IUnitOfWork unitOfWork,
     ILogger<EmployeeService> logger)
 {
@@ -73,6 +76,8 @@ public sealed class EmployeeService(
             assignment.ProbationEndDate);
 
         employees.Add(record);
+
+        publisher.Publish(BuildAssignmentChangedEvent(employee, record, version: 1));
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Employee {EmployeeId} ({Code}) hired.", employee.Id, employee.EmployeeCode);
@@ -159,6 +164,9 @@ public sealed class EmployeeService(
         current.EndOn(effectiveFrom);
         employees.Add(next);
 
+        int historyCount = (await employees.GetEmploymentHistoryAsync(employeeId, cancellationToken)).Count;
+        publisher.Publish(BuildAssignmentChangedEvent(employee, next, version: historyCount + 1));
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
@@ -181,6 +189,7 @@ public sealed class EmployeeService(
             ?? throw new NotFoundException(nameof(Employee), employeeId);
 
         employee.UpdateName(firstName, middleName, lastName);
+        await PublishSnapshotRefreshAsync(employee, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return employee;
     }
@@ -191,6 +200,7 @@ public sealed class EmployeeService(
             ?? throw new NotFoundException(nameof(Employee), employeeId);
 
         employee.Confirm(confirmationDate);
+        await PublishSnapshotRefreshAsync(employee, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return employee;
     }
@@ -201,6 +211,7 @@ public sealed class EmployeeService(
             ?? throw new NotFoundException(nameof(Employee), employeeId);
 
         employee.ServeNotice();
+        await PublishSnapshotRefreshAsync(employee, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return employee;
     }
@@ -239,6 +250,10 @@ public sealed class EmployeeService(
             assignment.ProbationEndDate);
 
         employees.Add(record);
+
+        int historyCount = (await employees.GetEmploymentHistoryAsync(employeeId, cancellationToken)).Count;
+        publisher.Publish(BuildAssignmentChangedEvent(employee, record, version: historyCount + 1));
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Employee {EmployeeId} rehired effective {DateOfJoining}.", employeeId, newDateOfJoining);
@@ -259,6 +274,9 @@ public sealed class EmployeeService(
         // The employee's last employment record does not end itself: it stays open, describing
         // what their assignment was right up to departure, which is what a full-and-final
         // settlement or an exit report actually needs to read.
+        int historyCount = (await employees.GetEmploymentHistoryAsync(employeeId, cancellationToken)).Count;
+        publisher.Publish(new EmployeeExitedIntegrationEvent(employeeId, historyCount));
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return employee;
     }
@@ -295,4 +313,38 @@ public sealed class EmployeeService(
                 ?? throw new NotFoundException(nameof(Employee), managerId);
         }
     }
+
+    /// <summary>
+    /// Republishes the snapshot for a change that touches <see cref="Employee"/> alone (name,
+    /// status) rather than producing a new <see cref="EmploymentRecord"/> - the org-reference
+    /// fields are unchanged, but consumers watching <see cref="EmployeeAssignmentChangedIntegrationEvent.Status"/>
+    /// (Workflow's SoD checks, an approver who just went on notice) still need to hear about it.
+    /// </summary>
+    private async Task PublishSnapshotRefreshAsync(Employee employee, CancellationToken cancellationToken)
+    {
+        EmploymentRecord? current = await employees.GetCurrentEmploymentRecordAsync(employee.Id, cancellationToken);
+
+        if (current is null)
+        {
+            return;
+        }
+
+        int historyCount = (await employees.GetEmploymentHistoryAsync(employee.Id, cancellationToken)).Count;
+        publisher.Publish(BuildAssignmentChangedEvent(employee, current, version: historyCount));
+    }
+
+    private static EmployeeAssignmentChangedIntegrationEvent BuildAssignmentChangedEvent(
+        Employee employee, EmploymentRecord record, int version) => new(
+            employee.Id,
+            employee.EmployeeCode,
+            employee.DisplayName,
+            employee.Status.ToString(),
+            employee.UserId,
+            record.LegalEntityId,
+            record.BranchId,
+            record.DepartmentId,
+            record.DesignationId,
+            record.GradeId,
+            record.ReportingManagerId,
+            version);
 }

@@ -7,6 +7,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Application\Gggs.BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Messaging\Gggs.BuildingBlocks.Messaging.csproj" />
+    <ProjectReference Include="..\Gggs.CoreHr.Contracts\Gggs.CoreHr.Contracts.csproj" />
     <ProjectReference Include="..\Gggs.CoreHr.Domain\Gggs.CoreHr.Domain.csproj" />
   </ItemGroup>
 
