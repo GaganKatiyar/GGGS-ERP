@@ -9,6 +9,8 @@ using Gggs.Identity.Domain.Users;
 using Gggs.Identity.Infrastructure;
 using Gggs.Platform.Domain.Tenants;
 using Gggs.Platform.Infrastructure;
+using Gggs.Workflow.Domain.Workflows;
+using Gggs.Workflow.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -26,12 +28,16 @@ string platformConnectionString = Environment.GetEnvironmentVariable("GGGS_PLATF
     ?? "Server=localhost;Database=gggs_platform;Integrated Security=True;TrustServerCertificate=True;Encrypt=False";
 string identityConnectionString = Environment.GetEnvironmentVariable("GGGS_IDENTITY_DB")
     ?? "Server=localhost;Database=gggs_identity;Integrated Security=True;TrustServerCertificate=True;Encrypt=False";
+string workflowConnectionString = Environment.GetEnvironmentVariable("GGGS_WORKFLOW_DB")
+    ?? "Server=localhost;Database=gggs_workflow;Integrated Security=True;TrustServerCertificate=True;Encrypt=False";
 
 Console.WriteLine($"Platform DB: {platformConnectionString}");
 Console.WriteLine($"Identity DB: {identityConnectionString}");
+Console.WriteLine($"Workflow DB: {workflowConnectionString}");
 
 Guid tenantId = await SeedTenantAsync(platformConnectionString, tenantCode);
 await SeedTenantAdminAsync(identityConnectionString, tenantId, adminEmail, adminPassword);
+await SeedLeaveRequestWorkflowAsync(workflowConnectionString, tenantId);
 
 Console.WriteLine();
 Console.WriteLine("Done. Sign in with:");
@@ -229,6 +235,74 @@ static async Task SeedTenantAdminAsync(string connectionString, Guid tenantId, s
     await db.SaveChangesAsync();
 
     Console.WriteLine($"Tenant admin '{adminEmail}' created ({admin.Id}) with role '{role.Name}'.");
+}
+
+static async Task SeedLeaveRequestWorkflowAsync(string connectionString, Guid tenantId)
+{
+    const string DefinitionCode = "LEAVE_REQUEST";
+    const string EntityType = "LEAVE_REQUEST";
+
+    var migrationTenantContext = new TenantContext();
+    migrationTenantContext.BeginPlatformScope("dev-seed");
+
+    DbContextOptions<WorkflowDbContext> migrationOptions = new DbContextOptionsBuilder<WorkflowDbContext>()
+        .UseSqlServer(connectionString)
+        .Options;
+
+    await using (var migrationDb = new WorkflowDbContext(migrationOptions, migrationTenantContext))
+    {
+        await migrationDb.Database.MigrateAsync();
+    }
+
+    var tenantScopedContext = new TenantContext();
+    tenantScopedContext.SetTenant(tenantId);
+
+    DbContextOptions<WorkflowDbContext> writeOptions = new DbContextOptionsBuilder<WorkflowDbContext>()
+        .UseSqlServer(connectionString)
+        .AddInterceptors(
+            new TenantSessionContextInterceptor(tenantScopedContext),
+            new TenantAuditSaveChangesInterceptor(
+                tenantScopedContext,
+                new SeedActor(),
+                new GggsPlatformOptions { ServiceName = "workflow" },
+                TimeProvider.System))
+        .Options;
+
+    await using var db = new WorkflowDbContext(writeOptions, tenantScopedContext);
+
+    bool alreadyExists = await db.Definitions.AnyAsync(d => d.Code == DefinitionCode);
+    if (alreadyExists)
+    {
+        Console.WriteLine($"Workflow definition '{DefinitionCode}' already exists - leaving it as is.");
+        return;
+    }
+
+    // Simplest possible approval chain: the reporting manager at level 1. Matches the architecture
+    // doc's own simplest example (§13.2) - richer step configuration (department head, HR review,
+    // conditions) is deferred until a tenant actually needs it.
+    const string DefinitionJson = """
+        {
+          "steps": [
+            {
+              "key": "manager",
+              "name": "Reporting manager",
+              "approvers": { "type": "ReportingManager", "level": 1 },
+              "mode": "Any"
+            }
+          ]
+        }
+        """;
+
+    WorkflowDefinition definition = WorkflowDefinition.Create(DefinitionCode, "Leave request approval", EntityType);
+    WorkflowDefinitionVersion version = WorkflowDefinitionVersion.CreateDraft(definition.Id, version: 1, DefinitionJson);
+    version.Publish(DateTime.UtcNow);
+
+    db.Definitions.Add(definition);
+    db.DefinitionVersions.Add(version);
+
+    await db.SaveChangesAsync();
+
+    Console.WriteLine($"Workflow definition '{DefinitionCode}' created and published ({definition.Id}).");
 }
 
 /// <summary>

@@ -138,23 +138,24 @@ public static class WorkflowEndpoints
         {
             PageRequest request = page.ToPageRequest();
 
-            IQueryable<WorkflowTaskRow> query =
-                from task in database.Tasks.AsNoTracking()
-                where task.AssigneeUserId == currentUser.UserId
-                join instance in database.Instances.AsNoTracking() on task.InstanceId equals instance.Id
-                where status == null || task.Status == status
-                select new WorkflowTaskRow(task, instance);
+            IQueryable<WorkflowTask> query = database.Tasks.AsNoTracking()
+                .Where(task => task.AssigneeUserId == currentUser.UserId)
+                .Where(task => status == null || task.Status == status);
 
             long? total = request.IncludeTotal ? await query.LongCountAsync(cancellationToken) : null;
 
             List<WorkflowTaskItem> items = await query
-                .OrderBy(x => x.Task.DueDate == null)
-                .ThenBy(x => x.Task.DueDate)
+                .OrderBy(task => task.DueDate == null)
+                .ThenBy(task => task.DueDate)
                 .Skip(request.Skip)
                 .Take(request.PageSize)
-                .Select(x => new WorkflowTaskItem(
-                    x.Task.Id, x.Task.InstanceId, x.Instance.EntityType, x.Instance.EntityId, x.Instance.SourceService,
-                    x.Task.StepKey, x.Task.OriginalAssigneeUserId, x.Task.Status, x.Task.DueDate))
+                .Join(
+                    database.Instances.AsNoTracking(),
+                    task => task.InstanceId,
+                    instance => instance.Id,
+                    (task, instance) => new WorkflowTaskItem(
+                        task.Id, task.InstanceId, instance.EntityType, instance.EntityId, instance.SourceService,
+                        task.StepKey, task.OriginalAssigneeUserId, task.Status, task.DueDate))
                 .ToListAsync(cancellationToken);
 
             return TypedResults.Ok(PagedResult.From(items, request, total));
@@ -254,6 +255,4 @@ public static class WorkflowEndpoints
 
     private static WorkflowDefinitionVersionResponse ToVersionResponse(WorkflowDefinitionVersion entity)
         => new(entity.Id, entity.DefinitionId, entity.Version, entity.Status, entity.DefinitionJson, entity.PublishedDate);
-
-    private sealed record WorkflowTaskRow(WorkflowTask Task, WorkflowInstance Instance);
 }

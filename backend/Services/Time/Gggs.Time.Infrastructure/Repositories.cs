@@ -41,17 +41,42 @@ public sealed class LeavePolicyRepository(TimeDbContext dbContext) : ILeavePolic
 
 public sealed class LeaveLedgerRepository(TimeDbContext dbContext) : ILeaveLedgerRepository
 {
+    /// <summary>
+    /// Includes entries added earlier in the same unit of work but not yet saved: a caller that
+    /// posts a ledger entry and immediately rebuilds the balance from this method (every
+    /// <see cref="LeaveLedgerService.PostAsync"/> call) must see that entry, and a plain
+    /// <c>DbSet</c> query would not - it always hits the database, never the change tracker's
+    /// pending adds. Read via <see cref="DbContext.Set{TEntity}"/>.Local first for anything not yet
+    /// saved, then fall back to the database for everything else, keyed by <see cref="LeaveLedgerEntry.Id"/>
+    /// so a row is never counted twice if it happens to appear in both.
+    /// </summary>
     public async Task<IReadOnlyList<LeaveLedgerEntry>> GetEntriesAsync(
         Guid employeeId, Guid leaveTypeId, int periodYear, CancellationToken cancellationToken = default)
-        => await dbContext.LeaveLedgerEntries
+    {
+        List<LeaveLedgerEntry> persisted = await dbContext.LeaveLedgerEntries
             .Where(x => x.EmployeeId == employeeId && x.LeaveTypeId == leaveTypeId && x.PeriodYear == periodYear)
             .ToListAsync(cancellationToken);
 
+        IEnumerable<LeaveLedgerEntry> pending = dbContext.ChangeTracker.Entries<LeaveLedgerEntry>()
+            .Where(e => e.State == EntityState.Added)
+            .Select(e => e.Entity)
+            .Where(x => x.EmployeeId == employeeId && x.LeaveTypeId == leaveTypeId && x.PeriodYear == periodYear);
+
+        HashSet<Guid> persistedIds = persisted.Select(x => x.Id).ToHashSet();
+        return persisted.Concat(pending.Where(x => !persistedIds.Contains(x.Id))).ToList();
+    }
+
     public async Task<bool> TransactionExistsAsync(
         string sourceType, Guid sourceId, LeaveLedgerTransactionType transactionType, CancellationToken cancellationToken = default)
-        => await dbContext.LeaveLedgerEntries.AnyAsync(
+    {
+        bool pending = dbContext.ChangeTracker.Entries<LeaveLedgerEntry>()
+            .Any(e => e.State == EntityState.Added
+                && e.Entity.SourceType == sourceType && e.Entity.SourceId == sourceId && e.Entity.TransactionType == transactionType);
+
+        return pending || await dbContext.LeaveLedgerEntries.AnyAsync(
             x => x.SourceType == sourceType && x.SourceId == sourceId && x.TransactionType == transactionType,
             cancellationToken);
+    }
 
     public void Add(LeaveLedgerEntry entry) => dbContext.LeaveLedgerEntries.Add(entry);
 
@@ -62,13 +87,33 @@ public sealed class LeaveLedgerRepository(TimeDbContext dbContext) : ILeaveLedge
 
     public void Add(LeaveBalance balance) => dbContext.LeaveBalances.Add(balance);
 
+    /// <summary>
+    /// Same not-yet-saved concern as <see cref="GetEntriesAsync"/>: a request's own status change
+    /// (submission adding a new Pending row, or approval/rejection/cancellation flipping an
+    /// existing one away from Pending) happens earlier in the same unit of work as the rebuild that
+    /// must reflect it, and a plain query would still see the pre-change status.
+    /// </summary>
     public async Task<decimal> GetPendingApprovalDaysAsync(
         Guid employeeId, Guid leaveTypeId, DateOnly periodStart, DateOnly periodEnd, CancellationToken cancellationToken = default)
-        => await dbContext.LeaveRequests
+    {
+        List<LeaveRequest> persisted = await dbContext.LeaveRequests
             .Where(x => x.EmployeeId == employeeId && x.LeaveTypeId == leaveTypeId
-                && x.Status == LeaveRequestStatus.Pending
                 && x.FromDate >= periodStart && x.FromDate <= periodEnd)
-            .SumAsync(x => x.TotalDays, cancellationToken);
+            .ToListAsync(cancellationToken);
+
+        HashSet<Guid> persistedIds = persisted.Select(x => x.Id).ToHashSet();
+
+        IEnumerable<LeaveRequest> pendingAdds = dbContext.ChangeTracker.Entries<LeaveRequest>()
+            .Where(e => e.State == EntityState.Added)
+            .Select(e => e.Entity)
+            .Where(x => x.EmployeeId == employeeId && x.LeaveTypeId == leaveTypeId
+                && x.FromDate >= periodStart && x.FromDate <= periodEnd
+                && !persistedIds.Contains(x.Id));
+
+        return persisted.Concat(pendingAdds)
+            .Where(x => x.Status == LeaveRequestStatus.Pending)
+            .Sum(x => x.TotalDays);
+    }
 }
 
 public sealed class LeaveRequestRepository(TimeDbContext dbContext) : ILeaveRequestRepository

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Security;
 using Gggs.Workflow.Api.Contracts;
 using Gggs.Workflow.Domain.Workflows;
@@ -180,6 +181,15 @@ public sealed class WorkflowDefinitionEndpointTests(WorkflowApiFactory factory)
 [Collection(nameof(WorkflowApiCollection))]
 public sealed class WorkflowTaskEndpointTests(WorkflowApiFactory factory)
 {
+    private static readonly JsonSerializerOptions JsonOptions = BuildJsonOptions();
+
+    private static JsonSerializerOptions BuildJsonOptions()
+    {
+        var options = new JsonSerializerOptions();
+        Gggs.BuildingBlocks.Web.JsonConfiguration.Apply(options);
+        return options;
+    }
+
     [Fact]
     public async Task ApprovingATask_NotAssignedToTheCaller_IsRejected()
     {
@@ -267,5 +277,56 @@ public sealed class WorkflowTaskEndpointTests(WorkflowApiFactory factory)
         HttpResponseMessage response = await client.GetAsync("/api/v1/workflows/tasks", TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task ListingMyTasks_WithAPendingTask_ReturnsIt()
+    {
+        // Regression coverage for a query that previously threw at runtime (constructing a
+        // projection record inside OrderBy is not SQL-translatable) - every other test in this
+        // class only ever posts to a task by id, so this was the only gap that could have caught
+        // it: a plain GET against a real pending task.
+        Guid instanceId;
+        Guid taskId;
+
+        using (WorkflowDbContext db = factory.CreateTenantScopedContext(out IDisposable scopeHandle))
+        {
+            using (scopeHandle)
+            {
+                WorkflowDefinition definition = WorkflowDefinition.Create($"CODE-{Guid.CreateVersion7():N}", "A definition", "LEAVE_REQUEST");
+                WorkflowDefinitionVersion version = WorkflowDefinitionVersion.CreateDraft(
+                    definition.Id, 1, """{ "steps": [{ "key": "manager", "name": "Manager", "approvers": { "type": "SpecificUser" } }] }""");
+                version.Publish(DateTime.UtcNow);
+
+                Guid entityId = Guid.NewGuid();
+                WorkflowInstance instance = WorkflowInstance.Start(
+                    version.Id, "LEAVE_REQUEST", entityId, "time",
+                    initiatorUserId: Guid.NewGuid(), subjectEmployeeId: Guid.NewGuid(), "{}", null, "manager", DateTime.UtcNow);
+
+                WorkflowTask task = WorkflowTask.Create(instance.Id, "manager", WorkflowApiFactory.CurrentUserId, null, null);
+
+                db.Definitions.Add(definition);
+                db.DefinitionVersions.Add(version);
+                db.Instances.Add(instance);
+                db.Tasks.Add(task);
+                await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+                instanceId = instance.Id;
+                taskId = task.Id;
+            }
+        }
+
+        using HttpClient client = factory.CreateClientFor(Permissions.Workflow.TaskView);
+
+        HttpResponseMessage response = await client.GetAsync(
+            "/api/v1/workflows/tasks?status=Pending", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        PagedResult<WorkflowTaskItem>? page = await response.Content.ReadFromJsonAsync<PagedResult<WorkflowTaskItem>>(
+            JsonOptions, TestContext.Current.CancellationToken);
+
+        page.ShouldNotBeNull();
+        page.Items.ShouldContain(item => item.Id == taskId && item.InstanceId == instanceId && item.Status == WorkflowTaskStatus.Pending);
     }
 }

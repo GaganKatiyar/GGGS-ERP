@@ -16,6 +16,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\backend\Services\Platform\Gggs.Platform.Infrastructure\Gggs.Platform.Infrastructure.csproj" />
     <ProjectReference Include="..\..\backend\Services\Identity\Gggs.Identity.Infrastructure\Gggs.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\backend\Services\Workflow\Gggs.Workflow.Infrastructure\Gggs.Workflow.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
