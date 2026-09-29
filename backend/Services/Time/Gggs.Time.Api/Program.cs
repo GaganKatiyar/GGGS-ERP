@@ -10,6 +10,7 @@ using Gggs.BuildingBlocks.Secrets;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.Time.Api.Endpoints;
+using Gggs.Time.Application.Attendance;
 using Gggs.Time.Application.Holidays;
 using Gggs.Time.Application.Leave;
 using Gggs.Time.Application.Snapshots;
@@ -67,6 +68,11 @@ builder.Services.AddScoped<ILeaveLedgerRepository, LeaveLedgerRepository>();
 builder.Services.AddScoped<ILeaveRequestRepository, LeaveRequestRepository>();
 builder.Services.AddScoped<IHolidayRepository, HolidayRepository>();
 builder.Services.AddScoped<IEmployeeSnapshotRepository, EmployeeSnapshotRepository>();
+builder.Services.AddScoped<IShiftRepository, ShiftRepository>();
+builder.Services.AddScoped<IShiftRosterRepository, ShiftRosterRepository>();
+builder.Services.AddScoped<IAttendancePunchRepository, AttendancePunchRepository>();
+builder.Services.AddScoped<IAttendanceDayRepository, AttendanceDayRepository>();
+builder.Services.AddScoped<IAttendanceRegularizationRepository, AttendanceRegularizationRepository>();
 
 builder.Services.AddScoped<IWorkCalendar, WorkCalendar>();
 builder.Services.AddScoped<LeaveLedgerService>();
@@ -75,6 +81,11 @@ builder.Services.AddScoped<LeaveRequestService>();
 builder.Services.AddScoped<LeaveTypeService>();
 builder.Services.AddScoped<LeavePolicyService>();
 builder.Services.AddScoped<HolidayCalendarService>();
+builder.Services.AddScoped<ShiftService>();
+builder.Services.AddScoped<ShiftRosterService>();
+builder.Services.AddScoped<AttendanceDayProcessor>();
+builder.Services.AddScoped<AttendancePunchService>();
+builder.Services.AddScoped<AttendanceRegularizationService>();
 
 builder.Services.AddGggsJson();
 builder.Services.AddProblemDetails();
@@ -97,6 +108,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check 
 
 app.MapLeaveEndpoints();
 app.MapHolidayEndpoints();
+app.MapAttendanceEndpoints();
 
 if (app.Environment.IsDevelopment())
 {

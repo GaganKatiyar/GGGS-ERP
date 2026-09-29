@@ -1,6 +1,8 @@
+using Gggs.Time.Application.Attendance;
 using Gggs.Time.Application.Holidays;
 using Gggs.Time.Application.Leave;
 using Gggs.Time.Application.Snapshots;
+using Gggs.Time.Domain.Attendance;
 using Gggs.Time.Domain.Holidays;
 using Gggs.Time.Domain.Leave;
 using Gggs.Time.Domain.Snapshots;
@@ -131,6 +133,14 @@ public sealed class LeaveRequestRepository(TimeDbContext dbContext) : ILeaveRequ
     public void Add(LeaveRequest request) => dbContext.LeaveRequests.Add(request);
 
     public void AddDay(LeaveRequestDay day) => dbContext.LeaveRequestDays.Add(day);
+
+    public async Task<Guid?> GetApprovedRequestIdForDateAsync(Guid employeeId, DateOnly forDate, CancellationToken cancellationToken = default)
+        => await (
+            from day in dbContext.LeaveRequestDays
+            join request in dbContext.LeaveRequests on day.LeaveRequestId equals request.Id
+            where request.EmployeeId == employeeId && day.LeaveDate == forDate && request.Status == LeaveRequestStatus.Approved
+            select (Guid?)request.Id)
+            .FirstOrDefaultAsync(cancellationToken);
 }
 
 public sealed class HolidayRepository(TimeDbContext dbContext) : IHolidayRepository
@@ -158,4 +168,75 @@ public sealed class EmployeeSnapshotRepository(TimeDbContext dbContext) : IEmplo
         => await dbContext.EmployeeSnapshots.FirstOrDefaultAsync(x => x.EmployeeId == employeeId, cancellationToken);
 
     public void Add(EmployeeSnapshot snapshot) => dbContext.EmployeeSnapshots.Add(snapshot);
+}
+
+public sealed class ShiftRepository(TimeDbContext dbContext) : IShiftRepository
+{
+    public async Task<Shift?> GetAsync(Guid id, CancellationToken cancellationToken = default)
+        => await dbContext.Shifts.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    public async Task<Shift?> GetByCodeAsync(string code, CancellationToken cancellationToken = default)
+    {
+        string normalizedCode = code.Trim().ToUpperInvariant();
+        return await dbContext.Shifts.FirstOrDefaultAsync(x => x.Code == normalizedCode, cancellationToken);
+    }
+
+    public void Add(Shift shift) => dbContext.Shifts.Add(shift);
+}
+
+public sealed class ShiftRosterRepository(TimeDbContext dbContext) : IShiftRosterRepository
+{
+    public async Task<ShiftRoster?> GetForDateAsync(Guid employeeId, DateOnly rosterDate, CancellationToken cancellationToken = default)
+        => await dbContext.ShiftRosters.FirstOrDefaultAsync(x => x.EmployeeId == employeeId && x.RosterDate == rosterDate, cancellationToken);
+
+    public void Add(ShiftRoster roster) => dbContext.ShiftRosters.Add(roster);
+}
+
+public sealed class AttendancePunchRepository(TimeDbContext dbContext) : IAttendancePunchRepository
+{
+    public void Add(AttendancePunch punch) => dbContext.AttendancePunches.Add(punch);
+
+    public async Task<bool> ExternalRefExistsAsync(PunchSource source, string externalRef, CancellationToken cancellationToken = default)
+        => await dbContext.AttendancePunches.AnyAsync(x => x.Source == source && x.ExternalRef == externalRef, cancellationToken);
+
+    /// <summary>Includes a punch added earlier in the same unit of work but not yet saved - the
+    /// same not-yet-saved concern as <c>LeaveLedgerRepository</c> (see its own remarks): the punch
+    /// that triggered this very recompute must be visible to it, and a plain <c>DbSet</c> query
+    /// would not see its own pending add.</summary>
+    public async Task<IReadOnlyList<AttendancePunch>> GetForDateAsync(
+        Guid employeeId, DateTime windowStartUtc, DateTime windowEndUtc, CancellationToken cancellationToken = default)
+    {
+        List<AttendancePunch> persisted = await dbContext.AttendancePunches
+            .Where(x => x.EmployeeId == employeeId && x.IsValid
+                && x.PunchTimeUtc >= windowStartUtc && x.PunchTimeUtc < windowEndUtc)
+            .ToListAsync(cancellationToken);
+
+        HashSet<Guid> persistedIds = persisted.Select(x => x.Id).ToHashSet();
+
+        IEnumerable<AttendancePunch> pendingAdds = dbContext.ChangeTracker.Entries<AttendancePunch>()
+            .Where(e => e.State == EntityState.Added)
+            .Select(e => e.Entity)
+            .Where(x => x.EmployeeId == employeeId && x.IsValid
+                && x.PunchTimeUtc >= windowStartUtc && x.PunchTimeUtc < windowEndUtc
+                && !persistedIds.Contains(x.Id));
+
+        return persisted.Concat(pendingAdds).ToList();
+    }
+}
+
+public sealed class AttendanceDayRepository(TimeDbContext dbContext) : IAttendanceDayRepository
+{
+    public async Task<AttendanceDay?> GetAsync(Guid employeeId, DateOnly attendanceDate, CancellationToken cancellationToken = default)
+        => await dbContext.AttendanceDays.FirstOrDefaultAsync(
+            x => x.EmployeeId == employeeId && x.AttendanceDate == attendanceDate, cancellationToken);
+
+    public void Add(AttendanceDay day) => dbContext.AttendanceDays.Add(day);
+}
+
+public sealed class AttendanceRegularizationRepository(TimeDbContext dbContext) : IAttendanceRegularizationRepository
+{
+    public async Task<AttendanceRegularization?> GetAsync(Guid id, CancellationToken cancellationToken = default)
+        => await dbContext.AttendanceRegularizations.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    public void Add(AttendanceRegularization regularization) => dbContext.AttendanceRegularizations.Add(regularization);
 }

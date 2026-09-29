@@ -55,4 +55,9 @@ public interface ILeaveRequestRepository
     void Add(LeaveRequest request);
 
     void AddDay(LeaveRequestDay day);
+
+    /// <summary>The approved request (if any) covering this employee's given date - what
+    /// <c>AttendanceDayProcessor</c> checks before computing punch-based attendance, since an
+    /// approved leave day takes precedence over whatever the roster/punches would otherwise say.</summary>
+    Task<Guid?> GetApprovedRequestIdForDateAsync(Guid employeeId, DateOnly forDate, CancellationToken cancellationToken = default);
 }

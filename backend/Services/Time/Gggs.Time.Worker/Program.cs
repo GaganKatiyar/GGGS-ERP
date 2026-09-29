@@ -7,6 +7,7 @@ using Gggs.BuildingBlocks.Persistence.Interceptors;
 using Gggs.BuildingBlocks.Secrets;
 using Gggs.BuildingBlocks.Security;
 using Gggs.CoreHr.Contracts;
+using Gggs.Time.Application.Attendance;
 using Gggs.Time.Application.Holidays;
 using Gggs.Time.Application.Leave;
 using Gggs.Time.Application.Snapshots;
@@ -61,6 +62,8 @@ builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<TimeDbContex
 builder.Services.AddScoped<ILeaveRequestRepository, LeaveRequestRepository>();
 builder.Services.AddScoped<ILeaveLedgerRepository, LeaveLedgerRepository>();
 builder.Services.AddScoped<IEmployeeSnapshotRepository, EmployeeSnapshotRepository>();
+builder.Services.AddScoped<IAttendanceRegularizationRepository, AttendanceRegularizationRepository>();
+builder.Services.AddScoped<IAttendanceDayRepository, AttendanceDayRepository>();
 
 builder.Services.AddScoped<LeaveLedgerService>();
 
@@ -70,6 +73,8 @@ builder.Services.AddGggsMessaging<TimeDbContext>(builder.Configuration, platform
 // this subscription at all - see AddGggsEventConsumer's own remarks on why that failure is silent.
 builder.Services.AddGggsEventConsumer<WorkflowApprovedIntegrationEvent, LeaveWorkflowOutcomeConsumer>();
 builder.Services.AddGggsEventConsumer<WorkflowRejectedIntegrationEvent, LeaveWorkflowOutcomeConsumer>();
+builder.Services.AddGggsEventConsumer<WorkflowApprovedIntegrationEvent, AttendanceWorkflowOutcomeConsumer>();
+builder.Services.AddGggsEventConsumer<WorkflowRejectedIntegrationEvent, AttendanceWorkflowOutcomeConsumer>();
 builder.Services.AddGggsEventConsumer<EmployeeAssignmentChangedIntegrationEvent, EmployeeSnapshotConsumer>();
 builder.Services.AddGggsEventConsumer<EmployeeExitedIntegrationEvent, EmployeeSnapshotConsumer>();
 

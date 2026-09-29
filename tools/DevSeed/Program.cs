@@ -37,7 +37,9 @@ Console.WriteLine($"Workflow DB: {workflowConnectionString}");
 
 Guid tenantId = await SeedTenantAsync(platformConnectionString, tenantCode);
 await SeedTenantAdminAsync(identityConnectionString, tenantId, adminEmail, adminPassword);
-await SeedLeaveRequestWorkflowAsync(workflowConnectionString, tenantId);
+await SeedSingleStepWorkflowAsync(workflowConnectionString, tenantId, "LEAVE_REQUEST", "LEAVE_REQUEST", "Leave request approval");
+await SeedSingleStepWorkflowAsync(
+    workflowConnectionString, tenantId, "ATTENDANCE_REGULARIZATION", "ATTENDANCE_REGULARIZATION", "Attendance regularization approval");
 
 Console.WriteLine();
 Console.WriteLine("Done. Sign in with:");
@@ -181,6 +183,16 @@ static async Task SeedTenantAdminAsync(string connectionString, Guid tenantId, s
         Permissions.Leave.HolidayManage,
         Permissions.Self.LeaveView,
         Permissions.Self.LeaveApply,
+        Permissions.Attendance.View,
+        Permissions.Attendance.Manage,
+        Permissions.Attendance.RegularizationView,
+        Permissions.Attendance.RegularizationCreate,
+        Permissions.Attendance.ShiftManage,
+        Permissions.Attendance.RosterManage,
+        Permissions.Attendance.PolicyManage,
+        Permissions.Attendance.DeviceManage,
+        Permissions.Self.AttendanceView,
+        Permissions.Self.AttendancePunch,
     ];
 
     string normalizedEmail = adminEmail.Trim().ToUpperInvariant();
@@ -237,11 +249,15 @@ static async Task SeedTenantAdminAsync(string connectionString, Guid tenantId, s
     Console.WriteLine($"Tenant admin '{adminEmail}' created ({admin.Id}) with role '{role.Name}'.");
 }
 
-static async Task SeedLeaveRequestWorkflowAsync(string connectionString, Guid tenantId)
+/// <summary>
+/// Creates and publishes the simplest possible approval chain - the reporting manager at level 1,
+/// matching the architecture doc's own simplest example (§13.2) - for a workflow definition code
+/// this service's request-and-approve modules assume already exists (Leave, and now Attendance's
+/// regularization requests). Richer step configuration (department head, HR review, conditions) is
+/// deferred until a tenant actually needs it. Idempotent: skips if the code is already seeded.
+/// </summary>
+static async Task SeedSingleStepWorkflowAsync(string connectionString, Guid tenantId, string definitionCode, string entityType, string name)
 {
-    const string DefinitionCode = "LEAVE_REQUEST";
-    const string EntityType = "LEAVE_REQUEST";
-
     var migrationTenantContext = new TenantContext();
     migrationTenantContext.BeginPlatformScope("dev-seed");
 
@@ -270,16 +286,13 @@ static async Task SeedLeaveRequestWorkflowAsync(string connectionString, Guid te
 
     await using var db = new WorkflowDbContext(writeOptions, tenantScopedContext);
 
-    bool alreadyExists = await db.Definitions.AnyAsync(d => d.Code == DefinitionCode);
+    bool alreadyExists = await db.Definitions.AnyAsync(d => d.Code == definitionCode);
     if (alreadyExists)
     {
-        Console.WriteLine($"Workflow definition '{DefinitionCode}' already exists - leaving it as is.");
+        Console.WriteLine($"Workflow definition '{definitionCode}' already exists - leaving it as is.");
         return;
     }
 
-    // Simplest possible approval chain: the reporting manager at level 1. Matches the architecture
-    // doc's own simplest example (§13.2) - richer step configuration (department head, HR review,
-    // conditions) is deferred until a tenant actually needs it.
     const string DefinitionJson = """
         {
           "steps": [
@@ -293,7 +306,7 @@ static async Task SeedLeaveRequestWorkflowAsync(string connectionString, Guid te
         }
         """;
 
-    WorkflowDefinition definition = WorkflowDefinition.Create(DefinitionCode, "Leave request approval", EntityType);
+    WorkflowDefinition definition = WorkflowDefinition.Create(definitionCode, name, entityType);
     WorkflowDefinitionVersion version = WorkflowDefinitionVersion.CreateDraft(definition.Id, version: 1, DefinitionJson);
     version.Publish(DateTime.UtcNow);
 
@@ -302,7 +315,7 @@ static async Task SeedLeaveRequestWorkflowAsync(string connectionString, Guid te
 
     await db.SaveChangesAsync();
 
-    Console.WriteLine($"Workflow definition '{DefinitionCode}' created and published ({definition.Id}).");
+    Console.WriteLine($"Workflow definition '{definitionCode}' created and published ({definition.Id}).");
 }
 
 /// <summary>

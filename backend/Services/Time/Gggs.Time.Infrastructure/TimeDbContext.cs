@@ -1,6 +1,7 @@
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Persistence;
+using Gggs.Time.Domain.Attendance;
 using Gggs.Time.Domain.Holidays;
 using Gggs.Time.Domain.Leave;
 using Gggs.Time.Domain.Snapshots;
@@ -8,8 +9,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Gggs.Time.Infrastructure;
 
-/// <summary>Time's database: leave types/policies/ledger/balances/requests, holiday calendars, and
-/// the employee snapshot fed from Core HR.</summary>
+/// <summary>Time's database: attendance (shifts/rosters/punches/days/regularizations), leave
+/// types/policies/ledger/balances/requests, holiday calendars, and the employee snapshot fed from
+/// Core HR.</summary>
 public sealed class TimeDbContext(DbContextOptions<TimeDbContext> options, ITenantContext tenantContext)
     : GggsDbContext(options, tenantContext)
 {
@@ -34,6 +36,16 @@ public sealed class TimeDbContext(DbContextOptions<TimeDbContext> options, ITena
     public DbSet<Holiday> Holidays => Set<Holiday>();
 
     public DbSet<EmployeeSnapshot> EmployeeSnapshots => Set<EmployeeSnapshot>();
+
+    public DbSet<Shift> Shifts => Set<Shift>();
+
+    public DbSet<ShiftRoster> ShiftRosters => Set<ShiftRoster>();
+
+    public DbSet<AttendancePunch> AttendancePunches => Set<AttendancePunch>();
+
+    public DbSet<AttendanceDay> AttendanceDays => Set<AttendanceDay>();
+
+    public DbSet<AttendanceRegularization> AttendanceRegularizations => Set<AttendanceRegularization>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -184,6 +196,87 @@ public sealed class TimeDbContext(DbContextOptions<TimeDbContext> options, ITena
                 .HasDatabaseName("UX_Holiday_TenantId_HolidayCalendarId_HolidayDate")
                 .IsUnique()
                 .HasFilter("[IsDeleted] = 0");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<Shift>(entity =>
+        {
+            entity.ToTable("Shift", "time");
+            entity.Property(x => x.Code).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(100).IsRequired();
+
+            entity.HasIndex(x => new { x.TenantId, x.Code })
+                .HasDatabaseName("UX_Shift_TenantId_Code")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<ShiftRoster>(entity =>
+        {
+            entity.ToTable("ShiftRoster", "time");
+            entity.Property(x => x.Source).HasConversion<byte>();
+
+            entity.HasIndex(x => new { x.TenantId, x.EmployeeId, x.RosterDate })
+                .HasDatabaseName("UX_ShiftRoster_TenantId_EmployeeId_RosterDate")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            entity.HasIndex(x => new { x.TenantId, x.RosterDate, x.ShiftId })
+                .HasDatabaseName("IX_ShiftRoster_TenantId_RosterDate_ShiftId");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<AttendancePunch>(entity =>
+        {
+            entity.ToTable("AttendancePunch", "time");
+            entity.Property(x => x.Direction).HasConversion<byte>();
+            entity.Property(x => x.Source).HasConversion<byte>();
+            entity.Property(x => x.Latitude).HasColumnType("decimal(9,6)");
+            entity.Property(x => x.Longitude).HasColumnType("decimal(9,6)");
+            entity.Property(x => x.IpAddress).HasMaxLength(45);
+            entity.Property(x => x.ExternalRef).HasMaxLength(100);
+
+            entity.HasIndex(x => new { x.TenantId, x.EmployeeId, x.PunchTimeUtc })
+                .HasDatabaseName("IX_AttendancePunch_TenantId_EmployeeId_PunchTimeUtc");
+
+            // Device/import idempotency - see AttendancePunch.ExternalRef's own remarks.
+            entity.HasIndex(x => new { x.TenantId, x.Source, x.ExternalRef })
+                .HasDatabaseName("UX_AttendancePunch_TenantId_Source_ExternalRef")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0 AND [ExternalRef] IS NOT NULL");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<AttendanceDay>(entity =>
+        {
+            entity.ToTable("AttendanceDay", "time");
+            entity.Property(x => x.Status).HasConversion<byte>();
+
+            entity.HasIndex(x => new { x.TenantId, x.EmployeeId, x.AttendanceDate })
+                .HasDatabaseName("UX_AttendanceDay_TenantId_EmployeeId_AttendanceDate")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            entity.HasIndex(x => new { x.TenantId, x.AttendanceDate, x.Status })
+                .HasDatabaseName("IX_AttendanceDay_TenantId_AttendanceDate_Status");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<AttendanceRegularization>(entity =>
+        {
+            entity.ToTable("AttendanceRegularization", "time");
+            entity.Property(x => x.ReasonCode).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Remarks).HasMaxLength(1000);
+            entity.Property(x => x.Status).HasConversion<byte>();
+
+            entity.HasIndex(x => new { x.TenantId, x.EmployeeId, x.AttendanceDate })
+                .HasDatabaseName("IX_AttendanceRegularization_TenantId_EmployeeId_AttendanceDate");
 
             entity.Ignore(x => x.DomainEvents);
         });
