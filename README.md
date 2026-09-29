@@ -7,9 +7,11 @@ The architecture this is built from lives in
 [`docs/architecture/architecture.md`](docs/architecture/architecture.md). Read §3 (multi-tenancy),
 §9 (tenant isolation) and §22 (roadmap) before writing code.
 
-**Status: Phase 1 well under way.** Platform (tenants), Identity (users, roles, local sign-in) and
+**Status: Phase 1 complete.** Platform (tenants), Identity (users, roles, local sign-in) and
 Core HR (organization structure, employees) are built and tested end to end, including a working
-BFF gateway and a full Angular admin console: Organization, the complete Employee lifecycle,
+BFF gateway and a full Angular admin console: Organization (legal entities, business units,
+branches, locations, departments, designations, grades, cost centers - every resource
+`OrganizationEndpoints.cs` exposes now has a screen), the complete Employee lifecycle,
 Users/Roles administration (invite, complete-invitation, role permission editor), and tenant
 settings. **Audit v1** is also built: every tenant-owned entity change is staged as an
 `AuditEntryIntegrationEvent` in the writing service's own outbox
@@ -41,7 +43,11 @@ have no frontend, nor does delivery-webhook tracking. The audit log now has a fr
 tests pass (the two new notification libraries have no spec files yet - a gap, not a deliberate
 omission). See [docs/runbooks/local-dev-login.md](docs/runbooks/local-dev-login.md) to run the
 whole stack and sign in. Every Phase 1 backend service from the roadmap now exists with a working
-frontend screen; what is left in Phase 1 is the Business units/locations Organization screens.
+frontend screen, including Business units (`/org/business-units`) and Locations
+(`/org/locations`) - the last two Organization resources that had a working API but no screen.
+Phase 1 as scoped in the roadmap (§22) is done; see "Known gaps" below and the phase's own
+remaining rough edges (no malware scanning, no notification template admin UI, no delivery-webhook
+tracking) for what a "done" Phase 1 still does not cover.
 
 Known gaps: the Bicep templates are unvalidated and still need private endpoints and Front Door
 (see [infra/README.md](infra/README.md)); `dotnet test` cannot run the suites on this SDK (see
