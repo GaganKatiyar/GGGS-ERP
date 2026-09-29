@@ -38,13 +38,37 @@
     }
 
     <span class="shell__user">{{ user.displayName }}</span>
+    }
+
+    <button
+      type="button"
+      class="shell__theme-toggle"
+      (click)="theme.toggle()"
+      [attr.aria-label]="theme.isDark() ? 'Switch to light theme' : 'Switch to dark theme'"
+      [attr.aria-pressed]="theme.isDark()"
+    >
+      <i
+        class="pi"
+        [class.pi-moon]="!theme.isDark()"
+        [class.pi-sun]="theme.isDark()"
+        aria-hidden="true"
+      ></i>
+    </button>
+
+    @if (session.user()) {
     <button type="button" class="shell__sign-out" (click)="signOut()">
       Sign out
     </button>
     }
   </header>
 
-  <nav id="shell-sidebar" class="shell__sidebar" aria-label="Main">
+  <nav
+    id="shell-sidebar"
+    class="shell__sidebar"
+    aria-label="Main"
+    tabindex="-1"
+    (keydown.escape)="closeSidebarOnMobile()"
+  >
     <ul class="nav">
       @for (item of navigation(); track item.label) {
       <li class="nav__item">
@@ -54,6 +78,7 @@
           [routerLink]="item.route"
           routerLinkActive="nav__link--active"
           [routerLinkActiveOptions]="{ exact: false }"
+          (click)="closeSidebarOnMobile()"
         >
           <i class="nav__icon {{ item.icon }}" aria-hidden="true"></i>
           <span class="nav__label">{{ item.label }}</span>
@@ -71,6 +96,7 @@
               class="nav__link"
               [routerLink]="child.route"
               routerLinkActive="nav__link--active"
+              (click)="closeSidebarOnMobile()"
             >
               <i class="nav__icon {{ child.icon }}" aria-hidden="true"></i>
               <span class="nav__label">{{ child.label }}</span>
@@ -83,6 +109,18 @@
       }
     </ul>
   </nav>
+
+  <!-- Hidden above the mobile breakpoint by CSS (shell.scss) regardless of this class - "open" only
+       means something for the mobile drawer, not the desktop rail. -->
+  <button
+    type="button"
+    class="shell__backdrop"
+    [class.shell__backdrop--visible]="!isSidebarCollapsed()"
+    [attr.aria-hidden]="isSidebarCollapsed()"
+    [attr.tabindex]="isSidebarCollapsed() ? -1 : 0"
+    aria-label="Close navigation"
+    (click)="closeSidebarOnMobile()"
+  ></button>
 
   <main class="shell__content" tabindex="-1">
     <router-outlet />

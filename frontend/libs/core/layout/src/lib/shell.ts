@@ -12,10 +12,14 @@ import { PermissionStore } from '@gggs/core/permissions';
 import { TenantStore } from '@gggs/core/tenant';
 import { NotificationsApi } from '@gggs/shared/notifications';
 import { NAVIGATION, filterNavigation, type NavItem } from './navigation';
+import { ThemeStore } from './theme';
 
 /** How often the header bell's unread count refreshes. There is no push yet (architecture.md
  * §14 puts SignalR in a later phase), so this is the whole story until then. */
 const UNREAD_COUNT_REFRESH_MS = 60_000;
+
+/** Below this, the sidebar stops being a column and becomes an overlay drawer (shell.scss). */
+const MOBILE_BREAKPOINT_QUERY = '(max-width: 48rem)';
 
 /**
  * The application shell: sidebar, header and the routed outlet.
@@ -36,8 +40,14 @@ export class Shell {
   private readonly notificationsApi = inject(NotificationsApi);
   protected readonly session = inject(SessionStore);
   protected readonly tenant = inject(TenantStore);
+  protected readonly theme = inject(ThemeStore);
 
-  protected readonly isSidebarCollapsed = signal(false);
+  // "Collapsed" means minimal sidebar presence either way: a narrow icon rail on desktop, or fully
+  // hidden off-screen on mobile - so the drawer starts closed on a small screen rather than
+  // covering the page on first paint, and the same signal/toggle drives both behaviors.
+  protected readonly isSidebarCollapsed = signal(
+    typeof window !== 'undefined' && window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches,
+  );
   protected readonly unreadCount = signal(0);
   protected readonly canSeeNotifications = computed(() =>
     this.permissions.hasAny(['notification.inbox.view']),
@@ -62,6 +72,14 @@ export class Shell {
 
   protected toggleSidebar(): void {
     this.isSidebarCollapsed.update((collapsed) => !collapsed);
+  }
+
+  /** Navigating (or dismissing the backdrop) closes the drawer on mobile; harmless on desktop,
+   * where it just re-collapses to the icon rail. */
+  protected closeSidebarOnMobile(): void {
+    if (window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches) {
+      this.isSidebarCollapsed.set(true);
+    }
   }
 
   private async refreshUnreadCount(): Promise<void> {

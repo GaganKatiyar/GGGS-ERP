@@ -1,21 +1,20 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { HasPermissionDirective } from '@gggs/core/permissions';
 import { DataTable, type DataTableColumn, type DataTableQuery } from '@gggs/shared/data-table';
-import { PageHeader } from '@gggs/shared/ui';
+import { Button, PageHeader } from '@gggs/shared/ui';
 import type { PagedResult, UserListItem, UserStatus } from '@gggs/shared/models';
 import { AdminApi } from '@gggs/shared/identity';
 
 /** Everyone who can sign in to this tenant. */
 @Component({
   selector: 'gggs-user-list-page',
-  imports: [RouterLink, HasPermissionDirective, PageHeader, DataTable],
+  imports: [HasPermissionDirective, PageHeader, DataTable, Button],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <gggs-page-header title="Users" subtitle="Everyone who can sign in to this tenant.">
-      <a routerLink="/admin/users/invite" class="btn btn--primary" *gggsHasPermission="'admin.user.invite'">
+      <gggs-button link="/admin/users/invite" *gggsHasPermission="'admin.user.invite'">
         Invite user
-      </a>
+      </gggs-button>
     </gggs-page-header>
 
     <label class="filter">
@@ -56,23 +55,44 @@ import { AdminApi } from '@gggs/shared/identity';
             <tr>
               <td>{{ user.displayName }} · {{ user.email }}</td>
               <td *gggsHasPermission="'admin.user.manage'">
-                <a [routerLink]="['/admin/users', user.id, 'roles']" class="btn">Manage roles</a>
+                <gggs-button
+                  variant="secondary"
+                  size="sm"
+                  [link]="['/admin/users', user.id, 'roles']"
+                >
+                  Manage roles
+                </gggs-button>
               </td>
               <td *gggsHasPermission="'admin.user.lock'">
                 @if (user.status === 'Locked') {
-                  <button type="button" class="btn" [disabled]="isActing()" (click)="unlock(user)">
+                  <gggs-button
+                    variant="secondary"
+                    size="sm"
+                    [disabled]="isActing()"
+                    (click)="unlock(user)"
+                  >
                     Unlock
-                  </button>
+                  </gggs-button>
                 }
                 @if (user.status === 'Disabled') {
-                  <button type="button" class="btn" [disabled]="isActing()" (click)="enable(user)">
+                  <gggs-button
+                    variant="secondary"
+                    size="sm"
+                    [disabled]="isActing()"
+                    (click)="enable(user)"
+                  >
                     Enable
-                  </button>
+                  </gggs-button>
                 }
                 @if (user.status === 'Active' || user.status === 'Invited') {
-                  <button type="button" class="btn btn--danger" [disabled]="isActing()" (click)="disable(user)">
+                  <gggs-button
+                    variant="danger"
+                    size="sm"
+                    [disabled]="isActing()"
+                    (click)="disable(user)"
+                  >
                     Disable
-                  </button>
+                  </gggs-button>
                 }
               </td>
             </tr>
@@ -85,19 +105,28 @@ import { AdminApi } from '@gggs/shared/identity';
     .filter {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      margin-block-end: 1rem;
-      font-size: 0.875rem;
+      gap: var(--gggs-space-2, 0.5rem);
+      margin-block-end: var(--gggs-space-4, 1rem);
+      font-size: var(--gggs-font-size-base, 0.875rem);
     }
 
     .filter__label {
-      font-weight: 600;
+      font-weight: var(--gggs-font-weight-semibold, 600);
+    }
+
+    .filter select {
+      font: inherit;
+      color: var(--gggs-color-text, #1f2430);
+      background: var(--gggs-color-surface-raised, #ffffff);
+      border: 1px solid var(--gggs-color-border, #e2e5ea);
+      border-radius: var(--gggs-radius-sm, 0.375rem);
+      padding: var(--gggs-space-1, 0.25rem) var(--gggs-space-2, 0.5rem);
     }
 
     .field__error {
-      margin: 0 0 1rem;
+      margin: 0 0 var(--gggs-space-4, 1rem);
       color: var(--gggs-color-danger, #b3261e);
-      font-size: 0.875rem;
+      font-size: var(--gggs-font-size-base, 0.875rem);
     }
 
     /* The data-table's own columns are read-only (see DataTableColumn); actions that need a
@@ -110,40 +139,9 @@ import { AdminApi } from '@gggs/shared/identity';
 
     .action-table th,
     .action-table td {
-      padding: 0.5rem 0.75rem;
+      padding: var(--gggs-space-2, 0.5rem) var(--gggs-space-3, 0.75rem);
       text-align: left;
       border-bottom: 1px solid var(--gggs-color-border, #e2e5ea);
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.375rem 0.75rem;
-      font-weight: 600;
-      font-family: inherit;
-      font-size: 0.8125rem;
-      border-radius: 0.375rem;
-      border: 1px solid var(--gggs-color-border, #e2e5ea);
-      background: var(--gggs-color-surface-raised, #ffffff);
-      text-decoration: none;
-      color: inherit;
-      cursor: pointer;
-    }
-
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .btn--primary {
-      background: var(--gggs-color-primary, #2f5fd6);
-      border-color: transparent;
-      color: #fff;
-    }
-
-    .btn--danger {
-      border-color: var(--gggs-color-danger, #b3261e);
-      color: var(--gggs-color-danger, #b3261e);
     }
   `,
 })

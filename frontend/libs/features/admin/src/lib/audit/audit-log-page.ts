@@ -204,7 +204,7 @@ import { AuditApi } from './audit-api';
       padding: 0.5rem;
       overflow-x: auto;
       font-size: 0.75rem;
-      background: var(--gggs-color-surface, #f4f6f9);
+      background: var(--gggs-color-surface, #f6f7f9);
       border-radius: 0.375rem;
     }
 
@@ -222,7 +222,7 @@ import { AuditApi } from './audit-api';
     }
 
     .btn--primary {
-      background: var(--gggs-color-primary, #2f5fd6);
+      background: var(--gggs-color-primary, #1d4ed8);
       border-color: transparent;
       color: #fff;
     }

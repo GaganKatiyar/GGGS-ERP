@@ -6,6 +6,7 @@ import {
   safeReturnUrl,
   type PasswordSignInResult,
 } from '@gggs/core/auth';
+import { Button, FormField } from '@gggs/shared/ui';
 
 /**
  * Signing in.
@@ -20,7 +21,7 @@ import {
  */
 @Component({
   selector: 'gggs-sign-in-page',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, FormField, Button],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main class="sign-in">
@@ -32,8 +33,11 @@ import {
       >
         <h1 class="sign-in__title">Sign in</h1>
 
-        <label class="sign-in__field">
-          <span class="sign-in__label">Organisation code</span>
+        <gggs-form-field
+          label="Organisation code"
+          hint="The short code your organisation was given, for example acme."
+          hintId="tenant-hint"
+        >
           <input
             type="text"
             formControlName="tenantCode"
@@ -42,14 +46,9 @@ import {
             spellcheck="false"
             [attr.aria-describedby]="'tenant-hint'"
           />
-          <span id="tenant-hint" class="sign-in__hint">
-            The short code your organisation was given, for example
-            <code>acme</code>.
-          </span>
-        </label>
+        </gggs-form-field>
 
-        <label class="sign-in__field">
-          <span class="sign-in__label">Work email</span>
+        <gggs-form-field label="Work email" required>
           <input
             type="email"
             formControlName="email"
@@ -58,17 +57,16 @@ import {
             spellcheck="false"
             required
           />
-        </label>
+        </gggs-form-field>
 
-        <label class="sign-in__field">
-          <span class="sign-in__label">Password</span>
+        <gggs-form-field label="Password" required>
           <input
             type="password"
             formControlName="password"
             autocomplete="current-password"
             required
           />
-        </label>
+        </gggs-form-field>
 
         @if (message()) {
           <!-- assertive: a failed sign-in must reach a screen reader immediately, because the
@@ -78,9 +76,9 @@ import {
           </p>
         }
 
-        <button type="submit" class="sign-in__submit" [disabled]="isBusy()">
+        <gggs-button type="submit" [loading]="isBusy()" [fullWidth]="true">
           {{ isBusy() ? 'Signing in…' : 'Sign in' }}
-        </button>
+        </gggs-button>
       </form>
     </main>
   `,
@@ -90,52 +88,32 @@ import {
       align-items: center;
       justify-content: center;
       min-height: 100dvh;
-      padding: 1rem;
+      padding: var(--gggs-space-4, 1rem);
     }
 
     .sign-in__card {
       display: flex;
       flex-direction: column;
-      gap: 1rem;
+      gap: var(--gggs-space-4, 1rem);
       width: 100%;
       max-width: 24rem;
-      padding: 2rem;
-      border: 1px solid var(--gggs-color-border, #d8dde6);
-      border-radius: 0.75rem;
-      background: var(--gggs-color-surface, #ffffff);
+      padding: var(--gggs-space-8, 2rem);
+      border: 1px solid var(--gggs-color-border, #e2e5ea);
+      border-radius: var(--gggs-radius-lg, 0.75rem);
+      background: var(--gggs-color-surface-raised, #ffffff);
+      box-shadow: var(--gggs-shadow-md, none);
     }
 
     .sign-in__title {
       margin: 0;
-      font-size: 1.25rem;
-    }
-
-    .sign-in__field {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-
-    .sign-in__label {
-      font-weight: 600;
-      font-size: 0.875rem;
-    }
-
-    .sign-in__hint {
-      font-size: 0.75rem;
-      color: var(--gggs-color-text-muted, #5b6472);
+      font-size: var(--gggs-font-size-xl, 1.25rem);
+      font-weight: var(--gggs-font-weight-semibold, 600);
     }
 
     .sign-in__error {
       margin: 0;
       color: var(--gggs-color-danger, #b3261e);
-      font-size: 0.875rem;
-    }
-
-    .sign-in__submit {
-      margin-block-start: 0.5rem;
-      padding: 0.625rem 1rem;
-      font-weight: 600;
+      font-size: var(--gggs-font-size-base, 0.875rem);
     }
   `,
 })

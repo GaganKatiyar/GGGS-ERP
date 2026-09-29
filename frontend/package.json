@@ -2,7 +2,9 @@
   "name": "@frontend/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "stylelint": "stylelint \"apps/**/*.scss\" \"libs/**/*.scss\""
+  },
   "private": true,
   "dependencies": {
     "@angular/cdk": "~21.2.0",
@@ -55,6 +57,9 @@
     "jsdom": "^27.1.0",
     "nx": "23.2.1",
     "prettier": "~3.6.2",
+    "stylelint": "^17.15.0",
+    "stylelint-config-recommended-scss": "^17.0.1",
+    "stylelint-declaration-strict-value": "^1.12.1",
     "tslib": "^2.3.0",
     "typescript": "~5.9.0",
     "typescript-eslint": "^8.58.0",

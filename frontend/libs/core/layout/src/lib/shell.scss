@@ -83,6 +83,23 @@
   text-align: center;
 }
 
+.shell__theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.shell__theme-toggle:hover {
+  background: var(--gggs-color-surface-hover, #eef1f5);
+}
+
 .shell__sidebar {
   grid-area: sidebar;
   overflow-y: auto;
@@ -90,8 +107,43 @@
   background: var(--gggs-color-surface-raised, #ffffff);
   border-right: 1px solid var(--gggs-color-border, #e2e5ea);
 
+  // Below tablet the sidebar isn't a grid column at all - it's an overlay drawer, closed
+  // (translated off-screen) by default and slid in over the content when opened.
   @media (max-width: 48rem) {
-    display: none;
+    position: fixed;
+    inset-block: 3.5rem 0;
+    inset-inline-start: 0;
+    z-index: 950;
+    width: 16rem;
+    max-width: 85vw;
+    box-shadow: var(--gggs-shadow-lg, none);
+    transition: transform 220ms ease;
+    transform: translateX(-100%);
+  }
+}
+
+// The drawer's open/closed state is the same `isSidebarCollapsed` signal that drives the desktop
+// icon rail - "not collapsed" means "fully present", which on mobile means slid into view.
+@media (max-width: 48rem) {
+  .shell:not(.shell--collapsed) .shell__sidebar {
+    transform: translateX(0);
+  }
+}
+
+.shell__backdrop {
+  display: none;
+  position: fixed;
+  inset: 3.5rem 0 0 0;
+  z-index: 940;
+  border: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.4);
+  cursor: default;
+
+  @media (max-width: 48rem) {
+    &.shell__backdrop--visible {
+      display: block;
+    }
   }
 }
 
@@ -135,7 +187,9 @@
 // Focus must stay visible: ERP users navigate these lists by keyboard all day.
 .nav__link:focus-visible,
 .shell__menu-toggle:focus-visible,
-.shell__sign-out:focus-visible {
+.shell__sign-out:focus-visible,
+.shell__theme-toggle:focus-visible,
+.shell__backdrop:focus-visible {
   outline: 2px solid var(--gggs-color-primary, #1d4ed8);
   outline-offset: 2px;
 }

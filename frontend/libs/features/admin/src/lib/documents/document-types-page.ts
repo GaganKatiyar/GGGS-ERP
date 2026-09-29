@@ -184,7 +184,7 @@ const CATEGORIES: readonly DocumentCategory[] = ['Employee', 'Company', 'Payroll
     }
 
     .btn--primary {
-      background: var(--gggs-color-primary, #2f5fd6);
+      background: var(--gggs-color-primary, #1d4ed8);
       color: #fff;
     }
 

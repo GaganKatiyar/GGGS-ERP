@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import { AdminApi } from '@gggs/shared/identity';
+import { Button, FormField } from '@gggs/shared/ui';
 
 /**
  * Setting a password from an invitation link.
@@ -16,7 +17,7 @@ import { AdminApi } from '@gggs/shared/identity';
  */
 @Component({
   selector: 'gggs-complete-invitation-page',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, FormField, Button],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main class="page">
@@ -28,8 +29,7 @@ import { AdminApi } from '@gggs/shared/identity';
             This link is missing something it needs. Ask whoever invited you to send it again.
           </p>
         } @else {
-          <label class="field">
-            <span class="field__label">New password</span>
+          <gggs-form-field label="New password" hint="At least 12 characters." required>
             <input
               type="password"
               formControlName="newPassword"
@@ -37,8 +37,7 @@ import { AdminApi } from '@gggs/shared/identity';
               minlength="12"
               required
             />
-            <span class="field__hint">At least 12 characters.</span>
-          </label>
+          </gggs-form-field>
 
           @if (errorMessage()) {
             <p class="card__error" role="alert">{{ errorMessage() }}</p>
@@ -50,9 +49,14 @@ import { AdminApi } from '@gggs/shared/identity';
             </p>
           }
 
-          <button type="submit" class="card__submit" [disabled]="isSaving() || succeeded()">
+          <gggs-button
+            type="submit"
+            [loading]="isSaving()"
+            [disabled]="succeeded()"
+            [fullWidth]="true"
+          >
             {{ isSaving() ? 'Saving…' : 'Set password' }}
-          </button>
+          </gggs-button>
         }
       </form>
     </main>
@@ -63,58 +67,38 @@ import { AdminApi } from '@gggs/shared/identity';
       align-items: center;
       justify-content: center;
       min-height: 100dvh;
-      padding: 1rem;
+      padding: var(--gggs-space-4, 1rem);
     }
 
     .card {
       display: flex;
       flex-direction: column;
-      gap: 1rem;
+      gap: var(--gggs-space-4, 1rem);
       width: 100%;
       max-width: 24rem;
-      padding: 2rem;
-      border: 1px solid var(--gggs-color-border, #d8dde6);
-      border-radius: 0.75rem;
-      background: var(--gggs-color-surface, #ffffff);
+      padding: var(--gggs-space-8, 2rem);
+      border: 1px solid var(--gggs-color-border, #e2e5ea);
+      border-radius: var(--gggs-radius-lg, 0.75rem);
+      background: var(--gggs-color-surface-raised, #ffffff);
+      box-shadow: var(--gggs-shadow-md, none);
     }
 
     .card__title {
       margin: 0;
-      font-size: 1.25rem;
-    }
-
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-
-    .field__label {
-      font-weight: 600;
-      font-size: 0.875rem;
-    }
-
-    .field__hint {
-      font-size: 0.75rem;
-      color: var(--gggs-color-text-muted, #5b6472);
+      font-size: var(--gggs-font-size-xl, 1.25rem);
+      font-weight: var(--gggs-font-weight-semibold, 600);
     }
 
     .card__error {
       margin: 0;
       color: var(--gggs-color-danger, #b3261e);
-      font-size: 0.875rem;
+      font-size: var(--gggs-font-size-base, 0.875rem);
     }
 
     .card__success {
       margin: 0;
-      color: var(--gggs-color-success, #1e7d34);
-      font-size: 0.875rem;
-    }
-
-    .card__submit {
-      margin-block-start: 0.5rem;
-      padding: 0.625rem 1rem;
-      font-weight: 600;
+      color: var(--gggs-color-success, #0e6b30);
+      font-size: var(--gggs-font-size-base, 0.875rem);
     }
   `,
 })

@@ -1,25 +1,21 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { HasPermissionDirective } from '@gggs/core/permissions';
 import { DataTable, type DataTableColumn, type DataTableQuery } from '@gggs/shared/data-table';
-import { PageHeader } from '@gggs/shared/ui';
+import { Button, PageHeader } from '@gggs/shared/ui';
 import type { EmployeeListItem, PagedResult } from '@gggs/shared/models';
 import { EmployeesApi } from '../data/employees-api';
 
 /** The employee directory: every hire this tenant has made, current and past. */
 @Component({
   selector: 'gggs-employee-list-page',
-  imports: [RouterLink, HasPermissionDirective, PageHeader, DataTable],
+  imports: [HasPermissionDirective, PageHeader, DataTable, Button],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <gggs-page-header title="Employees" subtitle="Everyone this tenant has hired.">
-      <a
-        routerLink="new"
-        class="btn btn--primary"
-        *gggsHasPermission="'employee.profile.create'"
-      >
+      <gggs-button link="new" *gggsHasPermission="'employee.profile.create'">
         Hire employee
-      </a>
+      </gggs-button>
     </gggs-page-header>
 
     <gggs-data-table
@@ -31,21 +27,6 @@ import { EmployeesApi } from '../data/employees-api';
       (queryChange)="load($event)"
       (rowClick)="openEmployee($event)"
     />
-  `,
-  styles: `
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.5rem 1rem;
-      font-weight: 600;
-      border-radius: 0.375rem;
-      text-decoration: none;
-    }
-
-    .btn--primary {
-      background: var(--gggs-color-primary, #2f5fd6);
-      color: #fff;
-    }
   `,
 })
 export class EmployeeListPage {

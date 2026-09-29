@@ -82,7 +82,7 @@ import { AssignmentFields } from '../shared/assignment-fields';
     }
 
     .btn--primary {
-      background: var(--gggs-color-primary, #2f5fd6);
+      background: var(--gggs-color-primary, #1d4ed8);
       border-color: transparent;
       color: #fff;
     }

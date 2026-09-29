@@ -90,7 +90,7 @@ import { AdminApi } from '@gggs/shared/identity';
       display: block;
       padding: 0.5rem;
       word-break: break-all;
-      background: var(--gggs-color-surface, #f3f4f7);
+      background: var(--gggs-color-surface, #f6f7f9);
       border-radius: 0.375rem;
       font-size: 0.8125rem;
     }
@@ -135,7 +135,7 @@ import { AdminApi } from '@gggs/shared/identity';
     }
 
     .btn--primary {
-      background: var(--gggs-color-primary, #2f5fd6);
+      background: var(--gggs-color-primary, #1d4ed8);
       border-color: transparent;
       color: #fff;
     }

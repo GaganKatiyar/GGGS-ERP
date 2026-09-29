@@ -1,0 +1,32 @@
+{
+  "extends": ["stylelint-config-recommended-scss"],
+  "plugins": ["stylelint-declaration-strict-value"],
+  "rules": {
+    "scale-unlimited/declaration-strict-value": [
+      ["/color$/", "background", "border-color", "outline-color", "fill", "stroke"],
+      {
+        "ignoreValues": [
+          "inherit",
+          "transparent",
+          "currentColor",
+          "none",
+          "unset",
+          "initial",
+          "#fff",
+          "#ffffff",
+          "#000",
+          "#000000"
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "comment": "This is the one file allowed to hardcode hex values - it's the definition site every --gggs-color-* token above resolves to.",
+      "files": ["**/styles.scss"],
+      "rules": {
+        "scale-unlimited/declaration-strict-value": null
+      }
+    }
+  ]
+}
