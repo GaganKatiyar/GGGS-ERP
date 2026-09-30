@@ -1,6 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type {
+  BulkHireResult,
+  BulkHireRowRequest,
   ChangeAssignmentRequest,
   ChangeReportingManagerRequest,
   ConfirmEmployeeRequest,
@@ -50,6 +52,12 @@ export class EmployeesApi {
 
   hire(request: HireEmployeeRequest): Promise<Employee> {
     return firstValueFrom(this.http.post<Employee>('/api/v1/employees', request));
+  }
+
+  hireBulk(rows: readonly BulkHireRowRequest[]): Promise<BulkHireResult> {
+    return firstValueFrom(
+      this.http.post<BulkHireResult>('/api/v1/employees/bulk', { rows }),
+    );
   }
 
   transfer(id: string, request: ChangeAssignmentRequest): Promise<EmploymentRecord> {

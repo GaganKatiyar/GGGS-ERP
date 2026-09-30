@@ -13,6 +13,9 @@ import { EmployeesApi } from '../data/employees-api';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <gggs-page-header title="Employees" subtitle="Everyone this tenant has hired.">
+      <gggs-button link="bulk-import" *gggsHasPermission="'employee.profile.create'">
+        Bulk import
+      </gggs-button>
       <gggs-button link="new" *gggsHasPermission="'employee.profile.create'">
         Hire employee
       </gggs-button>

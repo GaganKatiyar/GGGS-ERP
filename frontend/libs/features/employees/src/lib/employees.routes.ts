@@ -1,5 +1,6 @@
 import type { Route, Routes } from '@angular/router';
 import { withPermissions } from '@gggs/core/permissions';
+import { BulkImportEmployeesPage } from './bulk-import/bulk-import-employees-page';
 import { ChangeAssignmentPage } from './change-assignment/change-assignment-page';
 import { ChangeManagerPage } from './change-manager/change-manager-page';
 import { ConfirmEmployeePage } from './confirm/confirm-employee-page';
@@ -35,6 +36,12 @@ export const EMPLOYEES_ROUTES: Routes = [
     path: 'new',
     component: HireEmployeePage,
     title: 'Hire employee',
+    ...withPermissions(['employee.profile.create']),
+  },
+  {
+    path: 'bulk-import',
+    component: BulkImportEmployeesPage,
+    title: 'Bulk import employees',
     ...withPermissions(['employee.profile.create']),
   },
   {

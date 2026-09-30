@@ -102,3 +102,38 @@ export interface ChangeReportingManagerRequest {
   readonly newReportingManagerId?: string;
   readonly reason?: string;
 }
+
+/**
+ * One row of a bulk hire request - organizational references are codes (e.g. "ACME01", "ENG"), not
+ * ids, matching `POST /employees/bulk`'s `BulkHireRowBody` and what a spreadsheet import actually has.
+ */
+export interface BulkHireRowRequest {
+  readonly employeeCode: string;
+  readonly firstName: string;
+  readonly middleName?: string;
+  readonly lastName?: string;
+  readonly workEmail?: string;
+  readonly dateOfJoining: string;
+  readonly legalEntityCode: string;
+  readonly branchCode: string;
+  readonly departmentCode: string;
+  readonly designationCode: string;
+  readonly gradeCode?: string;
+  readonly employmentType: EmploymentType;
+  readonly probationEndDate?: string;
+}
+
+export interface BulkHireRowResult {
+  readonly rowNumber: number;
+  readonly succeeded: boolean;
+  readonly employeeId?: string;
+  readonly errorCode?: string;
+  readonly errorMessage?: string;
+}
+
+export interface BulkHireResult {
+  readonly totalRows: number;
+  readonly successCount: number;
+  readonly failureCount: number;
+  readonly rows: readonly BulkHireRowResult[];
+}
