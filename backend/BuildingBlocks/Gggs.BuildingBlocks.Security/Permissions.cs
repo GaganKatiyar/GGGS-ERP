@@ -233,4 +233,21 @@ public static class Permissions
         /// <summary>Starting and completing your own enrollment.</summary>
         public const string EnrollmentManageOwn = "learning.enrollment.manage-own";
     }
+
+    /// <summary>Salary components, structures, and employee salary assignment. No payroll runs,
+    /// payslips or statutory compliance in this v1 slice - see <c>EmployeeSalary</c>'s own remarks.</summary>
+    public static class Payroll
+    {
+        public const string ComponentManage = "payroll.component.manage";
+        public const string StructureManage = "payroll.structure.manage";
+
+        /// <summary>Viewing an employee's assigned salary and its component breakdown. Sensitive:
+        /// step-up authentication plus access auditing, the same treatment as
+        /// <see cref="Employee.BankView"/>.</summary>
+        public const string EmployeeSalaryView = "payroll.employee-salary.view";
+
+        /// <summary>Assigning a structure and CTC to an employee. Sensitive for the same reason as
+        /// <see cref="EmployeeSalaryView"/>.</summary>
+        public const string EmployeeSalaryManage = "payroll.employee-salary.manage";
+    }
 }

@@ -53,6 +53,13 @@
     <Project Path="Services/Platform/Gggs.Platform.Infrastructure/Gggs.Platform.Infrastructure.csproj" />
     <Project Path="Services/Platform/Gggs.Platform.Worker/Gggs.Platform.Worker.csproj" />
   </Folder>
+  <Folder Name="/Services/Payroll/">
+    <Project Path="Services/Payroll/Gggs.Payroll.Api/Gggs.Payroll.Api.csproj" />
+    <Project Path="Services/Payroll/Gggs.Payroll.Application/Gggs.Payroll.Application.csproj" />
+    <Project Path="Services/Payroll/Gggs.Payroll.Domain/Gggs.Payroll.Domain.csproj" />
+    <Project Path="Services/Payroll/Gggs.Payroll.Infrastructure/Gggs.Payroll.Infrastructure.csproj" />
+    <Project Path="Services/Payroll/Gggs.Payroll.Worker/Gggs.Payroll.Worker.csproj" />
+  </Folder>
   <Folder Name="/Services/Sample/">
     <Project Path="Services/Sample/Gggs.Sample.Api/Gggs.Sample.Api.csproj" />
   </Folder>
