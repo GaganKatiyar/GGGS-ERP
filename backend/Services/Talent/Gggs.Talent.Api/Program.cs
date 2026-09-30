@@ -10,6 +10,7 @@ using Gggs.BuildingBlocks.Secrets;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.Talent.Api.Endpoints;
+using Gggs.Talent.Application.Onboarding;
 using Gggs.Talent.Application.Recruitment;
 using Gggs.Talent.Application.Snapshots;
 using Gggs.Talent.Infrastructure;
@@ -65,12 +66,16 @@ builder.Services.AddScoped<IJobPostingRepository, JobPostingRepository>();
 builder.Services.AddScoped<ICandidateRepository, CandidateRepository>();
 builder.Services.AddScoped<IJobApplicationRepository, JobApplicationRepository>();
 builder.Services.AddScoped<IOfferRepository, OfferRepository>();
+builder.Services.AddScoped<IOnboardingTemplateRepository, OnboardingTemplateRepository>();
+builder.Services.AddScoped<IOnboardingCaseRepository, OnboardingCaseRepository>();
 builder.Services.AddScoped<IEmployeeSnapshotRepository, EmployeeSnapshotRepository>();
 
 builder.Services.AddScoped<JobRequisitionService>();
 builder.Services.AddScoped<JobPostingService>();
 builder.Services.AddScoped<JobApplicationService>();
 builder.Services.AddScoped<OfferService>();
+builder.Services.AddScoped<OnboardingTemplateService>();
+builder.Services.AddScoped<OnboardingCaseService>();
 
 builder.Services.AddGggsJson();
 builder.Services.AddProblemDetails();
@@ -95,6 +100,8 @@ app.MapJobRequisitionEndpoints();
 app.MapJobPostingEndpoints();
 app.MapJobApplicationEndpoints();
 app.MapOfferEndpoints();
+app.MapOnboardingTemplateEndpoints();
+app.MapOnboardingCaseEndpoints();
 
 if (app.Environment.IsDevelopment())
 {

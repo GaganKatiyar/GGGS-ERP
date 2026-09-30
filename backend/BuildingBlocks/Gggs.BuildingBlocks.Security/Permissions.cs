@@ -177,4 +177,17 @@ public static class Permissions
         public const string OfferView = "recruitment.offer.view";
         public const string OfferManage = "recruitment.offer.manage";
     }
+
+    /// <summary>Onboarding: templates and cases for bringing a new hire on board.</summary>
+    public static class Onboarding
+    {
+        public const string TemplateView = "onboarding.template.view";
+        public const string TemplateManage = "onboarding.template.manage";
+        public const string CaseView = "onboarding.case.view";
+        public const string CaseManage = "onboarding.case.manage";
+
+        /// <summary>Completing a task that falls to you - narrower than CaseManage, which can act
+        /// on any case's tasks regardless of assignee role.</summary>
+        public const string TaskComplete = "onboarding.task.complete";
+    }
 }

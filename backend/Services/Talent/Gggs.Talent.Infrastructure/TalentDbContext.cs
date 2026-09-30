@@ -1,6 +1,7 @@
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Persistence;
+using Gggs.Talent.Domain.Onboarding;
 using Gggs.Talent.Domain.Recruitment;
 using Gggs.Talent.Domain.Snapshots;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +9,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Gggs.Talent.Infrastructure;
 
 /// <summary>Talent's database: job requisitions, the postings made against them, candidates,
-/// applications, the offers made against them, and the employee snapshot fed from Core HR.</summary>
+/// applications, the offers made against them, onboarding templates and cases, and the employee
+/// snapshot fed from Core HR.</summary>
 public sealed class TalentDbContext(DbContextOptions<TalentDbContext> options, ITenantContext tenantContext)
     : GggsDbContext(options, tenantContext)
 {
@@ -23,6 +25,14 @@ public sealed class TalentDbContext(DbContextOptions<TalentDbContext> options, I
     public DbSet<JobApplication> JobApplications => Set<JobApplication>();
 
     public DbSet<Offer> Offers => Set<Offer>();
+
+    public DbSet<OnboardingTemplate> OnboardingTemplates => Set<OnboardingTemplate>();
+
+    public DbSet<OnboardingTemplateTask> OnboardingTemplateTasks => Set<OnboardingTemplateTask>();
+
+    public DbSet<OnboardingCase> OnboardingCases => Set<OnboardingCase>();
+
+    public DbSet<OnboardingTask> OnboardingTasks => Set<OnboardingTask>();
 
     public DbSet<EmployeeSnapshot> EmployeeSnapshots => Set<EmployeeSnapshot>();
 
@@ -122,6 +132,48 @@ public sealed class TalentDbContext(DbContextOptions<TalentDbContext> options, I
                 .HasDatabaseName("UX_Offer_TenantId_ApplicationId")
                 .IsUnique()
                 .HasFilter("[IsDeleted] = 0");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<OnboardingTemplate>(entity =>
+        {
+            entity.ToTable("OnboardingTemplate", "onb");
+            entity.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<OnboardingTemplateTask>(entity =>
+        {
+            entity.ToTable("OnboardingTemplateTask", "onb");
+            entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.AssigneeRole).HasConversion<byte>();
+
+            entity.HasIndex(x => new { x.TenantId, x.TemplateId })
+                .HasDatabaseName("IX_OnboardingTemplateTask_TenantId_TemplateId");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<OnboardingCase>(entity =>
+        {
+            entity.ToTable("OnboardingCase", "onb");
+
+            entity.HasIndex(x => new { x.TenantId, x.EmployeeId })
+                .HasDatabaseName("IX_OnboardingCase_TenantId_EmployeeId");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<OnboardingTask>(entity =>
+        {
+            entity.ToTable("OnboardingTask", "onb");
+            entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.AssigneeRole).HasConversion<byte>();
+            entity.Property(x => x.Status).HasConversion<byte>();
+
+            entity.HasIndex(x => new { x.TenantId, x.CaseId })
+                .HasDatabaseName("IX_OnboardingTask_TenantId_CaseId");
 
             entity.Ignore(x => x.DomainEvents);
         });

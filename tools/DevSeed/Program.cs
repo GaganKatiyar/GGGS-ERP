@@ -204,6 +204,11 @@ static async Task SeedTenantAdminAsync(string connectionString, Guid tenantId, s
         Permissions.Recruitment.ApplicationManage,
         Permissions.Recruitment.OfferView,
         Permissions.Recruitment.OfferManage,
+        Permissions.Onboarding.TemplateView,
+        Permissions.Onboarding.TemplateManage,
+        Permissions.Onboarding.CaseView,
+        Permissions.Onboarding.CaseManage,
+        Permissions.Onboarding.TaskComplete,
     ];
 
     string normalizedEmail = adminEmail.Trim().ToUpperInvariant();
