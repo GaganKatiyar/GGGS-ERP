@@ -61,9 +61,11 @@ builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<TalentDbCont
 builder.Services.AddGggsMessaging<TalentDbContext>(builder.Configuration, platform.DeploymentProfile);
 
 builder.Services.AddScoped<IJobRequisitionRepository, JobRequisitionRepository>();
+builder.Services.AddScoped<IJobPostingRepository, JobPostingRepository>();
 builder.Services.AddScoped<IEmployeeSnapshotRepository, EmployeeSnapshotRepository>();
 
 builder.Services.AddScoped<JobRequisitionService>();
+builder.Services.AddScoped<JobPostingService>();
 
 builder.Services.AddGggsJson();
 builder.Services.AddProblemDetails();
@@ -85,6 +87,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check 
     .AllowAnonymous();
 
 app.MapJobRequisitionEndpoints();
+app.MapJobPostingEndpoints();
 
 if (app.Environment.IsDevelopment())
 {

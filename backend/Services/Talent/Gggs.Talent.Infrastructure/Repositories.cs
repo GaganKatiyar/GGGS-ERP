@@ -14,6 +14,17 @@ public sealed class JobRequisitionRepository(TalentDbContext dbContext) : IJobRe
     public void Add(JobRequisition requisition) => dbContext.JobRequisitions.Add(requisition);
 }
 
+public sealed class JobPostingRepository(TalentDbContext dbContext) : IJobPostingRepository
+{
+    public async Task<JobPosting?> GetAsync(Guid id, CancellationToken cancellationToken = default)
+        => await dbContext.JobPostings.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    public async Task<bool> SlugExistsAsync(string slug, CancellationToken cancellationToken = default)
+        => await dbContext.JobPostings.AnyAsync(x => x.Slug == slug, cancellationToken);
+
+    public void Add(JobPosting posting) => dbContext.JobPostings.Add(posting);
+}
+
 public sealed class EmployeeSnapshotRepository(TalentDbContext dbContext) : IEmployeeSnapshotRepository
 {
     public async Task<EmployeeSnapshot?> GetAsync(Guid employeeId, CancellationToken cancellationToken = default)

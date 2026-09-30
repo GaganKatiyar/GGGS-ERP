@@ -7,14 +7,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Gggs.Talent.Infrastructure;
 
-/// <summary>Talent's database: job requisitions (v1's only aggregate) and the employee snapshot fed
-/// from Core HR.</summary>
+/// <summary>Talent's database: job requisitions, the postings made against them, and the employee
+/// snapshot fed from Core HR.</summary>
 public sealed class TalentDbContext(DbContextOptions<TalentDbContext> options, ITenantContext tenantContext)
     : GggsDbContext(options, tenantContext)
 {
     protected override string DefaultSchema => "rec";
 
     public DbSet<JobRequisition> JobRequisitions => Set<JobRequisition>();
+
+    public DbSet<JobPosting> JobPostings => Set<JobPosting>();
 
     public DbSet<EmployeeSnapshot> EmployeeSnapshots => Set<EmployeeSnapshot>();
 
@@ -37,6 +39,26 @@ public sealed class TalentDbContext(DbContextOptions<TalentDbContext> options, I
 
             entity.HasIndex(x => new { x.TenantId, x.Status })
                 .HasDatabaseName("IX_JobRequisition_TenantId_Status");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<JobPosting>(entity =>
+        {
+            entity.ToTable("JobPosting");
+            entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.DescriptionHtml).HasColumnType("nvarchar(max)").IsRequired();
+            entity.Property(x => x.Location).HasMaxLength(200);
+            entity.Property(x => x.Slug).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Status).HasConversion<byte>();
+
+            entity.HasIndex(x => new { x.TenantId, x.Slug })
+                .HasDatabaseName("UX_JobPosting_TenantId_Slug")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            entity.HasIndex(x => new { x.TenantId, x.RequisitionId })
+                .HasDatabaseName("IX_JobPosting_TenantId_RequisitionId");
 
             entity.Ignore(x => x.DomainEvents);
         });

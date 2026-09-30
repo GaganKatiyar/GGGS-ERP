@@ -170,5 +170,7 @@ public static class Permissions
     {
         public const string RequisitionView = "recruitment.requisition.view";
         public const string RequisitionManage = "recruitment.requisition.manage";
+        public const string PostingView = "recruitment.posting.view";
+        public const string PostingManage = "recruitment.posting.manage";
     }
 }
