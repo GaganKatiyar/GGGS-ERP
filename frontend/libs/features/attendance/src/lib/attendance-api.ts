@@ -6,11 +6,18 @@ import type {
   AttendanceDay,
   AttendancePunch,
   AttendanceRegularization,
+  BiometricDevice,
+  BiometricDeviceRegistered,
+  CreateDeviceUserMapRequest,
   CreateShiftRequest,
+  DeviceUserMap,
+  OvertimeRequest,
   PagedResult,
   RecordPunchRequest,
+  RegisterBiometricDeviceRequest,
   Shift,
   ShiftRoster,
+  SubmitOvertimeRequestRequest,
   SubmitRegularizationRequest,
 } from '@gggs/shared/models';
 import { firstValueFrom } from 'rxjs';
@@ -117,6 +124,75 @@ export class AttendanceApi {
   cancelRegularization(id: string): Promise<void> {
     return firstValueFrom(
       this.http.post<void>(`/api/v1/attendance/regularizations/${id}/cancel`, {}),
+    );
+  }
+
+  // ---- Overtime ----
+
+  listOvertimeRequests(query: {
+    page: number;
+    pageSize: number;
+    employeeId?: string;
+  }): Promise<PagedResult<OvertimeRequest>> {
+    return firstValueFrom(
+      this.http.get<PagedResult<OvertimeRequest>>(
+        '/api/v1/attendance/overtime-requests',
+        { params: toHttpParams(query) },
+      ),
+    );
+  }
+
+  submitOvertimeRequest(request: SubmitOvertimeRequestRequest): Promise<OvertimeRequest> {
+    return firstValueFrom(
+      this.http.post<OvertimeRequest>('/api/v1/attendance/overtime-requests', request),
+    );
+  }
+
+  cancelOvertimeRequest(id: string): Promise<void> {
+    return firstValueFrom(
+      this.http.post<void>(`/api/v1/attendance/overtime-requests/${id}/cancel`, {}),
+    );
+  }
+
+  // ---- Biometric devices ----
+
+  listDevices(): Promise<readonly BiometricDevice[]> {
+    return firstValueFrom(this.http.get<readonly BiometricDevice[]>('/api/v1/attendance/devices'));
+  }
+
+  registerDevice(request: RegisterBiometricDeviceRequest): Promise<BiometricDeviceRegistered> {
+    return firstValueFrom(
+      this.http.post<BiometricDeviceRegistered>('/api/v1/attendance/devices', request),
+    );
+  }
+
+  rotateDeviceApiKey(id: string): Promise<BiometricDeviceRegistered> {
+    return firstValueFrom(
+      this.http.post<BiometricDeviceRegistered>(`/api/v1/attendance/devices/${id}/rotate-key`, {}),
+    );
+  }
+
+  deactivateDevice(id: string): Promise<BiometricDevice> {
+    return firstValueFrom(
+      this.http.post<BiometricDevice>(`/api/v1/attendance/devices/${id}/deactivate`, {}),
+    );
+  }
+
+  reactivateDevice(id: string): Promise<BiometricDevice> {
+    return firstValueFrom(
+      this.http.post<BiometricDevice>(`/api/v1/attendance/devices/${id}/reactivate`, {}),
+    );
+  }
+
+  listDeviceUserMaps(deviceId: string): Promise<readonly DeviceUserMap[]> {
+    return firstValueFrom(
+      this.http.get<readonly DeviceUserMap[]>(`/api/v1/attendance/devices/${deviceId}/user-maps`),
+    );
+  }
+
+  createDeviceUserMap(deviceId: string, request: CreateDeviceUserMapRequest): Promise<DeviceUserMap> {
+    return firstValueFrom(
+      this.http.post<DeviceUserMap>(`/api/v1/attendance/devices/${deviceId}/user-maps`, request),
     );
   }
 }

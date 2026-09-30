@@ -205,7 +205,7 @@ export const NAVIGATION: readonly NavItem[] = [
   {
     label: 'Time',
     icon: 'pi pi-clock',
-    permissions: ['attendance.record.view', 'leave.request.view'],
+    permissions: ['attendance.record.view', 'leave.request.view', 'attendance.device.manage'],
     children: [
       {
         label: 'Attendance',
@@ -218,6 +218,12 @@ export const NAVIGATION: readonly NavItem[] = [
         icon: 'pi pi-sync',
         route: '/attendance/shifts',
         permissions: ['attendance.shift.manage'],
+      },
+      {
+        label: 'Biometric devices',
+        icon: 'pi pi-desktop',
+        route: '/attendance/devices',
+        permissions: ['attendance.device.manage'],
       },
       {
         label: 'Leave requests',

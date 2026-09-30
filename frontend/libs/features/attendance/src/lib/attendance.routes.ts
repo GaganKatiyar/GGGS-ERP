@@ -1,6 +1,7 @@
 import type { Routes } from '@angular/router';
 import { withPermissions } from '@gggs/core/permissions';
 import { AttendanceDaysPage } from './days/attendance-days-page';
+import { DevicesPage } from './devices/devices-page';
 import { MyAttendancePage } from './my-attendance/my-attendance-page';
 import { ShiftsPage } from './shifts/shifts-page';
 import { TeamAttendancePage } from './team/team-attendance-page';
@@ -16,6 +17,12 @@ export const ATTENDANCE_ROUTES: Routes = [
     ...withPermissions(['attendance.shift.manage']),
     component: ShiftsPage,
     title: 'Shifts',
+  },
+  {
+    path: 'devices',
+    ...withPermissions(['attendance.device.manage']),
+    component: DevicesPage,
+    title: 'Biometric devices',
   },
 ];
 

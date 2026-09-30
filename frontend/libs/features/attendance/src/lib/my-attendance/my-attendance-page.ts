@@ -106,6 +106,36 @@ import { AttendanceApi } from '../attendance-api';
         </form>
       </gggs-card>
     }
+
+    <gggs-card title="Overtime" class="section">
+      <form [formGroup]="overtimeForm" (ngSubmit)="submitOvertime()" novalidate class="correction-form">
+        <gggs-form-field label="Date" required>
+          <input type="date" formControlName="overtimeDate" required />
+        </gggs-form-field>
+
+        <gggs-form-field label="Minutes" required>
+          <input type="number" formControlName="requestedMinutes" min="1" required />
+        </gggs-form-field>
+
+        <gggs-form-field label="Reason" required>
+          <select formControlName="reasonCode" required>
+            <option value="PROJECT_DEADLINE">Project deadline</option>
+            <option value="COVERAGE">Shift coverage</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </gggs-form-field>
+
+        <gggs-form-field label="Remarks" class="correction-form__remarks">
+          <textarea formControlName="remarks" maxlength="1000" rows="2"></textarea>
+        </gggs-form-field>
+
+        @if (overtimeErrorMessage()) {
+          <p class="field-error" role="alert">{{ overtimeErrorMessage() }}</p>
+        }
+
+        <gggs-button type="submit" [loading]="isSubmittingOvertime()">Submit</gggs-button>
+      </form>
+    </gggs-card>
   `,
   styles: `
     .section {
@@ -181,6 +211,16 @@ export class MyAttendancePage {
     requestedIn: ['09:00', Validators.required],
     requestedOut: ['18:00', Validators.required],
     reasonCode: ['FORGOT_PUNCH', Validators.required],
+    remarks: [''],
+  });
+
+  protected readonly isSubmittingOvertime = signal(false);
+  protected readonly overtimeErrorMessage = signal<string | null>(null);
+
+  protected readonly overtimeForm = this.formBuilder.nonNullable.group({
+    overtimeDate: [toDateOnly(new Date()), Validators.required],
+    requestedMinutes: [60, [Validators.required, Validators.min(1)]],
+    reasonCode: ['PROJECT_DEADLINE', Validators.required],
     remarks: [''],
   });
 
@@ -272,6 +312,41 @@ export class MyAttendancePage {
       );
     } finally {
       this.isSubmittingCorrection.set(false);
+    }
+  }
+
+  protected async submitOvertime(): Promise<void> {
+    if (this.overtimeForm.invalid || this.isSubmittingOvertime()) {
+      this.overtimeForm.markAllAsTouched();
+      return;
+    }
+
+    this.isSubmittingOvertime.set(true);
+    this.overtimeErrorMessage.set(null);
+
+    const { overtimeDate, requestedMinutes, reasonCode, remarks } = this.overtimeForm.getRawValue();
+
+    try {
+      await this.api.submitOvertimeRequest({
+        overtimeDate,
+        requestedMinutes,
+        reasonCode,
+        remarks: remarks || undefined,
+      });
+
+      this.overtimeForm.reset({
+        overtimeDate: toDateOnly(new Date()),
+        requestedMinutes: 60,
+        reasonCode: 'PROJECT_DEADLINE',
+        remarks: '',
+      });
+      this.punchMessage.set('Overtime request submitted for approval.');
+    } catch (error) {
+      this.overtimeErrorMessage.set(
+        error instanceof ApiError ? error.message : 'The overtime request could not be submitted.',
+      );
+    } finally {
+      this.isSubmittingOvertime.set(false);
     }
   }
 }

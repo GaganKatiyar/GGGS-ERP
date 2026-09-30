@@ -142,3 +142,67 @@ export interface SubmitRegularizationRequest {
   readonly reasonCode: string;
   readonly remarks?: string;
 }
+
+export type OvertimeRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
+
+export const OVERTIME_REQUEST_STATUS_LABELS: Readonly<Record<OvertimeRequestStatus, string>> = {
+  Pending: 'Pending',
+  Approved: 'Approved',
+  Rejected: 'Rejected',
+  Cancelled: 'Cancelled',
+};
+
+export interface OvertimeRequest {
+  readonly id: string;
+  readonly employeeId: string;
+  readonly overtimeDate: string;
+  readonly requestedMinutes: number;
+  readonly reasonCode: string;
+  readonly remarks?: string;
+  readonly status: OvertimeRequestStatus;
+  readonly approvedMinutes?: number;
+  readonly workflowInstanceId?: string;
+  readonly createdDate: string;
+}
+
+export interface SubmitOvertimeRequestRequest {
+  readonly employeeId?: string;
+  readonly overtimeDate: string;
+  readonly requestedMinutes: number;
+  readonly reasonCode: string;
+  readonly remarks?: string;
+}
+
+export type BiometricDeviceStatus = 'Active' | 'Inactive';
+
+export interface BiometricDevice {
+  readonly id: string;
+  readonly serialNumber: string;
+  readonly name: string;
+  readonly branchId: string;
+  readonly status: BiometricDeviceStatus;
+  readonly lastSeenDate?: string;
+}
+
+export interface BiometricDeviceRegistered {
+  readonly device: BiometricDevice;
+  readonly apiKey: string;
+}
+
+export interface RegisterBiometricDeviceRequest {
+  readonly serialNumber: string;
+  readonly name: string;
+  readonly branchId: string;
+}
+
+export interface DeviceUserMap {
+  readonly id: string;
+  readonly deviceId: string;
+  readonly deviceUserCode: string;
+  readonly employeeId: string;
+}
+
+export interface CreateDeviceUserMapRequest {
+  readonly deviceUserCode: string;
+  readonly employeeId: string;
+}
