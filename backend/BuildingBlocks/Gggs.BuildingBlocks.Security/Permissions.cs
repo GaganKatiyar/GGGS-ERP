@@ -190,4 +190,29 @@ public static class Permissions
         /// on any case's tasks regardless of assignee role.</summary>
         public const string TaskComplete = "onboarding.task.complete";
     }
+
+    /// <summary>Performance: cycles, goals, and self/manager reviews.</summary>
+    public static class Performance
+    {
+        public const string CycleView = "performance.cycle.view";
+        public const string CycleManage = "performance.cycle.manage";
+
+        /// <summary>Setting and checking in on your own goals.</summary>
+        public const string GoalManageOwn = "performance.goal.manage-own";
+
+        /// <summary>Setting goals and reading progress for people other than yourself - HR/admin,
+        /// not the everyday manager-of-a-team case, which stays scoped to ReviewManageOwn's
+        /// reviewing-manager check instead of a separate permission.</summary>
+        public const string GoalManage = "performance.goal.manage";
+
+        public const string ReviewView = "performance.review.view";
+
+        /// <summary>Creating a review and submitting the self-review half of it.</summary>
+        public const string ReviewManageOwn = "performance.review.manage-own";
+
+        /// <summary>Submitting the manager half and releasing a review - checked against the
+        /// review's own <c>ManagerEmployeeId</c>, not a blanket grant, the same "own record" shape
+        /// self-service permissions elsewhere in this catalog use.</summary>
+        public const string ReviewManageAsManager = "performance.review.manage-as-manager";
+    }
 }

@@ -2,6 +2,7 @@ using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Persistence;
 using Gggs.Talent.Domain.Onboarding;
+using Gggs.Talent.Domain.Performance;
 using Gggs.Talent.Domain.Recruitment;
 using Gggs.Talent.Domain.Snapshots;
 using Microsoft.EntityFrameworkCore;
@@ -9,8 +10,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Gggs.Talent.Infrastructure;
 
 /// <summary>Talent's database: job requisitions, the postings made against them, candidates,
-/// applications, the offers made against them, onboarding templates and cases, and the employee
-/// snapshot fed from Core HR.</summary>
+/// applications, the offers made against them, onboarding templates and cases, performance cycles
+/// with goals/check-ins and reviews, and the employee snapshot fed from Core HR.</summary>
 public sealed class TalentDbContext(DbContextOptions<TalentDbContext> options, ITenantContext tenantContext)
     : GggsDbContext(options, tenantContext)
 {
@@ -33,6 +34,14 @@ public sealed class TalentDbContext(DbContextOptions<TalentDbContext> options, I
     public DbSet<OnboardingCase> OnboardingCases => Set<OnboardingCase>();
 
     public DbSet<OnboardingTask> OnboardingTasks => Set<OnboardingTask>();
+
+    public DbSet<PerformanceCycle> PerformanceCycles => Set<PerformanceCycle>();
+
+    public DbSet<Goal> Goals => Set<Goal>();
+
+    public DbSet<GoalCheckIn> GoalCheckIns => Set<GoalCheckIn>();
+
+    public DbSet<Review> Reviews => Set<Review>();
 
     public DbSet<EmployeeSnapshot> EmployeeSnapshots => Set<EmployeeSnapshot>();
 
@@ -174,6 +183,60 @@ public sealed class TalentDbContext(DbContextOptions<TalentDbContext> options, I
 
             entity.HasIndex(x => new { x.TenantId, x.CaseId })
                 .HasDatabaseName("IX_OnboardingTask_TenantId_CaseId");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<PerformanceCycle>(entity =>
+        {
+            entity.ToTable("PerformanceCycle", "perf");
+            entity.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.Status).HasConversion<byte>();
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<Goal>(entity =>
+        {
+            entity.ToTable("Goal", "perf");
+            entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(1000);
+            entity.Property(x => x.TargetValue).HasColumnType("decimal(12,2)");
+            entity.Property(x => x.CurrentValue).HasColumnType("decimal(12,2)");
+            entity.Property(x => x.Unit).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Status).HasConversion<byte>();
+
+            entity.HasIndex(x => new { x.TenantId, x.CycleId, x.EmployeeId })
+                .HasDatabaseName("IX_Goal_TenantId_CycleId_EmployeeId");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<GoalCheckIn>(entity =>
+        {
+            entity.ToTable("GoalCheckIn", "perf");
+            entity.Property(x => x.Value).HasColumnType("decimal(12,2)");
+            entity.Property(x => x.Comment).HasMaxLength(500);
+
+            entity.HasIndex(x => new { x.TenantId, x.GoalId, x.CheckInDate })
+                .HasDatabaseName("IX_GoalCheckIn_TenantId_GoalId_CheckInDate");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<Review>(entity =>
+        {
+            entity.ToTable("Review", "perf");
+            entity.Property(x => x.SelfComments).HasMaxLength(2000);
+            entity.Property(x => x.ManagerComments).HasMaxLength(2000);
+            entity.Property(x => x.Status).HasConversion<byte>();
+
+            entity.HasIndex(x => new { x.TenantId, x.EmployeeId, x.CycleId })
+                .HasDatabaseName("UX_Review_TenantId_EmployeeId_CycleId")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            entity.HasIndex(x => new { x.TenantId, x.ManagerEmployeeId, x.Status })
+                .HasDatabaseName("IX_Review_TenantId_ManagerEmployeeId_Status");
 
             entity.Ignore(x => x.DomainEvents);
         });
