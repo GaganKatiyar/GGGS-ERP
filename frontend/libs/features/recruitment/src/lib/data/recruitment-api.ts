@@ -1,15 +1,18 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import { ApiError } from '@gggs/core/http';
 import type {
   ApplyToPostingRequest,
   CreateJobPostingRequest,
   CreateJobRequisitionRequest,
+  CreateOfferRequest,
   JobApplication,
   JobApplicationListItem,
   JobPosting,
   JobPostingListItem,
   JobRequisition,
   JobRequisitionListItem,
+  Offer,
   PagedResult,
 } from '@gggs/shared/models';
 import { firstValueFrom } from 'rxjs';
@@ -112,5 +115,42 @@ export class RecruitmentApi {
     return firstValueFrom(
       this.http.post<JobApplication>(`/api/v1/recruitment/applications/${applicationId}/reject`, { reason }),
     );
+  }
+
+  // ---- Offers: at most one per application ----
+
+  /** Null when the application has no offer yet - a 404 here is a normal, expected state, not an error. */
+  async getOffer(applicationId: string): Promise<Offer | null> {
+    try {
+      return await firstValueFrom(this.http.get<Offer>(`/api/v1/recruitment/applications/${applicationId}/offer`));
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return null;
+      }
+
+      throw error;
+    }
+  }
+
+  createOffer(applicationId: string, request: CreateOfferRequest): Promise<Offer> {
+    return firstValueFrom(
+      this.http.post<Offer>(`/api/v1/recruitment/applications/${applicationId}/offer`, request),
+    );
+  }
+
+  sendOffer(offerId: string): Promise<Offer> {
+    return firstValueFrom(this.http.post<Offer>(`/api/v1/recruitment/offers/${offerId}/send`, {}));
+  }
+
+  acceptOffer(offerId: string): Promise<Offer> {
+    return firstValueFrom(this.http.post<Offer>(`/api/v1/recruitment/offers/${offerId}/accept`, {}));
+  }
+
+  declineOffer(offerId: string): Promise<Offer> {
+    return firstValueFrom(this.http.post<Offer>(`/api/v1/recruitment/offers/${offerId}/decline`, {}));
+  }
+
+  revokeOffer(offerId: string): Promise<Offer> {
+    return firstValueFrom(this.http.post<Offer>(`/api/v1/recruitment/offers/${offerId}/revoke`, {}));
   }
 }

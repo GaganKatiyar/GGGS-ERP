@@ -98,3 +98,28 @@ export interface ApplyToPostingRequest {
   readonly totalExperienceMonths?: number;
   readonly source?: string;
 }
+
+export type OfferStatus = 'Draft' | 'Sent' | 'Accepted' | 'Declined' | 'Revoked';
+
+export interface Offer {
+  readonly id: string;
+  readonly applicationId: string;
+  readonly offerNo: string;
+  readonly designationId: string;
+  readonly gradeId?: string;
+  readonly annualCtc: number;
+  readonly currency: string;
+  readonly joiningDate: string;
+  readonly expiryDate: string;
+  readonly acceptedDate?: string;
+  readonly status: OfferStatus;
+}
+
+export interface CreateOfferRequest {
+  readonly designationId: string;
+  readonly gradeId?: string;
+  readonly annualCtc: number;
+  readonly currency: string;
+  readonly joiningDate: string;
+  readonly expiryDate: string;
+}

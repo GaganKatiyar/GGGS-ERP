@@ -4,6 +4,7 @@ import { HasPermissionDirective } from '@gggs/core/permissions';
 import { Button } from '@gggs/shared/ui';
 import type { JobApplicationListItem } from '@gggs/shared/models';
 import { RecruitmentApi } from '../data/recruitment-api';
+import { OfferPanel } from './offer-panel';
 
 /**
  * Applications against one posting - embedded under its row in `JobPostingsPanel` rather than
@@ -13,7 +14,7 @@ import { RecruitmentApi } from '../data/recruitment-api';
  */
 @Component({
   selector: 'gggs-job-applications-panel',
-  imports: [ReactiveFormsModule, HasPermissionDirective, Button],
+  imports: [ReactiveFormsModule, HasPermissionDirective, Button, OfferPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (applications(); as items) {
@@ -31,13 +32,30 @@ import { RecruitmentApi } from '../data/recruitment-api';
               <tr>
                 <td>{{ application.candidateDisplayName }}</td>
                 <td>{{ application.stage }}</td>
-                <td class="application-actions" *gggsHasPermission="'recruitment.application.manage'">
-                  @if (application.stage !== 'Hired' && application.stage !== 'Rejected') {
-                    <gggs-button size="sm" (click)="advance(application.id)" [disabled]="isActing()">Advance</gggs-button>
-                    <gggs-button size="sm" (click)="reject(application.id)" [disabled]="isActing()">Reject</gggs-button>
+                <td class="application-actions">
+                  @if (application.stage === 'Offer' || application.stage === 'Hired') {
+                    <gggs-button size="sm" (click)="toggleOffer(application.id)">
+                      {{ expandedApplicationId() === application.id ? 'Hide offer' : 'Offer' }}
+                    </gggs-button>
                   }
+                  <ng-container *gggsHasPermission="'recruitment.application.manage'">
+                    @if (application.stage !== 'Hired' && application.stage !== 'Rejected') {
+                      <gggs-button size="sm" (click)="advance(application.id)" [disabled]="isActing()">Advance</gggs-button>
+                      <gggs-button size="sm" (click)="reject(application.id)" [disabled]="isActing()">Reject</gggs-button>
+                    }
+                  </ng-container>
                 </td>
               </tr>
+              @if (expandedApplicationId() === application.id) {
+                <tr>
+                  <td colspan="3" class="offer-cell">
+                    <gggs-offer-panel
+                      [applicationId]="application.id"
+                      [applicationIsAtOfferStage]="application.stage === 'Offer'"
+                    />
+                  </td>
+                </tr>
+              }
             }
           </tbody>
         </table>
@@ -110,6 +128,11 @@ import { RecruitmentApi } from '../data/recruitment-api';
       gap: 0.5rem;
     }
 
+    .offer-cell {
+      background: var(--gggs-color-surface-sunken, #f5f6f8);
+      padding: 0.625rem 0.875rem;
+    }
+
     .muted {
       color: var(--gggs-color-text-muted, #5b6472);
       margin: 0 0 0.75rem;
@@ -153,6 +176,7 @@ export class JobApplicationsPanel {
   protected readonly isActing = signal(false);
   protected readonly isSaving = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly expandedApplicationId = signal<string | null>(null);
 
   protected readonly form = this.formBuilder.group({
     firstName: ['', [Validators.required, Validators.maxLength(100)]],
@@ -163,6 +187,10 @@ export class JobApplicationsPanel {
 
   constructor() {
     void this.load();
+  }
+
+  protected toggleOffer(applicationId: string): void {
+    this.expandedApplicationId.set(this.expandedApplicationId() === applicationId ? null : applicationId);
   }
 
   protected async advance(applicationId: string): Promise<void> {
