@@ -35,3 +35,37 @@ export interface CreateJobRequisitionRequest {
   readonly hiringManagerEmployeeId?: string;
   readonly justification?: string;
 }
+
+export type JobPostingStatus = 'Draft' | 'Published' | 'Closed';
+
+export interface JobPostingListItem {
+  readonly id: string;
+  readonly title: string;
+  readonly slug: string;
+  readonly isPublic: boolean;
+  readonly status: JobPostingStatus;
+}
+
+export interface JobPosting {
+  readonly id: string;
+  readonly requisitionId: string;
+  readonly title: string;
+  readonly descriptionHtml: string;
+  readonly location?: string;
+  readonly isInternal: boolean;
+  readonly isPublic: boolean;
+  readonly slug: string;
+  readonly publishedDate?: string;
+  readonly closesDate?: string;
+  readonly status: JobPostingStatus;
+}
+
+export interface CreateJobPostingRequest {
+  readonly title: string;
+  readonly descriptionHtml: string;
+  readonly location?: string;
+  readonly isInternal: boolean;
+  readonly isPublic: boolean;
+  readonly slug: string;
+  readonly closesDate?: string;
+}

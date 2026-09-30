@@ -1,7 +1,10 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type {
+  CreateJobPostingRequest,
   CreateJobRequisitionRequest,
+  JobPosting,
+  JobPostingListItem,
   JobRequisition,
   JobRequisitionListItem,
   PagedResult,
@@ -54,5 +57,31 @@ export class RecruitmentApi {
 
   cancel(id: string): Promise<JobRequisition> {
     return firstValueFrom(this.http.post<JobRequisition>(`/api/v1/recruitment/requisitions/${id}/cancel`, {}));
+  }
+
+  // ---- Postings, nested under their requisition ----
+
+  listPostings(requisitionId: string): Promise<readonly JobPostingListItem[]> {
+    return firstValueFrom(
+      this.http.get<readonly JobPostingListItem[]>(`/api/v1/recruitment/requisitions/${requisitionId}/postings`),
+    );
+  }
+
+  createPosting(requisitionId: string, request: CreateJobPostingRequest): Promise<JobPosting> {
+    return firstValueFrom(
+      this.http.post<JobPosting>(`/api/v1/recruitment/requisitions/${requisitionId}/postings`, request),
+    );
+  }
+
+  publishPosting(requisitionId: string, postingId: string): Promise<JobPosting> {
+    return firstValueFrom(
+      this.http.post<JobPosting>(`/api/v1/recruitment/requisitions/${requisitionId}/postings/${postingId}/publish`, {}),
+    );
+  }
+
+  closePosting(requisitionId: string, postingId: string): Promise<JobPosting> {
+    return firstValueFrom(
+      this.http.post<JobPosting>(`/api/v1/recruitment/requisitions/${requisitionId}/postings/${postingId}/close`, {}),
+    );
   }
 }

@@ -4,11 +4,12 @@ import { HasPermissionDirective } from '@gggs/core/permissions';
 import { Button, Card, PageHeader } from '@gggs/shared/ui';
 import type { JobRequisition, JobRequisitionStatus } from '@gggs/shared/models';
 import { RecruitmentApi } from '../data/recruitment-api';
+import { JobPostingsPanel } from './job-postings-panel';
 
 /** A single requisition: its details plus whichever status action currently applies. */
 @Component({
   selector: 'gggs-job-requisition-detail-page',
-  imports: [RouterLink, HasPermissionDirective, PageHeader, Card, Button],
+  imports: [RouterLink, HasPermissionDirective, PageHeader, Card, Button, JobPostingsPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (requisition(); as r) {
@@ -51,6 +52,10 @@ import { RecruitmentApi } from '../data/recruitment-api';
         @if (errorMessage()) {
           <p class="field__error" role="alert">{{ errorMessage() }}</p>
         }
+      </gggs-card>
+
+      <gggs-card title="Postings">
+        <gggs-job-postings-panel [requisitionId]="r.id" [requisitionIsOpen]="r.status === 'Open'" />
       </gggs-card>
     } @else {
       <p class="muted">Loading…</p>
