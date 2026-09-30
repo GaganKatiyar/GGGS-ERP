@@ -264,6 +264,12 @@ export const NAVIGATION: readonly NavItem[] = [
     permissions: ['performance.cycle.view'],
   },
   {
+    label: 'Learning',
+    icon: 'pi pi-graduation-cap',
+    route: '/learning',
+    permissions: ['learning.course.view'],
+  },
+  {
     label: 'Administration',
     icon: 'pi pi-cog',
     permissions: [

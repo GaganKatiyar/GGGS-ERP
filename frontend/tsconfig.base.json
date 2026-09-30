@@ -51,7 +51,8 @@
       ],
       "@gggs/features/performance": [
         "./libs/features/performance/src/index.ts"
-      ]
+      ],
+      "@gggs/features/learning": ["./libs/features/learning/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

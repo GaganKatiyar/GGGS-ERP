@@ -84,6 +84,7 @@ export default [
                 'scope:recruitment',
                 'scope:onboarding',
                 'scope:performance',
+                'scope:learning',
               ],
             },
             {
@@ -173,6 +174,10 @@ export default [
             {
               sourceTag: 'scope:performance',
               onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:performance'],
+            },
+            {
+              sourceTag: 'scope:learning',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:learning'],
             },
           ],
         },
