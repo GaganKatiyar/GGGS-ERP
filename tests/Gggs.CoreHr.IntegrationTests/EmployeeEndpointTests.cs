@@ -366,6 +366,76 @@ public sealed class EmployeeEndpointTests(CoreHrApiFactory factory)
         team.ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task GetHeadcountReport_CountsTheDepartmentJustHiredInto()
+    {
+        using HttpClient client = factory.CreateClientFor(
+            Permissions.Employee.Create,
+            Permissions.Organization.LegalEntityManage,
+            Permissions.Organization.Manage,
+            Permissions.Organization.DepartmentManage,
+            Permissions.Report.View);
+
+        OrgReferences org = await CreateOrgReferencesAsync(client);
+        DateOnly joining = new(2026, 1, 15);
+
+        // A department this test just created is otherwise empty - the exact headcount for it is
+        // stable no matter what the rest of the shared test database already holds (this fixture's
+        // database is shared across every test in the collection - see CoreHrApiFactory's own
+        // remarks - so nothing here can assert a whole-tenant total).
+        await HireAsync(client, org, "Priya", "Sharma", joining);
+        await HireAsync(client, org, "Raj", "Verma", joining);
+
+        HttpResponseMessage response = await client.GetAsync("/api/v1/reports/headcount", TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        HeadcountReportResponse? report = await response.Content.ReadFromJsonAsync<HeadcountReportResponse>(
+            JsonOptions, TestContext.Current.CancellationToken);
+
+        report.ShouldNotBeNull();
+        report.ByDepartment.ShouldContain(x => x.DepartmentId == org.DepartmentId && x.Headcount == 2);
+    }
+
+    [Fact]
+    public async Task GetHeadcountReport_CountsJoinersWithinTheRequestedRange()
+    {
+        using HttpClient client = factory.CreateClientFor(
+            Permissions.Employee.Create,
+            Permissions.Organization.LegalEntityManage,
+            Permissions.Organization.Manage,
+            Permissions.Organization.DepartmentManage,
+            Permissions.Report.View);
+
+        OrgReferences org = await CreateOrgReferencesAsync(client);
+
+        // A joining date no other test in this shared-database fixture uses (every other hire here
+        // is 2026-01-15 - see CoreHrApiFactory's own remarks on why the database is shared across
+        // the whole collection), so a narrow range around it is not at risk of counting someone
+        // else's employee too.
+        DateOnly joining = new(2031, 6, 20);
+
+        await HireAsync(client, org, "Priya", "Sharma", joining);
+
+        HttpResponseMessage inRange = await client.GetAsync(
+            $"/api/v1/reports/headcount?fromDate={joining:yyyy-MM-dd}&toDate={joining:yyyy-MM-dd}",
+            TestContext.Current.CancellationToken);
+        HeadcountReportResponse? inRangeReport = await inRange.Content.ReadFromJsonAsync<HeadcountReportResponse>(
+            JsonOptions, TestContext.Current.CancellationToken);
+        inRangeReport!.Joiners.ShouldBeGreaterThanOrEqualTo(1);
+
+        HttpResponseMessage outOfRange = await client.GetAsync(
+            $"/api/v1/reports/headcount?fromDate={joining.AddDays(-2):yyyy-MM-dd}&toDate={joining.AddDays(-1):yyyy-MM-dd}",
+            TestContext.Current.CancellationToken);
+        HeadcountReportResponse? outOfRangeReport = await outOfRange.Content.ReadFromJsonAsync<HeadcountReportResponse>(
+            JsonOptions, TestContext.Current.CancellationToken);
+
+        // A range that ends the day before this employee joined must not count them - proves the
+        // filter is an inclusive date-range check, not "everyone hired so far". Zero rather than a
+        // relative comparison is safe here specifically because 2031-06-18/19 is a date no other
+        // test in this file uses.
+        outOfRangeReport!.Joiners.ShouldBe(0);
+    }
+
     private static object ToAssignment(OrgReferences org, Guid? reportingManagerId = null) => new
     {
         LegalEntityId = org.LegalEntityId,

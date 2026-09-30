@@ -88,6 +88,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check 
 
 app.MapOrganizationEndpoints();
 app.MapEmployeeEndpoints();
+app.MapReportEndpoints();
 
 if (app.Environment.IsDevelopment())
 {

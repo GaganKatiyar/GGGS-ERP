@@ -109,6 +109,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check 
 app.MapLeaveEndpoints();
 app.MapHolidayEndpoints();
 app.MapAttendanceEndpoints();
+app.MapReportEndpoints();
 
 if (app.Environment.IsDevelopment())
 {
