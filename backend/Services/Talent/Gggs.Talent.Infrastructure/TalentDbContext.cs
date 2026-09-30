@@ -7,8 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Gggs.Talent.Infrastructure;
 
-/// <summary>Talent's database: job requisitions, the postings made against them, and the employee
-/// snapshot fed from Core HR.</summary>
+/// <summary>Talent's database: job requisitions, the postings made against them, candidates,
+/// applications, and the employee snapshot fed from Core HR.</summary>
 public sealed class TalentDbContext(DbContextOptions<TalentDbContext> options, ITenantContext tenantContext)
     : GggsDbContext(options, tenantContext)
 {
@@ -17,6 +17,10 @@ public sealed class TalentDbContext(DbContextOptions<TalentDbContext> options, I
     public DbSet<JobRequisition> JobRequisitions => Set<JobRequisition>();
 
     public DbSet<JobPosting> JobPostings => Set<JobPosting>();
+
+    public DbSet<Candidate> Candidates => Set<Candidate>();
+
+    public DbSet<JobApplication> JobApplications => Set<JobApplication>();
 
     public DbSet<EmployeeSnapshot> EmployeeSnapshots => Set<EmployeeSnapshot>();
 
@@ -59,6 +63,42 @@ public sealed class TalentDbContext(DbContextOptions<TalentDbContext> options, I
 
             entity.HasIndex(x => new { x.TenantId, x.RequisitionId })
                 .HasDatabaseName("IX_JobPosting_TenantId_RequisitionId");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<Candidate>(entity =>
+        {
+            entity.ToTable("Candidate");
+            entity.Property(x => x.FirstName).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.LastName).HasMaxLength(100);
+            entity.Property(x => x.Email).HasMaxLength(256).IsRequired();
+            entity.Property(x => x.Phone).HasMaxLength(20);
+            entity.Property(x => x.CurrentEmployer).HasMaxLength(200);
+            entity.Property(x => x.Source).HasMaxLength(50);
+            entity.Ignore(x => x.DisplayName);
+
+            entity.HasIndex(x => new { x.TenantId, x.Email })
+                .HasDatabaseName("UX_Candidate_TenantId_Email")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<JobApplication>(entity =>
+        {
+            entity.ToTable("JobApplication");
+            entity.Property(x => x.Stage).HasConversion<byte>();
+            entity.Property(x => x.RejectionReason).HasMaxLength(500);
+
+            entity.HasIndex(x => new { x.TenantId, x.CandidateId, x.PostingId })
+                .HasDatabaseName("UX_JobApplication_TenantId_CandidateId_PostingId")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            entity.HasIndex(x => new { x.TenantId, x.PostingId, x.Stage })
+                .HasDatabaseName("IX_JobApplication_TenantId_PostingId_Stage");
 
             entity.Ignore(x => x.DomainEvents);
         });

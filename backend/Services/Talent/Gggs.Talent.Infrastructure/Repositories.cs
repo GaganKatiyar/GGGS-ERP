@@ -25,6 +25,28 @@ public sealed class JobPostingRepository(TalentDbContext dbContext) : IJobPostin
     public void Add(JobPosting posting) => dbContext.JobPostings.Add(posting);
 }
 
+public sealed class CandidateRepository(TalentDbContext dbContext) : ICandidateRepository
+{
+    public async Task<Candidate?> GetAsync(Guid id, CancellationToken cancellationToken = default)
+        => await dbContext.Candidates.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    public async Task<Candidate?> GetByEmailAsync(string normalizedEmail, CancellationToken cancellationToken = default)
+        => await dbContext.Candidates.FirstOrDefaultAsync(x => x.Email == normalizedEmail, cancellationToken);
+
+    public void Add(Candidate candidate) => dbContext.Candidates.Add(candidate);
+}
+
+public sealed class JobApplicationRepository(TalentDbContext dbContext) : IJobApplicationRepository
+{
+    public async Task<JobApplication?> GetAsync(Guid id, CancellationToken cancellationToken = default)
+        => await dbContext.JobApplications.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    public async Task<bool> ExistsForCandidateAndPostingAsync(Guid candidateId, Guid postingId, CancellationToken cancellationToken = default)
+        => await dbContext.JobApplications.AnyAsync(x => x.CandidateId == candidateId && x.PostingId == postingId, cancellationToken);
+
+    public void Add(JobApplication application) => dbContext.JobApplications.Add(application);
+}
+
 public sealed class EmployeeSnapshotRepository(TalentDbContext dbContext) : IEmployeeSnapshotRepository
 {
     public async Task<EmployeeSnapshot?> GetAsync(Guid employeeId, CancellationToken cancellationToken = default)
