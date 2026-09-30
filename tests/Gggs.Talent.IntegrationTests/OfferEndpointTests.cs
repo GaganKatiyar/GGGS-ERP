@@ -1,8 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.Security;
 using Gggs.Talent.Api.Endpoints;
+using Gggs.Talent.Contracts;
+using Gggs.Talent.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
 namespace Gggs.Talent.IntegrationTests;
@@ -122,6 +126,44 @@ public sealed class OfferEndpointTests(TalentApiFactory factory)
 
         application.ShouldNotBeNull();
         application.Stage.ShouldBe("Hired");
+    }
+
+    [Fact]
+    public async Task AcceptingAnOffer_StagesAnOfferAcceptedOutboxMessageInTheSameTransaction()
+    {
+        // Proves the actual cross-process handoff this session's OfferAcceptedConsumer/Worker work
+        // depends on: not just that AcceptAsync returns the right HTTP response, but that a real
+        // outbox row lands in Talent's own database, addressed with the published wire name, and
+        // deserializes back into the exact event Core HR's consumer expects. No broker is running
+        // in this test environment - see docs/runbooks/local-dev-login.md's own remarks on why - so
+        // this is the outbox half of the handoff, which is also the half a crash between "accepted"
+        // and "published" would otherwise lose.
+        using HttpClient client = factory.CreateClientFor(AllPermissions);
+
+        Guid applicationId = await CreateApplicationAtOfferStageAsync(client);
+        Guid offerId = await CreateOfferAsync(client, applicationId);
+
+        await PostAsync(client, $"/api/v1/recruitment/offers/{offerId}/send");
+        await PostAsync(client, $"/api/v1/recruitment/offers/{offerId}/accept");
+
+        TalentDbContext db = factory.CreateTenantScopedContext(out IDisposable scopeHandle);
+
+        OutboxMessage message = await db.Set<OutboxMessage>()
+            .Where(x => x.MessageType == "gggs.talent.offer.accepted")
+            .OrderByDescending(x => x.OccurredDate)
+            .FirstAsync(TestContext.Current.CancellationToken);
+
+        message.Status.ShouldBe(OutboxStatus.Pending);
+        message.TenantId.ShouldBe(TalentApiFactory.SeededTenantId);
+
+        var payload = JsonSerializer.Deserialize<OfferAcceptedIntegrationEvent>(message.Payload, JsonOptions);
+        payload.ShouldNotBeNull();
+        payload.OfferId.ShouldBe(offerId);
+        payload.ApplicationId.ShouldBe(applicationId);
+        payload.CandidateFirstName.ShouldBe("Priya");
+        payload.CandidateLastName.ShouldBe("Sharma");
+
+        scopeHandle.Dispose();
     }
 
     [Fact]
