@@ -80,6 +80,7 @@ export default [
                 'scope:leave',
                 'scope:workflow',
                 'scope:attendance',
+                'scope:reports',
               ],
             },
             {
@@ -153,6 +154,10 @@ export default [
                 'scope:shared',
                 'scope:attendance',
               ],
+            },
+            {
+              sourceTag: 'scope:reports',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:reports'],
             },
           ],
         },

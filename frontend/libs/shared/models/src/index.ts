@@ -9,3 +9,4 @@ export * from './lib/notification.models';
 export * from './lib/leave.models';
 export * from './lib/workflow.models';
 export * from './lib/attendance.models';
+export * from './lib/report.models';

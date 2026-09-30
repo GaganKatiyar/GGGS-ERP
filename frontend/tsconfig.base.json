@@ -41,7 +41,8 @@
       "@gggs/features/attendance": ["./libs/features/attendance/src/index.ts"],
       "@gggs/shared/employee-reference": [
         "./libs/shared/employee-reference/src/index.ts"
-      ]
+      ],
+      "@gggs/features/reports": ["./libs/features/reports/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
