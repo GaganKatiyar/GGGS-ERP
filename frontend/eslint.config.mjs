@@ -81,6 +81,7 @@ export default [
                 'scope:workflow',
                 'scope:attendance',
                 'scope:reports',
+                'scope:recruitment',
               ],
             },
             {
@@ -158,6 +159,10 @@ export default [
             {
               sourceTag: 'scope:reports',
               onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:reports'],
+            },
+            {
+              sourceTag: 'scope:recruitment',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:recruitment'],
             },
           ],
         },

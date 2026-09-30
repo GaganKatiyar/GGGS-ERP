@@ -42,7 +42,10 @@
       "@gggs/shared/employee-reference": [
         "./libs/shared/employee-reference/src/index.ts"
       ],
-      "@gggs/features/reports": ["./libs/features/reports/src/index.ts"]
+      "@gggs/features/reports": ["./libs/features/reports/src/index.ts"],
+      "@gggs/features/recruitment": [
+        "./libs/features/recruitment/src/index.ts"
+      ]
     }
   },
   "exclude": ["node_modules", "tmp"]

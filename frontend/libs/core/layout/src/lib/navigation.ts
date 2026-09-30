@@ -246,6 +246,12 @@ export const NAVIGATION: readonly NavItem[] = [
     permissions: ['report.report.view'],
   },
   {
+    label: 'Recruitment',
+    icon: 'pi pi-user-plus',
+    route: '/recruitment/requisitions',
+    permissions: ['recruitment.requisition.view'],
+  },
+  {
     label: 'Administration',
     icon: 'pi pi-cog',
     permissions: [
