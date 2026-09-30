@@ -34,6 +34,29 @@ public sealed record HireEmployeeBody(
     DateOnly DateOfJoining,
     AssignmentBody Assignment);
 
+/// <summary>One row of a bulk hire request - organizational references are codes (e.g. "ACME01",
+/// "ENG"), not GUIDs, since that is what a spreadsheet import actually has.</summary>
+public sealed record BulkHireRowBody(
+    string EmployeeCode,
+    string FirstName,
+    string? MiddleName,
+    string? LastName,
+    string? WorkEmail,
+    DateOnly DateOfJoining,
+    string LegalEntityCode,
+    string BranchCode,
+    string DepartmentCode,
+    string DesignationCode,
+    string? GradeCode,
+    EmploymentType EmploymentType,
+    DateOnly? ProbationEndDate);
+
+public sealed record HireEmployeesBulkBody(IReadOnlyList<BulkHireRowBody> Rows);
+
+public sealed record BulkHireRowResultResponse(int RowNumber, bool Succeeded, Guid? EmployeeId, string? ErrorCode, string? ErrorMessage);
+
+public sealed record BulkHireResultResponse(int TotalRows, int SuccessCount, int FailureCount, IReadOnlyList<BulkHireRowResultResponse> Rows);
+
 public sealed record UpdateEmployeeNameBody(string FirstName, string? MiddleName, string? LastName);
 
 public sealed record ChangeAssignmentBody(DateOnly EffectiveFrom, AssignmentBody Assignment, string? Reason);
@@ -105,6 +128,7 @@ public static class EmployeeEndpoints
             .RequirePermission(Permissions.Employee.HistoryView);
 
         group.MapPost("/", HireAsync).WithName("HireEmployee").RequirePermission(Permissions.Employee.Create);
+        group.MapPost("/bulk", HireBulkAsync).WithName("HireEmployeesBulk").RequirePermission(Permissions.Employee.Create);
         group.MapPut("/{id:guid}/name", UpdateNameAsync).WithName("UpdateEmployeeName").RequirePermission(Permissions.Employee.Edit);
 
         group.MapPost("/{id:guid}/transfer", TransferAsync).WithName("TransferEmployee").RequirePermission(Permissions.Employee.EmploymentManage);
@@ -209,6 +233,28 @@ public static class EmployeeEndpoints
             body.DateOfJoining, body.Assignment.ToDetails(), ct);
 
         return TypedResults.Created($"/api/v1/employees/{employee.Id}", ToResponse(employee));
+    }
+
+    private static async Task<Ok<BulkHireResultResponse>> HireBulkAsync(
+        HireEmployeesBulkBody body,
+        EmployeeBulkImportService service,
+        CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+
+        IReadOnlyList<BulkHireRow> rows = body.Rows
+            .Select((row, index) => new BulkHireRow(
+                index + 1,
+                row.EmployeeCode, row.FirstName, row.MiddleName, row.LastName, row.WorkEmail, row.DateOfJoining,
+                row.LegalEntityCode, row.BranchCode, row.DepartmentCode, row.DesignationCode, row.GradeCode,
+                row.EmploymentType, row.ProbationEndDate))
+            .ToList();
+
+        BulkHireResult result = await service.HireBulkAsync(rows, ct);
+
+        return TypedResults.Ok(new BulkHireResultResponse(
+            result.TotalRows, result.SuccessCount, result.FailureCount,
+            result.Rows.Select(r => new BulkHireRowResultResponse(r.RowNumber, r.Succeeded, r.EmployeeId, r.ErrorCode, r.ErrorMessage)).ToList()));
     }
 
     private static async Task<Ok<EmployeeResponse>> UpdateNameAsync(

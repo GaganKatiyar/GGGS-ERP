@@ -66,6 +66,7 @@ builder.Services.AddScoped<CostCenterService>();
 
 builder.Services.AddScoped<Gggs.CoreHr.Application.Employees.IEmployeeRepository, EmployeeRepository>();
 builder.Services.AddScoped<Gggs.CoreHr.Application.Employees.EmployeeService>();
+builder.Services.AddScoped<Gggs.CoreHr.Application.Employees.EmployeeBulkImportService>();
 
 builder.Services.AddGggsJson();
 builder.Services.AddProblemDetails();

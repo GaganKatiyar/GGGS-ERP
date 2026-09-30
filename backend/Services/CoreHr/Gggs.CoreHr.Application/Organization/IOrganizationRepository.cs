@@ -15,6 +15,8 @@ public interface IOrganizationRepository
 {
     Task<LegalEntity?> GetLegalEntityAsync(Guid id, CancellationToken cancellationToken = default);
 
+    Task<LegalEntity?> GetLegalEntityByCodeAsync(string normalizedCode, CancellationToken cancellationToken = default);
+
     Task<bool> LegalEntityCodeExistsAsync(string normalizedCode, CancellationToken cancellationToken = default);
 
     void Add(LegalEntity entity);
@@ -26,6 +28,8 @@ public interface IOrganizationRepository
     void Add(BusinessUnit entity);
 
     Task<Branch?> GetBranchAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<Branch?> GetBranchByCodeAsync(string normalizedCode, CancellationToken cancellationToken = default);
 
     Task<bool> BranchCodeExistsAsync(string normalizedCode, CancellationToken cancellationToken = default);
 
@@ -39,17 +43,23 @@ public interface IOrganizationRepository
 
     Task<Department?> GetDepartmentAsync(Guid id, CancellationToken cancellationToken = default);
 
+    Task<Department?> GetDepartmentByCodeAsync(string normalizedCode, CancellationToken cancellationToken = default);
+
     Task<bool> DepartmentCodeExistsAsync(string normalizedCode, CancellationToken cancellationToken = default);
 
     void Add(Department entity);
 
     Task<Designation?> GetDesignationAsync(Guid id, CancellationToken cancellationToken = default);
 
+    Task<Designation?> GetDesignationByCodeAsync(string normalizedCode, CancellationToken cancellationToken = default);
+
     Task<bool> DesignationCodeExistsAsync(string normalizedCode, CancellationToken cancellationToken = default);
 
     void Add(Designation entity);
 
     Task<Grade?> GetGradeAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<Grade?> GetGradeByCodeAsync(string normalizedCode, CancellationToken cancellationToken = default);
 
     Task<bool> GradeCodeExistsAsync(string normalizedCode, CancellationToken cancellationToken = default);
 
