@@ -226,6 +226,37 @@ public sealed class PerformanceEndpointTests(TalentApiFactory factory)
         response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
     }
 
+    [Fact]
+    public async Task GettingAReviewByEmployeeAndCycle_WhenNoneExists_ReturnsNotFound()
+    {
+        using HttpClient client = factory.CreateClientFor(AllPermissions);
+        Guid cycleId = await CreateOpenCycleAsync(client);
+
+        HttpResponseMessage response = await client.GetAsync(
+            $"/api/v1/performance/employees/{Guid.NewGuid()}/cycles/{cycleId}/review", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task GettingAReviewByEmployeeAndCycle_WhenOneExists_ReturnsIt()
+    {
+        using HttpClient client = factory.CreateClientFor(AllPermissions);
+        Guid cycleId = await CreateOpenCycleAsync(client);
+        Guid employeeId = Guid.NewGuid();
+        Guid managerEmployeeId = Guid.NewGuid();
+        Guid reviewId = await CreateReviewAsync(client, cycleId, employeeId, managerEmployeeId);
+
+        HttpResponseMessage response = await client.GetAsync(
+            $"/api/v1/performance/employees/{employeeId}/cycles/{cycleId}/review", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        ReviewResponse? review = await response.Content.ReadFromJsonAsync<ReviewResponse>(JsonOptions, TestContext.Current.CancellationToken);
+        review.ShouldNotBeNull();
+        review.Id.ShouldBe(reviewId);
+        review.ManagerEmployeeId.ShouldBe(managerEmployeeId);
+    }
+
     private static async Task<Guid> CreateCycleAsync(HttpClient client)
     {
         HttpResponseMessage response = await client.PostAsJsonAsync(

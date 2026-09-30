@@ -42,12 +42,32 @@ public static class ReviewEndpoints
         group.MapPost("/{id:guid}/manager", SubmitManagerReviewAsync).WithName("SubmitManagerReview").RequirePermission(Permissions.Performance.ReviewManageAsManager);
         group.MapPost("/{id:guid}/release", ReleaseAsync).WithName("ReleaseReview").RequirePermission(Permissions.Performance.ReviewManageAsManager);
 
+        // A caller with just an employee and a cycle - the natural starting point in the UI,
+        // before any review id exists yet - has no other way to learn whether one has already been
+        // raised. Nested under employees rather than reviews' own group, matching how goals are
+        // already reached by employee id first (GoalEndpoints.ListForEmployeeAsync).
+        endpoints.MapGet(
+                "/api/v1/performance/employees/{employeeId:guid}/cycles/{cycleId:guid}/review",
+                GetForEmployeeAndCycleAsync)
+            .WithName("GetReviewForEmployeeAndCycle")
+            .WithTags("Performance")
+            .RequirePermission(Permissions.Performance.ReviewView);
+
         return endpoints;
     }
 
     private static async Task<Results<Ok<ReviewResponse>, NotFound>> GetAsync(Guid id, TalentDbContext db, CancellationToken ct)
     {
         Review? entity = await db.Reviews.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        return entity is null ? TypedResults.NotFound() : TypedResults.Ok(ToResponse(entity));
+    }
+
+    private static async Task<Results<Ok<ReviewResponse>, NotFound>> GetForEmployeeAndCycleAsync(
+        Guid employeeId, Guid cycleId, TalentDbContext db, CancellationToken ct)
+    {
+        Review? entity = await db.Reviews.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.EmployeeId == employeeId && x.CycleId == cycleId, ct);
+
         return entity is null ? TypedResults.NotFound() : TypedResults.Ok(ToResponse(entity));
     }
 
