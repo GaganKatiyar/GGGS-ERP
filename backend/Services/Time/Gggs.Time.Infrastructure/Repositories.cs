@@ -248,3 +248,36 @@ public sealed class OvertimeRequestRepository(TimeDbContext dbContext) : IOverti
 
     public void Add(OvertimeRequest request) => dbContext.OvertimeRequests.Add(request);
 }
+
+public sealed class BiometricDeviceRepository(TimeDbContext dbContext) : IBiometricDeviceRepository
+{
+    public async Task<BiometricDevice?> GetAsync(Guid id, CancellationToken cancellationToken = default)
+        => await dbContext.BiometricDevices.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    public async Task<bool> SerialNumberExistsAsync(string serialNumber, CancellationToken cancellationToken = default)
+        => await dbContext.BiometricDevices.AnyAsync(x => x.SerialNumber == serialNumber, cancellationToken);
+
+    public void Add(BiometricDevice device) => dbContext.BiometricDevices.Add(device);
+}
+
+public sealed class DeviceUserMapRepository(TimeDbContext dbContext) : IDeviceUserMapRepository
+{
+    public async Task<DeviceUserMap?> GetAsync(Guid deviceId, string deviceUserCode, CancellationToken cancellationToken = default)
+        => await dbContext.DeviceUserMaps.FirstOrDefaultAsync(
+            x => x.DeviceId == deviceId && x.DeviceUserCode == deviceUserCode, cancellationToken);
+
+    public void Add(DeviceUserMap map) => dbContext.DeviceUserMaps.Add(map);
+}
+
+/// <summary>Not tenant-scoped by design - see <c>BiometricDeviceKey</c>'s own remarks. This is the
+/// one repository in Time that legitimately reads across every tenant in the database.</summary>
+public sealed class BiometricDeviceKeyRepository(TimeDbContext dbContext) : IBiometricDeviceKeyRepository
+{
+    public async Task<BiometricDeviceKey?> GetByApiKeyHashAsync(string apiKeyHash, CancellationToken cancellationToken = default)
+        => await dbContext.BiometricDeviceKeys.FirstOrDefaultAsync(x => x.ApiKeyHash == apiKeyHash, cancellationToken);
+
+    public async Task<BiometricDeviceKey?> GetAsync(Guid deviceId, CancellationToken cancellationToken = default)
+        => await dbContext.BiometricDeviceKeys.FirstOrDefaultAsync(x => x.DeviceId == deviceId, cancellationToken);
+
+    public void Add(BiometricDeviceKey key) => dbContext.BiometricDeviceKeys.Add(key);
+}

@@ -73,3 +73,19 @@ public sealed record OvertimeRequestResponse(
     DateTime CreatedDate);
 
 public sealed record SubmitOvertimeRequestBody(Guid? EmployeeId, DateOnly OvertimeDate, int RequestedMinutes, string ReasonCode, string? Remarks);
+
+public sealed record BiometricDeviceResponse(
+    Guid Id, string SerialNumber, string Name, Guid BranchId, BiometricDeviceStatus Status, DateTime? LastSeenDate);
+
+/// <summary>Only ever returned from register/rotate - the plaintext key exists nowhere in the
+/// database, so this response is the operator's one and only chance to copy it down.</summary>
+public sealed record BiometricDeviceRegisteredResponse(BiometricDeviceResponse Device, string ApiKey);
+
+public sealed record RegisterBiometricDeviceBody(string SerialNumber, string Name, Guid BranchId);
+
+public sealed record DeviceUserMapResponse(Guid Id, Guid DeviceId, string DeviceUserCode, Guid EmployeeId);
+
+public sealed record CreateDeviceUserMapBody(string DeviceUserCode, Guid EmployeeId);
+
+public sealed record DeviceIngestPunchBody(
+    string DeviceUserCode, DateTime PunchTimeUtc, PunchDirection Direction, string? ExternalRef);

@@ -53,3 +53,30 @@ public interface IOvertimeRequestRepository
 
     void Add(OvertimeRequest request);
 }
+
+public interface IBiometricDeviceRepository
+{
+    Task<BiometricDevice?> GetAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<bool> SerialNumberExistsAsync(string serialNumber, CancellationToken cancellationToken = default);
+
+    void Add(BiometricDevice device);
+}
+
+public interface IDeviceUserMapRepository
+{
+    Task<DeviceUserMap?> GetAsync(Guid deviceId, string deviceUserCode, CancellationToken cancellationToken = default);
+
+    void Add(DeviceUserMap map);
+}
+
+/// <summary>Deliberately separate from <see cref="IBiometricDeviceRepository"/>: this is the one
+/// lookup in Time that must work with no tenant context, see <c>BiometricDeviceKey</c>'s own remarks.</summary>
+public interface IBiometricDeviceKeyRepository
+{
+    Task<BiometricDeviceKey?> GetByApiKeyHashAsync(string apiKeyHash, CancellationToken cancellationToken = default);
+
+    Task<BiometricDeviceKey?> GetAsync(Guid deviceId, CancellationToken cancellationToken = default);
+
+    void Add(BiometricDeviceKey key);
+}

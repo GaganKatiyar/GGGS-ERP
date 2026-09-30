@@ -49,6 +49,13 @@ public sealed class TimeDbContext(DbContextOptions<TimeDbContext> options, ITena
 
     public DbSet<OvertimeRequest> OvertimeRequests => Set<OvertimeRequest>();
 
+    public DbSet<BiometricDevice> BiometricDevices => Set<BiometricDevice>();
+
+    public DbSet<DeviceUserMap> DeviceUserMaps => Set<DeviceUserMap>();
+
+    /// <summary>Deliberately not ITenantOwned - see <c>BiometricDeviceKey</c>'s own remarks.</summary>
+    public DbSet<BiometricDeviceKey> BiometricDeviceKeys => Set<BiometricDeviceKey>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -294,6 +301,51 @@ public sealed class TimeDbContext(DbContextOptions<TimeDbContext> options, ITena
                 .HasDatabaseName("IX_OvertimeRequest_TenantId_EmployeeId_OvertimeDate");
 
             entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<BiometricDevice>(entity =>
+        {
+            entity.ToTable("BiometricDevice", "time");
+            entity.Property(x => x.SerialNumber).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.ApiKeyHash).IsRequired();
+            entity.Property(x => x.Status).HasConversion<byte>();
+
+            entity.HasIndex(x => new { x.TenantId, x.SerialNumber })
+                .HasDatabaseName("UX_BiometricDevice_TenantId_SerialNumber")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<DeviceUserMap>(entity =>
+        {
+            entity.ToTable("DeviceUserMap", "time");
+            entity.Property(x => x.DeviceUserCode).HasMaxLength(50).IsRequired();
+
+            entity.HasIndex(x => new { x.TenantId, x.DeviceId, x.DeviceUserCode })
+                .HasDatabaseName("UX_DeviceUserMap_TenantId_DeviceId_DeviceUserCode")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<BiometricDeviceKey>(entity =>
+        {
+            entity.ToTable("BiometricDeviceKey", "time");
+
+            // Not ITenantOwned - see the entity's own remarks - so this is a plain (non-clustered)
+            // key on DeviceId rather than the (TenantId, Id) layout ApplyGggsConventions gives every
+            // tenant-owned table, matching OutboxMessage's own key shape for the same reason.
+            entity.HasKey(x => x.DeviceId).IsClustered(false);
+
+            entity.Property(x => x.ApiKeyHash).IsRequired();
+
+            entity.HasIndex(x => x.ApiKeyHash)
+                .HasDatabaseName("UX_BiometricDeviceKey_ApiKeyHash")
+                .IsUnique();
         });
 
         modelBuilder.Entity<EmployeeSnapshot>(entity =>

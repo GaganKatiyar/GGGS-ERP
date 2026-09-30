@@ -74,6 +74,10 @@ builder.Services.AddScoped<IAttendancePunchRepository, AttendancePunchRepository
 builder.Services.AddScoped<IAttendanceDayRepository, AttendanceDayRepository>();
 builder.Services.AddScoped<IAttendanceRegularizationRepository, AttendanceRegularizationRepository>();
 builder.Services.AddScoped<IOvertimeRequestRepository, OvertimeRequestRepository>();
+builder.Services.AddScoped<IBiometricDeviceRepository, BiometricDeviceRepository>();
+builder.Services.AddScoped<IDeviceUserMapRepository, DeviceUserMapRepository>();
+builder.Services.AddScoped<IBiometricDeviceKeyRepository, BiometricDeviceKeyRepository>();
+builder.Services.AddSingleton<IApiKeyGenerator, ApiKeyGenerator>();
 
 builder.Services.AddScoped<IWorkCalendar, WorkCalendar>();
 builder.Services.AddScoped<LeaveLedgerService>();
@@ -88,6 +92,10 @@ builder.Services.AddScoped<AttendanceDayProcessor>();
 builder.Services.AddScoped<AttendancePunchService>();
 builder.Services.AddScoped<AttendanceRegularizationService>();
 builder.Services.AddScoped<OvertimeRequestService>();
+builder.Services.AddScoped<BiometricDeviceService>();
+builder.Services.AddScoped<DeviceUserMapService>();
+builder.Services.AddScoped<DeviceApiKeyAuthenticator>();
+builder.Services.AddScoped<DeviceIngestService>();
 
 builder.Services.AddGggsJson();
 builder.Services.AddProblemDetails();

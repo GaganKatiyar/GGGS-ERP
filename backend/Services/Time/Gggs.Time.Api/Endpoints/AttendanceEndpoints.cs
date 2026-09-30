@@ -23,6 +23,8 @@ public static class AttendanceEndpoints
         MapDayEndpoints(endpoints);
         MapRegularizationEndpoints(endpoints);
         MapOvertimeEndpoints(endpoints);
+        MapBiometricDeviceEndpoints(endpoints);
+        MapDeviceIngestEndpoints(endpoints);
 
         return endpoints;
     }
@@ -290,6 +292,92 @@ public static class AttendanceEndpoints
         }).WithName("CancelOvertimeRequest").RequirePermission(Permissions.Attendance.OvertimeCreate);
     }
 
+    private static void MapBiometricDeviceEndpoints(IEndpointRouteBuilder endpoints)
+    {
+        RouteGroupBuilder group = endpoints.MapGroup("/api/v1/attendance/devices").WithTags("Attendance");
+
+        group.MapGet("/", async (TimeDbContext database, CancellationToken cancellationToken) =>
+        {
+            List<BiometricDeviceResponse> items = await database.BiometricDevices.AsNoTracking()
+                .OrderBy(x => x.Name)
+                .Select(x => ToResponse(x))
+                .ToListAsync(cancellationToken);
+
+            return TypedResults.Ok(items);
+        }).WithName("ListBiometricDevices").RequirePermission(Permissions.Attendance.DeviceManage);
+
+        group.MapPost("/", async (RegisterBiometricDeviceBody body, BiometricDeviceService service, CancellationToken cancellationToken) =>
+        {
+            (BiometricDevice device, string apiKey) = await service.RegisterAsync(body.SerialNumber, body.Name, body.BranchId, cancellationToken);
+            return Results.Created($"/api/v1/attendance/devices/{device.Id}", new BiometricDeviceRegisteredResponse(ToResponse(device), apiKey));
+        }).WithName("RegisterBiometricDevice").RequirePermission(Permissions.Attendance.DeviceManage);
+
+        group.MapPost("/{id:guid}/rotate-key", async (Guid id, BiometricDeviceService service, CancellationToken cancellationToken) =>
+        {
+            (BiometricDevice device, string apiKey) = await service.RotateApiKeyAsync(id, cancellationToken);
+            return TypedResults.Ok(new BiometricDeviceRegisteredResponse(ToResponse(device), apiKey));
+        }).WithName("RotateBiometricDeviceApiKey").RequirePermission(Permissions.Attendance.DeviceManage);
+
+        group.MapPost("/{id:guid}/deactivate", async (Guid id, BiometricDeviceService service, CancellationToken cancellationToken) =>
+            TypedResults.Ok(ToResponse(await service.DeactivateAsync(id, cancellationToken))))
+            .WithName("DeactivateBiometricDevice").RequirePermission(Permissions.Attendance.DeviceManage);
+
+        group.MapPost("/{id:guid}/reactivate", async (Guid id, BiometricDeviceService service, CancellationToken cancellationToken) =>
+            TypedResults.Ok(ToResponse(await service.ReactivateAsync(id, cancellationToken))))
+            .WithName("ReactivateBiometricDevice").RequirePermission(Permissions.Attendance.DeviceManage);
+
+        group.MapPost("/{id:guid}/user-maps", async (
+            Guid id, CreateDeviceUserMapBody body, DeviceUserMapService service, CancellationToken cancellationToken) =>
+        {
+            DeviceUserMap map = await service.MapAsync(id, body.DeviceUserCode, body.EmployeeId, cancellationToken);
+            return Results.Created(
+                $"/api/v1/attendance/devices/{id}/user-maps/{map.Id}",
+                new DeviceUserMapResponse(map.Id, map.DeviceId, map.DeviceUserCode, map.EmployeeId));
+        }).WithName("CreateDeviceUserMap").RequirePermission(Permissions.Attendance.DeviceManage);
+
+        group.MapGet("/{id:guid}/user-maps", async (Guid id, TimeDbContext database, CancellationToken cancellationToken) =>
+        {
+            List<DeviceUserMapResponse> items = await database.DeviceUserMaps.AsNoTracking()
+                .Where(x => x.DeviceId == id)
+                .Select(x => new DeviceUserMapResponse(x.Id, x.DeviceId, x.DeviceUserCode, x.EmployeeId))
+                .ToListAsync(cancellationToken);
+
+            return TypedResults.Ok(items);
+        }).WithName("ListDeviceUserMaps").RequirePermission(Permissions.Attendance.DeviceManage);
+    }
+
+    /// <summary>
+    /// The one route in this service a device itself calls, authenticated by its own API key rather
+    /// than a user token. Deliberately AllowAnonymous at the ASP.NET Core level and authenticated by
+    /// hand inside the handler - see <c>DeviceApiKeyAuthenticator</c>'s own remarks on why: it is not
+    /// possible to satisfy [RequirePermission] for a caller that is not a <c>User</c> and holds no
+    /// role, and EndpointSecurityValidator requires every endpoint to be one or the other, on
+    /// purpose, so this is a visible, reviewable exception rather than a gap.
+    /// </summary>
+    private static void MapDeviceIngestEndpoints(IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapPost("/api/v1/attendance/device-ingest", async (
+            [FromHeader(Name = "X-Device-Api-Key")] string? apiKey,
+            DeviceIngestPunchBody body,
+            DeviceApiKeyAuthenticator authenticator,
+            DeviceIngestService ingestService,
+            CancellationToken cancellationToken) =>
+        {
+            ArgumentNullException.ThrowIfNull(body);
+
+            Guid? deviceId = await authenticator.AuthenticateAsync(apiKey, cancellationToken);
+            if (deviceId is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            AttendancePunch punch = await ingestService.RecordPunchAsync(
+                deviceId.Value, body.DeviceUserCode, body.PunchTimeUtc, body.Direction, body.ExternalRef, cancellationToken);
+
+            return Results.Created($"/api/v1/attendance/punches/{punch.Id}", ToResponse(punch));
+        }).WithName("DeviceIngestPunch").WithTags("Attendance").AllowAnonymous();
+    }
+
     private static ShiftResponse ToResponse(Shift entity) => new(
         entity.Id, entity.Code, entity.Name, entity.StartTime, entity.EndTime, entity.BreakMinutes, entity.IsNightShift,
         entity.GraceInMinutes, entity.GraceOutMinutes, entity.FullDayMinMinutes, entity.HalfDayMinMinutes);
@@ -309,4 +397,7 @@ public static class AttendanceEndpoints
     private static OvertimeRequestResponse ToResponse(OvertimeRequest entity) => new(
         entity.Id, entity.EmployeeId, entity.OvertimeDate, entity.RequestedMinutes, entity.ReasonCode, entity.Remarks,
         entity.Status, entity.ApprovedMinutes, entity.WorkflowInstanceId, entity.CreatedDate);
+
+    private static BiometricDeviceResponse ToResponse(BiometricDevice entity) => new(
+        entity.Id, entity.SerialNumber, entity.Name, entity.BranchId, entity.Status, entity.LastSeenDate);
 }
