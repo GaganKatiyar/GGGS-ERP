@@ -164,4 +164,11 @@ public static class Permissions
         public const string TemplateView = "notification.template.view";
         public const string TemplateManage = "notification.template.manage";
     }
+
+    /// <summary>Recruitment: requisitions, postings, candidates, applications, interviews and offers.</summary>
+    public static class Recruitment
+    {
+        public const string RequisitionView = "recruitment.requisition.view";
+        public const string RequisitionManage = "recruitment.requisition.manage";
+    }
 }

@@ -22,8 +22,10 @@ a full permission set. `tools/DevSeed`'s seeded admin now holds the document, au
 notification permissions too, so all of this is reachable without hand-editing a role.
 
 **Does not cover**: notification template administration (as opposed to the inbox) has no
-frontend screen yet - exercise it with `curl` or the OpenAPI page. Everything else in the roadmap
-beyond Core HR and Identity (Time, Payroll, Talent, …) has no frontend at all yet.
+frontend screen yet - exercise it with `curl` or the OpenAPI page. Job requisitions
+(`/api/v1/recruitment/requisitions`, Talent's first Phase 3 slice) likewise has no frontend yet.
+Everything else in the roadmap beyond Core HR and Identity (Payroll, the rest of Talent, …) has no
+frontend at all yet.
 
 ## One-time setup
 
@@ -31,7 +33,7 @@ beyond Core HR and Identity (Time, Payroll, Talent, …) has no frontend at all 
    test suite uses - see the repository README's prerequisites).
 2. `npm ci` inside `frontend/` if you have not already.
 
-## Every time: seven terminals + one seed command
+## Every time: eight terminals + one seed command
 
 ```bash
 # 1. Seed a tenant and a tenant-admin account directly in the databases (creates them if they
@@ -48,6 +50,8 @@ dotnet ef database update --project backend/Services/Documents/Gggs.Documents.In
   --startup-project backend/Services/Documents/Gggs.Documents.Infrastructure
 dotnet ef database update --project backend/Services/Notification/Gggs.Notification.Infrastructure \
   --startup-project backend/Services/Notification/Gggs.Notification.Infrastructure
+dotnet ef database update --project backend/Services/Talent/Gggs.Talent.Infrastructure \
+  --startup-project backend/Services/Talent/Gggs.Talent.Infrastructure
 
 # 2. Platform (terminal 1)
 cd backend/Services/Platform/Gggs.Platform.Api
@@ -69,11 +73,15 @@ ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5104 dotnet 
 cd backend/Services/Notification/Gggs.Notification.Api
 ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5105 dotnet run
 
-# 7. Gateway (terminal 6)
+# 7. Talent - job requisitions, no frontend yet (terminal 6)
+cd backend/Services/Talent/Gggs.Talent.Api
+ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5108 dotnet run
+
+# 8. Gateway (terminal 7)
 cd backend/Gateway/Gggs.Gateway.Bff
 ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5100 dotnet run
 
-# 8. Angular (terminal 7)
+# 9. Angular (terminal 8)
 cd frontend
 npx nx serve hrms-web
 ```
