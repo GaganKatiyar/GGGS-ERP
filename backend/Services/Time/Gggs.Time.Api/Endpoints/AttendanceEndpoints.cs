@@ -22,6 +22,7 @@ public static class AttendanceEndpoints
         MapPunchEndpoints(endpoints);
         MapDayEndpoints(endpoints);
         MapRegularizationEndpoints(endpoints);
+        MapOvertimeEndpoints(endpoints);
 
         return endpoints;
     }
@@ -228,6 +229,67 @@ public static class AttendanceEndpoints
         }).WithName("CancelAttendanceRegularization").RequirePermission(Permissions.Attendance.RegularizationCreate);
     }
 
+    private static void MapOvertimeEndpoints(IEndpointRouteBuilder endpoints)
+    {
+        RouteGroupBuilder group = endpoints.MapGroup("/api/v1/attendance/overtime-requests").WithTags("Attendance");
+
+        group.MapGet("/", async (
+            [AsParameters] PageQuery page, [FromQuery] Guid? employeeId, TimeDbContext database, ICurrentUser currentUser,
+            CancellationToken cancellationToken) =>
+        {
+            PageRequest request = page.ToPageRequest();
+
+            // Same self-scoping default as MapRegularizationEndpoints's own list: no employeeId and
+            // no elevated view permission falls back to the caller's own requests.
+            Guid? scopedEmployeeId = employeeId ?? currentUser.EmployeeId;
+
+            IQueryable<OvertimeRequest> query = database.OvertimeRequests.AsNoTracking();
+
+            if (scopedEmployeeId is { } id)
+            {
+                query = query.Where(x => x.EmployeeId == id);
+            }
+
+            long? total = request.IncludeTotal ? await query.LongCountAsync(cancellationToken) : null;
+
+            List<OvertimeRequestResponse> items = await query
+                .OrderByDescending(x => x.OvertimeDate)
+                .Skip(request.Skip)
+                .Take(request.PageSize)
+                .Select(x => ToResponse(x))
+                .ToListAsync(cancellationToken);
+
+            return TypedResults.Ok(PagedResult.From(items, request, total));
+        }).WithName("ListOvertimeRequests").RequirePermission(Permissions.Attendance.OvertimeView);
+
+        group.MapPost("/", async (
+            SubmitOvertimeRequestBody body, OvertimeRequestService service, ICurrentUser currentUser,
+            IPermissionProvider permissions, CancellationToken cancellationToken) =>
+        {
+            if (body.EmployeeId is { } requestedEmployeeId && requestedEmployeeId != currentUser.EmployeeId)
+            {
+                PermissionSet held = await permissions.GetCurrentAsync(cancellationToken);
+
+                if (!held.Has(Permissions.Attendance.Manage))
+                {
+                    return Results.Forbid();
+                }
+            }
+
+            OvertimeRequest overtimeRequest = await service.SubmitAsync(
+                body.EmployeeId, body.OvertimeDate, body.RequestedMinutes, body.ReasonCode, body.Remarks, cancellationToken);
+
+            return Results.Created($"/api/v1/attendance/overtime-requests/{overtimeRequest.Id}", ToResponse(overtimeRequest));
+        }).WithName("SubmitOvertimeRequest").RequirePermission(Permissions.Attendance.OvertimeCreate);
+
+        group.MapPost("/{id:guid}/cancel", async (
+            Guid id, OvertimeRequestService service, CancellationToken cancellationToken) =>
+        {
+            await service.CancelAsync(id, cancellationToken);
+            return TypedResults.NoContent();
+        }).WithName("CancelOvertimeRequest").RequirePermission(Permissions.Attendance.OvertimeCreate);
+    }
+
     private static ShiftResponse ToResponse(Shift entity) => new(
         entity.Id, entity.Code, entity.Name, entity.StartTime, entity.EndTime, entity.BreakMinutes, entity.IsNightShift,
         entity.GraceInMinutes, entity.GraceOutMinutes, entity.FullDayMinMinutes, entity.HalfDayMinMinutes);
@@ -243,4 +305,8 @@ public static class AttendanceEndpoints
     private static AttendanceRegularizationResponse ToResponse(AttendanceRegularization entity) => new(
         entity.Id, entity.EmployeeId, entity.AttendanceDate, entity.RequestedIn, entity.RequestedOut, entity.ReasonCode,
         entity.Remarks, entity.Status, entity.WorkflowInstanceId, entity.CreatedDate);
+
+    private static OvertimeRequestResponse ToResponse(OvertimeRequest entity) => new(
+        entity.Id, entity.EmployeeId, entity.OvertimeDate, entity.RequestedMinutes, entity.ReasonCode, entity.Remarks,
+        entity.Status, entity.ApprovedMinutes, entity.WorkflowInstanceId, entity.CreatedDate);
 }

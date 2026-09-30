@@ -240,3 +240,11 @@ public sealed class AttendanceRegularizationRepository(TimeDbContext dbContext) 
 
     public void Add(AttendanceRegularization regularization) => dbContext.AttendanceRegularizations.Add(regularization);
 }
+
+public sealed class OvertimeRequestRepository(TimeDbContext dbContext) : IOvertimeRequestRepository
+{
+    public async Task<OvertimeRequest?> GetAsync(Guid id, CancellationToken cancellationToken = default)
+        => await dbContext.OvertimeRequests.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    public void Add(OvertimeRequest request) => dbContext.OvertimeRequests.Add(request);
+}

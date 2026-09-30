@@ -46,3 +46,10 @@ public interface IAttendanceRegularizationRepository
 
     void Add(AttendanceRegularization regularization);
 }
+
+public interface IOvertimeRequestRepository
+{
+    Task<OvertimeRequest?> GetAsync(Guid id, CancellationToken cancellationToken = default);
+
+    void Add(OvertimeRequest request);
+}

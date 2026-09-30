@@ -73,6 +73,7 @@ builder.Services.AddScoped<IShiftRosterRepository, ShiftRosterRepository>();
 builder.Services.AddScoped<IAttendancePunchRepository, AttendancePunchRepository>();
 builder.Services.AddScoped<IAttendanceDayRepository, AttendanceDayRepository>();
 builder.Services.AddScoped<IAttendanceRegularizationRepository, AttendanceRegularizationRepository>();
+builder.Services.AddScoped<IOvertimeRequestRepository, OvertimeRequestRepository>();
 
 builder.Services.AddScoped<IWorkCalendar, WorkCalendar>();
 builder.Services.AddScoped<LeaveLedgerService>();
@@ -86,6 +87,7 @@ builder.Services.AddScoped<ShiftRosterService>();
 builder.Services.AddScoped<AttendanceDayProcessor>();
 builder.Services.AddScoped<AttendancePunchService>();
 builder.Services.AddScoped<AttendanceRegularizationService>();
+builder.Services.AddScoped<OvertimeRequestService>();
 
 builder.Services.AddGggsJson();
 builder.Services.AddProblemDetails();

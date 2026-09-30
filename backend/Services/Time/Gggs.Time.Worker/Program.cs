@@ -64,6 +64,7 @@ builder.Services.AddScoped<ILeaveLedgerRepository, LeaveLedgerRepository>();
 builder.Services.AddScoped<IEmployeeSnapshotRepository, EmployeeSnapshotRepository>();
 builder.Services.AddScoped<IAttendanceRegularizationRepository, AttendanceRegularizationRepository>();
 builder.Services.AddScoped<IAttendanceDayRepository, AttendanceDayRepository>();
+builder.Services.AddScoped<IOvertimeRequestRepository, OvertimeRequestRepository>();
 
 builder.Services.AddScoped<LeaveLedgerService>();
 
@@ -75,6 +76,8 @@ builder.Services.AddGggsEventConsumer<WorkflowApprovedIntegrationEvent, LeaveWor
 builder.Services.AddGggsEventConsumer<WorkflowRejectedIntegrationEvent, LeaveWorkflowOutcomeConsumer>();
 builder.Services.AddGggsEventConsumer<WorkflowApprovedIntegrationEvent, AttendanceWorkflowOutcomeConsumer>();
 builder.Services.AddGggsEventConsumer<WorkflowRejectedIntegrationEvent, AttendanceWorkflowOutcomeConsumer>();
+builder.Services.AddGggsEventConsumer<WorkflowApprovedIntegrationEvent, OvertimeWorkflowOutcomeConsumer>();
+builder.Services.AddGggsEventConsumer<WorkflowRejectedIntegrationEvent, OvertimeWorkflowOutcomeConsumer>();
 builder.Services.AddGggsEventConsumer<EmployeeAssignmentChangedIntegrationEvent, EmployeeSnapshotConsumer>();
 builder.Services.AddGggsEventConsumer<EmployeeExitedIntegrationEvent, EmployeeSnapshotConsumer>();
 

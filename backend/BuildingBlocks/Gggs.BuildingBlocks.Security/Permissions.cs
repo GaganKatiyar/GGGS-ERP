@@ -112,6 +112,8 @@ public static class Permissions
         public const string Manage = "attendance.record.manage";
         public const string RegularizationView = "attendance.regularization.view";
         public const string RegularizationCreate = "attendance.regularization.create";
+        public const string OvertimeView = "attendance.overtime.view";
+        public const string OvertimeCreate = "attendance.overtime.create";
         public const string ShiftManage = "attendance.shift.manage";
         public const string RosterManage = "attendance.roster.manage";
         public const string PolicyManage = "attendance.policy.manage";

@@ -59,3 +59,17 @@ public sealed record AttendanceRegularizationResponse(
 
 public sealed record SubmitRegularizationBody(
     Guid? EmployeeId, DateOnly AttendanceDate, DateTime RequestedIn, DateTime RequestedOut, string ReasonCode, string? Remarks);
+
+public sealed record OvertimeRequestResponse(
+    Guid Id,
+    Guid EmployeeId,
+    DateOnly OvertimeDate,
+    int RequestedMinutes,
+    string ReasonCode,
+    string? Remarks,
+    OvertimeRequestStatus Status,
+    int? ApprovedMinutes,
+    Guid? WorkflowInstanceId,
+    DateTime CreatedDate);
+
+public sealed record SubmitOvertimeRequestBody(Guid? EmployeeId, DateOnly OvertimeDate, int RequestedMinutes, string ReasonCode, string? Remarks);

@@ -40,6 +40,8 @@ await SeedTenantAdminAsync(identityConnectionString, tenantId, adminEmail, admin
 await SeedSingleStepWorkflowAsync(workflowConnectionString, tenantId, "LEAVE_REQUEST", "LEAVE_REQUEST", "Leave request approval");
 await SeedSingleStepWorkflowAsync(
     workflowConnectionString, tenantId, "ATTENDANCE_REGULARIZATION", "ATTENDANCE_REGULARIZATION", "Attendance regularization approval");
+await SeedSingleStepWorkflowAsync(
+    workflowConnectionString, tenantId, "OVERTIME_REQUEST", "OVERTIME_REQUEST", "Overtime request approval");
 
 Console.WriteLine();
 Console.WriteLine("Done. Sign in with:");
@@ -187,6 +189,8 @@ static async Task SeedTenantAdminAsync(string connectionString, Guid tenantId, s
         Permissions.Attendance.Manage,
         Permissions.Attendance.RegularizationView,
         Permissions.Attendance.RegularizationCreate,
+        Permissions.Attendance.OvertimeView,
+        Permissions.Attendance.OvertimeCreate,
         Permissions.Attendance.ShiftManage,
         Permissions.Attendance.RosterManage,
         Permissions.Attendance.PolicyManage,

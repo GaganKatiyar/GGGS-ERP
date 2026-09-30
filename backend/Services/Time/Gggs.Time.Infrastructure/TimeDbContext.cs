@@ -47,6 +47,8 @@ public sealed class TimeDbContext(DbContextOptions<TimeDbContext> options, ITena
 
     public DbSet<AttendanceRegularization> AttendanceRegularizations => Set<AttendanceRegularization>();
 
+    public DbSet<OvertimeRequest> OvertimeRequests => Set<OvertimeRequest>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -277,6 +279,19 @@ public sealed class TimeDbContext(DbContextOptions<TimeDbContext> options, ITena
 
             entity.HasIndex(x => new { x.TenantId, x.EmployeeId, x.AttendanceDate })
                 .HasDatabaseName("IX_AttendanceRegularization_TenantId_EmployeeId_AttendanceDate");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<OvertimeRequest>(entity =>
+        {
+            entity.ToTable("OvertimeRequest", "time");
+            entity.Property(x => x.ReasonCode).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Remarks).HasMaxLength(1000);
+            entity.Property(x => x.Status).HasConversion<byte>();
+
+            entity.HasIndex(x => new { x.TenantId, x.EmployeeId, x.OvertimeDate })
+                .HasDatabaseName("IX_OvertimeRequest_TenantId_EmployeeId_OvertimeDate");
 
             entity.Ignore(x => x.DomainEvents);
         });
