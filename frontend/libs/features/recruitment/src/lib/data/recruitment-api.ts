@@ -1,8 +1,11 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type {
+  ApplyToPostingRequest,
   CreateJobPostingRequest,
   CreateJobRequisitionRequest,
+  JobApplication,
+  JobApplicationListItem,
   JobPosting,
   JobPostingListItem,
   JobRequisition,
@@ -82,6 +85,32 @@ export class RecruitmentApi {
   closePosting(requisitionId: string, postingId: string): Promise<JobPosting> {
     return firstValueFrom(
       this.http.post<JobPosting>(`/api/v1/recruitment/requisitions/${requisitionId}/postings/${postingId}/close`, {}),
+    );
+  }
+
+  // ---- Applications, nested under their posting for creation/listing ----
+
+  listApplications(postingId: string): Promise<readonly JobApplicationListItem[]> {
+    return firstValueFrom(
+      this.http.get<readonly JobApplicationListItem[]>(`/api/v1/recruitment/postings/${postingId}/applications`),
+    );
+  }
+
+  applyToPosting(postingId: string, request: ApplyToPostingRequest): Promise<JobApplication> {
+    return firstValueFrom(
+      this.http.post<JobApplication>(`/api/v1/recruitment/postings/${postingId}/applications`, request),
+    );
+  }
+
+  advanceApplication(applicationId: string): Promise<JobApplication> {
+    return firstValueFrom(
+      this.http.post<JobApplication>(`/api/v1/recruitment/applications/${applicationId}/advance`, {}),
+    );
+  }
+
+  rejectApplication(applicationId: string, reason?: string): Promise<JobApplication> {
+    return firstValueFrom(
+      this.http.post<JobApplication>(`/api/v1/recruitment/applications/${applicationId}/reject`, { reason }),
     );
   }
 }

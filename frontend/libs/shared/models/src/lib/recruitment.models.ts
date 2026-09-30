@@ -69,3 +69,32 @@ export interface CreateJobPostingRequest {
   readonly slug: string;
   readonly closesDate?: string;
 }
+
+export type ApplicationStage = 'Applied' | 'Screening' | 'Interview' | 'Offer' | 'Hired' | 'Rejected';
+
+export interface JobApplicationListItem {
+  readonly id: string;
+  readonly candidateId: string;
+  readonly candidateDisplayName: string;
+  readonly stage: ApplicationStage;
+}
+
+export interface JobApplication {
+  readonly id: string;
+  readonly postingId: string;
+  readonly candidateId: string;
+  readonly candidateDisplayName: string;
+  readonly candidateEmail: string;
+  readonly stage: ApplicationStage;
+  readonly rejectionReason?: string;
+}
+
+export interface ApplyToPostingRequest {
+  readonly firstName: string;
+  readonly lastName?: string;
+  readonly email: string;
+  readonly phone?: string;
+  readonly currentEmployer?: string;
+  readonly totalExperienceMonths?: number;
+  readonly source?: string;
+}

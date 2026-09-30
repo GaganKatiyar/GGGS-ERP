@@ -4,6 +4,7 @@ import { HasPermissionDirective } from '@gggs/core/permissions';
 import { Button } from '@gggs/shared/ui';
 import type { JobPosting, JobPostingListItem } from '@gggs/shared/models';
 import { RecruitmentApi } from '../data/recruitment-api';
+import { JobApplicationsPanel } from './job-applications-panel';
 
 /**
  * Postings against one requisition - embedded in `JobRequisitionDetailPage` rather than its own
@@ -12,7 +13,7 @@ import { RecruitmentApi } from '../data/recruitment-api';
  */
 @Component({
   selector: 'gggs-job-postings-panel',
-  imports: [ReactiveFormsModule, HasPermissionDirective, Button],
+  imports: [ReactiveFormsModule, HasPermissionDirective, Button, JobApplicationsPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (postings(); as items) {
@@ -34,15 +35,30 @@ import { RecruitmentApi } from '../data/recruitment-api';
                 <td>{{ posting.slug }}</td>
                 <td>{{ posting.isPublic ? 'Yes' : 'No' }}</td>
                 <td>{{ posting.status }}</td>
-                <td class="posting-actions" *gggsHasPermission="'recruitment.posting.manage'">
-                  @if (posting.status === 'Draft') {
-                    <gggs-button size="sm" (click)="publish(posting.id)" [disabled]="isActing()">Publish</gggs-button>
-                  }
-                  @if (posting.status === 'Published') {
-                    <gggs-button size="sm" (click)="close(posting.id)" [disabled]="isActing()">Close</gggs-button>
-                  }
+                <td class="posting-actions">
+                  <gggs-button size="sm" (click)="toggleApplications(posting.id)">
+                    {{ expandedPostingId() === posting.id ? 'Hide applications' : 'Applications' }}
+                  </gggs-button>
+                  <ng-container *gggsHasPermission="'recruitment.posting.manage'">
+                    @if (posting.status === 'Draft') {
+                      <gggs-button size="sm" (click)="publish(posting.id)" [disabled]="isActing()">Publish</gggs-button>
+                    }
+                    @if (posting.status === 'Published') {
+                      <gggs-button size="sm" (click)="close(posting.id)" [disabled]="isActing()">Close</gggs-button>
+                    }
+                  </ng-container>
                 </td>
               </tr>
+              @if (expandedPostingId() === posting.id) {
+                <tr>
+                  <td colspan="5" class="applications-cell">
+                    <gggs-job-applications-panel
+                      [postingId]="posting.id"
+                      [postingIsPublished]="posting.status === 'Published'"
+                    />
+                  </td>
+                </tr>
+              }
             }
           </tbody>
         </table>
@@ -125,6 +141,11 @@ import { RecruitmentApi } from '../data/recruitment-api';
       gap: 0.5rem;
     }
 
+    .applications-cell {
+      background: var(--gggs-color-surface-sunken, #f5f6f8);
+      padding: 0.75rem 1rem;
+    }
+
     .muted {
       color: var(--gggs-color-text-muted, #5b6472);
       margin: 0 0 1rem;
@@ -178,6 +199,7 @@ export class JobPostingsPanel {
   protected readonly isActing = signal(false);
   protected readonly isSaving = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly expandedPostingId = signal<string | null>(null);
 
   protected readonly form = this.formBuilder.group({
     title: ['', [Validators.required, Validators.maxLength(200)]],
@@ -190,6 +212,10 @@ export class JobPostingsPanel {
 
   constructor() {
     void this.load();
+  }
+
+  protected toggleApplications(postingId: string): void {
+    this.expandedPostingId.set(this.expandedPostingId() === postingId ? null : postingId);
   }
 
   protected async publish(postingId: string): Promise<void> {
