@@ -1,6 +1,7 @@
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Persistence;
+using Gggs.Talent.Domain.Learning;
 using Gggs.Talent.Domain.Onboarding;
 using Gggs.Talent.Domain.Performance;
 using Gggs.Talent.Domain.Recruitment;
@@ -11,7 +12,8 @@ namespace Gggs.Talent.Infrastructure;
 
 /// <summary>Talent's database: job requisitions, the postings made against them, candidates,
 /// applications, the offers made against them, onboarding templates and cases, performance cycles
-/// with goals/check-ins and reviews, and the employee snapshot fed from Core HR.</summary>
+/// with goals/check-ins and reviews, courses and enrollments, and the employee snapshot fed from
+/// Core HR.</summary>
 public sealed class TalentDbContext(DbContextOptions<TalentDbContext> options, ITenantContext tenantContext)
     : GggsDbContext(options, tenantContext)
 {
@@ -42,6 +44,10 @@ public sealed class TalentDbContext(DbContextOptions<TalentDbContext> options, I
     public DbSet<GoalCheckIn> GoalCheckIns => Set<GoalCheckIn>();
 
     public DbSet<Review> Reviews => Set<Review>();
+
+    public DbSet<Course> Courses => Set<Course>();
+
+    public DbSet<Enrollment> Enrollments => Set<Enrollment>();
 
     public DbSet<EmployeeSnapshot> EmployeeSnapshots => Set<EmployeeSnapshot>();
 
@@ -237,6 +243,37 @@ public sealed class TalentDbContext(DbContextOptions<TalentDbContext> options, I
 
             entity.HasIndex(x => new { x.TenantId, x.ManagerEmployeeId, x.Status })
                 .HasDatabaseName("IX_Review_TenantId_ManagerEmployeeId_Status");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<Course>(entity =>
+        {
+            entity.ToTable("Course", "lms");
+            entity.Property(x => x.Code).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(1000);
+            entity.Property(x => x.DurationHours).HasColumnType("decimal(6,2)");
+
+            entity.HasIndex(x => new { x.TenantId, x.Code })
+                .HasDatabaseName("UX_Course_TenantId_Code")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<Enrollment>(entity =>
+        {
+            entity.ToTable("Enrollment", "lms");
+            entity.Property(x => x.Status).HasConversion<byte>();
+            entity.Property(x => x.Score).HasColumnType("decimal(5,2)");
+
+            entity.HasIndex(x => new { x.TenantId, x.EmployeeId, x.Status })
+                .HasDatabaseName("IX_Enrollment_TenantId_EmployeeId_Status");
+
+            entity.HasIndex(x => new { x.TenantId, x.CourseId })
+                .HasDatabaseName("IX_Enrollment_TenantId_CourseId");
 
             entity.Ignore(x => x.DomainEvents);
         });

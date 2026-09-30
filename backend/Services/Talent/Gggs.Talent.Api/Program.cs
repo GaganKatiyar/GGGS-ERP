@@ -10,6 +10,7 @@ using Gggs.BuildingBlocks.Secrets;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.Talent.Api.Endpoints;
+using Gggs.Talent.Application.Learning;
 using Gggs.Talent.Application.Onboarding;
 using Gggs.Talent.Application.Performance;
 using Gggs.Talent.Application.Recruitment;
@@ -72,6 +73,8 @@ builder.Services.AddScoped<IOnboardingCaseRepository, OnboardingCaseRepository>(
 builder.Services.AddScoped<IPerformanceCycleRepository, PerformanceCycleRepository>();
 builder.Services.AddScoped<IGoalRepository, GoalRepository>();
 builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
+builder.Services.AddScoped<ICourseRepository, CourseRepository>();
+builder.Services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
 builder.Services.AddScoped<IEmployeeSnapshotRepository, EmployeeSnapshotRepository>();
 
 builder.Services.AddScoped<JobRequisitionService>();
@@ -83,6 +86,8 @@ builder.Services.AddScoped<OnboardingCaseService>();
 builder.Services.AddScoped<PerformanceCycleService>();
 builder.Services.AddScoped<GoalService>();
 builder.Services.AddScoped<ReviewService>();
+builder.Services.AddScoped<CourseService>();
+builder.Services.AddScoped<EnrollmentService>();
 
 builder.Services.AddGggsJson();
 builder.Services.AddProblemDetails();
@@ -112,6 +117,8 @@ app.MapOnboardingCaseEndpoints();
 app.MapPerformanceCycleEndpoints();
 app.MapGoalEndpoints();
 app.MapReviewEndpoints();
+app.MapCourseEndpoints();
+app.MapEnrollmentEndpoints();
 
 if (app.Environment.IsDevelopment())
 {

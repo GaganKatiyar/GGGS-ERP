@@ -215,4 +215,20 @@ public static class Permissions
         /// self-service permissions elsewhere in this catalog use.</summary>
         public const string ReviewManageAsManager = "performance.review.manage-as-manager";
     }
+
+    /// <summary>Courses and enrollments. No session scheduling or certification tracking in this v1
+    /// slice - see <c>Course</c>'s own remarks.</summary>
+    public static class Learning
+    {
+        public const string CourseView = "learning.course.view";
+        public const string CourseManage = "learning.course.manage";
+
+        public const string EnrollmentView = "learning.enrollment.view";
+
+        /// <summary>Assigning and cancelling enrollments for people other than yourself - HR/admin.</summary>
+        public const string EnrollmentManage = "learning.enrollment.manage";
+
+        /// <summary>Starting and completing your own enrollment.</summary>
+        public const string EnrollmentManageOwn = "learning.enrollment.manage-own";
+    }
 }
