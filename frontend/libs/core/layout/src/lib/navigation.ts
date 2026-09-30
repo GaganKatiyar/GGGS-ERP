@@ -258,6 +258,12 @@ export const NAVIGATION: readonly NavItem[] = [
     permissions: ['onboarding.template.view', 'onboarding.case.view'],
   },
   {
+    label: 'Performance',
+    icon: 'pi pi-chart-line',
+    route: '/performance',
+    permissions: ['performance.cycle.view'],
+  },
+  {
     label: 'Administration',
     icon: 'pi pi-cog',
     permissions: [

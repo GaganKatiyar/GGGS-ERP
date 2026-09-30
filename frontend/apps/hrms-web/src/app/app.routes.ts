@@ -140,6 +140,12 @@ export const appRoutes: Route[] = [
           import('@gggs/features/onboarding').then((m) => m.ONBOARDING_ROUTES),
       },
       {
+        path: 'performance',
+        ...withPermissions(['performance.cycle.view']),
+        loadChildren: () =>
+          import('@gggs/features/performance').then((m) => m.PERFORMANCE_ROUTES),
+      },
+      {
         path: 'admin',
         // Matches NAVIGATION's "Administration" group: any one of these lets someone in, and each
         // child route narrows further to the specific permission it actually needs.

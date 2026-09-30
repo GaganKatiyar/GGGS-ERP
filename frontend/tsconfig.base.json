@@ -48,6 +48,9 @@
       ],
       "@gggs/features/onboarding": [
         "./libs/features/onboarding/src/index.ts"
+      ],
+      "@gggs/features/performance": [
+        "./libs/features/performance/src/index.ts"
       ]
     }
   },

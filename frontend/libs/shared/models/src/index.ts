@@ -12,3 +12,4 @@ export * from './lib/attendance.models';
 export * from './lib/report.models';
 export * from './lib/recruitment.models';
 export * from './lib/onboarding.models';
+export * from './lib/performance.models';
