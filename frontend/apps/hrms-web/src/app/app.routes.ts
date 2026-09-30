@@ -152,6 +152,12 @@ export const appRoutes: Route[] = [
           import('@gggs/features/learning').then((m) => m.LEARNING_ROUTES),
       },
       {
+        path: 'payroll',
+        ...withPermissions(['payroll.component.manage', 'payroll.structure.manage', 'payroll.employee-salary.view']),
+        loadChildren: () =>
+          import('@gggs/features/payroll').then((m) => m.PAYROLL_ROUTES),
+      },
+      {
         path: 'admin',
         // Matches NAVIGATION's "Administration" group: any one of these lets someone in, and each
         // child route narrows further to the specific permission it actually needs.

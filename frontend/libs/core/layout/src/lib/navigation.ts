@@ -276,6 +276,31 @@ export const NAVIGATION: readonly NavItem[] = [
     permissions: ['learning.course.view'],
   },
   {
+    label: 'Payroll',
+    icon: 'pi pi-wallet',
+    permissions: ['payroll.component.manage', 'payroll.structure.manage', 'payroll.employee-salary.view'],
+    children: [
+      {
+        label: 'Components',
+        icon: 'pi pi-list',
+        route: '/payroll',
+        permissions: ['payroll.component.manage'],
+      },
+      {
+        label: 'Structures',
+        icon: 'pi pi-sitemap',
+        route: '/payroll/structures',
+        permissions: ['payroll.structure.manage'],
+      },
+      {
+        label: 'Employee salary',
+        icon: 'pi pi-money-bill',
+        route: '/payroll/employee-salary',
+        permissions: ['payroll.employee-salary.view'],
+      },
+    ],
+  },
+  {
     label: 'Administration',
     icon: 'pi pi-cog',
     permissions: [
