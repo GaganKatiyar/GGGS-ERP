@@ -10,6 +10,7 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Messaging\Gggs.BuildingBlocks.Messaging.csproj" />
     <!-- Other services' published contracts, which are the only part of them we are allowed to see. -->
     <ProjectReference Include="..\..\CoreHr\Gggs.CoreHr.Contracts\Gggs.CoreHr.Contracts.csproj" />
+    <ProjectReference Include="..\Gggs.Talent.Contracts\Gggs.Talent.Contracts.csproj" />
     <ProjectReference Include="..\Gggs.Talent.Domain\Gggs.Talent.Domain.csproj" />
   </ItemGroup>
 

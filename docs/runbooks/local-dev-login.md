@@ -140,6 +140,17 @@ template exists for `user.invited` until one is created through `POST
 `NotificationTemplate`'s own remarks), and even with a template, no SMTP host is configured by
 default, so `SmtpEmailSender` logs the rendered email instead of sending it.
 
+## Why accepting a job offer does not auto-hire an employee in this setup
+
+`OfferService.AcceptAsync` stages an `OfferAcceptedIntegrationEvent` into Talent's own outbox -
+same "needs no broker" story as the audit trail and invitation email above. Turning that into a
+real Core HR employee is `Gggs.CoreHr.Worker`'s job (`OfferAcceptedConsumer` →
+`EmployeeService.HireAsync`), and this runbook does not start it, `Gggs.Talent.Worker` (which
+relays that outbox), or any other `*.Worker` process. The offer itself still moves to Accepted and
+its application still moves to Hired - both happen synchronously inside `AcceptAsync` - only the
+downstream employee record does not appear until a broker is reachable and both workers are
+running.
+
 ## Why this bypasses the async tenant-provisioning saga
 
 The real path is Platform (outbox) → RabbitMQ → `Identity.Worker` → `TenantSeedingService`, which

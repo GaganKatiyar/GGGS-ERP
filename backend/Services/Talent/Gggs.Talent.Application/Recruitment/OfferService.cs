@@ -1,5 +1,7 @@
 using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Domain.Exceptions;
+using Gggs.BuildingBlocks.Messaging;
+using Gggs.Talent.Contracts;
 using Gggs.Talent.Domain.Recruitment;
 
 namespace Gggs.Talent.Application.Recruitment;
@@ -7,10 +9,19 @@ namespace Gggs.Talent.Application.Recruitment;
 /// <summary>
 /// Offers against an application, once it has reached <see cref="ApplicationStage.Offer"/>. See
 /// <see cref="Offer"/>'s own remarks on why <see cref="AcceptAsync"/> also advances the
-/// application's stage in the same transaction.
+/// application's stage in the same transaction, and <see cref="OfferAcceptedIntegrationEvent"/>'s
+/// own remarks on why it carries org references already resolved rather than leaving Core HR to
+/// walk the application -&gt; posting -&gt; requisition chain itself.
 /// </summary>
 public sealed class OfferService(
-    IOfferRepository offers, IJobApplicationRepository applications, IUnitOfWork unitOfWork, TimeProvider clock)
+    IOfferRepository offers,
+    IJobApplicationRepository applications,
+    IJobPostingRepository postings,
+    IJobRequisitionRepository requisitions,
+    ICandidateRepository candidates,
+    IIntegrationEventPublisher publisher,
+    IUnitOfWork unitOfWork,
+    TimeProvider clock)
 {
     public async Task<Offer> CreateAsync(
         Guid applicationId, Guid designationId, Guid? gradeId, decimal annualCtc, string currency,
@@ -45,8 +56,9 @@ public sealed class OfferService(
         return offer;
     }
 
-    /// <summary>Accepts the offer and marks its application Hired in the same save - see
-    /// <see cref="Offer"/>'s own remarks on why these two facts never go out of sync.</summary>
+    /// <summary>Accepts the offer, marks its application Hired in the same save (see
+    /// <see cref="Offer"/>'s own remarks on why these two facts never go out of sync), and publishes
+    /// <see cref="OfferAcceptedIntegrationEvent"/> so Core HR can auto-hire the employee.</summary>
     public async Task<Offer> AcceptAsync(Guid id, CancellationToken cancellationToken = default)
     {
         Offer offer = await GetOrThrowAsync(id, cancellationToken);
@@ -55,6 +67,17 @@ public sealed class OfferService(
         JobApplication application = await applications.GetAsync(offer.ApplicationId, cancellationToken)
             ?? throw new NotFoundException(nameof(JobApplication), offer.ApplicationId);
         application.MarkHired();
+
+        JobPosting posting = await postings.GetAsync(application.PostingId, cancellationToken)
+            ?? throw new NotFoundException(nameof(JobPosting), application.PostingId);
+        JobRequisition requisition = await requisitions.GetAsync(posting.RequisitionId, cancellationToken)
+            ?? throw new NotFoundException(nameof(JobRequisition), posting.RequisitionId);
+        Candidate candidate = await candidates.GetAsync(application.CandidateId, cancellationToken)
+            ?? throw new NotFoundException(nameof(Candidate), application.CandidateId);
+
+        publisher.Publish(new OfferAcceptedIntegrationEvent(
+            offer.Id, application.Id, candidate.Id, candidate.FirstName, candidate.LastName, candidate.Email,
+            requisition.BranchId, requisition.DepartmentId, offer.DesignationId, offer.GradeId, offer.JoiningDate));
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return offer;
