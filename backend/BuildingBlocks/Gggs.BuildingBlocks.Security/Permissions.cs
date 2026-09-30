@@ -174,5 +174,7 @@ public static class Permissions
         public const string PostingManage = "recruitment.posting.manage";
         public const string ApplicationView = "recruitment.application.view";
         public const string ApplicationManage = "recruitment.application.manage";
+        public const string OfferView = "recruitment.offer.view";
+        public const string OfferManage = "recruitment.offer.manage";
     }
 }

@@ -118,7 +118,7 @@ public sealed class JobApplicationEndpointTests(TalentApiFactory factory)
     }
 
     [Fact]
-    public async Task AdvancingAnApplication_ThroughTheFullHappyPath_ReachesHired()
+    public async Task AdvancingAnApplication_ThroughTheHappyPath_StopsAtOffer()
     {
         using HttpClient client = factory.CreateClientFor(
             Permissions.Recruitment.RequisitionManage, Permissions.Recruitment.PostingManage,
@@ -133,15 +133,15 @@ public sealed class JobApplicationEndpointTests(TalentApiFactory factory)
         JobApplicationResponse interview = await PostAsync(client, $"/api/v1/recruitment/applications/{application.Id}/advance");
         interview.Stage.ShouldBe("Interview");
 
+        // Advance stops at Offer - reaching Hired needs a real Offer aggregate to be accepted
+        // (Gggs.Talent.IntegrationTests.OfferEndpointTests.AcceptingAnOffer_AlsoMarksItsApplicationHired
+        // covers that path), not a fourth plain advance call.
         JobApplicationResponse offer = await PostAsync(client, $"/api/v1/recruitment/applications/{application.Id}/advance");
         offer.Stage.ShouldBe("Offer");
-
-        JobApplicationResponse hired = await PostAsync(client, $"/api/v1/recruitment/applications/{application.Id}/advance");
-        hired.Stage.ShouldBe("Hired");
     }
 
     [Fact]
-    public async Task AdvancingAHiredApplication_IsRejected()
+    public async Task AdvancingAnApplicationAtOfferStage_IsRejected()
     {
         using HttpClient client = factory.CreateClientFor(
             Permissions.Recruitment.RequisitionManage, Permissions.Recruitment.PostingManage,
@@ -150,7 +150,7 @@ public sealed class JobApplicationEndpointTests(TalentApiFactory factory)
         Guid postingId = await CreatePublishedPostingAsync(client);
         JobApplicationResponse application = await ApplyAsync(client, postingId, $"priya-{Guid.NewGuid():N}@example.com");
 
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 3; i++)
         {
             await PostAsync(client, $"/api/v1/recruitment/applications/{application.Id}/advance");
         }

@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Gggs.Talent.Infrastructure;
 
 /// <summary>Talent's database: job requisitions, the postings made against them, candidates,
-/// applications, and the employee snapshot fed from Core HR.</summary>
+/// applications, the offers made against them, and the employee snapshot fed from Core HR.</summary>
 public sealed class TalentDbContext(DbContextOptions<TalentDbContext> options, ITenantContext tenantContext)
     : GggsDbContext(options, tenantContext)
 {
@@ -21,6 +21,8 @@ public sealed class TalentDbContext(DbContextOptions<TalentDbContext> options, I
     public DbSet<Candidate> Candidates => Set<Candidate>();
 
     public DbSet<JobApplication> JobApplications => Set<JobApplication>();
+
+    public DbSet<Offer> Offers => Set<Offer>();
 
     public DbSet<EmployeeSnapshot> EmployeeSnapshots => Set<EmployeeSnapshot>();
 
@@ -99,6 +101,27 @@ public sealed class TalentDbContext(DbContextOptions<TalentDbContext> options, I
 
             entity.HasIndex(x => new { x.TenantId, x.PostingId, x.Stage })
                 .HasDatabaseName("IX_JobApplication_TenantId_PostingId_Stage");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<Offer>(entity =>
+        {
+            entity.ToTable("Offer");
+            entity.Property(x => x.OfferNo).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.AnnualCtc).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.Currency).HasMaxLength(3).IsRequired();
+            entity.Property(x => x.Status).HasConversion<byte>();
+
+            entity.HasIndex(x => new { x.TenantId, x.OfferNo })
+                .HasDatabaseName("UX_Offer_TenantId_OfferNo")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            entity.HasIndex(x => new { x.TenantId, x.ApplicationId })
+                .HasDatabaseName("UX_Offer_TenantId_ApplicationId")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
 
             entity.Ignore(x => x.DomainEvents);
         });

@@ -47,6 +47,17 @@ public sealed class JobApplicationRepository(TalentDbContext dbContext) : IJobAp
     public void Add(JobApplication application) => dbContext.JobApplications.Add(application);
 }
 
+public sealed class OfferRepository(TalentDbContext dbContext) : IOfferRepository
+{
+    public async Task<Offer?> GetAsync(Guid id, CancellationToken cancellationToken = default)
+        => await dbContext.Offers.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    public async Task<bool> ExistsForApplicationAsync(Guid applicationId, CancellationToken cancellationToken = default)
+        => await dbContext.Offers.AnyAsync(x => x.ApplicationId == applicationId, cancellationToken);
+
+    public void Add(Offer offer) => dbContext.Offers.Add(offer);
+}
+
 public sealed class EmployeeSnapshotRepository(TalentDbContext dbContext) : IEmployeeSnapshotRepository
 {
     public async Task<EmployeeSnapshot?> GetAsync(Guid employeeId, CancellationToken cancellationToken = default)

@@ -48,22 +48,39 @@ public sealed class JobApplication : TenantAggregateRoot
         IsActive = true,
     };
 
-    /// <summary>Moves one step along the happy path: Applied -> Screening -> Interview -> Offer -> Hired.</summary>
+    /// <summary>
+    /// Moves one step along the happy path: Applied -> Screening -> Interview -> Offer. Stops at
+    /// Offer rather than continuing to Hired - <see cref="MarkHired"/> is the only way to reach it,
+    /// so an application can never be marked Hired without a real <c>Offer</c> aggregate having
+    /// actually been accepted first.
+    /// </summary>
     public void Advance()
     {
         Guard.Against(
-            Stage is ApplicationStage.Hired or ApplicationStage.Rejected,
-            "APPLICATION_ALREADY_TERMINAL",
-            $"This application is already {Stage} and cannot move further.");
+            Stage is ApplicationStage.Offer or ApplicationStage.Hired or ApplicationStage.Rejected,
+            "APPLICATION_CANNOT_ADVANCE",
+            Stage == ApplicationStage.Offer
+                ? "This application is at the Offer stage; it moves to Hired only once an offer is accepted."
+                : $"This application is already {Stage} and cannot move further.");
 
         Stage = Stage switch
         {
             ApplicationStage.Applied => ApplicationStage.Screening,
             ApplicationStage.Screening => ApplicationStage.Interview,
             ApplicationStage.Interview => ApplicationStage.Offer,
-            ApplicationStage.Offer => ApplicationStage.Hired,
             _ => throw new InvalidOperationException($"Unreachable: {Stage} was already excluded above."),
         };
+    }
+
+    /// <summary>The only path to Hired - called once the candidate's <c>Offer</c> is accepted.</summary>
+    public void MarkHired()
+    {
+        Guard.Against(
+            Stage != ApplicationStage.Offer,
+            "APPLICATION_NOT_AT_OFFER_STAGE",
+            $"This application must be at the Offer stage to be marked Hired; it is {Stage}.");
+
+        Stage = ApplicationStage.Hired;
     }
 
     public void Reject(string? reason)
