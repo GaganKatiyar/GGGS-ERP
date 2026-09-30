@@ -82,6 +82,7 @@ export default [
                 'scope:attendance',
                 'scope:reports',
                 'scope:recruitment',
+                'scope:onboarding',
               ],
             },
             {
@@ -163,6 +164,10 @@ export default [
             {
               sourceTag: 'scope:recruitment',
               onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:recruitment'],
+            },
+            {
+              sourceTag: 'scope:onboarding',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:onboarding'],
             },
           ],
         },

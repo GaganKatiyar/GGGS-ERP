@@ -252,6 +252,12 @@ export const NAVIGATION: readonly NavItem[] = [
     permissions: ['recruitment.requisition.view'],
   },
   {
+    label: 'Onboarding',
+    icon: 'pi pi-clipboard',
+    route: '/onboarding',
+    permissions: ['onboarding.template.view', 'onboarding.case.view'],
+  },
+  {
     label: 'Administration',
     icon: 'pi pi-cog',
     permissions: [
