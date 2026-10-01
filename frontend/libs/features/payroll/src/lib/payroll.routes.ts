@@ -1,6 +1,7 @@
 import type { Routes } from '@angular/router';
 import { withPermissions } from '@gggs/core/permissions';
 import { EmployeeSalaryPage } from './employee-salary/employee-salary-page';
+import { MyPayslipsPage } from './my-payslips/my-payslips-page';
 import { PayGroupListPage } from './pay-groups/pay-group-list-page';
 import { PayrollRunDetailPage } from './runs/payroll-run-detail-page';
 import { PayrollRunListPage } from './runs/payroll-run-list-page';
@@ -48,3 +49,6 @@ export const PAYROLL_ROUTES: Routes = [
     ...withPermissions(['payroll.run.view']),
   },
 ];
+
+/** Mounted directly at `/me/payslips` - see `NAVIGATION`'s "My Space" entry. */
+export const MY_PAYSLIPS_ROUTES: Routes = [{ path: '', component: MyPayslipsPage, title: 'My payslips' }];

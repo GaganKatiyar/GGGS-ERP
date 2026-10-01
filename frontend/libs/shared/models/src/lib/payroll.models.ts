@@ -147,3 +147,33 @@ export interface PayrollRunEmployee {
   readonly netPay: number;
   readonly lines: readonly PayrollRunEmployeeLine[];
 }
+
+export interface PayslipLine {
+  readonly componentId: string;
+  readonly componentName: string;
+  readonly kind: SalaryComponentKind;
+  readonly amount: number;
+}
+
+export interface Payslip {
+  readonly id: string;
+  readonly employeeId: string;
+  readonly payrollRunId: string;
+  readonly runNo: string;
+  readonly payPeriodId: string;
+  readonly periodCode: string;
+  readonly payDate: string;
+  readonly gross: number;
+  readonly netPay: number;
+  readonly publishedDate: string;
+  readonly lines: readonly PayslipLine[];
+}
+
+export interface PayslipListItem {
+  readonly id: string;
+  readonly payrollRunId: string;
+  readonly runNo: string;
+  readonly payDate: string;
+  readonly netPay: number;
+  readonly publishedDate: string;
+}

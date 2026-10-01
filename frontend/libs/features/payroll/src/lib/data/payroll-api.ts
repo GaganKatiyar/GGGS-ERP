@@ -12,6 +12,8 @@ import type {
   EmployeeSalary,
   PayGroup,
   PayPeriod,
+  Payslip,
+  PayslipListItem,
   PayrollRun,
   PayrollRunEmployee,
   SalaryComponent,
@@ -20,8 +22,8 @@ import type {
 } from '@gggs/shared/models';
 import { firstValueFrom } from 'rxjs';
 
-/** Salary components, structures, employee salary assignment, and payroll runs, over the gateway's
- * `/api/v1/payroll/*` routes. No payslips or statutory compliance in this v1 slice. */
+/** Salary components, structures, employee salary assignment, payroll runs, and the payslips they
+ * publish, over the gateway's `/api/v1/payroll/*` routes. No statutory compliance in this v1 slice. */
 @Injectable({ providedIn: 'root' })
 export class PayrollApi {
   private readonly http = inject(HttpClient);
@@ -140,5 +142,19 @@ export class PayrollApi {
 
   finalizePayrollRun(id: string): Promise<PayrollRun> {
     return firstValueFrom(this.http.post<PayrollRun>(`/api/v1/payroll/runs/${id}/finalize`, {}));
+  }
+
+  // ---- Payslips ----
+
+  listMyPayslips(): Promise<readonly PayslipListItem[]> {
+    return firstValueFrom(this.http.get<readonly PayslipListItem[]>('/api/v1/payroll/payslips/me'));
+  }
+
+  listEmployeePayslips(employeeId: string): Promise<readonly PayslipListItem[]> {
+    return firstValueFrom(this.http.get<readonly PayslipListItem[]>(`/api/v1/payroll/employees/${employeeId}/payslips`));
+  }
+
+  getPayslip(id: string): Promise<Payslip> {
+    return firstValueFrom(this.http.get<Payslip>(`/api/v1/payroll/payslips/${id}`));
   }
 }

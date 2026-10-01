@@ -4,7 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HasPermissionDirective } from '@gggs/core/permissions';
 import { EmployeePicker } from '@gggs/shared/employee-reference';
 import { Button, Card, PageHeader } from '@gggs/shared/ui';
-import type { EmployeeListItem, EmployeeSalary, SalaryComponent, SalaryStructure } from '@gggs/shared/models';
+import type { EmployeeListItem, EmployeeSalary, PayslipListItem, SalaryComponent, SalaryStructure } from '@gggs/shared/models';
 import { PayrollApi } from '../data/payroll-api';
 
 /** Look up an employee, see their current salary breakdown if one is assigned, and assign a
@@ -99,6 +99,31 @@ import { PayrollApi } from '../data/payroll-api';
           </form>
         </gggs-card>
       }
+
+      <gggs-card title="Payslip history" *gggsHasPermission="'payroll.run.view'">
+        @if (payslips().length > 0) {
+          <table class="breakdown-table">
+            <thead>
+              <tr>
+                <th scope="col">Run</th>
+                <th scope="col">Pay date</th>
+                <th scope="col">Net pay</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (payslip of payslips(); track payslip.id) {
+                <tr>
+                  <td>{{ payslip.runNo }}</td>
+                  <td>{{ payslip.payDate }}</td>
+                  <td>{{ payslip.netPay | number: '1.2-2' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        } @else {
+          <p class="muted">No payslips published for this employee yet.</p>
+        }
+      </gggs-card>
     }
   `,
   styles: `
@@ -184,6 +209,7 @@ export class EmployeeSalaryPage {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly activeStructures = signal<readonly SalaryStructure[]>([]);
   protected readonly components = signal<readonly SalaryComponent[]>([]);
+  protected readonly payslips = signal<readonly PayslipListItem[]>([]);
 
   protected readonly form = this.formBuilder.group({
     structureId: ['', Validators.required],
@@ -209,6 +235,7 @@ export class EmployeeSalaryPage {
 
     try {
       this.salary.set(await this.api.getEmployeeSalary(employee.id));
+      this.payslips.set(await this.api.listEmployeePayslips(employee.id));
     } finally {
       this.isLoading.set(false);
     }

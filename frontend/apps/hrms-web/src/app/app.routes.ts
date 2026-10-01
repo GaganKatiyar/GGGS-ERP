@@ -102,6 +102,12 @@ export const appRoutes: Route[] = [
           ),
       },
       {
+        path: 'me/payslips',
+        ...withPermissions(['self.payslip.view']),
+        loadChildren: () =>
+          import('@gggs/features/payroll').then((m) => m.MY_PAYSLIPS_ROUTES),
+      },
+      {
         path: 'team',
         ...withPermissions(['employee.profile.view']),
         loadChildren: () =>
