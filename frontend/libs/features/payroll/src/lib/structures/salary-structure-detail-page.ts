@@ -69,7 +69,7 @@ import { PayrollApi } from '../data/payroll-api';
             <input type="number" formControlName="value" min="0" [max]="selectedIsPercent() ? 100 : null" required />
           </label>
 
-          @if (selectedIsCapped()) {
+          @if (selectedNeedsWageCeiling()) {
             <label class="field">
               <span class="field__label">Wage ceiling</span>
               <input type="number" formControlName="wageCeiling" min="0.01" required />
@@ -183,9 +183,10 @@ export class SalaryStructureDetailPage {
     return id ? this.isPercentBased(id) : false;
   });
 
-  protected readonly selectedIsCapped = computed(() => {
+  protected readonly selectedNeedsWageCeiling = computed(() => {
     const id = this.form.get('componentId')?.value;
-    return id ? this.components().find((c) => c.id === id)?.calcType === 'PercentOfBasicCapped' : false;
+    const calcType = id ? this.components().find((c) => c.id === id)?.calcType : undefined;
+    return calcType === 'PercentOfBasicCapped' || calcType === 'PercentOfBasicWithEligibilityCap';
   });
 
   constructor() {
@@ -199,12 +200,21 @@ export class SalaryStructureDetailPage {
 
   protected isPercentBased(componentId: string): boolean {
     const calcType = this.components().find((c) => c.id === componentId)?.calcType;
-    return calcType === 'PercentOfBasic' || calcType === 'PercentOfBasicCapped';
+    return calcType === 'PercentOfBasic' || calcType === 'PercentOfBasicCapped' || calcType === 'PercentOfBasicWithEligibilityCap';
   }
 
   protected calcTypeLabel(componentId: string): string {
     const calcType = this.components().find((c) => c.id === componentId)?.calcType;
-    return calcType === 'PercentOfBasicCapped' ? '% of Basic (capped)' : calcType === 'PercentOfBasic' ? '% of Basic' : 'Fixed';
+    switch (calcType) {
+      case 'PercentOfBasicCapped':
+        return '% of Basic (capped base)';
+      case 'PercentOfBasicWithEligibilityCap':
+        return '% of Basic (eligibility cap)';
+      case 'PercentOfBasic':
+        return '% of Basic';
+      default:
+        return 'Fixed';
+    }
   }
 
   protected async submit(): Promise<void> {
@@ -223,7 +233,7 @@ export class SalaryStructureDetailPage {
         componentId: value.componentId ?? '',
         value: value.value ?? 0,
         displayOrder: value.displayOrder ?? 1,
-        ...(this.selectedIsCapped() ? { wageCeiling: value.wageCeiling ?? undefined } : {}),
+        ...(this.selectedNeedsWageCeiling() ? { wageCeiling: value.wageCeiling ?? undefined } : {}),
       });
 
       this.lines.update((lines) => [...lines, line]);

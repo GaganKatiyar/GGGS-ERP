@@ -4,7 +4,7 @@
 
 export type SalaryComponentKind = 'Earning' | 'Deduction';
 
-export type SalaryComponentCalcType = 'Fixed' | 'PercentOfBasic' | 'PercentOfBasicCapped';
+export type SalaryComponentCalcType = 'Fixed' | 'PercentOfBasic' | 'PercentOfBasicCapped' | 'PercentOfBasicWithEligibilityCap';
 
 export interface SalaryComponent {
   readonly id: string;

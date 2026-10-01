@@ -89,7 +89,8 @@ import { PayrollApi } from '../data/payroll-api';
           <select formControlName="calcType" required>
             <option value="Fixed">Fixed monthly amount</option>
             <option value="PercentOfBasic">Percentage of Basic</option>
-            <option value="PercentOfBasicCapped">Percentage of Basic, capped (e.g. PF)</option>
+            <option value="PercentOfBasicCapped">Percentage of Basic, capped base (e.g. PF)</option>
+            <option value="PercentOfBasicWithEligibilityCap">Percentage of Basic, eligibility cap (e.g. ESI)</option>
           </select>
         </label>
 
@@ -222,7 +223,16 @@ export class SalaryComponentListPage {
   }
 
   protected calcTypeLabel(calcType: SalaryComponentCalcType): string {
-    return calcType === 'PercentOfBasicCapped' ? '% of Basic (capped)' : calcType === 'PercentOfBasic' ? '% of Basic' : 'Fixed';
+    switch (calcType) {
+      case 'PercentOfBasicCapped':
+        return '% of Basic (capped base)';
+      case 'PercentOfBasicWithEligibilityCap':
+        return '% of Basic (eligibility cap)';
+      case 'PercentOfBasic':
+        return '% of Basic';
+      default:
+        return 'Fixed';
+    }
   }
 
   protected async deactivate(id: string): Promise<void> {
