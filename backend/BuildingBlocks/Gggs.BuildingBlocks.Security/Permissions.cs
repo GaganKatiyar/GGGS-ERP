@@ -89,6 +89,10 @@ public static class Permissions
         public const string LeaveApply = "self.leave.apply";
         public const string PayslipView = "self.payslip.view";
         public const string DocumentView = "self.document.view";
+
+        /// <summary>Creating and submitting one's own expense claims - viewing them is covered by
+        /// the same permission, the same "own record" shape as <see cref="LeaveApply"/>.</summary>
+        public const string ExpenseClaimCreate = "self.expense-claim.create";
     }
 
     /// <summary>Leave administration and approvals.</summary>
@@ -267,5 +271,20 @@ public static class Permissions
         /// be trusted to calculate and review without also being able to lock the period for good.
         /// Sensitive for the same reason as <see cref="RunView"/>.</summary>
         public const string RunFinalize = "payroll.run.finalize";
+    }
+
+    /// <summary>Expense categories and claim review - submitting one's own claim is
+    /// <see cref="Self.ExpenseClaimCreate"/> instead.</summary>
+    public static class Spend
+    {
+        public const string CategoryManage = "spend.category.manage";
+
+        /// <summary>Viewing any employee's claims, not just one's own.</summary>
+        public const string ClaimView = "spend.claim.view";
+
+        /// <summary>Approving or rejecting a submitted claim - no Workflow integration yet, so this
+        /// is a direct admin action (see <c>ExpenseClaim</c>'s own remarks), not a step in an
+        /// approval chain.</summary>
+        public const string ClaimApprove = "spend.claim.approve";
     }
 }

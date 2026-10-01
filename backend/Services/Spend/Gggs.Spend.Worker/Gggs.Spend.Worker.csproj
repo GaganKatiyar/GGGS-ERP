@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Spend.Worker</RootNamespace>
+    <UserSecretsId>gggs-spend-worker</UserSecretsId>
+    <Description>Spend's background half: consumes Core HR's employee snapshot events and relays its own outbox.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Observability\Gggs.BuildingBlocks.Observability.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Secrets\Gggs.BuildingBlocks.Secrets.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Security\Gggs.BuildingBlocks.Security.csproj" />
+    <ProjectReference Include="..\Gggs.Spend.Infrastructure\Gggs.Spend.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
