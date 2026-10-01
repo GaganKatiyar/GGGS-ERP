@@ -24,3 +24,23 @@ public sealed record EmployeeSalaryResponse(
     IReadOnlyList<EmployeeSalaryComponentResponse> Components);
 
 public sealed record AssignEmployeeSalaryBody(Guid EmployeeId, Guid StructureId, decimal AnnualCtc, string Currency, DateOnly EffectiveFrom);
+
+public sealed record PayGroupResponse(Guid Id, string Code, string Name, PayFrequency Frequency, string Currency, bool IsActive);
+
+public sealed record CreatePayGroupBody(string Code, string Name, PayFrequency Frequency, string Currency);
+
+public sealed record PayPeriodResponse(
+    Guid Id, Guid PayGroupId, string PeriodCode, DateOnly StartDate, DateOnly EndDate, DateOnly PayDate, PayPeriodStatus Status);
+
+public sealed record CreatePayPeriodBody(string PeriodCode, DateOnly StartDate, DateOnly EndDate, DateOnly PayDate);
+
+public sealed record PayrollRunResponse(
+    Guid Id, Guid PayGroupId, Guid PayPeriodId, string RunNo, PayrollRunStatus Status, int EmployeeCount,
+    decimal GrossTotal, decimal NetTotal, DateTime? CalculatedDate, DateTime? FinalizedDate);
+
+public sealed record CreatePayrollRunBody(Guid PayGroupId, Guid PayPeriodId, string RunNo);
+
+public sealed record PayrollRunEmployeeLineResponse(Guid ComponentId, decimal Amount);
+
+public sealed record PayrollRunEmployeeResponse(
+    Guid Id, Guid EmployeeId, decimal Gross, decimal NetPay, IReadOnlyList<PayrollRunEmployeeLineResponse> Lines);

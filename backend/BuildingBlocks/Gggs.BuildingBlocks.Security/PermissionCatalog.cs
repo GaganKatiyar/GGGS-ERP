@@ -48,6 +48,9 @@ public static class PermissionCatalog
         Permissions.Audit.PrivacyRequestManage,
         Permissions.Payroll.EmployeeSalaryView,
         Permissions.Payroll.EmployeeSalaryManage,
+        Permissions.Payroll.RunView,
+        Permissions.Payroll.RunProcess,
+        Permissions.Payroll.RunFinalize,
     }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     private static readonly Lazy<FrozenDictionary<string, PermissionDefinition>> Definitions = new(Build);

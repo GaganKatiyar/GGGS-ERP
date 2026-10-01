@@ -66,10 +66,18 @@ builder.Services.AddScoped<ISalaryStructureComponentRepository, SalaryStructureC
 builder.Services.AddScoped<IEmployeeSalaryRepository, EmployeeSalaryRepository>();
 builder.Services.AddScoped<IEmployeeSalaryComponentRepository, EmployeeSalaryComponentRepository>();
 builder.Services.AddScoped<IEmployeeSnapshotRepository, EmployeeSnapshotRepository>();
+builder.Services.AddScoped<IPayGroupRepository, PayGroupRepository>();
+builder.Services.AddScoped<IPayPeriodRepository, PayPeriodRepository>();
+builder.Services.AddScoped<IPayrollRunRepository, PayrollRunRepository>();
+builder.Services.AddScoped<IPayrollRunEmployeeRepository, PayrollRunEmployeeRepository>();
+builder.Services.AddScoped<IPayrollRunLineRepository, PayrollRunLineRepository>();
 
 builder.Services.AddScoped<SalaryComponentService>();
 builder.Services.AddScoped<SalaryStructureService>();
 builder.Services.AddScoped<EmployeeSalaryService>();
+builder.Services.AddScoped<PayGroupService>();
+builder.Services.AddScoped<PayPeriodService>();
+builder.Services.AddScoped<PayrollRunService>();
 
 builder.Services.AddGggsJson();
 builder.Services.AddProblemDetails();

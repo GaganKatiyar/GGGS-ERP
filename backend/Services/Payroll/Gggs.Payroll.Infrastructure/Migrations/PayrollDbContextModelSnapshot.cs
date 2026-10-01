@@ -252,6 +252,373 @@ namespace Gggs.Payroll.Infrastructure.Migrations
                     b.ToTable("EmployeeSalaryComponent", "pay");
                 });
 
+            modelBuilder.Entity("Gggs.Payroll.Domain.Payroll.PayGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<byte>("Frequency")
+                        .HasColumnType("tinyint");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("TenantId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("UX_PayGroup_TenantId_Code")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_PayGroup_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.ToTable("PayGroup", "pay");
+                });
+
+            modelBuilder.Entity("Gggs.Payroll.Domain.Payroll.PayPeriod", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateOnly>("PayDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("PayGroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PeriodCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_PayPeriod_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "PayGroupId", "PeriodCode")
+                        .IsUnique()
+                        .HasDatabaseName("UX_PayPeriod_TenantId_PayGroupId_PeriodCode")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("PayPeriod", "pay");
+                });
+
+            modelBuilder.Entity("Gggs.Payroll.Domain.Payroll.PayrollRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("CalculatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("EmployeeCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("FinalizedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<decimal>("GrossTotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<decimal>("NetTotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("PayGroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PayPeriodId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("RunNo")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_PayrollRun_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "PayPeriodId")
+                        .HasDatabaseName("IX_PayrollRun_TenantId_PayPeriodId");
+
+                    b.HasIndex("TenantId", "RunNo")
+                        .IsUnique()
+                        .HasDatabaseName("UX_PayrollRun_TenantId_RunNo")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("PayrollRun", "pay");
+                });
+
+            modelBuilder.Entity("Gggs.Payroll.Domain.Payroll.PayrollRunEmployee", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Gross")
+                        .HasColumnType("decimal(14,2)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<decimal>("NetPay")
+                        .HasColumnType("decimal(14,2)");
+
+                    b.Property<Guid>("PayrollRunId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_PayrollRunEmployee_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "PayrollRunId")
+                        .HasDatabaseName("IX_PayrollRunEmployee_TenantId_PayrollRunId");
+
+                    b.ToTable("PayrollRunEmployee", "pay");
+                });
+
+            modelBuilder.Entity("Gggs.Payroll.Domain.Payroll.PayrollRunLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(14,2)");
+
+                    b.Property<Guid>("ComponentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid>("PayrollRunEmployeeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_PayrollRunLine_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "PayrollRunEmployeeId")
+                        .HasDatabaseName("IX_PayrollRunLine_TenantId_PayrollRunEmployeeId");
+
+                    b.ToTable("PayrollRunLine", "pay");
+                });
+
             modelBuilder.Entity("Gggs.Payroll.Domain.Payroll.SalaryComponent", b =>
                 {
                     b.Property<Guid>("Id")

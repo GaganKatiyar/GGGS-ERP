@@ -234,7 +234,7 @@ public static class Permissions
         public const string EnrollmentManageOwn = "learning.enrollment.manage-own";
     }
 
-    /// <summary>Salary components, structures, and employee salary assignment. No payroll runs,
+    /// <summary>Salary components, structures, employee salary assignment, and payroll runs. No
     /// payslips or statutory compliance in this v1 slice - see <c>EmployeeSalary</c>'s own remarks.</summary>
     public static class Payroll
     {
@@ -249,5 +249,20 @@ public static class Permissions
         /// <summary>Assigning a structure and CTC to an employee. Sensitive for the same reason as
         /// <see cref="EmployeeSalaryView"/>.</summary>
         public const string EmployeeSalaryManage = "payroll.employee-salary.manage";
+
+        public const string PayGroupManage = "payroll.pay-group.manage";
+
+        /// <summary>Viewing a run and its per-employee results. Sensitive for the same reason as
+        /// <see cref="EmployeeSalaryView"/> - a run's numbers are just as much compensation data.</summary>
+        public const string RunView = "payroll.run.view";
+
+        /// <summary>Creating and calculating a run. Sensitive for the same reason as
+        /// <see cref="RunView"/>.</summary>
+        public const string RunProcess = "payroll.run.process";
+
+        /// <summary>Finalizing a run - separate from <see cref="RunProcess"/> so a smaller group can
+        /// be trusted to calculate and review without also being able to lock the period for good.
+        /// Sensitive for the same reason as <see cref="RunView"/>.</summary>
+        public const string RunFinalize = "payroll.run.finalize";
     }
 }

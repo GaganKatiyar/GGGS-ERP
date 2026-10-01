@@ -10,8 +10,9 @@ using Microsoft.EntityFrameworkCore;
 namespace Gggs.Payroll.Api.Endpoints;
 
 /// <summary>
-/// Salary components, structures and their lines, and employee salary assignment. No payroll runs,
-/// payslips or statutory compliance in this v1 slice - see <c>EmployeeSalary</c>'s own remarks.
+/// Salary components, structures and their lines, employee salary assignment, and payroll runs. No
+/// payslips or statutory compliance in this v1 slice - see <c>EmployeeSalary</c>'s and
+/// <c>PayrollRun</c>'s own remarks.
 /// </summary>
 public static class PayrollEndpoints
 {
@@ -22,6 +23,9 @@ public static class PayrollEndpoints
         MapComponentEndpoints(endpoints);
         MapStructureEndpoints(endpoints);
         MapEmployeeSalaryEndpoints(endpoints);
+        MapPayGroupEndpoints(endpoints);
+        MapPayPeriodEndpoints(endpoints);
+        MapPayrollRunEndpoints(endpoints);
 
         return endpoints;
     }
@@ -182,4 +186,142 @@ public static class PayrollEndpoints
 
     private static SalaryStructureComponentResponse ToResponse(SalaryStructureComponent entity) => new(
         entity.Id, entity.StructureId, entity.ComponentId, entity.Value, entity.DisplayOrder);
+
+    private static void MapPayGroupEndpoints(IEndpointRouteBuilder endpoints)
+    {
+        RouteGroupBuilder group = endpoints.MapGroup("/api/v1/payroll/pay-groups").WithTags("Payroll");
+
+        group.MapGet("/", ListPayGroupsAsync).WithName("ListPayGroups").RequirePermission(Permissions.Payroll.PayGroupManage);
+        group.MapPost("/", CreatePayGroupAsync).WithName("CreatePayGroup").RequirePermission(Permissions.Payroll.PayGroupManage);
+        group.MapPost("/{id:guid}/deactivate", DeactivatePayGroupAsync)
+            .WithName("DeactivatePayGroup").RequirePermission(Permissions.Payroll.PayGroupManage);
+        group.MapPost("/{id:guid}/reactivate", ReactivatePayGroupAsync)
+            .WithName("ReactivatePayGroup").RequirePermission(Permissions.Payroll.PayGroupManage);
+    }
+
+    private static async Task<Ok<IReadOnlyList<PayGroupResponse>>> ListPayGroupsAsync(PayrollDbContext db, CancellationToken ct)
+    {
+        List<PayGroupResponse> items = await db.PayGroups.AsNoTracking()
+            .OrderBy(x => x.Name)
+            .Select(x => ToResponse(x))
+            .ToListAsync(ct);
+
+        return TypedResults.Ok<IReadOnlyList<PayGroupResponse>>(items);
+    }
+
+    private static async Task<Created<PayGroupResponse>> CreatePayGroupAsync(CreatePayGroupBody body, PayGroupService service, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+
+        PayGroup entity = await service.CreateAsync(body.Code, body.Name, body.Frequency, body.Currency, ct);
+        return TypedResults.Created($"/api/v1/payroll/pay-groups/{entity.Id}", ToResponse(entity));
+    }
+
+    private static async Task<Ok<PayGroupResponse>> DeactivatePayGroupAsync(Guid id, PayGroupService service, CancellationToken ct)
+        => TypedResults.Ok(ToResponse(await service.DeactivateAsync(id, ct)));
+
+    private static async Task<Ok<PayGroupResponse>> ReactivatePayGroupAsync(Guid id, PayGroupService service, CancellationToken ct)
+        => TypedResults.Ok(ToResponse(await service.ReactivateAsync(id, ct)));
+
+    private static void MapPayPeriodEndpoints(IEndpointRouteBuilder endpoints)
+    {
+        RouteGroupBuilder group = endpoints.MapGroup("/api/v1/payroll/pay-groups/{payGroupId:guid}/periods").WithTags("Payroll");
+
+        group.MapGet("/", ListPayPeriodsAsync).WithName("ListPayPeriods").RequirePermission(Permissions.Payroll.PayGroupManage);
+        group.MapPost("/", CreatePayPeriodAsync).WithName("CreatePayPeriod").RequirePermission(Permissions.Payroll.PayGroupManage);
+    }
+
+    private static async Task<Ok<IReadOnlyList<PayPeriodResponse>>> ListPayPeriodsAsync(Guid payGroupId, PayrollDbContext db, CancellationToken ct)
+    {
+        List<PayPeriodResponse> items = await db.PayPeriods.AsNoTracking()
+            .Where(x => x.PayGroupId == payGroupId)
+            .OrderByDescending(x => x.StartDate)
+            .Select(x => ToResponse(x))
+            .ToListAsync(ct);
+
+        return TypedResults.Ok<IReadOnlyList<PayPeriodResponse>>(items);
+    }
+
+    private static async Task<Created<PayPeriodResponse>> CreatePayPeriodAsync(
+        Guid payGroupId, CreatePayPeriodBody body, PayPeriodService service, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+
+        PayPeriod entity = await service.CreateAsync(payGroupId, body.PeriodCode, body.StartDate, body.EndDate, body.PayDate, ct);
+        return TypedResults.Created($"/api/v1/payroll/pay-groups/{payGroupId}/periods/{entity.Id}", ToResponse(entity));
+    }
+
+    private static void MapPayrollRunEndpoints(IEndpointRouteBuilder endpoints)
+    {
+        RouteGroupBuilder group = endpoints.MapGroup("/api/v1/payroll/runs").WithTags("Payroll");
+
+        group.MapGet("/", ListPayrollRunsAsync).WithName("ListPayrollRuns").RequirePermission(Permissions.Payroll.RunView);
+        group.MapGet("/{id:guid}", GetPayrollRunAsync).WithName("GetPayrollRun").RequirePermission(Permissions.Payroll.RunView);
+        group.MapGet("/{id:guid}/employees", ListPayrollRunEmployeesAsync)
+            .WithName("ListPayrollRunEmployees").RequirePermission(Permissions.Payroll.RunView);
+
+        group.MapPost("/", CreatePayrollRunAsync).WithName("CreatePayrollRun").RequirePermission(Permissions.Payroll.RunProcess);
+        group.MapPost("/{id:guid}/calculate", CalculatePayrollRunAsync)
+            .WithName("CalculatePayrollRun").RequirePermission(Permissions.Payroll.RunProcess);
+        group.MapPost("/{id:guid}/finalize", FinalizePayrollRunAsync)
+            .WithName("FinalizePayrollRun").RequirePermission(Permissions.Payroll.RunFinalize);
+    }
+
+    private static async Task<Ok<IReadOnlyList<PayrollRunResponse>>> ListPayrollRunsAsync(PayrollDbContext db, CancellationToken ct)
+    {
+        List<PayrollRunResponse> items = await db.PayrollRuns.AsNoTracking()
+            .OrderByDescending(x => x.CreatedDate)
+            .Select(x => ToResponse(x))
+            .ToListAsync(ct);
+
+        return TypedResults.Ok<IReadOnlyList<PayrollRunResponse>>(items);
+    }
+
+    private static async Task<Results<Ok<PayrollRunResponse>, NotFound>> GetPayrollRunAsync(Guid id, PayrollDbContext db, CancellationToken ct)
+    {
+        PayrollRun? entity = await db.PayrollRuns.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        return entity is null ? TypedResults.NotFound() : TypedResults.Ok(ToResponse(entity));
+    }
+
+    private static async Task<Ok<IReadOnlyList<PayrollRunEmployeeResponse>>> ListPayrollRunEmployeesAsync(
+        Guid id, PayrollDbContext db, CancellationToken ct)
+    {
+        List<PayrollRunEmployee> runEmployees = await db.PayrollRunEmployees.AsNoTracking()
+            .Where(x => x.PayrollRunId == id)
+            .ToListAsync(ct);
+
+        List<PayrollRunLine> lines = await db.PayrollRunLines.AsNoTracking()
+            .Where(x => runEmployees.Select(e => e.Id).Contains(x.PayrollRunEmployeeId))
+            .ToListAsync(ct);
+
+        List<PayrollRunEmployeeResponse> items = [.. runEmployees.Select(e => new PayrollRunEmployeeResponse(
+            e.Id, e.EmployeeId, e.Gross, e.NetPay,
+            [.. lines.Where(l => l.PayrollRunEmployeeId == e.Id).Select(l => new PayrollRunEmployeeLineResponse(l.ComponentId, l.Amount))]))];
+
+        return TypedResults.Ok<IReadOnlyList<PayrollRunEmployeeResponse>>(items);
+    }
+
+    private static async Task<Created<PayrollRunResponse>> CreatePayrollRunAsync(
+        CreatePayrollRunBody body, PayrollRunService service, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+
+        PayrollRun entity = await service.CreateAsync(body.PayGroupId, body.PayPeriodId, body.RunNo, ct);
+        return TypedResults.Created($"/api/v1/payroll/runs/{entity.Id}", ToResponse(entity));
+    }
+
+    private static async Task<Ok<PayrollRunResponse>> CalculatePayrollRunAsync(Guid id, PayrollRunService service, CancellationToken ct)
+        => TypedResults.Ok(ToResponse(await service.CalculateAsync(id, ct)));
+
+    private static async Task<Ok<PayrollRunResponse>> FinalizePayrollRunAsync(Guid id, PayrollRunService service, CancellationToken ct)
+        => TypedResults.Ok(ToResponse(await service.FinalizeAsync(id, ct)));
+
+    private static PayGroupResponse ToResponse(PayGroup entity) => new(entity.Id, entity.Code, entity.Name, entity.Frequency, entity.Currency, entity.IsActive);
+
+    private static PayPeriodResponse ToResponse(PayPeriod entity) => new(
+        entity.Id, entity.PayGroupId, entity.PeriodCode, entity.StartDate, entity.EndDate, entity.PayDate, entity.Status);
+
+    private static PayrollRunResponse ToResponse(PayrollRun entity) => new(
+        entity.Id, entity.PayGroupId, entity.PayPeriodId, entity.RunNo, entity.Status, entity.EmployeeCount,
+        entity.GrossTotal, entity.NetTotal, entity.CalculatedDate, entity.FinalizedDate);
 }

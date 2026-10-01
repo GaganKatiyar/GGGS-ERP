@@ -8,8 +8,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Gggs.Payroll.Infrastructure;
 
 /// <summary>Payroll's database: salary components, structures and their component lines, employee
-/// salary assignments and their computed component breakdowns, and the employee snapshot fed from
-/// Core HR.</summary>
+/// salary assignments and their computed component breakdowns, pay groups/periods/runs and their
+/// per-employee results, and the employee snapshot fed from Core HR.</summary>
 public sealed class PayrollDbContext(DbContextOptions<PayrollDbContext> options, ITenantContext tenantContext)
     : GggsDbContext(options, tenantContext)
 {
@@ -24,6 +24,16 @@ public sealed class PayrollDbContext(DbContextOptions<PayrollDbContext> options,
     public DbSet<EmployeeSalary> EmployeeSalaries => Set<EmployeeSalary>();
 
     public DbSet<EmployeeSalaryComponent> EmployeeSalaryComponents => Set<EmployeeSalaryComponent>();
+
+    public DbSet<PayGroup> PayGroups => Set<PayGroup>();
+
+    public DbSet<PayPeriod> PayPeriods => Set<PayPeriod>();
+
+    public DbSet<PayrollRun> PayrollRuns => Set<PayrollRun>();
+
+    public DbSet<PayrollRunEmployee> PayrollRunEmployees => Set<PayrollRunEmployee>();
+
+    public DbSet<PayrollRunLine> PayrollRunLines => Set<PayrollRunLine>();
 
     public DbSet<EmployeeSnapshot> EmployeeSnapshots => Set<EmployeeSnapshot>();
 
@@ -94,6 +104,78 @@ public sealed class PayrollDbContext(DbContextOptions<PayrollDbContext> options,
 
             entity.HasIndex(x => new { x.TenantId, x.EmployeeSalaryId })
                 .HasDatabaseName("IX_EmployeeSalaryComponent_TenantId_EmployeeSalaryId");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<PayGroup>(entity =>
+        {
+            entity.ToTable("PayGroup", "pay");
+            entity.Property(x => x.Code).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Frequency).HasConversion<byte>();
+            entity.Property(x => x.Currency).HasMaxLength(3).IsRequired();
+
+            entity.HasIndex(x => new { x.TenantId, x.Code })
+                .HasDatabaseName("UX_PayGroup_TenantId_Code")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<PayPeriod>(entity =>
+        {
+            entity.ToTable("PayPeriod", "pay");
+            entity.Property(x => x.PeriodCode).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Status).HasConversion<byte>();
+
+            entity.HasIndex(x => new { x.TenantId, x.PayGroupId, x.PeriodCode })
+                .HasDatabaseName("UX_PayPeriod_TenantId_PayGroupId_PeriodCode")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<PayrollRun>(entity =>
+        {
+            entity.ToTable("PayrollRun", "pay");
+            entity.Property(x => x.RunNo).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Status).HasConversion<byte>();
+            entity.Property(x => x.GrossTotal).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.NetTotal).HasColumnType("decimal(18,2)");
+
+            entity.HasIndex(x => new { x.TenantId, x.RunNo })
+                .HasDatabaseName("UX_PayrollRun_TenantId_RunNo")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            entity.HasIndex(x => new { x.TenantId, x.PayPeriodId })
+                .HasDatabaseName("IX_PayrollRun_TenantId_PayPeriodId");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<PayrollRunEmployee>(entity =>
+        {
+            entity.ToTable("PayrollRunEmployee", "pay");
+            entity.Property(x => x.Gross).HasColumnType("decimal(14,2)");
+            entity.Property(x => x.NetPay).HasColumnType("decimal(14,2)");
+
+            entity.HasIndex(x => new { x.TenantId, x.PayrollRunId })
+                .HasDatabaseName("IX_PayrollRunEmployee_TenantId_PayrollRunId");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<PayrollRunLine>(entity =>
+        {
+            entity.ToTable("PayrollRunLine", "pay");
+            entity.Property(x => x.Amount).HasColumnType("decimal(14,2)");
+
+            entity.HasIndex(x => new { x.TenantId, x.PayrollRunEmployeeId })
+                .HasDatabaseName("IX_PayrollRunLine_TenantId_PayrollRunEmployeeId");
 
             entity.Ignore(x => x.DomainEvents);
         });

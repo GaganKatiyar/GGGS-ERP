@@ -229,6 +229,10 @@ static async Task SeedTenantAdminAsync(string connectionString, Guid tenantId, s
         Permissions.Payroll.StructureManage,
         Permissions.Payroll.EmployeeSalaryView,
         Permissions.Payroll.EmployeeSalaryManage,
+        Permissions.Payroll.PayGroupManage,
+        Permissions.Payroll.RunView,
+        Permissions.Payroll.RunProcess,
+        Permissions.Payroll.RunFinalize,
     ];
 
     string normalizedEmail = adminEmail.Trim().ToUpperInvariant();
