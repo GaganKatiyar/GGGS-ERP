@@ -108,6 +108,12 @@ export const appRoutes: Route[] = [
           import('@gggs/features/payroll').then((m) => m.MY_PAYSLIPS_ROUTES),
       },
       {
+        path: 'me/expenses',
+        ...withPermissions(['self.expense-claim.create']),
+        loadChildren: () =>
+          import('@gggs/features/spend').then((m) => m.MY_EXPENSES_ROUTES),
+      },
+      {
         path: 'team',
         ...withPermissions(['employee.profile.view']),
         loadChildren: () =>
@@ -168,6 +174,12 @@ export const appRoutes: Route[] = [
         ]),
         loadChildren: () =>
           import('@gggs/features/payroll').then((m) => m.PAYROLL_ROUTES),
+      },
+      {
+        path: 'spend',
+        ...withPermissions(['spend.category.manage', 'spend.claim.view']),
+        loadChildren: () =>
+          import('@gggs/features/spend').then((m) => m.SPEND_ROUTES),
       },
       {
         path: 'admin',

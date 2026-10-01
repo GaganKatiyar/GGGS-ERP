@@ -53,7 +53,8 @@
         "./libs/features/performance/src/index.ts"
       ],
       "@gggs/features/learning": ["./libs/features/learning/src/index.ts"],
-      "@gggs/features/payroll": ["./libs/features/payroll/src/index.ts"]
+      "@gggs/features/payroll": ["./libs/features/payroll/src/index.ts"],
+      "@gggs/features/spend": ["./libs/features/spend/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

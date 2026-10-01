@@ -86,6 +86,7 @@ export default [
                 'scope:performance',
                 'scope:learning',
                 'scope:payroll',
+                'scope:spend',
               ],
             },
             {
@@ -183,6 +184,10 @@ export default [
             {
               sourceTag: 'scope:payroll',
               onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:payroll'],
+            },
+            {
+              sourceTag: 'scope:spend',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:spend'],
             },
           ],
         },

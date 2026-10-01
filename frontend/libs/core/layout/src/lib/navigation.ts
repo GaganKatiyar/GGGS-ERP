@@ -99,6 +99,12 @@ export const NAVIGATION: readonly NavItem[] = [
         feature: 'Payroll',
       },
       {
+        label: 'My expense claims',
+        icon: 'pi pi-receipt',
+        route: '/me/expenses',
+        permissions: ['self.expense-claim.create'],
+      },
+      {
         label: 'My documents',
         icon: 'pi pi-file',
         route: '/me/documents',
@@ -315,6 +321,19 @@ export const NAVIGATION: readonly NavItem[] = [
         icon: 'pi pi-play',
         route: '/payroll/runs',
         permissions: ['payroll.run.view'],
+      },
+    ],
+  },
+  {
+    label: 'Spend',
+    icon: 'pi pi-receipt',
+    permissions: ['spend.category.manage', 'spend.claim.view'],
+    children: [
+      {
+        label: 'Categories',
+        icon: 'pi pi-list',
+        route: '/spend',
+        permissions: ['spend.category.manage'],
       },
     ],
   },

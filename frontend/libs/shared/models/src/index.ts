@@ -15,3 +15,4 @@ export * from './lib/onboarding.models';
 export * from './lib/performance.models';
 export * from './lib/learning.models';
 export * from './lib/payroll.models';
+export * from './lib/spend.models';
