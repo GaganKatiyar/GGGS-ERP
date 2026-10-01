@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HasPermissionDirective } from '@gggs/core/permissions';
 import { Button, Card, PageHeader } from '@gggs/shared/ui';
-import type { SalaryComponent } from '@gggs/shared/models';
+import type { SalaryComponent, SalaryComponentCalcType } from '@gggs/shared/models';
 import { PayrollApi } from '../data/payroll-api';
 
 /** Every salary component this tenant has defined, plus a form to add a new one. A structure's
@@ -38,7 +38,7 @@ import { PayrollApi } from '../data/payroll-api';
                   <td>{{ component.code }}</td>
                   <td>{{ component.name }}</td>
                   <td>{{ component.kind }}</td>
-                  <td>{{ component.calcType === 'PercentOfBasic' ? '% of Basic' : 'Fixed' }}</td>
+                  <td>{{ calcTypeLabel(component.calcType) }}</td>
                   <td>{{ component.isTaxable ? 'Yes' : 'No' }}</td>
                   <td>{{ component.isActive ? 'Active' : 'Inactive' }}</td>
                   <td class="component-actions" *gggsHasPermission="'payroll.component.manage'">
@@ -89,6 +89,7 @@ import { PayrollApi } from '../data/payroll-api';
           <select formControlName="calcType" required>
             <option value="Fixed">Fixed monthly amount</option>
             <option value="PercentOfBasic">Percentage of Basic</option>
+            <option value="PercentOfBasicCapped">Percentage of Basic, capped (e.g. PF)</option>
           </select>
         </label>
 
@@ -181,7 +182,7 @@ export class SalaryComponentListPage {
     code: ['', [Validators.required, Validators.maxLength(30)]],
     name: ['', [Validators.required, Validators.maxLength(100)]],
     kind: ['Earning' as 'Earning' | 'Deduction', Validators.required],
-    calcType: ['Fixed' as 'Fixed' | 'PercentOfBasic', Validators.required],
+    calcType: ['Fixed' as SalaryComponentCalcType, Validators.required],
     isTaxable: [true],
     displayOrder: [1, [Validators.required, Validators.min(0)]],
   });
@@ -218,6 +219,10 @@ export class SalaryComponentListPage {
     } finally {
       this.isSaving.set(false);
     }
+  }
+
+  protected calcTypeLabel(calcType: SalaryComponentCalcType): string {
+    return calcType === 'PercentOfBasicCapped' ? '% of Basic (capped)' : calcType === 'PercentOfBasic' ? '% of Basic' : 'Fixed';
   }
 
   protected async deactivate(id: string): Promise<void> {

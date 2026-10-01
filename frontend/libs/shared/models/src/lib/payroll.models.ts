@@ -4,7 +4,7 @@
 
 export type SalaryComponentKind = 'Earning' | 'Deduction';
 
-export type SalaryComponentCalcType = 'Fixed' | 'PercentOfBasic';
+export type SalaryComponentCalcType = 'Fixed' | 'PercentOfBasic' | 'PercentOfBasicCapped';
 
 export interface SalaryComponent {
   readonly id: string;
@@ -43,6 +43,7 @@ export interface SalaryStructureComponent {
   readonly structureId: string;
   readonly componentId: string;
   readonly value: number;
+  readonly wageCeiling: number | null;
   readonly displayOrder: number;
 }
 
@@ -50,6 +51,7 @@ export interface AddSalaryStructureComponentRequest {
   readonly componentId: string;
   readonly value: number;
   readonly displayOrder: number;
+  readonly wageCeiling?: number;
 }
 
 export interface EmployeeSalaryComponent {

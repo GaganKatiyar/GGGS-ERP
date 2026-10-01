@@ -27,6 +27,7 @@ import { PayrollApi } from '../data/payroll-api';
                 <th scope="col">Component</th>
                 <th scope="col">Calculation</th>
                 <th scope="col">Value</th>
+                <th scope="col">Wage ceiling</th>
                 <th scope="col">Order</th>
               </tr>
             </thead>
@@ -34,8 +35,9 @@ import { PayrollApi } from '../data/payroll-api';
               @for (line of lines(); track line.id) {
                 <tr>
                   <td>{{ componentName(line.componentId) }}</td>
-                  <td>{{ isPercentOfBasic(line.componentId) ? '% of Basic' : 'Fixed' }}</td>
-                  <td>{{ isPercentOfBasic(line.componentId) ? line.value + '%' : line.value }}</td>
+                  <td>{{ calcTypeLabel(line.componentId) }}</td>
+                  <td>{{ isPercentBased(line.componentId) ? line.value + '%' : line.value }}</td>
+                  <td>{{ line.wageCeiling ?? '—' }}</td>
                   <td>{{ line.displayOrder }}</td>
                 </tr>
               }
@@ -66,6 +68,13 @@ import { PayrollApi } from '../data/payroll-api';
             <span class="field__label">{{ selectedIsPercent() ? 'Percentage of Basic' : 'Monthly amount' }}</span>
             <input type="number" formControlName="value" min="0" [max]="selectedIsPercent() ? 100 : null" required />
           </label>
+
+          @if (selectedIsCapped()) {
+            <label class="field">
+              <span class="field__label">Wage ceiling</span>
+              <input type="number" formControlName="wageCeiling" min="0.01" required />
+            </label>
+          }
 
           <label class="field">
             <span class="field__label">Display order</span>
@@ -166,11 +175,17 @@ export class SalaryStructureDetailPage {
     componentId: ['', Validators.required],
     value: [0, [Validators.required, Validators.min(0)]],
     displayOrder: [1, [Validators.required, Validators.min(0)]],
+    wageCeiling: [0, [Validators.min(0.01)]],
   });
 
   protected readonly selectedIsPercent = computed(() => {
     const id = this.form.get('componentId')?.value;
-    return id ? this.isPercentOfBasic(id) : false;
+    return id ? this.isPercentBased(id) : false;
+  });
+
+  protected readonly selectedIsCapped = computed(() => {
+    const id = this.form.get('componentId')?.value;
+    return id ? this.components().find((c) => c.id === id)?.calcType === 'PercentOfBasicCapped' : false;
   });
 
   constructor() {
@@ -182,8 +197,14 @@ export class SalaryStructureDetailPage {
     return component ? `${component.name} (${component.code})` : componentId;
   }
 
-  protected isPercentOfBasic(componentId: string): boolean {
-    return this.components().find((c) => c.id === componentId)?.calcType === 'PercentOfBasic';
+  protected isPercentBased(componentId: string): boolean {
+    const calcType = this.components().find((c) => c.id === componentId)?.calcType;
+    return calcType === 'PercentOfBasic' || calcType === 'PercentOfBasicCapped';
+  }
+
+  protected calcTypeLabel(componentId: string): string {
+    const calcType = this.components().find((c) => c.id === componentId)?.calcType;
+    return calcType === 'PercentOfBasicCapped' ? '% of Basic (capped)' : calcType === 'PercentOfBasic' ? '% of Basic' : 'Fixed';
   }
 
   protected async submit(): Promise<void> {
@@ -202,10 +223,11 @@ export class SalaryStructureDetailPage {
         componentId: value.componentId ?? '',
         value: value.value ?? 0,
         displayOrder: value.displayOrder ?? 1,
+        ...(this.selectedIsCapped() ? { wageCeiling: value.wageCeiling ?? undefined } : {}),
       });
 
       this.lines.update((lines) => [...lines, line]);
-      this.form.reset({ value: 0, displayOrder: this.lines().length + 1 });
+      this.form.reset({ value: 0, displayOrder: this.lines().length + 1, wageCeiling: 0 });
     } catch {
       this.errorMessage.set('That component could not be added. Check it is not already on this structure.');
     } finally {
