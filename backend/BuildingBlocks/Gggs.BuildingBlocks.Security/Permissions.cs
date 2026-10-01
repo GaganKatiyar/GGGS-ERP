@@ -78,6 +78,21 @@ public static class Permissions
         public const string Export = "employee.profile.export";
     }
 
+    /// <summary>The asset register: categories, the assets themselves, and assigning/returning
+    /// them. A module inside Core HR, not its own service, per architecture.md §5.1 - small and
+    /// employee-centric.</summary>
+    public static class Asset
+    {
+        public const string CategoryManage = "asset.category.manage";
+
+        public const string View = "asset.asset.view";
+
+        /// <summary>Registering an asset, sending it for repair/retiring it, and
+        /// assigning/returning it to an employee - one permission for the whole admin-side
+        /// lifecycle, since it is always the same IT/admin role in this v1 slice.</summary>
+        public const string Manage = "asset.asset.manage";
+    }
+
     /// <summary>Employee self-service. Always scoped to the acting user's own records.</summary>
     public static class Self
     {
@@ -99,6 +114,10 @@ public static class Permissions
         /// not here: those are always an admin/finance action - see
         /// <see cref="Spend.TravelAdvanceManage"/>.</summary>
         public const string TravelRequestCreate = "self.travel-request.create";
+
+        /// <summary>Seeing which assets are currently assigned to oneself - read-only; registering,
+        /// assigning or returning an asset is always an admin action (<see cref="Asset.Manage"/>).</summary>
+        public const string AssetView = "self.asset.view";
     }
 
     /// <summary>Leave administration and approvals.</summary>

@@ -1,6 +1,7 @@
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Persistence;
+using Gggs.CoreHr.Domain.Assets;
 using Gggs.CoreHr.Domain.Employees;
 using Gggs.CoreHr.Domain.Organization;
 using Microsoft.EntityFrameworkCore;
@@ -8,11 +9,12 @@ using Microsoft.EntityFrameworkCore;
 namespace Gggs.CoreHr.Infrastructure;
 
 /// <summary>
-/// The Core HR database: organization structure and employee records.
+/// The Core HR database: organization structure, employee records, and the asset register.
 /// <para>
 /// Every table here is tenant-owned. The default schema is <c>org</c>; employee tables declare
-/// <c>emp</c> explicitly, the same way every other multi-module service schema-separates its tables
-/// while sharing one database and one migration history.
+/// <c>emp</c> explicitly and asset tables declare <c>asset</c>, the same way every other
+/// multi-module service schema-separates its tables while sharing one database and one migration
+/// history.
 /// </para>
 /// </summary>
 public sealed class CoreHrDbContext(DbContextOptions<CoreHrDbContext> options, ITenantContext tenantContext)
@@ -20,6 +22,10 @@ public sealed class CoreHrDbContext(DbContextOptions<CoreHrDbContext> options, I
 {
     /// <summary>The employee tables' own schema, distinct from organization's default.</summary>
     public const string EmployeeSchema = "emp";
+
+    /// <summary>The asset tables' own schema - architecture.md's Asset module, kept inside Core HR
+    /// rather than its own service since it is small and employee-centric (§5.1).</summary>
+    public const string AssetSchema = "asset";
 
     protected override string DefaultSchema => "org";
 
@@ -42,6 +48,12 @@ public sealed class CoreHrDbContext(DbContextOptions<CoreHrDbContext> options, I
     public DbSet<EmploymentRecord> EmploymentRecords => Set<EmploymentRecord>();
 
     public DbSet<CostCenter> CostCenters => Set<CostCenter>();
+
+    public DbSet<AssetCategory> AssetCategories => Set<AssetCategory>();
+
+    public DbSet<Asset> Assets => Set<Asset>();
+
+    public DbSet<AssetAssignment> AssetAssignments => Set<AssetAssignment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -349,6 +361,71 @@ public sealed class CoreHrDbContext(DbContextOptions<CoreHrDbContext> options, I
             entity.HasOne<CostCenter>()
                 .WithMany()
                 .HasForeignKey(x => new { x.TenantId, x.CostCenterId })
+                .HasPrincipalKey(x => new { x.TenantId, x.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<AssetCategory>(entity =>
+        {
+            entity.ToTable("AssetCategory", AssetSchema);
+            entity.Property(x => x.Code).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(100).IsRequired();
+
+            entity.HasIndex(x => new { x.TenantId, x.Code })
+                .HasDatabaseName("UX_AssetCategory_TenantId_Code")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<Asset>(entity =>
+        {
+            entity.ToTable("Asset", AssetSchema);
+            entity.Property(x => x.AssetTag).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Make).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Model).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.SerialNumber).HasMaxLength(100);
+            entity.Property(x => x.Status).HasConversion<byte>();
+
+            entity.HasIndex(x => new { x.TenantId, x.AssetTag })
+                .HasDatabaseName("UX_Asset_TenantId_AssetTag")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            entity.HasIndex(x => new { x.TenantId, x.CategoryId })
+                .HasDatabaseName("IX_Asset_TenantId_CategoryId");
+
+            entity.HasOne<AssetCategory>()
+                .WithMany()
+                .HasForeignKey(x => new { x.TenantId, x.CategoryId })
+                .HasPrincipalKey(x => new { x.TenantId, x.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<AssetAssignment>(entity =>
+        {
+            entity.ToTable("AssetAssignment", AssetSchema);
+
+            entity.HasIndex(x => new { x.TenantId, x.AssetId })
+                .HasDatabaseName("IX_AssetAssignment_TenantId_AssetId");
+
+            entity.HasIndex(x => new { x.TenantId, x.EmployeeId })
+                .HasDatabaseName("IX_AssetAssignment_TenantId_EmployeeId");
+
+            entity.HasOne<Asset>()
+                .WithMany()
+                .HasForeignKey(x => new { x.TenantId, x.AssetId })
+                .HasPrincipalKey(x => new { x.TenantId, x.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Employee>()
+                .WithMany()
+                .HasForeignKey(x => new { x.TenantId, x.EmployeeId })
                 .HasPrincipalKey(x => new { x.TenantId, x.Id })
                 .OnDelete(DeleteBehavior.Restrict);
 

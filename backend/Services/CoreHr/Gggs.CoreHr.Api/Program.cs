@@ -10,6 +10,7 @@ using Gggs.BuildingBlocks.Secrets;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.CoreHr.Api.Endpoints;
+using Gggs.CoreHr.Application.Assets;
 using Gggs.CoreHr.Application.Organization;
 using Gggs.CoreHr.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -68,6 +69,13 @@ builder.Services.AddScoped<Gggs.CoreHr.Application.Employees.IEmployeeRepository
 builder.Services.AddScoped<Gggs.CoreHr.Application.Employees.EmployeeService>();
 builder.Services.AddScoped<Gggs.CoreHr.Application.Employees.EmployeeBulkImportService>();
 
+builder.Services.AddScoped<IAssetCategoryRepository, AssetCategoryRepository>();
+builder.Services.AddScoped<IAssetRepository, AssetRepository>();
+builder.Services.AddScoped<IAssetAssignmentRepository, AssetAssignmentRepository>();
+builder.Services.AddScoped<AssetCategoryService>();
+builder.Services.AddScoped<AssetService>();
+builder.Services.AddScoped<AssetAssignmentService>();
+
 builder.Services.AddGggsJson();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -90,6 +98,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check 
 app.MapOrganizationEndpoints();
 app.MapEmployeeEndpoints();
 app.MapReportEndpoints();
+app.MapAssetEndpoints();
 
 if (app.Environment.IsDevelopment())
 {
