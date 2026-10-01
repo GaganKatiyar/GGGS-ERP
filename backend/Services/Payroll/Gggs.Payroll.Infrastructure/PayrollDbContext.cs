@@ -77,6 +77,7 @@ public sealed class PayrollDbContext(DbContextOptions<PayrollDbContext> options,
         {
             entity.ToTable("SalaryStructureComponent", "pay");
             entity.Property(x => x.Value).HasColumnType("decimal(12,2)");
+            entity.Property(x => x.WageCeiling).HasColumnType("decimal(12,2)");
 
             entity.HasIndex(x => new { x.TenantId, x.StructureId, x.ComponentId })
                 .HasDatabaseName("UX_SalaryStructureComponent_TenantId_StructureId_ComponentId")

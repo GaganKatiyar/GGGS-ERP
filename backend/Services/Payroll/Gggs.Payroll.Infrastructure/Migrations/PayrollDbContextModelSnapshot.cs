@@ -893,6 +893,9 @@ namespace Gggs.Payroll.Infrastructure.Migrations
                     b.Property<decimal>("Value")
                         .HasColumnType("decimal(12,2)");
 
+                    b.Property<decimal?>("WageCeiling")
+                        .HasColumnType("decimal(12,2)");
+
                     b.HasKey("Id");
 
                     SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);

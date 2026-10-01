@@ -25,8 +25,9 @@ public sealed class EmployeeSalaryService(
     /// <summary>
     /// Computes each component's monthly amount from the structure's own lines: a Fixed line's
     /// value is the monthly amount directly; a PercentOfBasic line's value is a percentage applied
-    /// to the structure's Basic monthly amount. The Basic line is resolved first, in a separate
-    /// pass, since every PercentOfBasic line's amount depends on it - see
+    /// to the structure's Basic monthly amount; a PercentOfBasicCapped line (PF) applies that same
+    /// percentage to Basic capped at the line's own wage ceiling first. The Basic line is resolved
+    /// first, in a separate pass, since every percentage line's amount depends on it - see
     /// <see cref="SalaryStructureService.AddComponentAsync"/>'s own remarks on why a structure is
     /// guaranteed to have exactly one Basic line before it can reach this calculation.
     /// </summary>
@@ -65,7 +66,9 @@ public sealed class EmployeeSalaryService(
                 ? basicMonthly
                 : component.CalcType == SalaryComponentCalcType.PercentOfBasic
                     ? Math.Round(basicMonthly * line.Value / 100m, 2)
-                    : line.Value;
+                    : component.CalcType == SalaryComponentCalcType.PercentOfBasicCapped
+                        ? Math.Round(Math.Min(basicMonthly, line.WageCeiling ?? basicMonthly) * line.Value / 100m, 2)
+                        : line.Value;
 
             salaryComponents.Add(EmployeeSalaryComponent.Create(salary.Id, component.Id, monthlyAmount, monthlyAmount * 12m));
         }

@@ -36,7 +36,8 @@ public sealed class SalaryStructureService(
     /// worth catching here, at setup time, rather than at assignment time.
     /// </summary>
     public async Task<SalaryStructureComponent> AddComponentAsync(
-        Guid structureId, Guid componentId, decimal value, int displayOrder, CancellationToken cancellationToken = default)
+        Guid structureId, Guid componentId, decimal value, int displayOrder, decimal? wageCeiling = null,
+        CancellationToken cancellationToken = default)
     {
         SalaryStructure structure = await structures.GetAsync(structureId, cancellationToken)
             ?? throw new NotFoundException(nameof(SalaryStructure), structureId);
@@ -60,13 +61,21 @@ public sealed class SalaryStructureService(
         {
             Guard(value is >= 0 and <= 100, "SALARY_STRUCTURE_PERCENTAGE_OUT_OF_RANGE", "The percentage must be between 0 and 100.");
         }
+        else if (component.CalcType == SalaryComponentCalcType.PercentOfBasicCapped)
+        {
+            Guard(value is >= 0 and <= 100, "SALARY_STRUCTURE_PERCENTAGE_OUT_OF_RANGE", "The percentage must be between 0 and 100.");
+            Guard(
+                wageCeiling is > 0,
+                "SALARY_STRUCTURE_WAGE_CEILING_REQUIRED",
+                "A PercentOfBasicCapped component needs a positive wage ceiling.");
+        }
 
         Guard(
             existingLines.All(x => x.ComponentId != componentId),
             "SALARY_STRUCTURE_COMPONENT_ALREADY_ADDED",
             $"'{component.Name}' has already been added to this structure.");
 
-        SalaryStructureComponent line = SalaryStructureComponent.Create(structureId, componentId, value, displayOrder);
+        SalaryStructureComponent line = SalaryStructureComponent.Create(structureId, componentId, value, displayOrder, wageCeiling);
         structureComponents.Add(line);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return line;

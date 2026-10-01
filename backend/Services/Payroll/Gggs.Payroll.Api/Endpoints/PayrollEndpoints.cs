@@ -131,7 +131,8 @@ public static class PayrollEndpoints
     {
         ArgumentNullException.ThrowIfNull(body);
 
-        SalaryStructureComponent entity = await service.AddComponentAsync(id, body.ComponentId, body.Value, body.DisplayOrder, ct);
+        SalaryStructureComponent entity = await service.AddComponentAsync(
+            id, body.ComponentId, body.Value, body.DisplayOrder, body.WageCeiling, ct);
         return TypedResults.Created($"/api/v1/payroll/structures/{id}/components/{entity.Id}", ToResponse(entity));
     }
 
@@ -191,7 +192,7 @@ public static class PayrollEndpoints
     private static SalaryStructureResponse ToResponse(SalaryStructure entity) => new(entity.Id, entity.Code, entity.Name, entity.IsActive);
 
     private static SalaryStructureComponentResponse ToResponse(SalaryStructureComponent entity) => new(
-        entity.Id, entity.StructureId, entity.ComponentId, entity.Value, entity.DisplayOrder);
+        entity.Id, entity.StructureId, entity.ComponentId, entity.Value, entity.WageCeiling, entity.DisplayOrder);
 
     private static void MapPayGroupEndpoints(IEndpointRouteBuilder endpoints)
     {

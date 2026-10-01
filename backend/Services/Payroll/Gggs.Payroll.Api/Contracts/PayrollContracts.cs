@@ -13,9 +13,10 @@ public sealed record SalaryStructureResponse(Guid Id, string Code, string Name, 
 
 public sealed record CreateSalaryStructureBody(string Code, string Name);
 
-public sealed record SalaryStructureComponentResponse(Guid Id, Guid StructureId, Guid ComponentId, decimal Value, int DisplayOrder);
+public sealed record SalaryStructureComponentResponse(
+    Guid Id, Guid StructureId, Guid ComponentId, decimal Value, decimal? WageCeiling, int DisplayOrder);
 
-public sealed record AddSalaryStructureComponentBody(Guid ComponentId, decimal Value, int DisplayOrder);
+public sealed record AddSalaryStructureComponentBody(Guid ComponentId, decimal Value, int DisplayOrder, decimal? WageCeiling = null);
 
 public sealed record EmployeeSalaryComponentResponse(Guid Id, Guid ComponentId, decimal MonthlyAmount, decimal AnnualAmount);
 

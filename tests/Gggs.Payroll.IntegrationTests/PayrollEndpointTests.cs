@@ -188,6 +188,91 @@ public sealed class PayrollEndpointTests(PayrollApiFactory factory)
     }
 
     [Fact]
+    public async Task AddingAPercentOfBasicCappedComponent_WithoutAWageCeiling_IsRejected()
+    {
+        using HttpClient client = factory.CreateClientFor(AllPermissions);
+        Guid structureId = await CreateStructureAsync(client);
+        Guid pfId = await CreateComponentAsync(client, "PF1", SalaryComponentKind.Deduction, SalaryComponentCalcType.PercentOfBasicCapped);
+
+        HttpResponseMessage response = await client.PostAsJsonAsync(
+            $"/api/v1/payroll/structures/{structureId}/components",
+            new AddSalaryStructureComponentBody(pfId, 12m, 1),
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [Fact]
+    public async Task AssigningASalary_WithPfBelowTheWageCeiling_ComputesPfOnActualBasic()
+    {
+        using HttpClient client = factory.CreateClientFor(AllPermissions);
+        Guid structureId = await CreateStructureAsync(client);
+
+        Guid basicId = await GetOrCreateBasicComponentAsync(client);
+        Guid pfId = await CreateComponentAsync(client, "PF2", SalaryComponentKind.Deduction, SalaryComponentCalcType.PercentOfBasicCapped);
+
+        await client.PostAsJsonAsync(
+            $"/api/v1/payroll/structures/{structureId}/components",
+            new AddSalaryStructureComponentBody(basicId, 10000m, 1),
+            TestContext.Current.CancellationToken);
+
+        await client.PostAsJsonAsync(
+            $"/api/v1/payroll/structures/{structureId}/components",
+            new AddSalaryStructureComponentBody(pfId, 12m, 2, WageCeiling: 15000m),
+            TestContext.Current.CancellationToken);
+
+        Guid employeeId = await SeedEmployeeAsync();
+
+        HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/v1/payroll/employee-salaries",
+            new AssignEmployeeSalaryBody(employeeId, structureId, 120000m, "INR", new DateOnly(2026, 4, 1)),
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        EmployeeSalaryResponse? salary = await response.Content.ReadFromJsonAsync<EmployeeSalaryResponse>(JsonOptions, TestContext.Current.CancellationToken);
+        salary.ShouldNotBeNull();
+
+        // Basic (10000) is below the 15000 ceiling, so PF is 12% of the actual Basic: 1200.
+        EmployeeSalaryComponentResponse pfLine = salary.Components.Single(x => x.ComponentId == pfId);
+        pfLine.MonthlyAmount.ShouldBe(1200m);
+    }
+
+    [Fact]
+    public async Task AssigningASalary_WithPfAboveTheWageCeiling_ComputesPfOnTheCeiling()
+    {
+        using HttpClient client = factory.CreateClientFor(AllPermissions);
+        Guid structureId = await CreateStructureAsync(client);
+
+        Guid basicId = await GetOrCreateBasicComponentAsync(client);
+        Guid pfId = await CreateComponentAsync(client, "PF3", SalaryComponentKind.Deduction, SalaryComponentCalcType.PercentOfBasicCapped);
+
+        await client.PostAsJsonAsync(
+            $"/api/v1/payroll/structures/{structureId}/components",
+            new AddSalaryStructureComponentBody(basicId, 30000m, 1),
+            TestContext.Current.CancellationToken);
+
+        await client.PostAsJsonAsync(
+            $"/api/v1/payroll/structures/{structureId}/components",
+            new AddSalaryStructureComponentBody(pfId, 12m, 2, WageCeiling: 15000m),
+            TestContext.Current.CancellationToken);
+
+        Guid employeeId = await SeedEmployeeAsync();
+
+        HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/v1/payroll/employee-salaries",
+            new AssignEmployeeSalaryBody(employeeId, structureId, 360000m, "INR", new DateOnly(2026, 4, 1)),
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        EmployeeSalaryResponse? salary = await response.Content.ReadFromJsonAsync<EmployeeSalaryResponse>(JsonOptions, TestContext.Current.CancellationToken);
+        salary.ShouldNotBeNull();
+
+        // Basic (30000) exceeds the 15000 ceiling, so PF is 12% of the ceiling, not the full Basic: 1800.
+        EmployeeSalaryComponentResponse pfLine = salary.Components.Single(x => x.ComponentId == pfId);
+        pfLine.MonthlyAmount.ShouldBe(1800m);
+    }
+
+    [Fact]
     public async Task AssigningASalary_ForAnExitedEmployee_IsRejected()
     {
         using HttpClient client = factory.CreateClientFor(AllPermissions);
