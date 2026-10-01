@@ -150,6 +150,24 @@ public sealed class PayrollRunLineRepository(PayrollDbContext dbContext) : IPayr
     public void RemoveAllForRunEmployees(IEnumerable<PayrollRunLine> lines) => dbContext.PayrollRunLines.RemoveRange(lines);
 }
 
+public sealed class PayslipRepository(PayrollDbContext dbContext) : IPayslipRepository
+{
+    public async Task<Payslip?> GetAsync(Guid id, CancellationToken cancellationToken = default)
+        => await dbContext.Payslips.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    public async Task<Payslip?> GetForEmployeeAndRunAsync(Guid employeeId, Guid payrollRunId, CancellationToken cancellationToken = default)
+        => await dbContext.Payslips.FirstOrDefaultAsync(
+            x => x.EmployeeId == employeeId && x.PayrollRunId == payrollRunId, cancellationToken);
+
+    public async Task<IReadOnlyList<Payslip>> ListForEmployeeAsync(Guid employeeId, CancellationToken cancellationToken = default)
+        => await dbContext.Payslips
+            .Where(x => x.EmployeeId == employeeId)
+            .OrderByDescending(x => x.PublishedDate)
+            .ToListAsync(cancellationToken);
+
+    public void Add(Payslip payslip) => dbContext.Payslips.Add(payslip);
+}
+
 public sealed class EmployeeSnapshotRepository(PayrollDbContext dbContext) : IEmployeeSnapshotRepository
 {
     public async Task<EmployeeSnapshot?> GetAsync(Guid employeeId, CancellationToken cancellationToken = default)

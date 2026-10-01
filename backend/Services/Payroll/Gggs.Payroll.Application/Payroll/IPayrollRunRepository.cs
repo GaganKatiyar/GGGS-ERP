@@ -50,3 +50,14 @@ public interface IPayrollRunLineRepository
 
     void RemoveAllForRunEmployees(IEnumerable<PayrollRunLine> lines);
 }
+
+public interface IPayslipRepository
+{
+    Task<Payslip?> GetAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<Payslip?> GetForEmployeeAndRunAsync(Guid employeeId, Guid payrollRunId, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Payslip>> ListForEmployeeAsync(Guid employeeId, CancellationToken cancellationToken = default);
+
+    void Add(Payslip payslip);
+}

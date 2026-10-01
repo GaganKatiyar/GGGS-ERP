@@ -35,6 +35,8 @@ public sealed class PayrollDbContext(DbContextOptions<PayrollDbContext> options,
 
     public DbSet<PayrollRunLine> PayrollRunLines => Set<PayrollRunLine>();
 
+    public DbSet<Payslip> Payslips => Set<Payslip>();
+
     public DbSet<EmployeeSnapshot> EmployeeSnapshots => Set<EmployeeSnapshot>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -176,6 +178,21 @@ public sealed class PayrollDbContext(DbContextOptions<PayrollDbContext> options,
 
             entity.HasIndex(x => new { x.TenantId, x.PayrollRunEmployeeId })
                 .HasDatabaseName("IX_PayrollRunLine_TenantId_PayrollRunEmployeeId");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<Payslip>(entity =>
+        {
+            entity.ToTable("Payslip", "pay");
+
+            entity.HasIndex(x => new { x.TenantId, x.EmployeeId, x.PayrollRunId })
+                .HasDatabaseName("UX_Payslip_TenantId_EmployeeId_PayrollRunId")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            entity.HasIndex(x => new { x.TenantId, x.PayrollRunId })
+                .HasDatabaseName("IX_Payslip_TenantId_PayrollRunId");
 
             entity.Ignore(x => x.DomainEvents);
         });

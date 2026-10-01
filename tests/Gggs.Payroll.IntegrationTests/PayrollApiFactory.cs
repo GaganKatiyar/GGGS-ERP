@@ -83,6 +83,16 @@ public sealed class PayrollApiFactory : WebApplicationFactory<Program>, IAsyncLi
         return client;
     }
 
+    /// <summary>Same as <see cref="CreateClientFor"/>, but authenticated as a specific employee -
+    /// what payslip self-service tests need, since "my own payslip" has to resolve against a real
+    /// employee id a run was actually calculated for.</summary>
+    public HttpClient CreateClientForEmployee(Guid employeeId, params string[] permissions)
+    {
+        HttpClient client = CreateClientFor(permissions);
+        client.DefaultRequestHeaders.Add(TestAuthHandler.EmployeeHeader, employeeId.ToString());
+        return client;
+    }
+
     /// <summary>A raw context resolved to <see cref="SeededTenantId"/>, for seeding rows (an
     /// EmployeeSnapshot) the API itself never writes directly.</summary>
     public PayrollDbContext CreateTenantScopedContext(out IDisposable scopeHandle)
@@ -170,6 +180,7 @@ public sealed class TestAuthHandler(
     public const string SchemeName = "Test";
     public const string TenantHeader = "X-Test-Tenant";
     public const string PermissionsHeader = "X-Test-Permissions";
+    public const string EmployeeHeader = "X-Test-Employee";
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
@@ -185,6 +196,11 @@ public sealed class TestAuthHandler(
             new(GggsClaims.PermissionVersion, "1"),
             new("auth_time", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()),
         ];
+
+        if (Request.Headers.TryGetValue(EmployeeHeader, out Microsoft.Extensions.Primitives.StringValues employeeId))
+        {
+            claims.Add(new(GggsClaims.EmployeeId, employeeId.ToString()));
+        }
 
         if (Request.Headers.TryGetValue(PermissionsHeader, out Microsoft.Extensions.Primitives.StringValues permissions))
         {

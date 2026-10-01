@@ -1,3 +1,4 @@
+using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.Payroll.Api.Contracts;
@@ -10,9 +11,9 @@ using Microsoft.EntityFrameworkCore;
 namespace Gggs.Payroll.Api.Endpoints;
 
 /// <summary>
-/// Salary components, structures and their lines, employee salary assignment, and payroll runs. No
-/// payslips or statutory compliance in this v1 slice - see <c>EmployeeSalary</c>'s and
-/// <c>PayrollRun</c>'s own remarks.
+/// Salary components, structures and their lines, employee salary assignment, payroll runs, and the
+/// payslips a finalized run publishes. No statutory compliance in this v1 slice - see
+/// <c>EmployeeSalary</c>'s, <c>PayrollRun</c>'s and <c>Payslip</c>'s own remarks.
 /// </summary>
 public static class PayrollEndpoints
 {
@@ -26,6 +27,7 @@ public static class PayrollEndpoints
         MapPayGroupEndpoints(endpoints);
         MapPayPeriodEndpoints(endpoints);
         MapPayrollRunEndpoints(endpoints);
+        MapPayslipEndpoints(endpoints);
 
         return endpoints;
     }
@@ -324,4 +326,102 @@ public static class PayrollEndpoints
     private static PayrollRunResponse ToResponse(PayrollRun entity) => new(
         entity.Id, entity.PayGroupId, entity.PayPeriodId, entity.RunNo, entity.Status, entity.EmployeeCount,
         entity.GrossTotal, entity.NetTotal, entity.CalculatedDate, entity.FinalizedDate);
+
+    /// <summary>
+    /// My own payslips (<see cref="Permissions.Self.PayslipView"/>) and, for admins, any employee's
+    /// (<see cref="Permissions.Payroll.RunView"/>) - the same "own" versus "anyone's" split
+    /// Attendance's self-service endpoints already use.
+    /// </summary>
+    private static void MapPayslipEndpoints(IEndpointRouteBuilder endpoints)
+    {
+        RouteGroupBuilder group = endpoints.MapGroup("/api/v1/payroll/payslips").WithTags("Payroll");
+
+        group.MapGet("/me", ListMyPayslipsAsync).WithName("ListMyPayslips").RequirePermission(Permissions.Self.PayslipView);
+
+        // Either permission reaches the handler; which payslips a caller may actually read is
+        // decided inside it, against the payslip's own EmployeeId - see GetPayslipAsync's own remarks.
+        group.MapGet("/{id:guid}", GetPayslipAsync)
+            .WithName("GetPayslip").RequirePermission(Permissions.Self.PayslipView, Permissions.Payroll.RunView);
+
+        endpoints.MapGet("/api/v1/payroll/employees/{employeeId:guid}/payslips", ListEmployeePayslipsAsync)
+            .WithName("ListEmployeePayslips").WithTags("Payroll").RequirePermission(Permissions.Payroll.RunView);
+    }
+
+    private static async Task<Ok<IReadOnlyList<PayslipListItem>>> ListMyPayslipsAsync(
+        ICurrentUser currentUser, PayrollDbContext db, CancellationToken ct)
+    {
+        if (currentUser.EmployeeId is not { } employeeId)
+        {
+            return TypedResults.Ok<IReadOnlyList<PayslipListItem>>([]);
+        }
+
+        List<PayslipListItem> items = await ListPayslipItemsAsync(employeeId, db, ct);
+        return TypedResults.Ok<IReadOnlyList<PayslipListItem>>(items);
+    }
+
+    private static async Task<Ok<IReadOnlyList<PayslipListItem>>> ListEmployeePayslipsAsync(
+        Guid employeeId, PayrollDbContext db, CancellationToken ct)
+    {
+        List<PayslipListItem> items = await ListPayslipItemsAsync(employeeId, db, ct);
+        return TypedResults.Ok<IReadOnlyList<PayslipListItem>>(items);
+    }
+
+    private static async Task<List<PayslipListItem>> ListPayslipItemsAsync(Guid employeeId, PayrollDbContext db, CancellationToken ct)
+    {
+        var rows = await db.Payslips.AsNoTracking()
+            .Where(x => x.EmployeeId == employeeId)
+            .Join(db.PayrollRuns.AsNoTracking(), p => p.PayrollRunId, r => r.Id, (p, r) => new { Payslip = p, Run = r })
+            .Join(db.PayPeriods.AsNoTracking(), x => x.Run.PayPeriodId, period => period.Id, (x, period) => new { x.Payslip, x.Run, Period = period })
+            .Join(db.PayrollRunEmployees.AsNoTracking(), x => x.Payslip.PayrollRunEmployeeId, e => e.Id, (x, runEmployee) => new { x.Payslip, x.Run, x.Period, RunEmployee = runEmployee })
+            .OrderByDescending(x => x.Payslip.PublishedDate)
+            .ToListAsync(ct);
+
+        return [.. rows.Select(x => new PayslipListItem(
+            x.Payslip.Id, x.Payslip.PayrollRunId, x.Run.RunNo, x.Period.PayDate, x.RunEmployee.NetPay, x.Payslip.PublishedDate))];
+    }
+
+    /// <summary>
+    /// A caller with just <see cref="Permissions.Self.PayslipView"/> may only reach their own
+    /// payslip - checked against the payslip's own <see cref="Payslip.EmployeeId"/>, not a blanket
+    /// grant, the same "own record" shape self-service permissions elsewhere in this catalog use. A
+    /// caller who also holds <see cref="Permissions.Payroll.RunView"/> may reach anyone's.
+    /// </summary>
+    private static async Task<Results<Ok<PayslipResponse>, NotFound, ForbidHttpResult>> GetPayslipAsync(
+        Guid id, ICurrentUser currentUser, IPermissionProvider permissions, PayrollDbContext db, CancellationToken ct)
+    {
+        Payslip? payslip = await db.Payslips.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (payslip is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (payslip.EmployeeId != currentUser.EmployeeId)
+        {
+            PermissionSet held = await permissions.GetCurrentAsync(ct);
+            if (!held.Has(Permissions.Payroll.RunView))
+            {
+                return TypedResults.Forbid();
+            }
+        }
+
+        PayrollRun run = await db.PayrollRuns.AsNoTracking().FirstAsync(x => x.Id == payslip.PayrollRunId, ct);
+        PayPeriod period = await db.PayPeriods.AsNoTracking().FirstAsync(x => x.Id == run.PayPeriodId, ct);
+        PayrollRunEmployee runEmployee = await db.PayrollRunEmployees.AsNoTracking().FirstAsync(x => x.Id == payslip.PayrollRunEmployeeId, ct);
+
+        List<PayrollRunLine> runLines = await db.PayrollRunLines.AsNoTracking()
+            .Where(x => x.PayrollRunEmployeeId == runEmployee.Id)
+            .ToListAsync(ct);
+
+        List<SalaryComponent> lineComponents = await db.SalaryComponents.AsNoTracking()
+            .Where(x => runLines.Select(l => l.ComponentId).Contains(x.Id))
+            .ToListAsync(ct);
+        Dictionary<Guid, SalaryComponent> componentsById = lineComponents.ToDictionary(x => x.Id);
+
+        List<PayslipLineResponse> lines = [.. runLines.Select(l => new PayslipLineResponse(
+            l.ComponentId, componentsById[l.ComponentId].Name, componentsById[l.ComponentId].Kind, l.Amount))];
+
+        return TypedResults.Ok(new PayslipResponse(
+            payslip.Id, payslip.EmployeeId, payslip.PayrollRunId, run.RunNo, run.PayPeriodId, period.PeriodCode, period.PayDate,
+            runEmployee.Gross, runEmployee.NetPay, payslip.PublishedDate, lines));
+    }
 }

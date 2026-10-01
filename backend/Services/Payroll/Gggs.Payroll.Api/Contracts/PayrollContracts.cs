@@ -44,3 +44,20 @@ public sealed record PayrollRunEmployeeLineResponse(Guid ComponentId, decimal Am
 
 public sealed record PayrollRunEmployeeResponse(
     Guid Id, Guid EmployeeId, decimal Gross, decimal NetPay, IReadOnlyList<PayrollRunEmployeeLineResponse> Lines);
+
+public sealed record PayslipLineResponse(Guid ComponentId, string ComponentName, SalaryComponentKind Kind, decimal Amount);
+
+public sealed record PayslipResponse(
+    Guid Id,
+    Guid EmployeeId,
+    Guid PayrollRunId,
+    string RunNo,
+    Guid PayPeriodId,
+    string PeriodCode,
+    DateOnly PayDate,
+    decimal Gross,
+    decimal NetPay,
+    DateTime PublishedDate,
+    IReadOnlyList<PayslipLineResponse> Lines);
+
+public sealed record PayslipListItem(Guid Id, Guid PayrollRunId, string RunNo, DateOnly PayDate, decimal NetPay, DateTime PublishedDate);

@@ -197,6 +197,7 @@ static async Task SeedTenantAdminAsync(string connectionString, Guid tenantId, s
         Permissions.Attendance.DeviceManage,
         Permissions.Self.AttendanceView,
         Permissions.Self.AttendancePunch,
+        Permissions.Self.PayslipView,
         Permissions.Report.View,
         Permissions.Report.Export,
         Permissions.Report.ScheduleManage,

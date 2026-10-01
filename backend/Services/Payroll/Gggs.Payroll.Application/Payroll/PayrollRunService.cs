@@ -19,6 +19,7 @@ public sealed class PayrollRunService(
     IEmployeeSalaryRepository salaries,
     IEmployeeSalaryComponentRepository salaryComponents,
     ISalaryComponentRepository components,
+    IPayslipRepository payslips,
     IUnitOfWork unitOfWork,
     TimeProvider clock)
 {
@@ -117,8 +118,12 @@ public sealed class PayrollRunService(
         return run;
     }
 
-    /// <summary>Calculated -> Finalized, and locks+closes the run's own period in the same
-    /// operation - a finalized run's period can never accept another run.</summary>
+    /// <summary>
+    /// Calculated -> Finalized, and locks+closes the run's own period in the same operation - a
+    /// finalized run's period can never accept another run. Also publishes one <see cref="Payslip"/>
+    /// per <see cref="PayrollRunEmployee"/> in the run, the moment its numbers become permanent -
+    /// see <see cref="Payslip"/>'s own remarks on why this is a structured record, not a PDF.
+    /// </summary>
     public async Task<PayrollRun> FinalizeAsync(Guid runId, CancellationToken cancellationToken = default)
     {
         PayrollRun run = await runs.GetAsync(runId, cancellationToken) ?? throw new NotFoundException(nameof(PayrollRun), runId);
@@ -129,6 +134,12 @@ public sealed class PayrollRunService(
         run.Finalize(now);
         period.Lock();
         period.Close();
+
+        IReadOnlyList<PayrollRunEmployee> results = await runEmployees.ListForRunAsync(runId, cancellationToken);
+        foreach (PayrollRunEmployee result in results)
+        {
+            payslips.Add(Payslip.Create(runId, result.Id, result.EmployeeId, now));
+        }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return run;

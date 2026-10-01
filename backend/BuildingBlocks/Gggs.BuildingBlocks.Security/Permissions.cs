@@ -234,8 +234,11 @@ public static class Permissions
         public const string EnrollmentManageOwn = "learning.enrollment.manage-own";
     }
 
-    /// <summary>Salary components, structures, employee salary assignment, and payroll runs. No
-    /// payslips or statutory compliance in this v1 slice - see <c>EmployeeSalary</c>'s own remarks.</summary>
+    /// <summary>Salary components, structures, employee salary assignment, payroll runs and the
+    /// payslips a finalized run publishes. No statutory compliance in this v1 slice - see
+    /// <c>EmployeeSalary</c>'s own remarks. An employee reads their own payslip through
+    /// <see cref="Self.PayslipView"/> rather than a permission in this class, the same split
+    /// <see cref="Self.AttendanceView"/> already uses for "my own" versus "anyone's."</summary>
     public static class Payroll
     {
         public const string ComponentManage = "payroll.component.manage";

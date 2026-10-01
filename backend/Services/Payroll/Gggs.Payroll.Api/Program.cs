@@ -71,6 +71,7 @@ builder.Services.AddScoped<IPayPeriodRepository, PayPeriodRepository>();
 builder.Services.AddScoped<IPayrollRunRepository, PayrollRunRepository>();
 builder.Services.AddScoped<IPayrollRunEmployeeRepository, PayrollRunEmployeeRepository>();
 builder.Services.AddScoped<IPayrollRunLineRepository, PayrollRunLineRepository>();
+builder.Services.AddScoped<IPayslipRepository, PayslipRepository>();
 
 builder.Services.AddScoped<SalaryComponentService>();
 builder.Services.AddScoped<SalaryStructureService>();
