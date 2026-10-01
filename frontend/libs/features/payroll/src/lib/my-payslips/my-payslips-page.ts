@@ -4,8 +4,8 @@ import { Button, Card, PageHeader } from '@gggs/shared/ui';
 import type { Payslip, PayslipListItem } from '@gggs/shared/models';
 import { PayrollApi } from '../data/payroll-api';
 
-/** Self-service: an employee's own payslips, and the breakdown for whichever one they pick. No PDF
- * download in this v1 slice - see `Payslip`'s own remarks on the backend. */
+/** Self-service: an employee's own payslips, the breakdown for whichever one they pick, and a
+ * PDF download rendered fresh on each request by the backend's QuestPDF document. */
 @Component({
   selector: 'gggs-my-payslips-page',
   imports: [DecimalPipe, PageHeader, Card, Button],
@@ -31,8 +31,9 @@ import { PayrollApi } from '../data/payroll-api';
                   <td>{{ item.runNo }}</td>
                   <td>{{ item.payDate }}</td>
                   <td>{{ item.netPay | number: '1.2-2' }}</td>
-                  <td>
+                  <td class="actions">
                     <gggs-button size="sm" variant="ghost" (click)="view(item.id)">View</gggs-button>
+                    <gggs-button size="sm" variant="ghost" (click)="downloadPdf(item.id, item.runNo)">Download PDF</gggs-button>
                   </td>
                 </tr>
               }
@@ -122,6 +123,11 @@ import { PayrollApi } from '../data/payroll-api';
       color: var(--gggs-color-text-muted, #5b6472);
       margin: 0;
     }
+
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+    }
   `,
 })
 export class MyPayslipsPage {
@@ -136,6 +142,19 @@ export class MyPayslipsPage {
 
   protected async view(id: string): Promise<void> {
     this.selected.set(await this.api.getPayslip(id));
+  }
+
+  protected async downloadPdf(id: string, runNo: string): Promise<void> {
+    const blob = await this.api.getPayslipPdf(id);
+    const url = URL.createObjectURL(blob);
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `payslip-${runNo}.pdf`;
+      link.click();
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
 
   private async load(): Promise<void> {

@@ -157,4 +157,8 @@ export class PayrollApi {
   getPayslip(id: string): Promise<Payslip> {
     return firstValueFrom(this.http.get<Payslip>(`/api/v1/payroll/payslips/${id}`));
   }
+
+  getPayslipPdf(id: string): Promise<Blob> {
+    return firstValueFrom(this.http.get(`/api/v1/payroll/payslips/${id}/pdf`, { responseType: 'blob' }));
+  }
 }

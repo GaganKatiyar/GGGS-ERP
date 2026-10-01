@@ -145,6 +145,9 @@ export interface PayrollRunEmployee {
   readonly employeeId: string;
   readonly gross: number;
   readonly netPay: number;
+  readonly paidDays: number;
+  readonly lopDays: number;
+  readonly totalDays: number;
   readonly lines: readonly PayrollRunEmployeeLine[];
 }
 

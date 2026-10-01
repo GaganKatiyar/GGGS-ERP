@@ -70,6 +70,8 @@ import { PayrollApi } from '../data/payroll-api';
             <thead>
               <tr>
                 <th scope="col">Employee</th>
+                <th scope="col">Paid days</th>
+                <th scope="col">LOP days</th>
                 <th scope="col">Gross</th>
                 <th scope="col">Net pay</th>
               </tr>
@@ -78,6 +80,8 @@ import { PayrollApi } from '../data/payroll-api';
               @for (employee of runEmployees(); track employee.id) {
                 <tr>
                   <td>{{ employee.employeeId }}</td>
+                  <td>{{ employee.paidDays }} / {{ employee.totalDays }}</td>
+                  <td>{{ employee.lopDays }}</td>
                   <td>{{ employee.gross | number: '1.2-2' }}</td>
                   <td>{{ employee.netPay | number: '1.2-2' }}</td>
                 </tr>

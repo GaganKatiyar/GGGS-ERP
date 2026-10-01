@@ -108,6 +108,7 @@ import { PayrollApi } from '../data/payroll-api';
                 <th scope="col">Run</th>
                 <th scope="col">Pay date</th>
                 <th scope="col">Net pay</th>
+                <th scope="col"></th>
               </tr>
             </thead>
             <tbody>
@@ -116,6 +117,9 @@ import { PayrollApi } from '../data/payroll-api';
                   <td>{{ payslip.runNo }}</td>
                   <td>{{ payslip.payDate }}</td>
                   <td>{{ payslip.netPay | number: '1.2-2' }}</td>
+                  <td>
+                    <gggs-button size="sm" variant="ghost" (click)="downloadPayslipPdf(payslip.id, payslip.runNo)">Download PDF</gggs-button>
+                  </td>
                 </tr>
               }
             </tbody>
@@ -226,6 +230,19 @@ export class EmployeeSalaryPage {
   protected componentName(componentId: string): string {
     const component = this.components().find((c) => c.id === componentId);
     return component ? `${component.name} (${component.code})` : componentId;
+  }
+
+  protected async downloadPayslipPdf(id: string, runNo: string): Promise<void> {
+    const blob = await this.api.getPayslipPdf(id);
+    const url = URL.createObjectURL(blob);
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `payslip-${runNo}.pdf`;
+      link.click();
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
 
   protected async onEmployeeSelected(employee: EmployeeListItem): Promise<void> {
