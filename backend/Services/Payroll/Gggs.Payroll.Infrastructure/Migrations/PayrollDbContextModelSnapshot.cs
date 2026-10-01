@@ -520,6 +520,9 @@ namespace Gggs.Payroll.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<decimal>("LopDays")
+                        .HasColumnType("decimal(5,2)");
+
                     b.Property<Guid?>("ModifiedBy")
                         .HasColumnType("uniqueidentifier");
 
@@ -528,6 +531,9 @@ namespace Gggs.Payroll.Infrastructure.Migrations
 
                     b.Property<decimal>("NetPay")
                         .HasColumnType("decimal(14,2)");
+
+                    b.Property<decimal>("PaidDays")
+                        .HasColumnType("decimal(5,2)");
 
                     b.Property<Guid>("PayrollRunId")
                         .HasColumnType("uniqueidentifier");
@@ -539,6 +545,9 @@ namespace Gggs.Payroll.Infrastructure.Migrations
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("TotalDays")
+                        .HasColumnType("decimal(5,2)");
 
                     b.HasKey("Id");
 

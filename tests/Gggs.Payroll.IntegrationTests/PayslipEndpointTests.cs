@@ -10,12 +10,11 @@ using Shouldly;
 
 namespace Gggs.Payroll.IntegrationTests;
 
-/// <summary><c>/api/v1/payroll/payslips/me</c>, <c>/api/v1/payroll/payslips/{id}</c> and
-/// <c>/api/v1/payroll/employees/{employeeId}/payslips</c> over HTTP: finalizing a run publishes one
-/// payslip per employee it contains, readable by that employee through
-/// <see cref="Permissions.Self.PayslipView"/> or by an admin holding
-/// <see cref="Permissions.Payroll.RunView"/> - never by anyone else. No PDF in this v1 slice - see
-/// <see cref="Payslip"/>'s own remarks.</summary>
+/// <summary><c>/api/v1/payroll/payslips/me</c>, <c>/api/v1/payroll/payslips/{id}</c>,
+/// <c>/api/v1/payroll/payslips/{id}/pdf</c> and <c>/api/v1/payroll/employees/{employeeId}/payslips</c>
+/// over HTTP: finalizing a run publishes one payslip per employee it contains, readable (as JSON or
+/// PDF) by that employee through <see cref="Permissions.Self.PayslipView"/> or by an admin holding
+/// <see cref="Permissions.Payroll.RunView"/> - never by anyone else.</summary>
 [Collection(nameof(PayrollApiCollection))]
 public sealed class PayslipEndpointTests(PayrollApiFactory factory)
 {
@@ -95,6 +94,32 @@ public sealed class PayslipEndpointTests(PayrollApiFactory factory)
         HttpResponseMessage response = await adminClient.GetAsync($"/api/v1/payroll/payslips/{payslipId}", TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task AnEmployee_CanDownloadTheirOwnPayslipPdf_ButNotSomeoneElses()
+    {
+        using HttpClient adminClient = factory.CreateClientFor(AdminPermissions);
+        (Guid runId, Guid employeeId) = await SetUpAndFinalizeARunAsync(adminClient);
+
+        HttpResponseMessage adminListResponse = await adminClient.GetAsync(
+            $"/api/v1/payroll/employees/{employeeId}/payslips", TestContext.Current.CancellationToken);
+        List<PayslipListItem>? items = await adminListResponse.Content.ReadFromJsonAsync<List<PayslipListItem>>(JsonOptions, TestContext.Current.CancellationToken);
+        Guid payslipId = items!.Single(x => x.PayrollRunId == runId).Id;
+
+        using HttpClient ownerClient = factory.CreateClientForEmployee(employeeId, Permissions.Self.PayslipView);
+        HttpResponseMessage ownResponse = await ownerClient.GetAsync($"/api/v1/payroll/payslips/{payslipId}/pdf", TestContext.Current.CancellationToken);
+        ownResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        ownResponse.Content.Headers.ContentType?.MediaType.ShouldBe("application/pdf");
+        byte[] pdfBytes = await ownResponse.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
+        pdfBytes.Length.ShouldBeGreaterThan(0);
+        // "%PDF" magic bytes - confirms QuestPDF actually produced a PDF, not just an octet stream.
+        System.Text.Encoding.ASCII.GetString(pdfBytes, 0, 4).ShouldBe("%PDF");
+
+        using HttpClient otherEmployeeClient = factory.CreateClientForEmployee(Guid.NewGuid(), Permissions.Self.PayslipView);
+        HttpResponseMessage otherResponse = await otherEmployeeClient.GetAsync(
+            $"/api/v1/payroll/payslips/{payslipId}/pdf", TestContext.Current.CancellationToken);
+        otherResponse.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
 
     [Fact]

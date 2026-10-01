@@ -164,6 +164,9 @@ public sealed class PayrollDbContext(DbContextOptions<PayrollDbContext> options,
             entity.ToTable("PayrollRunEmployee", "pay");
             entity.Property(x => x.Gross).HasColumnType("decimal(14,2)");
             entity.Property(x => x.NetPay).HasColumnType("decimal(14,2)");
+            entity.Property(x => x.PaidDays).HasColumnType("decimal(5,2)");
+            entity.Property(x => x.LopDays).HasColumnType("decimal(5,2)");
+            entity.Property(x => x.TotalDays).HasColumnType("decimal(5,2)");
 
             entity.HasIndex(x => new { x.TenantId, x.PayrollRunId })
                 .HasDatabaseName("IX_PayrollRunEmployee_TenantId_PayrollRunId");

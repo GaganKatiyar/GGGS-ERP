@@ -43,7 +43,8 @@ public sealed record CreatePayrollRunBody(Guid PayGroupId, Guid PayPeriodId, str
 public sealed record PayrollRunEmployeeLineResponse(Guid ComponentId, decimal Amount);
 
 public sealed record PayrollRunEmployeeResponse(
-    Guid Id, Guid EmployeeId, decimal Gross, decimal NetPay, IReadOnlyList<PayrollRunEmployeeLineResponse> Lines);
+    Guid Id, Guid EmployeeId, decimal Gross, decimal NetPay, decimal PaidDays, decimal LopDays, decimal TotalDays,
+    IReadOnlyList<PayrollRunEmployeeLineResponse> Lines);
 
 public sealed record PayslipLineResponse(Guid ComponentId, string ComponentName, SalaryComponentKind Kind, decimal Amount);
 

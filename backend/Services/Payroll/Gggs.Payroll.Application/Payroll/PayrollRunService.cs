@@ -1,15 +1,16 @@
 using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Domain.Exceptions;
+using Gggs.Payroll.Application.Attendance;
 using Gggs.Payroll.Domain.Payroll;
 
 namespace Gggs.Payroll.Application.Payroll;
 
 /// <summary>
-/// Creating a run, calculating it against every employee's currently assigned salary, and
-/// finalizing it. No attendance-based proration, statutory deduction or payslip generation in this
-/// v1 slice - see <see cref="PayrollRun"/>'s own remarks. Gross is the sum of that employee's
-/// Earning components; net is gross minus the sum of Deduction components - the same split
-/// <see cref="SalaryComponentKind"/> already carries, nothing new to configure.
+/// Creating a run, calculating it against every employee's currently assigned salary and the
+/// period's attendance, and finalizing it. No statutory deduction or RunType yet - see
+/// <see cref="PayrollRun"/>'s own remarks. Gross is the sum of that employee's Earning components
+/// (each prorated by paid days - see <see cref="PayrollRunEmployee"/>); net is prorated gross minus
+/// the sum of Deduction components at their full amount.
 /// </summary>
 public sealed class PayrollRunService(
     IPayrollRunRepository runs,
@@ -20,9 +21,11 @@ public sealed class PayrollRunService(
     IEmployeeSalaryComponentRepository salaryComponents,
     ISalaryComponentRepository components,
     IPayslipRepository payslips,
+    IAttendanceDaysClient attendanceDays,
     IUnitOfWork unitOfWork,
     TimeProvider clock)
 {
+    private static readonly RemoteAttendanceDayStatus[] LopStatuses = [RemoteAttendanceDayStatus.Absent];
     public async Task<PayrollRun> CreateAsync(Guid payGroupId, Guid payPeriodId, string runNo, CancellationToken cancellationToken = default)
     {
         PayPeriod period = await periods.GetAsync(payPeriodId, cancellationToken)
@@ -45,10 +48,11 @@ public sealed class PayrollRunService(
     }
 
     /// <summary>
-    /// Snapshots every employee's current salary breakdown into this run, replacing whatever this
-    /// run held from a previous calculation. Iterates every <see cref="EmployeeSalary"/> in the
-    /// tenant - see <see cref="IEmployeeSalaryRepository.ListAllCurrentAsync"/>'s own remarks on why
-    /// there is no narrower per-pay-group roster yet.
+    /// Snapshots every employee's current salary breakdown into this run, prorated against their
+    /// attendance for the run's <see cref="PayPeriod"/>, replacing whatever this run held from a
+    /// previous calculation. Iterates every <see cref="EmployeeSalary"/> in the tenant - see
+    /// <see cref="IEmployeeSalaryRepository.ListAllCurrentAsync"/>'s own remarks on why there is no
+    /// narrower per-pay-group roster yet.
     /// </summary>
     public async Task<PayrollRun> CalculateAsync(Guid runId, CancellationToken cancellationToken = default)
     {
@@ -58,6 +62,9 @@ public sealed class PayrollRunService(
             run.Status != PayrollRunStatus.Finalized,
             "PAYROLL_RUN_ALREADY_FINALIZED",
             $"Run '{run.RunNo}' is already finalized and cannot be recalculated.");
+
+        PayPeriod period = await periods.GetAsync(run.PayPeriodId, cancellationToken)
+            ?? throw new NotFoundException(nameof(PayPeriod), run.PayPeriodId);
 
         IReadOnlyList<PayrollRunEmployee> existingResults = await runEmployees.ListForRunAsync(runId, cancellationToken);
         if (existingResults.Count > 0)
@@ -84,6 +91,8 @@ public sealed class PayrollRunService(
             allLines.Select(x => x.ComponentId).Distinct(), cancellationToken);
         Dictionary<Guid, SalaryComponent> componentsById = componentCatalog.ToDictionary(x => x.Id);
 
+        decimal totalCalendarDays = period.EndDate.DayNumber - period.StartDate.DayNumber + 1;
+
         decimal runGross = 0;
         decimal runNet = 0;
 
@@ -91,9 +100,13 @@ public sealed class PayrollRunService(
         {
             List<EmployeeSalaryComponent> lines = allLines.Where(x => x.EmployeeSalaryId == salary.Id).ToList();
 
+            (decimal paidDays, decimal lopDays) = await ResolveAttendanceAsync(
+                salary.EmployeeId, period.StartDate, period.EndDate, totalCalendarDays, cancellationToken);
+            decimal prorationFactor = totalCalendarDays == 0 ? 1 : paidDays / totalCalendarDays;
+
             decimal gross = lines
                 .Where(x => componentsById[x.ComponentId].Kind == SalaryComponentKind.Earning)
-                .Sum(x => x.MonthlyAmount);
+                .Sum(x => Math.Round(x.MonthlyAmount * prorationFactor, 2));
 
             decimal deductions = lines
                 .Where(x => componentsById[x.ComponentId].Kind == SalaryComponentKind.Deduction)
@@ -101,12 +114,16 @@ public sealed class PayrollRunService(
 
             decimal netPay = gross - deductions;
 
-            PayrollRunEmployee runEmployee = PayrollRunEmployee.Create(runId, salary.EmployeeId, gross, netPay);
+            PayrollRunEmployee runEmployee = PayrollRunEmployee.Create(
+                runId, salary.EmployeeId, gross, netPay, paidDays, lopDays, totalCalendarDays);
             runEmployees.Add(runEmployee);
 
             foreach (EmployeeSalaryComponent line in lines)
             {
-                runLines.Add(PayrollRunLine.Create(runEmployee.Id, line.ComponentId, line.MonthlyAmount));
+                decimal amount = componentsById[line.ComponentId].Kind == SalaryComponentKind.Earning
+                    ? Math.Round(line.MonthlyAmount * prorationFactor, 2)
+                    : line.MonthlyAmount;
+                runLines.Add(PayrollRunLine.Create(runEmployee.Id, line.ComponentId, amount));
             }
 
             runGross += gross;
@@ -116,6 +133,26 @@ public sealed class PayrollRunService(
         run.RecordCalculation(clock.GetUtcNow().UtcDateTime, allSalaries.Count, runGross, runNet);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return run;
+    }
+
+    /// <summary>
+    /// Paid vs LOP days for one employee over the period. An employee with no attendance days on
+    /// record for the period (Time has nothing, or the lookup failed/was refused) is treated as
+    /// fully paid - see <see cref="IAttendanceDaysClient"/>'s own remarks on why that is the safe
+    /// default rather than guessing at an absence it cannot see.
+    /// </summary>
+    private async Task<(decimal PaidDays, decimal LopDays)> ResolveAttendanceAsync(
+        Guid employeeId, DateOnly startDate, DateOnly endDate, decimal totalCalendarDays, CancellationToken cancellationToken)
+    {
+        IReadOnlyList<RemoteAttendanceDay> days = await attendanceDays.ListAsync(employeeId, startDate, endDate, cancellationToken);
+
+        if (days.Count == 0)
+        {
+            return (totalCalendarDays, 0);
+        }
+
+        decimal lopDays = days.Count(x => LopStatuses.Contains(x.Status));
+        return (totalCalendarDays - lopDays, lopDays);
     }
 
     /// <summary>

@@ -17,9 +17,9 @@ public enum PayrollRunStatus
 /// and no workflow approval gate yet - <see cref="Finalize"/> is a direct action, not something
 /// reacting to a <c>WorkflowApproved</c> event the way <see cref="Attendance.AttendanceRegularization"/>
 /// (a different service) is. Calculating snapshots each employee's <em>current</em>
-/// <see cref="EmployeeSalary"/> breakdown - there is no attendance-based proration or statutory
-/// deduction yet, so Calculated may be repeated freely as salaries change, right up until Finalized
-/// locks the period for good.
+/// <see cref="EmployeeSalary"/> breakdown, prorated against attendance for the period (see
+/// <see cref="PayrollRunEmployee"/>) - no statutory deduction yet, so Calculated may be repeated
+/// freely as salaries or attendance change, right up until Finalized locks the period for good.
 /// </summary>
 public sealed class PayrollRun : TenantAggregateRoot
 {
@@ -82,7 +82,15 @@ public sealed class PayrollRun : TenantAggregateRoot
 }
 
 /// <summary>One employee's result within a <see cref="PayrollRun"/> - replaced wholesale on every
-/// recalculation (see <see cref="PayrollRunService"/>), never adjusted in place.</summary>
+/// recalculation (see <see cref="PayrollRunService"/>), never adjusted in place.
+/// <para>
+/// <see cref="PaidDays"/>/<see cref="LopDays"/>/<see cref="TotalDays"/> record the attendance-based
+/// proration behind <see cref="Gross"/>/<see cref="NetPay"/>: every Earning-kind component is scaled
+/// by <c>PaidDays / TotalDays</c> before the run's totals are summed, while Deduction-kind components
+/// are left at their full monthly amount (there is no statutory-component concept yet to say
+/// otherwise). <c>TotalDays == PaidDays</c> whenever Time has no attendance days on record for the
+/// period, which keeps an employee fully paid rather than guessing at an LOP it cannot see.
+/// </para></summary>
 public sealed class PayrollRunEmployee : TenantAggregateRoot
 {
     private PayrollRunEmployee()
@@ -97,14 +105,24 @@ public sealed class PayrollRunEmployee : TenantAggregateRoot
 
     public decimal NetPay { get; private set; }
 
-    public static PayrollRunEmployee Create(Guid payrollRunId, Guid employeeId, decimal gross, decimal netPay) => new()
-    {
-        PayrollRunId = Guard.NotEmpty(payrollRunId),
-        EmployeeId = Guard.NotEmpty(employeeId),
-        Gross = gross,
-        NetPay = netPay,
-        IsActive = true,
-    };
+    public decimal PaidDays { get; private set; }
+
+    public decimal LopDays { get; private set; }
+
+    public decimal TotalDays { get; private set; }
+
+    public static PayrollRunEmployee Create(
+        Guid payrollRunId, Guid employeeId, decimal gross, decimal netPay, decimal paidDays, decimal lopDays, decimal totalDays) => new()
+        {
+            PayrollRunId = Guard.NotEmpty(payrollRunId),
+            EmployeeId = Guard.NotEmpty(employeeId),
+            Gross = gross,
+            NetPay = netPay,
+            PaidDays = paidDays,
+            LopDays = lopDays,
+            TotalDays = totalDays,
+            IsActive = true,
+        };
 }
 
 /// <summary>One component's amount within a <see cref="PayrollRunEmployee"/>'s result - the

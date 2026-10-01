@@ -1,12 +1,16 @@
 using Gggs.BuildingBlocks.Application;
+using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.Payroll.Api.Contracts;
+using Gggs.Payroll.Api.Documents;
 using Gggs.Payroll.Application.Payroll;
 using Gggs.Payroll.Domain.Payroll;
+using Gggs.Payroll.Domain.Snapshots;
 using Gggs.Payroll.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
 
 namespace Gggs.Payroll.Api.Endpoints;
 
@@ -297,7 +301,7 @@ public static class PayrollEndpoints
             .ToListAsync(ct);
 
         List<PayrollRunEmployeeResponse> items = [.. runEmployees.Select(e => new PayrollRunEmployeeResponse(
-            e.Id, e.EmployeeId, e.Gross, e.NetPay,
+            e.Id, e.EmployeeId, e.Gross, e.NetPay, e.PaidDays, e.LopDays, e.TotalDays,
             [.. lines.Where(l => l.PayrollRunEmployeeId == e.Id).Select(l => new PayrollRunEmployeeLineResponse(l.ComponentId, l.Amount))]))];
 
         return TypedResults.Ok<IReadOnlyList<PayrollRunEmployeeResponse>>(items);
@@ -342,6 +346,9 @@ public static class PayrollEndpoints
         // decided inside it, against the payslip's own EmployeeId - see GetPayslipAsync's own remarks.
         group.MapGet("/{id:guid}", GetPayslipAsync)
             .WithName("GetPayslip").RequirePermission(Permissions.Self.PayslipView, Permissions.Payroll.RunView);
+
+        group.MapGet("/{id:guid}/pdf", GetPayslipPdfAsync)
+            .WithName("GetPayslipPdf").RequirePermission(Permissions.Self.PayslipView, Permissions.Payroll.RunView);
 
         endpoints.MapGet("/api/v1/payroll/employees/{employeeId:guid}/payslips", ListEmployeePayslipsAsync)
             .WithName("ListEmployeePayslips").WithTags("Payroll").RequirePermission(Permissions.Payroll.RunView);
@@ -389,19 +396,104 @@ public static class PayrollEndpoints
     private static async Task<Results<Ok<PayslipResponse>, NotFound, ForbidHttpResult>> GetPayslipAsync(
         Guid id, ICurrentUser currentUser, IPermissionProvider permissions, PayrollDbContext db, CancellationToken ct)
     {
-        Payslip? payslip = await db.Payslips.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (payslip is null)
+        PayslipBundle? bundle = await LoadAuthorizedPayslipBundleAsync(id, currentUser, permissions, db, ct);
+        if (bundle is null)
         {
             return TypedResults.NotFound();
         }
 
-        if (payslip.EmployeeId != currentUser.EmployeeId)
+        if (!bundle.Authorized)
+        {
+            return TypedResults.Forbid();
+        }
+
+        List<PayslipLineResponse> lines = [.. bundle.Lines.Select(l => new PayslipLineResponse(l.ComponentId, l.Name, l.Kind, l.Amount))];
+
+        return TypedResults.Ok(new PayslipResponse(
+            bundle.Payslip.Id, bundle.Payslip.EmployeeId, bundle.Payslip.PayrollRunId, bundle.Run.RunNo, bundle.Run.PayPeriodId,
+            bundle.Period.PeriodCode, bundle.Period.PayDate, bundle.RunEmployee.Gross, bundle.RunEmployee.NetPay,
+            bundle.Payslip.PublishedDate, lines));
+    }
+
+    /// <summary>
+    /// The PDF rendering of the same data <see cref="GetPayslipAsync"/> returns as JSON - generated
+    /// fresh on every request rather than stored, see <see cref="PayslipPdfDocument"/>'s own remarks.
+    /// </summary>
+    private static async Task<Results<FileContentHttpResult, NotFound, ForbidHttpResult>> GetPayslipPdfAsync(
+        Guid id, ICurrentUser currentUser, IPermissionProvider permissions, PayrollDbContext db,
+        ITenantContext tenantContext, ITenantRegistry tenantRegistry, CancellationToken ct)
+    {
+        PayslipBundle? bundle = await LoadAuthorizedPayslipBundleAsync(id, currentUser, permissions, db, ct);
+        if (bundle is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (!bundle.Authorized)
+        {
+            return TypedResults.Forbid();
+        }
+
+        EmployeeSnapshot? employee = await db.EmployeeSnapshots.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.EmployeeId == bundle.Payslip.EmployeeId, ct);
+        PayGroup payGroup = await db.PayGroups.AsNoTracking().FirstAsync(x => x.Id == bundle.Run.PayGroupId, ct);
+        var tenant = await tenantRegistry.GetAsync(tenantContext.TenantId, ct);
+
+        var model = new PayslipPdfModel(
+            tenant?.Name ?? "GGGS HRMS",
+            employee?.EmployeeCode ?? "-",
+            employee?.DisplayName ?? "-",
+            bundle.Run.RunNo,
+            bundle.Period.PeriodCode,
+            bundle.Period.PayDate,
+            bundle.Payslip.PublishedDate,
+            bundle.RunEmployee.PaidDays,
+            bundle.RunEmployee.LopDays,
+            bundle.RunEmployee.TotalDays,
+            bundle.RunEmployee.Gross,
+            bundle.RunEmployee.NetPay,
+            payGroup.Currency,
+            [.. bundle.Lines.Select(l => new PayslipPdfLine(l.Name, l.Kind, l.Amount))]);
+
+        byte[] pdf = new PayslipPdfDocument(model).GeneratePdf();
+        return TypedResults.File(pdf, "application/pdf", $"payslip-{bundle.Period.PeriodCode}.pdf");
+    }
+
+    private sealed record PayslipBundleLine(Guid ComponentId, string Name, SalaryComponentKind Kind, decimal Amount);
+
+    private sealed record PayslipBundle(
+        bool Authorized, Payslip Payslip, PayrollRun Run, PayPeriod Period, PayrollRunEmployee RunEmployee,
+        IReadOnlyList<PayslipBundleLine> Lines);
+
+    /// <summary>
+    /// Loads a payslip and everything a response built from it needs, and decides whether the
+    /// caller may see it: a caller with just <see cref="Permissions.Self.PayslipView"/> may only
+    /// reach their own payslip, checked against the payslip's own <see cref="Payslip.EmployeeId"/>,
+    /// not a blanket grant - the same "own record" shape self-service permissions elsewhere in this
+    /// catalog use. A caller who also holds <see cref="Permissions.Payroll.RunView"/> may reach
+    /// anyone's. Returns null only when the payslip itself does not exist; an authorization failure
+    /// is reported through <see cref="PayslipBundle.Authorized"/> instead, so both the JSON and PDF
+    /// endpoints can map the same two failure cases their own way.
+    /// </summary>
+    private static async Task<PayslipBundle?> LoadAuthorizedPayslipBundleAsync(
+        Guid id, ICurrentUser currentUser, IPermissionProvider permissions, PayrollDbContext db, CancellationToken ct)
+    {
+        Payslip? payslip = await db.Payslips.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (payslip is null)
+        {
+            return null;
+        }
+
+        bool authorized = payslip.EmployeeId == currentUser.EmployeeId;
+        if (!authorized)
         {
             PermissionSet held = await permissions.GetCurrentAsync(ct);
-            if (!held.Has(Permissions.Payroll.RunView))
-            {
-                return TypedResults.Forbid();
-            }
+            authorized = held.Has(Permissions.Payroll.RunView);
+        }
+
+        if (!authorized)
+        {
+            return new PayslipBundle(false, payslip, null!, null!, null!, []);
         }
 
         PayrollRun run = await db.PayrollRuns.AsNoTracking().FirstAsync(x => x.Id == payslip.PayrollRunId, ct);
@@ -417,11 +509,9 @@ public static class PayrollEndpoints
             .ToListAsync(ct);
         Dictionary<Guid, SalaryComponent> componentsById = lineComponents.ToDictionary(x => x.Id);
 
-        List<PayslipLineResponse> lines = [.. runLines.Select(l => new PayslipLineResponse(
+        List<PayslipBundleLine> lines = [.. runLines.Select(l => new PayslipBundleLine(
             l.ComponentId, componentsById[l.ComponentId].Name, componentsById[l.ComponentId].Kind, l.Amount))];
 
-        return TypedResults.Ok(new PayslipResponse(
-            payslip.Id, payslip.EmployeeId, payslip.PayrollRunId, run.RunNo, run.PayPeriodId, period.PeriodCode, period.PayDate,
-            runEmployee.Gross, runEmployee.NetPay, payslip.PublishedDate, lines));
+        return new PayslipBundle(true, payslip, run, period, runEmployee, lines);
     }
 }

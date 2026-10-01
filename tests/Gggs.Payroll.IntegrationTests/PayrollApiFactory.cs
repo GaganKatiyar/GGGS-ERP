@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using Gggs.BuildingBlocks.Domain.Abstractions;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Security;
+using Gggs.Payroll.Application.Attendance;
 using Gggs.Payroll.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -139,6 +140,11 @@ public sealed class PayrollApiFactory : WebApplicationFactory<Program>, IAsyncLi
 
             services.RemoveAll<IPermissionProvider>();
             services.AddScoped<IPermissionProvider, ClaimsPermissionProvider>();
+
+            // No real Time service to call in tests - every employee is fully paid (no LOP) unless a
+            // test opts into StubAttendanceDaysClient.Overrides for a specific employee.
+            services.RemoveAll<IAttendanceDaysClient>();
+            services.AddSingleton<IAttendanceDaysClient>(StubAttendanceDaysClient.Instance);
         });
 
         builder.ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning));
@@ -218,3 +224,25 @@ public sealed class TestAuthHandler(
 /// <summary>Shares one API host and database across the endpoint tests.</summary>
 [CollectionDefinition(nameof(PayrollApiCollection))]
 public sealed class PayrollApiCollection : ICollectionFixture<PayrollApiFactory>;
+
+/// <summary>
+/// Stands in for the real Time service in tests - a plain in-memory map from employee to the
+/// attendance days <see cref="PayrollRunService.CalculateAsync"/> should see for that employee,
+/// defaulting to "no data on record" (fully paid) for anyone not explicitly added. Tests sharing the
+/// same collection fixture also share this map, so each test clears its own entries via
+/// <see cref="Clear"/> before seeding what it needs.
+/// </summary>
+public sealed class StubAttendanceDaysClient : IAttendanceDaysClient
+{
+    public static readonly StubAttendanceDaysClient Instance = new();
+
+    private readonly Dictionary<Guid, IReadOnlyList<RemoteAttendanceDay>> overrides = [];
+
+    public void Clear() => overrides.Clear();
+
+    public void SetDaysFor(Guid employeeId, IReadOnlyList<RemoteAttendanceDay> days) => overrides[employeeId] = days;
+
+    public Task<IReadOnlyList<RemoteAttendanceDay>> ListAsync(
+        Guid employeeId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default)
+        => Task.FromResult(overrides.TryGetValue(employeeId, out IReadOnlyList<RemoteAttendanceDay>? days) ? days : []);
+}

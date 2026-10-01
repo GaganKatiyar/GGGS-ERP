@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Gggs.BuildingBlocks.Security;
 using Gggs.Payroll.Api.Contracts;
+using Gggs.Payroll.Application.Attendance;
 using Gggs.Payroll.Domain.Payroll;
 using Gggs.Payroll.Domain.Snapshots;
 using Gggs.Payroll.Infrastructure;
@@ -121,6 +122,65 @@ public sealed class PayrollRunEndpointTests(PayrollApiFactory factory)
         result.Gross.ShouldBe(30000m);
         result.NetPay.ShouldBe(28200m);
         result.Lines.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task CalculatingARun_ProratesEarningsForAbsentDays()
+    {
+        using HttpClient client = factory.CreateClientFor(AllPermissions);
+
+        Guid basicId = await GetOrCreateBasicComponentAsync(client);
+        Guid pfId = await CreateComponentAsync(client, "PF LOP", SalaryComponentKind.Deduction, SalaryComponentCalcType.Fixed);
+
+        Guid structureId = await CreateStructureAsync(client);
+        await client.PostAsJsonAsync(
+            $"/api/v1/payroll/structures/{structureId}/components",
+            new AddSalaryStructureComponentBody(basicId, 30000m, 1),
+            TestContext.Current.CancellationToken);
+        await client.PostAsJsonAsync(
+            $"/api/v1/payroll/structures/{structureId}/components",
+            new AddSalaryStructureComponentBody(pfId, 1800m, 2),
+            TestContext.Current.CancellationToken);
+
+        Guid employeeId = await SeedEmployeeAsync();
+        await client.PostAsJsonAsync(
+            "/api/v1/payroll/employee-salaries",
+            new AssignEmployeeSalaryBody(employeeId, structureId, 360000m, "INR", new DateOnly(2026, 4, 1)),
+            TestContext.Current.CancellationToken);
+
+        // April has 30 days; mark 3 of them Absent, so this employee is paid for 27/30.
+        StubAttendanceDaysClient.Instance.SetDaysFor(employeeId,
+        [
+            new RemoteAttendanceDay(new DateOnly(2026, 4, 10), RemoteAttendanceDayStatus.Absent),
+            new RemoteAttendanceDay(new DateOnly(2026, 4, 11), RemoteAttendanceDayStatus.Absent),
+            new RemoteAttendanceDay(new DateOnly(2026, 4, 12), RemoteAttendanceDayStatus.Absent),
+        ]);
+
+        try
+        {
+            Guid payGroupId = await CreatePayGroupAsync(client);
+            Guid periodId = await CreatePayPeriodAsync(client, payGroupId);
+            Guid runId = await CreateRunAsync(client, payGroupId, periodId);
+
+            await client.PostAsync($"/api/v1/payroll/runs/{runId}/calculate", content: null, TestContext.Current.CancellationToken);
+
+            HttpResponseMessage employeesResponse = await client.GetAsync(
+                $"/api/v1/payroll/runs/{runId}/employees", TestContext.Current.CancellationToken);
+            List<PayrollRunEmployeeResponse>? runEmployees = await employeesResponse.Content.ReadFromJsonAsync<List<PayrollRunEmployeeResponse>>(
+                JsonOptions, TestContext.Current.CancellationToken);
+            runEmployees.ShouldNotBeNull();
+
+            PayrollRunEmployeeResponse result = runEmployees.Single(x => x.EmployeeId == employeeId);
+            result.TotalDays.ShouldBe(30m);
+            result.LopDays.ShouldBe(3m);
+            result.PaidDays.ShouldBe(27m);
+            result.Gross.ShouldBe(27000m); // 30000 * 27/30
+            result.NetPay.ShouldBe(25200m); // 27000 - 1800 (deduction not prorated)
+        }
+        finally
+        {
+            StubAttendanceDaysClient.Instance.Clear();
+        }
     }
 
     [Fact]

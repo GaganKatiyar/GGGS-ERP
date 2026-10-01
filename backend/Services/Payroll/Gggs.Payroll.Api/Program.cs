@@ -10,14 +10,20 @@ using Gggs.BuildingBlocks.Secrets;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.Payroll.Api.Endpoints;
+using Gggs.Payroll.Application.Attendance;
 using Gggs.Payroll.Application.Payroll;
 using Gggs.Payroll.Application.Snapshots;
 using Gggs.Payroll.Infrastructure;
+using Gggs.Payroll.Infrastructure.Attendance;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 
 const string ServiceName = "payroll";
+
+// QuestPDF requires an explicit licence acknowledgement at startup - Community, free below its
+// revenue threshold (architecture.md §15, Directory.Packages.props's own remarks on this package).
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -42,6 +48,15 @@ builder.Services.AddGggsRemotePermissions(builder.Configuration);
 // Tenant lookups go to the Platform service, through the same client every downstream service
 // uses - this service holds no copy of the tenant registry.
 builder.Services.AddGggsRemoteTenantRegistry(builder.Configuration);
+
+// Attendance for run proration comes from the Time service directly - see
+// IAttendanceDaysClient's own remarks on why this is a synchronous call rather than a local
+// snapshot table fed by events, the usual cross-service pattern.
+builder.Services.AddHttpClient<IAttendanceDaysClient, HttpAttendanceDaysClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Gggs:Services:Time"] ?? "http://time");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 
 builder.Services.AddScoped<TenantAuditSaveChangesInterceptor>();
 builder.Services.AddScoped<TenantSessionContextInterceptor>();
