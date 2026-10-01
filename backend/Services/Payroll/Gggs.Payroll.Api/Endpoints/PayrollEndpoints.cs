@@ -46,6 +46,11 @@ public static class PayrollEndpoints
             .WithName("DeactivateSalaryComponent").RequirePermission(Permissions.Payroll.ComponentManage);
         group.MapPost("/{id:guid}/reactivate", ReactivateComponentAsync)
             .WithName("ReactivateSalaryComponent").RequirePermission(Permissions.Payroll.ComponentManage);
+
+        group.MapGet("/{id:guid}/slabs", ListComponentSlabsAsync)
+            .WithName("ListSalaryComponentSlabs").RequirePermission(Permissions.Payroll.ComponentManage);
+        group.MapPost("/{id:guid}/slabs", AddComponentSlabAsync)
+            .WithName("AddSalaryComponentSlab").RequirePermission(Permissions.Payroll.ComponentManage);
     }
 
     private static async Task<Ok<IReadOnlyList<SalaryComponentResponse>>> ListComponentsAsync(PayrollDbContext db, CancellationToken ct)
@@ -74,6 +79,27 @@ public static class PayrollEndpoints
 
     private static async Task<Ok<SalaryComponentResponse>> ReactivateComponentAsync(Guid id, SalaryComponentService service, CancellationToken ct)
         => TypedResults.Ok(ToResponse(await service.ReactivateAsync(id, ct)));
+
+    private static async Task<Ok<IReadOnlyList<SalaryComponentSlabResponse>>> ListComponentSlabsAsync(
+        Guid id, PayrollDbContext db, CancellationToken ct)
+    {
+        List<SalaryComponentSlabResponse> items = await db.SalaryComponentSlabs.AsNoTracking()
+            .Where(x => x.ComponentId == id)
+            .OrderBy(x => x.ThresholdAmount)
+            .Select(x => ToResponse(x))
+            .ToListAsync(ct);
+
+        return TypedResults.Ok<IReadOnlyList<SalaryComponentSlabResponse>>(items);
+    }
+
+    private static async Task<Created<SalaryComponentSlabResponse>> AddComponentSlabAsync(
+        Guid id, AddSalaryComponentSlabBody body, SalaryComponentService service, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+
+        SalaryComponentSlab entity = await service.AddSlabAsync(id, body.ThresholdAmount, body.TaxAmount, ct);
+        return TypedResults.Created($"/api/v1/payroll/components/{id}/slabs/{entity.Id}", ToResponse(entity));
+    }
 
     private static void MapStructureEndpoints(IEndpointRouteBuilder endpoints)
     {
@@ -188,6 +214,9 @@ public static class PayrollEndpoints
 
     private static SalaryComponentResponse ToResponse(SalaryComponent entity) => new(
         entity.Id, entity.Code, entity.Name, entity.Kind, entity.CalcType, entity.IsTaxable, entity.DisplayOrder, entity.IsActive);
+
+    private static SalaryComponentSlabResponse ToResponse(SalaryComponentSlab entity) => new(
+        entity.Id, entity.ComponentId, entity.ThresholdAmount, entity.TaxAmount);
 
     private static SalaryStructureResponse ToResponse(SalaryStructure entity) => new(entity.Id, entity.Code, entity.Name, entity.IsActive);
 

@@ -17,6 +17,7 @@ public sealed class EmployeeSalaryService(
     ISalaryStructureRepository structures,
     ISalaryStructureComponentRepository structureComponents,
     ISalaryComponentRepository components,
+    ISalaryComponentSlabRepository slabs,
     IEmployeeSnapshotRepository snapshots,
     IUnitOfWork unitOfWork)
 {
@@ -54,13 +55,24 @@ public sealed class EmployeeSalaryService(
 
         decimal basicMonthly = basicLine.Value;
 
+        IReadOnlyList<Guid> flatSlabComponentIds = [.. lineComponents.Where(x => x.CalcType == SalaryComponentCalcType.FlatSlab).Select(x => x.Id)];
+        IReadOnlyList<SalaryComponentSlab> allSlabs = flatSlabComponentIds.Count > 0
+            ? await slabs.ListForComponentsAsync(flatSlabComponentIds, cancellationToken)
+            : [];
+
         EmployeeSalary salary = EmployeeSalary.Create(employeeId, structureId, annualCtc, currency, effectiveFrom);
         salaries.Add(salary);
 
         foreach (SalaryStructureComponent line in lines)
         {
             SalaryComponent component = componentsById[line.ComponentId];
-            decimal monthlyAmount = component.Code == BasicComponentCode ? basicMonthly : ComputeMonthlyAmount(component, line, basicMonthly);
+
+            decimal monthlyAmount = component.Code == BasicComponentCode
+                ? basicMonthly
+                : component.CalcType == SalaryComponentCalcType.FlatSlab
+                    ? ResolveSlabAmount(allSlabs.Where(x => x.ComponentId == component.Id), basicMonthly)
+                    : ComputeMonthlyAmount(component, line, basicMonthly);
+
             salaryComponents.Add(EmployeeSalaryComponent.Create(salary.Id, component.Id, monthlyAmount, monthlyAmount * 12m));
         }
 
@@ -69,7 +81,7 @@ public sealed class EmployeeSalaryService(
     }
 
     /// <summary>
-    /// A non-Basic line's monthly amount, by <see cref="SalaryComponentCalcType"/>:
+    /// A non-Basic, non-FlatSlab line's monthly amount, by <see cref="SalaryComponentCalcType"/>:
     /// <list type="bullet">
     /// <item>Fixed - the line's value directly.</item>
     /// <item>PercentOfBasic - the value as a percentage of the actual Basic monthly amount.</item>
@@ -81,6 +93,8 @@ public sealed class EmployeeSalaryService(
     /// all, matching ESI's real eligibility rule (<see cref="SalaryComponentCalcType"/>'s own
     /// remarks on why this cannot share PF's capped-base math).</item>
     /// </list>
+    /// FlatSlab (PT) is resolved separately by <see cref="ResolveSlabAmount"/>, since its amount
+    /// comes from the component's own <see cref="SalaryComponentSlab"/> rows, not the line.
     /// </summary>
     private static decimal ComputeMonthlyAmount(SalaryComponent component, SalaryStructureComponent line, decimal basicMonthly) =>
         component.CalcType switch
@@ -92,6 +106,17 @@ public sealed class EmployeeSalaryService(
                 line.WageCeiling is { } ceiling && basicMonthly > ceiling ? 0m : Math.Round(basicMonthly * line.Value / 100m, 2),
             _ => line.Value,
         };
+
+    /// <summary>The highest-threshold slab the basic monthly amount meets or exceeds, or zero when
+    /// Basic is below every configured threshold - see <see cref="SalaryComponentSlab"/>'s own
+    /// remarks on why that is the correct "below the first paid band" answer, not a configuration
+    /// error.</summary>
+    private static decimal ResolveSlabAmount(IEnumerable<SalaryComponentSlab> componentSlabs, decimal basicMonthly) =>
+        componentSlabs
+            .Where(x => basicMonthly >= x.ThresholdAmount)
+            .OrderByDescending(x => x.ThresholdAmount)
+            .Select(x => x.TaxAmount)
+            .FirstOrDefault();
 
     private static void Guard(bool condition, string errorCode, string message)
     {

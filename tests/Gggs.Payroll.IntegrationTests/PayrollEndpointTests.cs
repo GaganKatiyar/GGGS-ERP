@@ -344,6 +344,122 @@ public sealed class PayrollEndpointTests(PayrollApiFactory factory)
     }
 
     [Fact]
+    public async Task AddingASlab_ToANonFlatSlabComponent_IsRejected()
+    {
+        using HttpClient client = factory.CreateClientFor(AllPermissions);
+        Guid hraId = await CreateComponentAsync(client, "HRA3", SalaryComponentKind.Earning, SalaryComponentCalcType.PercentOfBasic);
+
+        HttpResponseMessage response = await client.PostAsJsonAsync(
+            $"/api/v1/payroll/components/{hraId}/slabs",
+            new AddSalaryComponentSlabBody(15000m, 200m),
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [Fact]
+    public async Task AddingAFlatSlabComponent_ToAStructure_WithNoSlabsConfigured_IsRejected()
+    {
+        using HttpClient client = factory.CreateClientFor(AllPermissions);
+        Guid structureId = await CreateStructureAsync(client);
+        Guid ptId = await CreateComponentAsync(client, "PT1", SalaryComponentKind.Deduction, SalaryComponentCalcType.FlatSlab);
+
+        HttpResponseMessage response = await client.PostAsJsonAsync(
+            $"/api/v1/payroll/structures/{structureId}/components",
+            new AddSalaryStructureComponentBody(ptId, 0m, 1),
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [Fact]
+    public async Task AssigningASalary_WithPtBelowTheFirstSlabThreshold_ComputesZero()
+    {
+        using HttpClient client = factory.CreateClientFor(AllPermissions);
+        Guid structureId = await CreateStructureAsync(client);
+
+        Guid basicId = await GetOrCreateBasicComponentAsync(client);
+        Guid ptId = await CreateComponentAsync(client, "PT2", SalaryComponentKind.Deduction, SalaryComponentCalcType.FlatSlab);
+
+        await client.PostAsJsonAsync(
+            $"/api/v1/payroll/components/{ptId}/slabs",
+            new AddSalaryComponentSlabBody(0m, 0m),
+            TestContext.Current.CancellationToken);
+        await client.PostAsJsonAsync(
+            $"/api/v1/payroll/components/{ptId}/slabs",
+            new AddSalaryComponentSlabBody(15000m, 200m),
+            TestContext.Current.CancellationToken);
+
+        await client.PostAsJsonAsync(
+            $"/api/v1/payroll/structures/{structureId}/components",
+            new AddSalaryStructureComponentBody(basicId, 12000m, 1),
+            TestContext.Current.CancellationToken);
+        await client.PostAsJsonAsync(
+            $"/api/v1/payroll/structures/{structureId}/components",
+            new AddSalaryStructureComponentBody(ptId, 0m, 2),
+            TestContext.Current.CancellationToken);
+
+        Guid employeeId = await SeedEmployeeAsync();
+
+        HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/v1/payroll/employee-salaries",
+            new AssignEmployeeSalaryBody(employeeId, structureId, 144000m, "INR", new DateOnly(2026, 4, 1)),
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        EmployeeSalaryResponse? salary = await response.Content.ReadFromJsonAsync<EmployeeSalaryResponse>(JsonOptions, TestContext.Current.CancellationToken);
+        salary.ShouldNotBeNull();
+
+        // Basic (12000) is below the first paid threshold (15000), so PT resolves to the zero-rate
+        // band: 0.
+        EmployeeSalaryComponentResponse ptLine = salary.Components.Single(x => x.ComponentId == ptId);
+        ptLine.MonthlyAmount.ShouldBe(0m);
+    }
+
+    [Fact]
+    public async Task AssigningASalary_WithPtAtOrAboveASlabThreshold_ComputesThatSlabsAmount()
+    {
+        using HttpClient client = factory.CreateClientFor(AllPermissions);
+        Guid structureId = await CreateStructureAsync(client);
+
+        Guid basicId = await GetOrCreateBasicComponentAsync(client);
+        Guid ptId = await CreateComponentAsync(client, "PT3", SalaryComponentKind.Deduction, SalaryComponentCalcType.FlatSlab);
+
+        await client.PostAsJsonAsync(
+            $"/api/v1/payroll/components/{ptId}/slabs",
+            new AddSalaryComponentSlabBody(0m, 0m),
+            TestContext.Current.CancellationToken);
+        await client.PostAsJsonAsync(
+            $"/api/v1/payroll/components/{ptId}/slabs",
+            new AddSalaryComponentSlabBody(15000m, 200m),
+            TestContext.Current.CancellationToken);
+
+        await client.PostAsJsonAsync(
+            $"/api/v1/payroll/structures/{structureId}/components",
+            new AddSalaryStructureComponentBody(basicId, 20000m, 1),
+            TestContext.Current.CancellationToken);
+        await client.PostAsJsonAsync(
+            $"/api/v1/payroll/structures/{structureId}/components",
+            new AddSalaryStructureComponentBody(ptId, 0m, 2),
+            TestContext.Current.CancellationToken);
+
+        Guid employeeId = await SeedEmployeeAsync();
+
+        HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/v1/payroll/employee-salaries",
+            new AssignEmployeeSalaryBody(employeeId, structureId, 240000m, "INR", new DateOnly(2026, 4, 1)),
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        EmployeeSalaryResponse? salary = await response.Content.ReadFromJsonAsync<EmployeeSalaryResponse>(JsonOptions, TestContext.Current.CancellationToken);
+        salary.ShouldNotBeNull();
+
+        // Basic (20000) is at or above the 15000 threshold, so PT resolves to that slab's amount: 200.
+        EmployeeSalaryComponentResponse ptLine = salary.Components.Single(x => x.ComponentId == ptId);
+        ptLine.MonthlyAmount.ShouldBe(200m);
+    }
+
+    [Fact]
     public async Task AssigningASalary_ForAnExitedEmployee_IsRejected()
     {
         using HttpClient client = factory.CreateClientFor(AllPermissions);

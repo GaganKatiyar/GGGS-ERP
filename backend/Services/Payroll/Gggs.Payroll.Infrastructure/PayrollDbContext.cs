@@ -17,6 +17,8 @@ public sealed class PayrollDbContext(DbContextOptions<PayrollDbContext> options,
 
     public DbSet<SalaryComponent> SalaryComponents => Set<SalaryComponent>();
 
+    public DbSet<SalaryComponentSlab> SalaryComponentSlabs => Set<SalaryComponentSlab>();
+
     public DbSet<SalaryStructure> SalaryStructures => Set<SalaryStructure>();
 
     public DbSet<SalaryStructureComponent> SalaryStructureComponents => Set<SalaryStructureComponent>();
@@ -53,6 +55,20 @@ public sealed class PayrollDbContext(DbContextOptions<PayrollDbContext> options,
 
             entity.HasIndex(x => new { x.TenantId, x.Code })
                 .HasDatabaseName("UX_SalaryComponent_TenantId_Code")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            entity.Ignore(x => x.DomainEvents);
+        });
+
+        modelBuilder.Entity<SalaryComponentSlab>(entity =>
+        {
+            entity.ToTable("SalaryComponentSlab", "pay");
+            entity.Property(x => x.ThresholdAmount).HasColumnType("decimal(12,2)");
+            entity.Property(x => x.TaxAmount).HasColumnType("decimal(12,2)");
+
+            entity.HasIndex(x => new { x.TenantId, x.ComponentId, x.ThresholdAmount })
+                .HasDatabaseName("UX_SalaryComponentSlab_TenantId_ComponentId_ThresholdAmount")
                 .IsUnique()
                 .HasFilter("[IsDeleted] = 0");
 

@@ -23,6 +23,21 @@ public sealed class SalaryComponentRepository(PayrollDbContext dbContext) : ISal
     public void Add(SalaryComponent component) => dbContext.SalaryComponents.Add(component);
 }
 
+public sealed class SalaryComponentSlabRepository(PayrollDbContext dbContext) : ISalaryComponentSlabRepository
+{
+    public async Task<IReadOnlyList<SalaryComponentSlab>> ListForComponentAsync(Guid componentId, CancellationToken cancellationToken = default)
+        => await dbContext.SalaryComponentSlabs
+            .Where(x => x.ComponentId == componentId)
+            .OrderBy(x => x.ThresholdAmount)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<SalaryComponentSlab>> ListForComponentsAsync(
+        IEnumerable<Guid> componentIds, CancellationToken cancellationToken = default)
+        => await dbContext.SalaryComponentSlabs.Where(x => componentIds.Contains(x.ComponentId)).ToListAsync(cancellationToken);
+
+    public void Add(SalaryComponentSlab slab) => dbContext.SalaryComponentSlabs.Add(slab);
+}
+
 public sealed class SalaryStructureRepository(PayrollDbContext dbContext) : ISalaryStructureRepository
 {
     public async Task<SalaryStructure?> GetAsync(Guid id, CancellationToken cancellationToken = default)

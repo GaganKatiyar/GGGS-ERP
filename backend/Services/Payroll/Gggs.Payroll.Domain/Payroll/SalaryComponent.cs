@@ -10,25 +10,30 @@ public enum SalaryComponentKind
 }
 
 /// <summary>
-/// How a component's amount is worked out. No formula DSL, slab lookup or GL account code in this
-/// v1 slice (architecture.md's <c>SalaryComponent.Formula</c>) - a component is a fixed monthly
-/// amount, a plain percentage of the structure's Basic component, or one of two statutory shapes
-/// that both apply a percentage against a wage ceiling but differ in what happens once Basic
-/// exceeds it:
+/// How a component's amount is worked out. No formula DSL or GL account code in this v1 slice
+/// (architecture.md's <c>SalaryComponent.Formula</c>) - a component is a fixed monthly amount, a
+/// plain percentage of the structure's Basic component, one of two statutory percentage shapes that
+/// both read a wage ceiling but differ in what happens once Basic exceeds it, or a flat slab lookup:
 /// <list type="bullet">
 /// <item><see cref="PercentOfBasicCapped"/> (Provident Fund) - the <em>base</em> is capped, so the
 /// contribution still applies, just computed on the ceiling instead of the full Basic.</item>
 /// <item><see cref="PercentOfBasicWithEligibilityCap"/> (ESI) - the ceiling is an
 /// <em>eligibility</em> threshold: at or under it the percentage applies to the actual Basic in
 /// full, and above it the component is not deducted at all (not even on the ceiling amount).</item>
+/// <item><see cref="FlatSlab"/> (Professional Tax) - not a percentage at all: the component's own
+/// <see cref="SalaryComponentSlab"/> rows say a flat amount for every wage threshold Basic meets or
+/// exceeds, and the highest matching threshold wins. PT is genuinely a per-state slab table in the
+/// real world (architecture.md's compliance-pack model), and this does not attempt that - a tenant
+/// with employees in several states defines one "PT - Karnataka" component and one "PT -
+/// Maharashtra" component, each with its own slabs, and assigns the right one per structure. There
+/// is no state field, no half-yearly timing and no LegalEntity targeting here.</item>
 /// </list>
-/// Both are deliberately narrow: neither hardcodes PF's or ESI's actual numbers (12%/Rs 15,000,
-/// 0.75%/Rs 21,000) in code - the percentage and the ceiling are configured per
-/// <c>SalaryStructureComponent</c> line, the same way a plain <see cref="PercentOfBasic"/> line's
-/// percentage already is. A full compliance-pack model (versioned, effective-dated, per-country
-/// rule tables) is still a later slice; this only buys the two shapes PF and ESI need, matching
-/// every other v1 module's established simplification (Performance v1's flat cycle instead of a
-/// rating-scale/template model).
+/// All three statutory shapes are deliberately narrow: none hardcodes a real country's numbers in
+/// code - the percentage/ceiling/slabs are configured per component or line, the same way a plain
+/// <see cref="PercentOfBasic"/> line's percentage already is. A full compliance-pack model
+/// (versioned, effective-dated, per-country rule tables) is still a later slice; this only buys the
+/// shapes PF, ESI and PT need, matching every other v1 module's established simplification
+/// (Performance v1's flat cycle instead of a rating-scale/template model).
 /// </summary>
 public enum SalaryComponentCalcType
 {
@@ -36,6 +41,7 @@ public enum SalaryComponentCalcType
     PercentOfBasic = 2,
     PercentOfBasicCapped = 3,
     PercentOfBasicWithEligibilityCap = 4,
+    FlatSlab = 5,
 }
 
 /// <summary>
@@ -78,4 +84,41 @@ public sealed class SalaryComponent : TenantAggregateRoot
     public void Deactivate() => IsActive = false;
 
     public void Reactivate() => IsActive = true;
+}
+
+/// <summary>
+/// One threshold of a <see cref="SalaryComponentCalcType.FlatSlab"/> component's slab table - "at or
+/// above Rs 15,000 of Basic, this component is Rs 200/month." <see cref="SalaryStructureService"/>
+/// resolves the amount by taking the highest-threshold slab the employee's Basic meets or exceeds; a
+/// component with no slab at or below Basic (every threshold is higher) resolves to zero, matching
+/// how real PT tables have a zero-rate band below their first paid threshold. Belongs to the
+/// component itself, not a structure's line, because the slab table is what makes "PT - Karnataka"
+/// and "PT - Maharashtra" two different catalog entries in the first place - see
+/// <see cref="SalaryComponentCalcType"/>'s own remarks.
+/// </summary>
+public sealed class SalaryComponentSlab : TenantAggregateRoot
+{
+    private SalaryComponentSlab()
+    {
+    }
+
+    public Guid ComponentId { get; private set; }
+
+    public decimal ThresholdAmount { get; private set; }
+
+    public decimal TaxAmount { get; private set; }
+
+    public static SalaryComponentSlab Create(Guid componentId, decimal thresholdAmount, decimal taxAmount)
+    {
+        Guard.Against(thresholdAmount < 0, "SALARY_COMPONENT_SLAB_THRESHOLD_NEGATIVE", "The threshold cannot be negative.");
+        Guard.Against(taxAmount < 0, "SALARY_COMPONENT_SLAB_AMOUNT_NEGATIVE", "The slab amount cannot be negative.");
+
+        return new SalaryComponentSlab
+        {
+            ComponentId = Guard.NotEmpty(componentId),
+            ThresholdAmount = thresholdAmount,
+            TaxAmount = taxAmount,
+            IsActive = true,
+        };
+    }
 }

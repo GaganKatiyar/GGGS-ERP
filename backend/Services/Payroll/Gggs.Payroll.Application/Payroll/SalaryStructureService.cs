@@ -11,6 +11,7 @@ public sealed class SalaryStructureService(
     ISalaryStructureRepository structures,
     ISalaryStructureComponentRepository structureComponents,
     ISalaryComponentRepository components,
+    ISalaryComponentSlabRepository slabs,
     IUnitOfWork unitOfWork)
 {
     private const string BasicComponentCode = "BASIC";
@@ -68,6 +69,14 @@ public sealed class SalaryStructureService(
                 wageCeiling is > 0,
                 "SALARY_STRUCTURE_WAGE_CEILING_REQUIRED",
                 $"A {component.CalcType} component needs a positive wage ceiling.");
+        }
+        else if (component.CalcType == SalaryComponentCalcType.FlatSlab)
+        {
+            IReadOnlyList<SalaryComponentSlab> componentSlabs = await slabs.ListForComponentAsync(componentId, cancellationToken);
+            Guard(
+                componentSlabs.Count > 0,
+                "SALARY_STRUCTURE_FLAT_SLAB_HAS_NO_SLABS",
+                $"'{component.Name}' has no slabs configured yet - add at least one before using it on a structure.");
         }
 
         Guard(

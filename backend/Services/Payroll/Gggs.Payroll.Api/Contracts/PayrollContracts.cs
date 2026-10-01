@@ -9,6 +9,10 @@ public sealed record SalaryComponentResponse(
 public sealed record CreateSalaryComponentBody(
     string Code, string Name, SalaryComponentKind Kind, SalaryComponentCalcType CalcType, bool IsTaxable, int DisplayOrder);
 
+public sealed record SalaryComponentSlabResponse(Guid Id, Guid ComponentId, decimal ThresholdAmount, decimal TaxAmount);
+
+public sealed record AddSalaryComponentSlabBody(decimal ThresholdAmount, decimal TaxAmount);
+
 public sealed record SalaryStructureResponse(Guid Id, string Code, string Name, bool IsActive);
 
 public sealed record CreateSalaryStructureBody(string Code, string Name);

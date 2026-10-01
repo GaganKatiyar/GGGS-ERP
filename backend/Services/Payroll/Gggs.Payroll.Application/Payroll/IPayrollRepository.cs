@@ -13,6 +13,20 @@ public interface ISalaryComponentRepository
     void Add(SalaryComponent component);
 }
 
+public interface ISalaryComponentSlabRepository
+{
+    Task<IReadOnlyList<SalaryComponentSlab>> ListForComponentAsync(Guid componentId, CancellationToken cancellationToken = default);
+
+    /// <summary>The same lookup as <see cref="ListForComponentAsync"/>, batched across every
+    /// FlatSlab component an <see cref="EmployeeSalaryService.AssignAsync"/> call or a
+    /// <see cref="PayrollRunService.CalculateAsync"/> run is resolving, so it is one query instead
+    /// of one per component.</summary>
+    Task<IReadOnlyList<SalaryComponentSlab>> ListForComponentsAsync(
+        IEnumerable<Guid> componentIds, CancellationToken cancellationToken = default);
+
+    void Add(SalaryComponentSlab slab);
+}
+
 public interface ISalaryStructureRepository
 {
     Task<SalaryStructure?> GetAsync(Guid id, CancellationToken cancellationToken = default);

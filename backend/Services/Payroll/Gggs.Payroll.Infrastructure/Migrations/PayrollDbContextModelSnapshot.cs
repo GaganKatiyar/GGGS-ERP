@@ -777,6 +777,71 @@ namespace Gggs.Payroll.Infrastructure.Migrations
                     b.ToTable("SalaryComponent", "pay");
                 });
 
+            modelBuilder.Entity("Gggs.Payroll.Domain.Payroll.SalaryComponentSlab", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ComponentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("ThresholdAmount")
+                        .HasColumnType("decimal(12,2)");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_SalaryComponentSlab_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "ComponentId", "ThresholdAmount")
+                        .IsUnique()
+                        .HasDatabaseName("UX_SalaryComponentSlab_TenantId_ComponentId_ThresholdAmount")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("SalaryComponentSlab", "pay");
+                });
+
             modelBuilder.Entity("Gggs.Payroll.Domain.Payroll.SalaryStructure", b =>
                 {
                     b.Property<Guid>("Id")

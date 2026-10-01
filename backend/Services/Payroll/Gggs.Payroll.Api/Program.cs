@@ -76,6 +76,7 @@ builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<PayrollDbCon
 builder.Services.AddGggsMessaging<PayrollDbContext>(builder.Configuration, platform.DeploymentProfile);
 
 builder.Services.AddScoped<ISalaryComponentRepository, SalaryComponentRepository>();
+builder.Services.AddScoped<ISalaryComponentSlabRepository, SalaryComponentSlabRepository>();
 builder.Services.AddScoped<ISalaryStructureRepository, SalaryStructureRepository>();
 builder.Services.AddScoped<ISalaryStructureComponentRepository, SalaryStructureComponentRepository>();
 builder.Services.AddScoped<IEmployeeSalaryRepository, EmployeeSalaryRepository>();
