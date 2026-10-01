@@ -111,6 +111,12 @@ export const NAVIGATION: readonly NavItem[] = [
         permissions: ['self.travel-request.create'],
       },
       {
+        label: 'My assets',
+        icon: 'pi pi-desktop',
+        route: '/me/assets',
+        permissions: ['self.asset.view'],
+      },
+      {
         label: 'My documents',
         icon: 'pi pi-file',
         route: '/me/documents',
@@ -346,6 +352,25 @@ export const NAVIGATION: readonly NavItem[] = [
         icon: 'pi pi-send',
         route: '/spend/travel-requests',
         permissions: ['spend.travel.view'],
+      },
+    ],
+  },
+  {
+    label: 'Assets',
+    icon: 'pi pi-desktop',
+    permissions: ['asset.category.manage', 'asset.asset.view'],
+    children: [
+      {
+        label: 'Categories',
+        icon: 'pi pi-list',
+        route: '/assets',
+        permissions: ['asset.category.manage'],
+      },
+      {
+        label: 'Register',
+        icon: 'pi pi-desktop',
+        route: '/assets/register',
+        permissions: ['asset.asset.view'],
       },
     ],
   },

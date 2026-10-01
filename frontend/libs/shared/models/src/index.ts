@@ -16,3 +16,4 @@ export * from './lib/performance.models';
 export * from './lib/learning.models';
 export * from './lib/payroll.models';
 export * from './lib/spend.models';
+export * from './lib/asset.models';

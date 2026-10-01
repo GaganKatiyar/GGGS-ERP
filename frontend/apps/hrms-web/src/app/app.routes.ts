@@ -120,6 +120,12 @@ export const appRoutes: Route[] = [
           import('@gggs/features/spend').then((m) => m.MY_TRAVEL_ROUTES),
       },
       {
+        path: 'me/assets',
+        ...withPermissions(['self.asset.view']),
+        loadChildren: () =>
+          import('@gggs/features/assets').then((m) => m.MY_ASSETS_ROUTES),
+      },
+      {
         path: 'team',
         ...withPermissions(['employee.profile.view']),
         loadChildren: () =>
@@ -186,6 +192,12 @@ export const appRoutes: Route[] = [
         ...withPermissions(['spend.category.manage', 'spend.claim.view', 'spend.travel.view']),
         loadChildren: () =>
           import('@gggs/features/spend').then((m) => m.SPEND_ROUTES),
+      },
+      {
+        path: 'assets',
+        ...withPermissions(['asset.category.manage', 'asset.asset.view']),
+        loadChildren: () =>
+          import('@gggs/features/assets').then((m) => m.ASSETS_ROUTES),
       },
       {
         path: 'admin',
