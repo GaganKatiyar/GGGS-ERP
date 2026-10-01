@@ -4,17 +4,24 @@ import { ApiError } from '@gggs/core/http';
 import type {
   AddSalaryStructureComponentRequest,
   AssignEmployeeSalaryRequest,
+  CreatePayGroupRequest,
+  CreatePayPeriodRequest,
+  CreatePayrollRunRequest,
   CreateSalaryComponentRequest,
   CreateSalaryStructureRequest,
   EmployeeSalary,
+  PayGroup,
+  PayPeriod,
+  PayrollRun,
+  PayrollRunEmployee,
   SalaryComponent,
   SalaryStructure,
   SalaryStructureComponent,
 } from '@gggs/shared/models';
 import { firstValueFrom } from 'rxjs';
 
-/** Salary components, structures and employee salary assignment, over the gateway's
- * `/api/v1/payroll/*` routes. No payroll runs, payslips or statutory compliance in this v1 slice. */
+/** Salary components, structures, employee salary assignment, and payroll runs, over the gateway's
+ * `/api/v1/payroll/*` routes. No payslips or statutory compliance in this v1 slice. */
 @Injectable({ providedIn: 'root' })
 export class PayrollApi {
   private readonly http = inject(HttpClient);
@@ -81,5 +88,57 @@ export class PayrollApi {
 
   assignEmployeeSalary(request: AssignEmployeeSalaryRequest): Promise<EmployeeSalary> {
     return firstValueFrom(this.http.post<EmployeeSalary>('/api/v1/payroll/employee-salaries', request));
+  }
+
+  // ---- Pay groups and periods ----
+
+  listPayGroups(): Promise<readonly PayGroup[]> {
+    return firstValueFrom(this.http.get<readonly PayGroup[]>('/api/v1/payroll/pay-groups'));
+  }
+
+  createPayGroup(request: CreatePayGroupRequest): Promise<PayGroup> {
+    return firstValueFrom(this.http.post<PayGroup>('/api/v1/payroll/pay-groups', request));
+  }
+
+  deactivatePayGroup(id: string): Promise<PayGroup> {
+    return firstValueFrom(this.http.post<PayGroup>(`/api/v1/payroll/pay-groups/${id}/deactivate`, {}));
+  }
+
+  reactivatePayGroup(id: string): Promise<PayGroup> {
+    return firstValueFrom(this.http.post<PayGroup>(`/api/v1/payroll/pay-groups/${id}/reactivate`, {}));
+  }
+
+  listPayPeriods(payGroupId: string): Promise<readonly PayPeriod[]> {
+    return firstValueFrom(this.http.get<readonly PayPeriod[]>(`/api/v1/payroll/pay-groups/${payGroupId}/periods`));
+  }
+
+  createPayPeriod(payGroupId: string, request: CreatePayPeriodRequest): Promise<PayPeriod> {
+    return firstValueFrom(this.http.post<PayPeriod>(`/api/v1/payroll/pay-groups/${payGroupId}/periods`, request));
+  }
+
+  // ---- Payroll runs ----
+
+  listPayrollRuns(): Promise<readonly PayrollRun[]> {
+    return firstValueFrom(this.http.get<readonly PayrollRun[]>('/api/v1/payroll/runs'));
+  }
+
+  getPayrollRun(id: string): Promise<PayrollRun> {
+    return firstValueFrom(this.http.get<PayrollRun>(`/api/v1/payroll/runs/${id}`));
+  }
+
+  listPayrollRunEmployees(id: string): Promise<readonly PayrollRunEmployee[]> {
+    return firstValueFrom(this.http.get<readonly PayrollRunEmployee[]>(`/api/v1/payroll/runs/${id}/employees`));
+  }
+
+  createPayrollRun(request: CreatePayrollRunRequest): Promise<PayrollRun> {
+    return firstValueFrom(this.http.post<PayrollRun>('/api/v1/payroll/runs', request));
+  }
+
+  calculatePayrollRun(id: string): Promise<PayrollRun> {
+    return firstValueFrom(this.http.post<PayrollRun>(`/api/v1/payroll/runs/${id}/calculate`, {}));
+  }
+
+  finalizePayrollRun(id: string): Promise<PayrollRun> {
+    return firstValueFrom(this.http.post<PayrollRun>(`/api/v1/payroll/runs/${id}/finalize`, {}));
   }
 }

@@ -76,3 +76,74 @@ export interface AssignEmployeeSalaryRequest {
   readonly currency: string;
   readonly effectiveFrom: string;
 }
+
+export type PayFrequency = 'Monthly' | 'SemiMonthly' | 'BiWeekly' | 'Weekly';
+
+export interface PayGroup {
+  readonly id: string;
+  readonly code: string;
+  readonly name: string;
+  readonly frequency: PayFrequency;
+  readonly currency: string;
+  readonly isActive: boolean;
+}
+
+export interface CreatePayGroupRequest {
+  readonly code: string;
+  readonly name: string;
+  readonly frequency: PayFrequency;
+  readonly currency: string;
+}
+
+export type PayPeriodStatus = 'Open' | 'Locked' | 'Closed';
+
+export interface PayPeriod {
+  readonly id: string;
+  readonly payGroupId: string;
+  readonly periodCode: string;
+  readonly startDate: string;
+  readonly endDate: string;
+  readonly payDate: string;
+  readonly status: PayPeriodStatus;
+}
+
+export interface CreatePayPeriodRequest {
+  readonly periodCode: string;
+  readonly startDate: string;
+  readonly endDate: string;
+  readonly payDate: string;
+}
+
+export type PayrollRunStatus = 'Draft' | 'Calculated' | 'Finalized';
+
+export interface PayrollRun {
+  readonly id: string;
+  readonly payGroupId: string;
+  readonly payPeriodId: string;
+  readonly runNo: string;
+  readonly status: PayrollRunStatus;
+  readonly employeeCount: number;
+  readonly grossTotal: number;
+  readonly netTotal: number;
+  readonly calculatedDate?: string;
+  readonly finalizedDate?: string;
+}
+
+export interface CreatePayrollRunRequest {
+  readonly payGroupId: string;
+  readonly payPeriodId: string;
+  readonly runNo: string;
+}
+
+export interface PayrollRunEmployeeLine {
+  readonly componentId: string;
+  readonly amount: number;
+}
+
+export interface PayrollRunEmployee {
+  readonly id: string;
+  readonly employeeId: string;
+  readonly gross: number;
+  readonly netPay: number;
+  readonly lines: readonly PayrollRunEmployeeLine[];
+}

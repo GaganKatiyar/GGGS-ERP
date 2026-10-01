@@ -278,7 +278,13 @@ export const NAVIGATION: readonly NavItem[] = [
   {
     label: 'Payroll',
     icon: 'pi pi-wallet',
-    permissions: ['payroll.component.manage', 'payroll.structure.manage', 'payroll.employee-salary.view'],
+    permissions: [
+      'payroll.component.manage',
+      'payroll.structure.manage',
+      'payroll.employee-salary.view',
+      'payroll.pay-group.manage',
+      'payroll.run.view',
+    ],
     children: [
       {
         label: 'Components',
@@ -297,6 +303,18 @@ export const NAVIGATION: readonly NavItem[] = [
         icon: 'pi pi-money-bill',
         route: '/payroll/employee-salary',
         permissions: ['payroll.employee-salary.view'],
+      },
+      {
+        label: 'Pay groups',
+        icon: 'pi pi-calendar',
+        route: '/payroll/pay-groups',
+        permissions: ['payroll.pay-group.manage'],
+      },
+      {
+        label: 'Runs',
+        icon: 'pi pi-play',
+        route: '/payroll/runs',
+        permissions: ['payroll.run.view'],
       },
     ],
   },

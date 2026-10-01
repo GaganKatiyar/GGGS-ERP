@@ -153,7 +153,13 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'payroll',
-        ...withPermissions(['payroll.component.manage', 'payroll.structure.manage', 'payroll.employee-salary.view']),
+        ...withPermissions([
+          'payroll.component.manage',
+          'payroll.structure.manage',
+          'payroll.employee-salary.view',
+          'payroll.pay-group.manage',
+          'payroll.run.view',
+        ]),
         loadChildren: () =>
           import('@gggs/features/payroll').then((m) => m.PAYROLL_ROUTES),
       },
