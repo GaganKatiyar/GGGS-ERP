@@ -36,7 +36,7 @@ import { PayrollApi } from '../data/payroll-api';
                 <tr>
                   <td>{{ componentName(line.componentId) }}</td>
                   <td>{{ calcTypeLabel(line.componentId) }}</td>
-                  <td>{{ isPercentBased(line.componentId) ? line.value + '%' : line.value }}</td>
+                  <td>{{ isFlatSlab(line.componentId) ? '—' : isPercentBased(line.componentId) ? line.value + '%' : line.value }}</td>
                   <td>{{ line.wageCeiling ?? '—' }}</td>
                   <td>{{ line.displayOrder }}</td>
                 </tr>
@@ -64,10 +64,12 @@ import { PayrollApi } from '../data/payroll-api';
             </select>
           </label>
 
-          <label class="field">
-            <span class="field__label">{{ selectedIsPercent() ? 'Percentage of Basic' : 'Monthly amount' }}</span>
-            <input type="number" formControlName="value" min="0" [max]="selectedIsPercent() ? 100 : null" required />
-          </label>
+          @if (!selectedIsFlatSlab()) {
+            <label class="field">
+              <span class="field__label">{{ selectedIsPercent() ? 'Percentage of Basic' : 'Monthly amount' }}</span>
+              <input type="number" formControlName="value" min="0" [max]="selectedIsPercent() ? 100 : null" required />
+            </label>
+          }
 
           @if (selectedNeedsWageCeiling()) {
             <label class="field">
@@ -189,6 +191,11 @@ export class SalaryStructureDetailPage {
     return calcType === 'PercentOfBasicCapped' || calcType === 'PercentOfBasicWithEligibilityCap';
   });
 
+  protected readonly selectedIsFlatSlab = computed(() => {
+    const id = this.form.get('componentId')?.value;
+    return id ? this.components().find((c) => c.id === id)?.calcType === 'FlatSlab' : false;
+  });
+
   constructor() {
     void this.load();
   }
@@ -203,9 +210,15 @@ export class SalaryStructureDetailPage {
     return calcType === 'PercentOfBasic' || calcType === 'PercentOfBasicCapped' || calcType === 'PercentOfBasicWithEligibilityCap';
   }
 
+  protected isFlatSlab(componentId: string): boolean {
+    return this.components().find((c) => c.id === componentId)?.calcType === 'FlatSlab';
+  }
+
   protected calcTypeLabel(componentId: string): string {
     const calcType = this.components().find((c) => c.id === componentId)?.calcType;
     switch (calcType) {
+      case 'FlatSlab':
+        return 'Flat slab';
       case 'PercentOfBasicCapped':
         return '% of Basic (capped base)';
       case 'PercentOfBasicWithEligibilityCap':

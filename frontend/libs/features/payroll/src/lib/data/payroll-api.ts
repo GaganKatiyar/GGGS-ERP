@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { ApiError } from '@gggs/core/http';
 import type {
+  AddSalaryComponentSlabRequest,
   AddSalaryStructureComponentRequest,
   AssignEmployeeSalaryRequest,
   CreatePayGroupRequest,
@@ -17,6 +18,7 @@ import type {
   PayrollRun,
   PayrollRunEmployee,
   SalaryComponent,
+  SalaryComponentSlab,
   SalaryStructure,
   SalaryStructureComponent,
 } from '@gggs/shared/models';
@@ -44,6 +46,14 @@ export class PayrollApi {
 
   reactivateComponent(id: string): Promise<SalaryComponent> {
     return firstValueFrom(this.http.post<SalaryComponent>(`/api/v1/payroll/components/${id}/reactivate`, {}));
+  }
+
+  listComponentSlabs(componentId: string): Promise<readonly SalaryComponentSlab[]> {
+    return firstValueFrom(this.http.get<readonly SalaryComponentSlab[]>(`/api/v1/payroll/components/${componentId}/slabs`));
+  }
+
+  addComponentSlab(componentId: string, request: AddSalaryComponentSlabRequest): Promise<SalaryComponentSlab> {
+    return firstValueFrom(this.http.post<SalaryComponentSlab>(`/api/v1/payroll/components/${componentId}/slabs`, request));
   }
 
   // ---- Structures ----

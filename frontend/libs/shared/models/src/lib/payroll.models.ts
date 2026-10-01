@@ -4,7 +4,12 @@
 
 export type SalaryComponentKind = 'Earning' | 'Deduction';
 
-export type SalaryComponentCalcType = 'Fixed' | 'PercentOfBasic' | 'PercentOfBasicCapped' | 'PercentOfBasicWithEligibilityCap';
+export type SalaryComponentCalcType =
+  | 'Fixed'
+  | 'PercentOfBasic'
+  | 'PercentOfBasicCapped'
+  | 'PercentOfBasicWithEligibilityCap'
+  | 'FlatSlab';
 
 export interface SalaryComponent {
   readonly id: string;
@@ -24,6 +29,18 @@ export interface CreateSalaryComponentRequest {
   readonly calcType: SalaryComponentCalcType;
   readonly isTaxable: boolean;
   readonly displayOrder: number;
+}
+
+export interface SalaryComponentSlab {
+  readonly id: string;
+  readonly componentId: string;
+  readonly thresholdAmount: number;
+  readonly taxAmount: number;
+}
+
+export interface AddSalaryComponentSlabRequest {
+  readonly thresholdAmount: number;
+  readonly taxAmount: number;
 }
 
 export interface SalaryStructure {
