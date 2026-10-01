@@ -12,20 +12,30 @@ public enum SalaryComponentKind
 /// <summary>
 /// How a component's amount is worked out. No formula DSL, slab lookup or GL account code in this
 /// v1 slice (architecture.md's <c>SalaryComponent.Formula</c>) - a component is a fixed monthly
-/// amount, a plain percentage of the structure's Basic component, or (for the first statutory rule,
-/// Provident Fund) a percentage of Basic capped at a wage ceiling, matching every other v1 module's
-/// established simplification (Performance v1's flat cycle instead of a rating-scale/template
-/// model). <see cref="PercentOfBasicCapped"/> is deliberately narrow: it hardcodes none of PF's
-/// actual numbers (12%, Rs 15,000) in code - both the percentage and the ceiling are configured per
+/// amount, a plain percentage of the structure's Basic component, or one of two statutory shapes
+/// that both apply a percentage against a wage ceiling but differ in what happens once Basic
+/// exceeds it:
+/// <list type="bullet">
+/// <item><see cref="PercentOfBasicCapped"/> (Provident Fund) - the <em>base</em> is capped, so the
+/// contribution still applies, just computed on the ceiling instead of the full Basic.</item>
+/// <item><see cref="PercentOfBasicWithEligibilityCap"/> (ESI) - the ceiling is an
+/// <em>eligibility</em> threshold: at or under it the percentage applies to the actual Basic in
+/// full, and above it the component is not deducted at all (not even on the ceiling amount).</item>
+/// </list>
+/// Both are deliberately narrow: neither hardcodes PF's or ESI's actual numbers (12%/Rs 15,000,
+/// 0.75%/Rs 21,000) in code - the percentage and the ceiling are configured per
 /// <c>SalaryStructureComponent</c> line, the same way a plain <see cref="PercentOfBasic"/> line's
 /// percentage already is. A full compliance-pack model (versioned, effective-dated, per-country
-/// rule tables) is still a later slice; this only buys the one shape PF/ESI both need.
+/// rule tables) is still a later slice; this only buys the two shapes PF and ESI need, matching
+/// every other v1 module's established simplification (Performance v1's flat cycle instead of a
+/// rating-scale/template model).
 /// </summary>
 public enum SalaryComponentCalcType
 {
     Fixed = 1,
     PercentOfBasic = 2,
     PercentOfBasicCapped = 3,
+    PercentOfBasicWithEligibilityCap = 4,
 }
 
 /// <summary>

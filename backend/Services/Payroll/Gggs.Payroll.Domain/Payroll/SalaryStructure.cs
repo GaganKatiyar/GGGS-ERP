@@ -36,12 +36,13 @@ public sealed class SalaryStructure : TenantAggregateRoot
 /// <summary>
 /// One line of a <see cref="SalaryStructure"/>: which <see cref="SalaryComponent"/>, and how much of
 /// it - a fixed monthly amount when the component's <see cref="SalaryComponent.CalcType"/> is
-/// <see cref="SalaryComponentCalcType.Fixed"/>, a percentage of the structure's own Basic component
-/// when it is <see cref="SalaryComponentCalcType.PercentOfBasic"/>, or the same percentage capped at
-/// <see cref="WageCeiling"/> when it is <see cref="SalaryComponentCalcType.PercentOfBasicCapped"/>.
-/// Exactly one Fixed line per structure must be the "BASIC" component -
-/// <see cref="SalaryStructureService"/> enforces this at assignment time, not here, since checking
-/// it needs the component catalog alongside this row.
+/// <see cref="SalaryComponentCalcType.Fixed"/>, a plain percentage of the structure's own Basic
+/// component when it is <see cref="SalaryComponentCalcType.PercentOfBasic"/>, or that same
+/// percentage read against <see cref="WageCeiling"/> for the two statutory calc types - see
+/// <see cref="SalaryComponentCalcType"/>'s own remarks on how <see cref="WageCeiling"/> means
+/// something different for each of those two. Exactly one Fixed line per structure must be the
+/// "BASIC" component - <see cref="SalaryStructureService"/> enforces this at assignment time, not
+/// here, since checking it needs the component catalog alongside this row.
 /// </summary>
 public sealed class SalaryStructureComponent : TenantAggregateRoot
 {
@@ -59,8 +60,9 @@ public sealed class SalaryStructureComponent : TenantAggregateRoot
     /// its own.</summary>
     public decimal Value { get; private set; }
 
-    /// <summary>The monthly wage ceiling for a PercentOfBasicCapped line (e.g. PF's Rs 15,000) -
-    /// null for every other calc type.</summary>
+    /// <summary>The monthly wage ceiling for a PercentOfBasicCapped line (PF's base cap) or a
+    /// PercentOfBasicWithEligibilityCap line (ESI's eligibility threshold) - null for every other
+    /// calc type.</summary>
     public decimal? WageCeiling { get; private set; }
 
     public int DisplayOrder { get; private set; }

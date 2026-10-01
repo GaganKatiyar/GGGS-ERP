@@ -61,13 +61,13 @@ public sealed class SalaryStructureService(
         {
             Guard(value is >= 0 and <= 100, "SALARY_STRUCTURE_PERCENTAGE_OUT_OF_RANGE", "The percentage must be between 0 and 100.");
         }
-        else if (component.CalcType == SalaryComponentCalcType.PercentOfBasicCapped)
+        else if (component.CalcType is SalaryComponentCalcType.PercentOfBasicCapped or SalaryComponentCalcType.PercentOfBasicWithEligibilityCap)
         {
             Guard(value is >= 0 and <= 100, "SALARY_STRUCTURE_PERCENTAGE_OUT_OF_RANGE", "The percentage must be between 0 and 100.");
             Guard(
                 wageCeiling is > 0,
                 "SALARY_STRUCTURE_WAGE_CEILING_REQUIRED",
-                "A PercentOfBasicCapped component needs a positive wage ceiling.");
+                $"A {component.CalcType} component needs a positive wage ceiling.");
         }
 
         Guard(

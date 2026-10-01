@@ -273,6 +273,77 @@ public sealed class PayrollEndpointTests(PayrollApiFactory factory)
     }
 
     [Fact]
+    public async Task AssigningASalary_WithEsiAtOrBelowTheWageCeiling_ComputesEsiOnActualBasic()
+    {
+        using HttpClient client = factory.CreateClientFor(AllPermissions);
+        Guid structureId = await CreateStructureAsync(client);
+
+        Guid basicId = await GetOrCreateBasicComponentAsync(client);
+        Guid esiId = await CreateComponentAsync(client, "ESI1", SalaryComponentKind.Deduction, SalaryComponentCalcType.PercentOfBasicWithEligibilityCap);
+
+        await client.PostAsJsonAsync(
+            $"/api/v1/payroll/structures/{structureId}/components",
+            new AddSalaryStructureComponentBody(basicId, 18000m, 1),
+            TestContext.Current.CancellationToken);
+
+        await client.PostAsJsonAsync(
+            $"/api/v1/payroll/structures/{structureId}/components",
+            new AddSalaryStructureComponentBody(esiId, 0.75m, 2, WageCeiling: 21000m),
+            TestContext.Current.CancellationToken);
+
+        Guid employeeId = await SeedEmployeeAsync();
+
+        HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/v1/payroll/employee-salaries",
+            new AssignEmployeeSalaryBody(employeeId, structureId, 216000m, "INR", new DateOnly(2026, 4, 1)),
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        EmployeeSalaryResponse? salary = await response.Content.ReadFromJsonAsync<EmployeeSalaryResponse>(JsonOptions, TestContext.Current.CancellationToken);
+        salary.ShouldNotBeNull();
+
+        // Basic (18000) is at or under the 21000 ceiling, so ESI applies at 0.75% of the actual Basic: 135.
+        EmployeeSalaryComponentResponse esiLine = salary.Components.Single(x => x.ComponentId == esiId);
+        esiLine.MonthlyAmount.ShouldBe(135m);
+    }
+
+    [Fact]
+    public async Task AssigningASalary_WithEsiAboveTheWageCeiling_IsNotDeductedAtAll()
+    {
+        using HttpClient client = factory.CreateClientFor(AllPermissions);
+        Guid structureId = await CreateStructureAsync(client);
+
+        Guid basicId = await GetOrCreateBasicComponentAsync(client);
+        Guid esiId = await CreateComponentAsync(client, "ESI2", SalaryComponentKind.Deduction, SalaryComponentCalcType.PercentOfBasicWithEligibilityCap);
+
+        await client.PostAsJsonAsync(
+            $"/api/v1/payroll/structures/{structureId}/components",
+            new AddSalaryStructureComponentBody(basicId, 30000m, 1),
+            TestContext.Current.CancellationToken);
+
+        await client.PostAsJsonAsync(
+            $"/api/v1/payroll/structures/{structureId}/components",
+            new AddSalaryStructureComponentBody(esiId, 0.75m, 2, WageCeiling: 21000m),
+            TestContext.Current.CancellationToken);
+
+        Guid employeeId = await SeedEmployeeAsync();
+
+        HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/v1/payroll/employee-salaries",
+            new AssignEmployeeSalaryBody(employeeId, structureId, 360000m, "INR", new DateOnly(2026, 4, 1)),
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        EmployeeSalaryResponse? salary = await response.Content.ReadFromJsonAsync<EmployeeSalaryResponse>(JsonOptions, TestContext.Current.CancellationToken);
+        salary.ShouldNotBeNull();
+
+        // Basic (30000) exceeds the 21000 ceiling, so ESI is not deducted at all - unlike PF, there
+        // is no reduced-base fallback; the employee is simply not ESI-eligible.
+        EmployeeSalaryComponentResponse esiLine = salary.Components.Single(x => x.ComponentId == esiId);
+        esiLine.MonthlyAmount.ShouldBe(0m);
+    }
+
+    [Fact]
     public async Task AssigningASalary_ForAnExitedEmployee_IsRejected()
     {
         using HttpClient client = factory.CreateClientFor(AllPermissions);
