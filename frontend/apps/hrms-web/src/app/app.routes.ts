@@ -114,6 +114,12 @@ export const appRoutes: Route[] = [
           import('@gggs/features/spend').then((m) => m.MY_EXPENSES_ROUTES),
       },
       {
+        path: 'me/travel',
+        ...withPermissions(['self.travel-request.create']),
+        loadChildren: () =>
+          import('@gggs/features/spend').then((m) => m.MY_TRAVEL_ROUTES),
+      },
+      {
         path: 'team',
         ...withPermissions(['employee.profile.view']),
         loadChildren: () =>
@@ -177,7 +183,7 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'spend',
-        ...withPermissions(['spend.category.manage', 'spend.claim.view']),
+        ...withPermissions(['spend.category.manage', 'spend.claim.view', 'spend.travel.view']),
         loadChildren: () =>
           import('@gggs/features/spend').then((m) => m.SPEND_ROUTES),
       },

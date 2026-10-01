@@ -1,17 +1,23 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import { ApiError } from '@gggs/core/http';
 import type {
   AddExpenseLineRequest,
   CreateExpenseCategoryRequest,
   CreateExpenseClaimRequest,
+  CreateTravelRequestRequest,
   ExpenseCategory,
   ExpenseClaim,
   ExpenseLine,
+  RequestTravelAdvanceRequest,
+  TravelAdvance,
+  TravelRequest,
+  TravelSettlement,
 } from '@gggs/shared/models';
 import { firstValueFrom } from 'rxjs';
 
-/** Expense categories and claims over the gateway's `/api/v1/spend/*` routes. No Workflow
- * integration, multi-currency or receipts in this v1 slice. */
+/** Expense categories/claims and travel requests/advances/settlements over the gateway's
+ * `/api/v1/spend/*` routes. No Workflow integration, multi-currency or receipts in this v1 slice. */
 @Injectable({ providedIn: 'root' })
 export class SpendApi {
   private readonly http = inject(HttpClient);
@@ -70,5 +76,73 @@ export class SpendApi {
 
   rejectClaim(id: string): Promise<ExpenseClaim> {
     return firstValueFrom(this.http.post<ExpenseClaim>(`/api/v1/spend/claims/${id}/reject`, {}));
+  }
+
+  // ---- Travel requests ----
+
+  listMyTravelRequests(): Promise<readonly TravelRequest[]> {
+    return firstValueFrom(this.http.get<readonly TravelRequest[]>('/api/v1/spend/travel-requests/me'));
+  }
+
+  listEmployeeTravelRequests(employeeId: string): Promise<readonly TravelRequest[]> {
+    return firstValueFrom(this.http.get<readonly TravelRequest[]>(`/api/v1/spend/employees/${employeeId}/travel-requests`));
+  }
+
+  getTravelRequest(id: string): Promise<TravelRequest> {
+    return firstValueFrom(this.http.get<TravelRequest>(`/api/v1/spend/travel-requests/${id}`));
+  }
+
+  createTravelRequest(request: CreateTravelRequestRequest): Promise<TravelRequest> {
+    return firstValueFrom(this.http.post<TravelRequest>('/api/v1/spend/travel-requests', request));
+  }
+
+  submitTravelRequest(id: string): Promise<TravelRequest> {
+    return firstValueFrom(this.http.post<TravelRequest>(`/api/v1/spend/travel-requests/${id}/submit`, {}));
+  }
+
+  approveTravelRequest(id: string): Promise<TravelRequest> {
+    return firstValueFrom(this.http.post<TravelRequest>(`/api/v1/spend/travel-requests/${id}/approve`, {}));
+  }
+
+  rejectTravelRequest(id: string): Promise<TravelRequest> {
+    return firstValueFrom(this.http.post<TravelRequest>(`/api/v1/spend/travel-requests/${id}/reject`, {}));
+  }
+
+  // ---- Travel advances ----
+
+  listAdvances(travelRequestId: string): Promise<readonly TravelAdvance[]> {
+    return firstValueFrom(this.http.get<readonly TravelAdvance[]>(`/api/v1/spend/travel-requests/${travelRequestId}/advances`));
+  }
+
+  requestAdvance(travelRequestId: string, request: RequestTravelAdvanceRequest): Promise<TravelAdvance> {
+    return firstValueFrom(this.http.post<TravelAdvance>(`/api/v1/spend/travel-requests/${travelRequestId}/advances`, request));
+  }
+
+  disburseAdvance(id: string): Promise<TravelAdvance> {
+    return firstValueFrom(this.http.post<TravelAdvance>(`/api/v1/spend/travel-advances/${id}/disburse`, {}));
+  }
+
+  // ---- Travel settlement ----
+
+  /** Null when the trip has no settlement built yet - a 404 here is a normal, expected state, not
+   * an error (see PayrollApi.getEmployeeSalary's own remarks on the same shape). */
+  async getSettlement(travelRequestId: string): Promise<TravelSettlement | null> {
+    try {
+      return await firstValueFrom(this.http.get<TravelSettlement>(`/api/v1/spend/travel-requests/${travelRequestId}/settlement`));
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return null;
+      }
+
+      throw error;
+    }
+  }
+
+  buildSettlement(travelRequestId: string): Promise<TravelSettlement> {
+    return firstValueFrom(this.http.post<TravelSettlement>(`/api/v1/spend/travel-requests/${travelRequestId}/settlement/build`, {}));
+  }
+
+  settleSettlement(id: string): Promise<TravelSettlement> {
+    return firstValueFrom(this.http.post<TravelSettlement>(`/api/v1/spend/travel-settlements/${id}/settle`, {}));
   }
 }

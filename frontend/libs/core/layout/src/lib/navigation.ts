@@ -105,6 +105,12 @@ export const NAVIGATION: readonly NavItem[] = [
         permissions: ['self.expense-claim.create'],
       },
       {
+        label: 'My travel requests',
+        icon: 'pi pi-send',
+        route: '/me/travel',
+        permissions: ['self.travel-request.create'],
+      },
+      {
         label: 'My documents',
         icon: 'pi pi-file',
         route: '/me/documents',
@@ -327,13 +333,19 @@ export const NAVIGATION: readonly NavItem[] = [
   {
     label: 'Spend',
     icon: 'pi pi-receipt',
-    permissions: ['spend.category.manage', 'spend.claim.view'],
+    permissions: ['spend.category.manage', 'spend.claim.view', 'spend.travel.view'],
     children: [
       {
         label: 'Categories',
         icon: 'pi pi-list',
         route: '/spend',
         permissions: ['spend.category.manage'],
+      },
+      {
+        label: 'Travel requests',
+        icon: 'pi pi-send',
+        route: '/spend/travel-requests',
+        permissions: ['spend.travel.view'],
       },
     ],
   },
