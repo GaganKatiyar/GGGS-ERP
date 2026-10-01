@@ -93,6 +93,12 @@ public static class Permissions
         /// <summary>Creating and submitting one's own expense claims - viewing them is covered by
         /// the same permission, the same "own record" shape as <see cref="LeaveApply"/>.</summary>
         public const string ExpenseClaimCreate = "self.expense-claim.create";
+
+        /// <summary>Creating and submitting one's own travel requests - the same "own record"
+        /// shape as <see cref="ExpenseClaimCreate"/>. Requesting an advance or settling the trip is
+        /// not here: those are always an admin/finance action - see
+        /// <see cref="Spend.TravelAdvanceManage"/>.</summary>
+        public const string TravelRequestCreate = "self.travel-request.create";
     }
 
     /// <summary>Leave administration and approvals.</summary>
@@ -286,5 +292,18 @@ public static class Permissions
         /// is a direct admin action (see <c>ExpenseClaim</c>'s own remarks), not a step in an
         /// approval chain.</summary>
         public const string ClaimApprove = "spend.claim.approve";
+
+        /// <summary>Viewing any employee's travel requests, not just one's own.</summary>
+        public const string TravelView = "spend.travel.view";
+
+        /// <summary>Approving or rejecting a submitted travel request - same direct-admin-action
+        /// shape as <see cref="ClaimApprove"/>.</summary>
+        public const string TravelApprove = "spend.travel.approve";
+
+        /// <summary>Requesting and disbursing a cash advance against an Approved travel request,
+        /// and building/settling the trip's <c>Travel.TravelSettlement</c> once it is done -
+        /// one permission for the whole post-approval money flow of a trip, since it is always an
+        /// admin/finance action, never something the traveling employee does themselves.</summary>
+        public const string TravelAdvanceManage = "spend.travel-advance.manage";
     }
 }

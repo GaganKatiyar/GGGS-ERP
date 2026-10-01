@@ -16,9 +16,12 @@ public enum ExpenseClaimStatus
 /// Draft -&gt; Submitted -&gt; Approved/Rejected (both terminal). No Workflow integration yet: an
 /// admin with the right permission approves or rejects directly (architecture.md's eventual
 /// approval chain), the same "no approval gate yet" simplification <c>PayrollRun.Finalize</c>
-/// started from. No multi-currency, no reimbursement mode and no
-/// TravelRequest link in this v1 slice (architecture.md's <c>exp.ExpenseClaim</c>) - <see cref="Total"/>
-/// is a plain sum of this claim's lines, recomputed whenever a line is added.
+/// started from. No multi-currency or reimbursement mode in this v1 slice (architecture.md's
+/// <c>exp.ExpenseClaim</c>) - <see cref="Total"/> is a plain sum of this claim's lines, recomputed
+/// whenever a line is added. <see cref="TravelRequestId"/> is optional: most claims (meals,
+/// supplies) are not against a trip, but a claim raised for travel expenses links back to its
+/// <c>Travel.TravelRequest</c> so <c>Travel.TravelSettlement</c> can sum the actual spend against
+/// that trip's advance.
 /// </summary>
 public sealed class ExpenseClaim : TenantAggregateRoot
 {
@@ -45,16 +48,20 @@ public sealed class ExpenseClaim : TenantAggregateRoot
 
     public DateTime? DecidedDate { get; private set; }
 
-    public static ExpenseClaim Create(string claimNo, Guid employeeId, string title, string currency) => new()
-    {
-        ClaimNo = Guard.MaxLength(Guard.NotNullOrWhiteSpace(claimNo).Trim(), 30),
-        EmployeeId = Guard.NotEmpty(employeeId),
-        Title = Guard.MaxLength(Guard.NotNullOrWhiteSpace(title).Trim(), 200),
-        Currency = Guard.MaxLength(Guard.NotNullOrWhiteSpace(currency).Trim().ToUpperInvariant(), 3),
-        Total = 0,
-        Status = ExpenseClaimStatus.Draft,
-        IsActive = true,
-    };
+    public Guid? TravelRequestId { get; private set; }
+
+    public static ExpenseClaim Create(
+        string claimNo, Guid employeeId, string title, string currency, Guid? travelRequestId = null) => new()
+        {
+            ClaimNo = Guard.MaxLength(Guard.NotNullOrWhiteSpace(claimNo).Trim(), 30),
+            EmployeeId = Guard.NotEmpty(employeeId),
+            Title = Guard.MaxLength(Guard.NotNullOrWhiteSpace(title).Trim(), 200),
+            Currency = Guard.MaxLength(Guard.NotNullOrWhiteSpace(currency).Trim().ToUpperInvariant(), 3),
+            Total = 0,
+            Status = ExpenseClaimStatus.Draft,
+            TravelRequestId = travelRequestId,
+            IsActive = true,
+        };
 
     /// <summary>Recomputes <see cref="Total"/> from the claim's current lines - called after every
     /// line addition, since a line's amount is denormalized onto the header for cheap listing.

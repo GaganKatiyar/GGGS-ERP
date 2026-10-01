@@ -3,7 +3,9 @@ using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.Spend.Api.Contracts;
 using Gggs.Spend.Application.Expenses;
+using Gggs.Spend.Application.Travel;
 using Gggs.Spend.Domain.Expenses;
+using Gggs.Spend.Domain.Travel;
 using Gggs.Spend.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +17,9 @@ namespace Gggs.Spend.Api.Endpoints;
 /// <see cref="Permissions.Self.ExpenseClaimCreate"/>, and admin review (view anyone's, approve,
 /// reject) through <see cref="Permissions.Spend.ClaimView"/>/<see cref="Permissions.Spend.ClaimApprove"/>.
 /// No Workflow integration, multi-currency or receipts in this v1 slice - see
-/// <c>ExpenseClaim</c>'s own remarks.
+/// <c>ExpenseClaim</c>'s own remarks. Also travel requests, advances and settlements - the same
+/// self-service/admin split, with advances and settlements always an admin/finance action - see
+/// <c>TravelAdvance</c>'s and <c>TravelSettlement</c>'s own remarks.
 /// </summary>
 public static class SpendEndpoints
 {
@@ -25,6 +29,7 @@ public static class SpendEndpoints
 
         MapCategoryEndpoints(endpoints);
         MapClaimEndpoints(endpoints);
+        MapTravelEndpoints(endpoints);
         return endpoints;
     }
 
@@ -192,7 +197,7 @@ public static class SpendEndpoints
             }
         }
 
-        ExpenseClaim entity = await service.CreateAsync(employeeId, body.ClaimNo, body.Title, body.Currency, ct);
+        ExpenseClaim entity = await service.CreateAsync(employeeId, body.ClaimNo, body.Title, body.Currency, body.TravelRequestId, ct);
         return TypedResults.Created($"/api/v1/spend/claims/{entity.Id}", ToResponse(entity));
     }
 
@@ -269,8 +274,188 @@ public static class SpendEndpoints
 
     private static ExpenseClaimResponse ToResponse(ExpenseClaim entity) => new(
         entity.Id, entity.ClaimNo, entity.EmployeeId, entity.Title, entity.Currency, entity.Total, entity.Status,
-        entity.SubmittedDate, entity.DecidedDate);
+        entity.SubmittedDate, entity.DecidedDate, entity.TravelRequestId);
 
     private static ExpenseLineResponse ToResponse(ExpenseLine entity) => new(
         entity.Id, entity.CategoryId, entity.ExpenseDate, entity.Amount, entity.Merchant);
+
+    private static void MapTravelEndpoints(IEndpointRouteBuilder endpoints)
+    {
+        RouteGroupBuilder group = endpoints.MapGroup("/api/v1/spend/travel-requests").WithTags("Spend");
+
+        group.MapGet("/me", ListMyTravelRequestsAsync).WithName("ListMyTravelRequests").RequirePermission(Permissions.Self.TravelRequestCreate);
+
+        group.MapGet("/{id:guid}", GetTravelRequestAsync)
+            .WithName("GetTravelRequest").RequirePermission(Permissions.Self.TravelRequestCreate, Permissions.Spend.TravelView);
+
+        group.MapPost("/", CreateTravelRequestAsync).WithName("CreateTravelRequest").RequirePermission(Permissions.Self.TravelRequestCreate);
+        group.MapPost("/{id:guid}/submit", SubmitTravelRequestAsync)
+            .WithName("SubmitTravelRequest").RequirePermission(Permissions.Self.TravelRequestCreate);
+
+        group.MapPost("/{id:guid}/approve", ApproveTravelRequestAsync).WithName("ApproveTravelRequest").RequirePermission(Permissions.Spend.TravelApprove);
+        group.MapPost("/{id:guid}/reject", RejectTravelRequestAsync).WithName("RejectTravelRequest").RequirePermission(Permissions.Spend.TravelApprove);
+
+        group.MapGet("/{id:guid}/advances", ListAdvancesAsync)
+            .WithName("ListTravelAdvances").RequirePermission(Permissions.Self.TravelRequestCreate, Permissions.Spend.TravelView);
+        group.MapPost("/{id:guid}/advances", RequestAdvanceAsync)
+            .WithName("RequestTravelAdvance").RequirePermission(Permissions.Spend.TravelAdvanceManage);
+
+        group.MapGet("/{id:guid}/settlement", GetSettlementAsync)
+            .WithName("GetTravelSettlement").RequirePermission(Permissions.Self.TravelRequestCreate, Permissions.Spend.TravelView);
+        group.MapPost("/{id:guid}/settlement/build", BuildSettlementAsync)
+            .WithName("BuildTravelSettlement").RequirePermission(Permissions.Spend.TravelAdvanceManage);
+
+        endpoints.MapGet("/api/v1/spend/employees/{employeeId:guid}/travel-requests", ListEmployeeTravelRequestsAsync)
+            .WithName("ListEmployeeTravelRequests").WithTags("Spend").RequirePermission(Permissions.Spend.TravelView);
+
+        endpoints.MapPost("/api/v1/spend/travel-advances/{id:guid}/disburse", DisburseAdvanceAsync)
+            .WithName("DisburseTravelAdvance").WithTags("Spend").RequirePermission(Permissions.Spend.TravelAdvanceManage);
+
+        endpoints.MapPost("/api/v1/spend/travel-settlements/{id:guid}/settle", SettleSettlementAsync)
+            .WithName("SettleTravelSettlement").WithTags("Spend").RequirePermission(Permissions.Spend.TravelAdvanceManage);
+    }
+
+    private static async Task<Ok<IReadOnlyList<TravelRequestResponse>>> ListMyTravelRequestsAsync(
+        ICurrentUser currentUser, SpendDbContext db, CancellationToken ct)
+    {
+        if (currentUser.EmployeeId is not { } employeeId)
+        {
+            return TypedResults.Ok<IReadOnlyList<TravelRequestResponse>>([]);
+        }
+
+        return TypedResults.Ok(await ListTravelRequestsForEmployeeAsync(employeeId, db, ct));
+    }
+
+    private static async Task<Ok<IReadOnlyList<TravelRequestResponse>>> ListEmployeeTravelRequestsAsync(
+        Guid employeeId, SpendDbContext db, CancellationToken ct)
+        => TypedResults.Ok(await ListTravelRequestsForEmployeeAsync(employeeId, db, ct));
+
+    private static async Task<IReadOnlyList<TravelRequestResponse>> ListTravelRequestsForEmployeeAsync(
+        Guid employeeId, SpendDbContext db, CancellationToken ct)
+    {
+        List<TravelRequestResponse> items = await db.TravelRequests.AsNoTracking()
+            .Where(x => x.EmployeeId == employeeId)
+            .OrderByDescending(x => x.CreatedDate)
+            .Select(x => ToResponse(x))
+            .ToListAsync(ct);
+
+        return items;
+    }
+
+    /// <summary>Same "own record vs admin view" shape as <see cref="GetClaimAsync"/>, against
+    /// <see cref="Permissions.Spend.TravelView"/> instead of ClaimView.</summary>
+    private static async Task<Results<Ok<TravelRequestResponse>, NotFound, ForbidHttpResult>> GetTravelRequestAsync(
+        Guid id, ICurrentUser currentUser, IPermissionProvider permissions, SpendDbContext db, CancellationToken ct)
+    {
+        TravelRequest? request = await db.TravelRequests.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (request is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (request.EmployeeId != currentUser.EmployeeId)
+        {
+            PermissionSet held = await permissions.GetCurrentAsync(ct);
+            if (!held.Has(Permissions.Spend.TravelView))
+            {
+                return TypedResults.Forbid();
+            }
+        }
+
+        return TypedResults.Ok(ToResponse(request));
+    }
+
+    /// <summary>Same "own record unless also an admin" shape <see cref="CreateClaimAsync"/> uses
+    /// for expense claims.</summary>
+    private static async Task<Results<Created<TravelRequestResponse>, ForbidHttpResult>> CreateTravelRequestAsync(
+        CreateTravelRequestBody body, ICurrentUser currentUser, IPermissionProvider permissions, TravelRequestService service, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+
+        Guid employeeId = body.EmployeeId;
+        if (employeeId != currentUser.EmployeeId)
+        {
+            PermissionSet held = await permissions.GetCurrentAsync(ct);
+            if (!held.Has(Permissions.Spend.TravelView))
+            {
+                return TypedResults.Forbid();
+            }
+        }
+
+        TravelRequest entity = await service.CreateAsync(
+            employeeId, body.RequestNo, body.Purpose, body.FromCity, body.ToCity, body.FromDate, body.ToDate, body.EstimatedCost, body.Currency, ct);
+        return TypedResults.Created($"/api/v1/spend/travel-requests/{entity.Id}", ToResponse(entity));
+    }
+
+    private static async Task<Results<Ok<TravelRequestResponse>, NotFound, ForbidHttpResult>> SubmitTravelRequestAsync(
+        Guid id, ICurrentUser currentUser, IPermissionProvider permissions, SpendDbContext db, TravelRequestService service, CancellationToken ct)
+    {
+        TravelRequest? request = await db.TravelRequests.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (request is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (request.EmployeeId != currentUser.EmployeeId)
+        {
+            PermissionSet held = await permissions.GetCurrentAsync(ct);
+            if (!held.Has(Permissions.Spend.TravelView))
+            {
+                return TypedResults.Forbid();
+            }
+        }
+
+        return TypedResults.Ok(ToResponse(await service.SubmitAsync(id, ct)));
+    }
+
+    private static async Task<Ok<TravelRequestResponse>> ApproveTravelRequestAsync(Guid id, TravelRequestService service, CancellationToken ct)
+        => TypedResults.Ok(ToResponse(await service.ApproveAsync(id, ct)));
+
+    private static async Task<Ok<TravelRequestResponse>> RejectTravelRequestAsync(Guid id, TravelRequestService service, CancellationToken ct)
+        => TypedResults.Ok(ToResponse(await service.RejectAsync(id, ct)));
+
+    private static async Task<Ok<IReadOnlyList<TravelAdvanceResponse>>> ListAdvancesAsync(Guid id, SpendDbContext db, CancellationToken ct)
+    {
+        List<TravelAdvanceResponse> items = await db.TravelAdvances.AsNoTracking()
+            .Where(x => x.TravelRequestId == id)
+            .Select(x => ToResponse(x))
+            .ToListAsync(ct);
+
+        return TypedResults.Ok<IReadOnlyList<TravelAdvanceResponse>>(items);
+    }
+
+    private static async Task<Created<TravelAdvanceResponse>> RequestAdvanceAsync(
+        Guid id, RequestTravelAdvanceBody body, TravelAdvanceService service, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+
+        TravelAdvance entity = await service.RequestAsync(id, body.Amount, body.Currency, ct);
+        return TypedResults.Created($"/api/v1/spend/travel-requests/{id}/advances/{entity.Id}", ToResponse(entity));
+    }
+
+    private static async Task<Ok<TravelAdvanceResponse>> DisburseAdvanceAsync(Guid id, TravelAdvanceService service, CancellationToken ct)
+        => TypedResults.Ok(ToResponse(await service.DisburseAsync(id, ct)));
+
+    private static async Task<Results<Ok<TravelSettlementResponse>, NotFound>> GetSettlementAsync(Guid id, SpendDbContext db, CancellationToken ct)
+    {
+        TravelSettlement? settlement = await db.TravelSettlements.AsNoTracking().FirstOrDefaultAsync(x => x.TravelRequestId == id, ct);
+        return settlement is null ? TypedResults.NotFound() : TypedResults.Ok(ToResponse(settlement));
+    }
+
+    private static async Task<Ok<TravelSettlementResponse>> BuildSettlementAsync(Guid id, TravelSettlementService service, CancellationToken ct)
+        => TypedResults.Ok(ToResponse(await service.BuildAsync(id, ct)));
+
+    private static async Task<Ok<TravelSettlementResponse>> SettleSettlementAsync(Guid id, TravelSettlementService service, CancellationToken ct)
+        => TypedResults.Ok(ToResponse(await service.SettleAsync(id, ct)));
+
+    private static TravelRequestResponse ToResponse(TravelRequest entity) => new(
+        entity.Id, entity.RequestNo, entity.EmployeeId, entity.Purpose, entity.FromCity, entity.ToCity, entity.FromDate,
+        entity.ToDate, entity.EstimatedCost, entity.Currency, entity.Status, entity.SubmittedDate, entity.DecidedDate);
+
+    private static TravelAdvanceResponse ToResponse(TravelAdvance entity) => new(
+        entity.Id, entity.TravelRequestId, entity.Amount, entity.Currency, entity.Status, entity.DisbursedDate);
+
+    private static TravelSettlementResponse ToResponse(TravelSettlement entity) => new(
+        entity.Id, entity.TravelRequestId, entity.AdvanceTotal, entity.ExpenseTotal, entity.NetPayable, entity.NetRecoverable,
+        entity.Status, entity.SettledDate);
 }

@@ -12,6 +12,7 @@ using Gggs.BuildingBlocks.Web;
 using Gggs.Spend.Api.Endpoints;
 using Gggs.Spend.Application.Expenses;
 using Gggs.Spend.Application.Snapshots;
+using Gggs.Spend.Application.Travel;
 using Gggs.Spend.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Routing;
@@ -64,9 +65,15 @@ builder.Services.AddScoped<IExpenseCategoryRepository, ExpenseCategoryRepository
 builder.Services.AddScoped<IExpenseClaimRepository, ExpenseClaimRepository>();
 builder.Services.AddScoped<IExpenseLineRepository, ExpenseLineRepository>();
 builder.Services.AddScoped<IEmployeeSnapshotRepository, EmployeeSnapshotRepository>();
+builder.Services.AddScoped<ITravelRequestRepository, TravelRequestRepository>();
+builder.Services.AddScoped<ITravelAdvanceRepository, TravelAdvanceRepository>();
+builder.Services.AddScoped<ITravelSettlementRepository, TravelSettlementRepository>();
 
 builder.Services.AddScoped<ExpenseCategoryService>();
 builder.Services.AddScoped<ExpenseClaimService>();
+builder.Services.AddScoped<TravelRequestService>();
+builder.Services.AddScoped<TravelAdvanceService>();
+builder.Services.AddScoped<TravelSettlementService>();
 
 builder.Services.AddGggsJson();
 builder.Services.AddProblemDetails();

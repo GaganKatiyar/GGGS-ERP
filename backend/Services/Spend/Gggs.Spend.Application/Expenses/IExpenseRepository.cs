@@ -17,6 +17,12 @@ public interface IExpenseClaimRepository
 
     Task<bool> ClaimNoExistsAsync(string claimNo, CancellationToken cancellationToken = default);
 
+    /// <summary>Every Approved claim linked to one trip - what
+    /// <c>Travel.TravelSettlementService</c> sums for <see cref="ExpenseClaim.Total"/> to reconcile
+    /// against the trip's advance. Only Approved claims count: a still-Submitted or Rejected claim
+    /// is not yet (or never) real spend against the trip.</summary>
+    Task<IReadOnlyList<ExpenseClaim>> ListApprovedForTravelRequestAsync(Guid travelRequestId, CancellationToken cancellationToken = default);
+
     void Add(ExpenseClaim claim);
 }
 

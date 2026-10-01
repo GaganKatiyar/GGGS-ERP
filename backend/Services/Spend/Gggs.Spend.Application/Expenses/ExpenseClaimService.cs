@@ -1,8 +1,10 @@
 using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Domain.Exceptions;
 using Gggs.Spend.Application.Snapshots;
+using Gggs.Spend.Application.Travel;
 using Gggs.Spend.Domain.Expenses;
 using Gggs.Spend.Domain.Snapshots;
+using Gggs.Spend.Domain.Travel;
 
 namespace Gggs.Spend.Application.Expenses;
 
@@ -16,11 +18,13 @@ public sealed class ExpenseClaimService(
     IExpenseLineRepository lines,
     IExpenseCategoryRepository categories,
     IEmployeeSnapshotRepository snapshots,
+    ITravelRequestRepository travelRequests,
     IUnitOfWork unitOfWork,
     TimeProvider clock)
 {
     public async Task<ExpenseClaim> CreateAsync(
-        Guid employeeId, string claimNo, string title, string currency, CancellationToken cancellationToken = default)
+        Guid employeeId, string claimNo, string title, string currency, Guid? travelRequestId = null,
+        CancellationToken cancellationToken = default)
     {
         EmployeeSnapshot? employee = await snapshots.GetAsync(employeeId, cancellationToken);
         Guard(employee is not null, "SPEND_EMPLOYEE_NOT_FOUND", "The employee could not be found.");
@@ -31,7 +35,18 @@ public sealed class ExpenseClaimService(
             "EXPENSE_CLAIM_NO_ALREADY_EXISTS",
             $"A claim with number '{claimNo}' already exists.");
 
-        ExpenseClaim claim = ExpenseClaim.Create(claimNo, employeeId, title, currency);
+        if (travelRequestId is { } requestId)
+        {
+            TravelRequest travelRequest = await travelRequests.GetAsync(requestId, cancellationToken)
+                ?? throw new NotFoundException(nameof(TravelRequest), requestId);
+
+            Guard(
+                travelRequest.EmployeeId == employeeId,
+                "EXPENSE_CLAIM_TRAVEL_REQUEST_NOT_OWNED",
+                "A claim can only be linked to the same employee's own travel request.");
+        }
+
+        ExpenseClaim claim = ExpenseClaim.Create(claimNo, employeeId, title, currency, travelRequestId);
         claims.Add(claim);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return claim;

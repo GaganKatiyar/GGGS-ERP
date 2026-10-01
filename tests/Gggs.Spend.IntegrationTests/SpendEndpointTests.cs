@@ -24,6 +24,9 @@ public sealed class SpendEndpointTests(SpendApiFactory factory)
         Permissions.Spend.CategoryManage,
         Permissions.Spend.ClaimView,
         Permissions.Spend.ClaimApprove,
+        Permissions.Spend.TravelView,
+        Permissions.Spend.TravelApprove,
+        Permissions.Spend.TravelAdvanceManage,
     ];
 
     private static JsonSerializerOptions BuildJsonOptions()

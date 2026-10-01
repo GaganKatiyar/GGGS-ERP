@@ -199,6 +199,7 @@ static async Task SeedTenantAdminAsync(string connectionString, Guid tenantId, s
         Permissions.Self.AttendancePunch,
         Permissions.Self.PayslipView,
         Permissions.Self.ExpenseClaimCreate,
+        Permissions.Self.TravelRequestCreate,
         Permissions.Report.View,
         Permissions.Report.Export,
         Permissions.Report.ScheduleManage,
@@ -238,6 +239,9 @@ static async Task SeedTenantAdminAsync(string connectionString, Guid tenantId, s
         Permissions.Spend.CategoryManage,
         Permissions.Spend.ClaimView,
         Permissions.Spend.ClaimApprove,
+        Permissions.Spend.TravelView,
+        Permissions.Spend.TravelApprove,
+        Permissions.Spend.TravelAdvanceManage,
     ];
 
     string normalizedEmail = adminEmail.Trim().ToUpperInvariant();
