@@ -252,6 +252,9 @@ namespace Gggs.Spend.Infrastructure.Migrations
                     b.Property<Guid?>("TravelRequestId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("WorkflowInstanceId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
 
                     SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
@@ -579,6 +582,9 @@ namespace Gggs.Spend.Infrastructure.Migrations
 
                     b.Property<DateOnly>("ToDate")
                         .HasColumnType("date");
+
+                    b.Property<Guid?>("WorkflowInstanceId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 

@@ -42,6 +42,10 @@ await SeedSingleStepWorkflowAsync(
     workflowConnectionString, tenantId, "ATTENDANCE_REGULARIZATION", "ATTENDANCE_REGULARIZATION", "Attendance regularization approval");
 await SeedSingleStepWorkflowAsync(
     workflowConnectionString, tenantId, "OVERTIME_REQUEST", "OVERTIME_REQUEST", "Overtime request approval");
+await SeedSingleStepWorkflowAsync(
+    workflowConnectionString, tenantId, "EXPENSE_CLAIM", "EXPENSE_CLAIM", "Expense claim approval");
+await SeedSingleStepWorkflowAsync(
+    workflowConnectionString, tenantId, "TRAVEL_REQUEST", "TRAVEL_REQUEST", "Travel request approval");
 
 Console.WriteLine();
 Console.WriteLine("Done. Sign in with:");
@@ -242,9 +246,7 @@ static async Task SeedTenantAdminAsync(string connectionString, Guid tenantId, s
         Permissions.Payroll.RunFinalize,
         Permissions.Spend.CategoryManage,
         Permissions.Spend.ClaimView,
-        Permissions.Spend.ClaimApprove,
         Permissions.Spend.TravelView,
-        Permissions.Spend.TravelApprove,
         Permissions.Spend.TravelAdvanceManage,
     ];
 

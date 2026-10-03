@@ -11,7 +11,7 @@ public sealed record ExpenseLineResponse(Guid Id, Guid CategoryId, DateOnly Expe
 
 public sealed record ExpenseClaimResponse(
     Guid Id, string ClaimNo, Guid EmployeeId, string Title, string Currency, decimal Total, ExpenseClaimStatus Status,
-    DateTime? SubmittedDate, DateTime? DecidedDate, Guid? TravelRequestId);
+    DateTime? SubmittedDate, DateTime? DecidedDate, Guid? TravelRequestId, Guid? WorkflowInstanceId);
 
 public sealed record CreateExpenseClaimBody(Guid EmployeeId, string ClaimNo, string Title, string Currency, Guid? TravelRequestId = null);
 
@@ -19,7 +19,8 @@ public sealed record AddExpenseLineBody(Guid CategoryId, DateOnly ExpenseDate, d
 
 public sealed record TravelRequestResponse(
     Guid Id, string RequestNo, Guid EmployeeId, string Purpose, string FromCity, string ToCity, DateOnly FromDate,
-    DateOnly ToDate, decimal EstimatedCost, string Currency, TravelRequestStatus Status, DateTime? SubmittedDate, DateTime? DecidedDate);
+    DateOnly ToDate, decimal EstimatedCost, string Currency, TravelRequestStatus Status, DateTime? SubmittedDate,
+    DateTime? DecidedDate, Guid? WorkflowInstanceId);
 
 public sealed record CreateTravelRequestBody(
     Guid EmployeeId, string RequestNo, string Purpose, string FromCity, string ToCity, DateOnly FromDate, DateOnly ToDate,

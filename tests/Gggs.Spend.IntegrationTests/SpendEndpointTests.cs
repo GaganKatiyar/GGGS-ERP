@@ -11,8 +11,10 @@ using Shouldly;
 namespace Gggs.Spend.IntegrationTests;
 
 /// <summary><c>/api/v1/spend/categories*</c> and <c>/api/v1/spend/claims*</c> over HTTP: creating
-/// a category, creating a claim and adding lines to it as the owning employee, submitting it, and
-/// an admin approving or rejecting it. No Workflow integration in this v1 slice - see
+/// a category, creating a claim and adding lines to it as the owning employee, and submitting it -
+/// through to the <c>StartWorkflowIntegrationEvent</c> being staged in the outbox, the same bar
+/// <c>Gggs.Time.IntegrationTests.LeaveEndpointTests</c> holds for <c>LeaveRequest</c>. Approval
+/// itself happens through Workflow's own task inbox, not a Spend endpoint - see
 /// <see cref="ExpenseClaim"/>'s own remarks.</summary>
 [Collection(nameof(SpendApiCollection))]
 public sealed class SpendEndpointTests(SpendApiFactory factory)
@@ -23,9 +25,7 @@ public sealed class SpendEndpointTests(SpendApiFactory factory)
     [
         Permissions.Spend.CategoryManage,
         Permissions.Spend.ClaimView,
-        Permissions.Spend.ClaimApprove,
         Permissions.Spend.TravelView,
-        Permissions.Spend.TravelApprove,
         Permissions.Spend.TravelAdvanceManage,
     ];
 
@@ -104,37 +104,6 @@ public sealed class SpendEndpointTests(SpendApiFactory factory)
     }
 
     [Fact]
-    public async Task AnAdmin_CanApproveASubmittedClaim()
-    {
-        using HttpClient adminClient = factory.CreateClientFor(AdminPermissions);
-        (Guid claimId, _) = await CreateAndSubmitAClaimAsync(adminClient);
-
-        HttpResponseMessage response = await adminClient.PostAsync(
-            $"/api/v1/spend/claims/{claimId}/approve", content: null, TestContext.Current.CancellationToken);
-
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        ExpenseClaimResponse? approved = await response.Content.ReadFromJsonAsync<ExpenseClaimResponse>(JsonOptions, TestContext.Current.CancellationToken);
-        approved.ShouldNotBeNull();
-        approved.Status.ShouldBe(ExpenseClaimStatus.Approved);
-        approved.DecidedDate.ShouldNotBeNull();
-    }
-
-    [Fact]
-    public async Task AnAdmin_CanRejectASubmittedClaim()
-    {
-        using HttpClient adminClient = factory.CreateClientFor(AdminPermissions);
-        (Guid claimId, _) = await CreateAndSubmitAClaimAsync(adminClient);
-
-        HttpResponseMessage response = await adminClient.PostAsync(
-            $"/api/v1/spend/claims/{claimId}/reject", content: null, TestContext.Current.CancellationToken);
-
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        ExpenseClaimResponse? rejected = await response.Content.ReadFromJsonAsync<ExpenseClaimResponse>(JsonOptions, TestContext.Current.CancellationToken);
-        rejected.ShouldNotBeNull();
-        rejected.Status.ShouldBe(ExpenseClaimStatus.Rejected);
-    }
-
-    [Fact]
     public async Task AnEmployee_CanReadTheirOwnClaim_ButNotSomeoneElses()
     {
         using HttpClient adminClient = factory.CreateClientFor(AdminPermissions);
@@ -147,25 +116,6 @@ public sealed class SpendEndpointTests(SpendApiFactory factory)
         using HttpClient otherEmployeeClient = factory.CreateClientForEmployee(Guid.NewGuid(), Permissions.Self.ExpenseClaimCreate);
         HttpResponseMessage otherResponse = await otherEmployeeClient.GetAsync($"/api/v1/spend/claims/{claimId}", TestContext.Current.CancellationToken);
         otherResponse.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-    }
-
-    [Fact]
-    public async Task ApprovingAClaim_BeforeItHasBeenSubmitted_IsRejected()
-    {
-        using HttpClient adminClient = factory.CreateClientFor(AdminPermissions);
-        Guid employeeId = await SeedEmployeeAsync();
-        using HttpClient ownerClient = factory.CreateClientForEmployee(employeeId, Permissions.Self.ExpenseClaimCreate);
-
-        HttpResponseMessage createResponse = await ownerClient.PostAsJsonAsync(
-            "/api/v1/spend/claims",
-            new CreateExpenseClaimBody(employeeId, ShortCode(), "Draft claim", "INR"),
-            TestContext.Current.CancellationToken);
-        ExpenseClaimResponse? claim = await createResponse.Content.ReadFromJsonAsync<ExpenseClaimResponse>(JsonOptions, TestContext.Current.CancellationToken);
-
-        HttpResponseMessage response = await adminClient.PostAsync(
-            $"/api/v1/spend/claims/{claim!.Id}/approve", content: null, TestContext.Current.CancellationToken);
-
-        response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
     }
 
     [Fact]

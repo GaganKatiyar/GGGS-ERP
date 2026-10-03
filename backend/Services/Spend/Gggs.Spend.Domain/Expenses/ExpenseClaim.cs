@@ -13,15 +13,17 @@ public enum ExpenseClaimStatus
 
 /// <summary>
 /// One employee's expense claim - a header (this) over one or more <see cref="ExpenseLine"/>s.
-/// Draft -&gt; Submitted -&gt; Approved/Rejected (both terminal). No Workflow integration yet: an
-/// admin with the right permission approves or rejects directly (architecture.md's eventual
-/// approval chain), the same "no approval gate yet" simplification <c>PayrollRun.Finalize</c>
-/// started from. No multi-currency or reimbursement mode in this v1 slice (architecture.md's
-/// <c>exp.ExpenseClaim</c>) - <see cref="Total"/> is a plain sum of this claim's lines, recomputed
-/// whenever a line is added. <see cref="TravelRequestId"/> is optional: most claims (meals,
-/// supplies) are not against a trip, but a claim raised for travel expenses links back to its
-/// <c>Travel.TravelRequest</c> so <c>Travel.TravelSettlement</c> can sum the actual spend against
-/// that trip's advance.
+/// Goes through <c>Gggs.Workflow</c> for approval (architecture.md §13.3), never approves itself -
+/// the same shape as <c>Gggs.Time.Domain.Leave.LeaveRequest</c>. <see cref="Status"/> stays
+/// <see cref="ExpenseClaimStatus.Submitted"/> until <c>ExpenseClaimWorkflowOutcomeConsumer</c>
+/// reacts to a <c>WorkflowApproved</c>/<c>RejectedIntegrationEvent</c> - this aggregate has no
+/// <c>Approve()</c>/<c>Reject()</c> a caller in this service could invoke directly, precisely so
+/// the only path to "Approved" is through the workflow that was actually run. No multi-currency or
+/// reimbursement mode in this v1 slice (architecture.md's <c>exp.ExpenseClaim</c>) -
+/// <see cref="Total"/> is a plain sum of this claim's lines, recomputed whenever a line is added.
+/// <see cref="TravelRequestId"/> is optional: most claims (meals, supplies) are not against a trip,
+/// but a claim raised for travel expenses links back to its <c>Travel.TravelRequest</c> so
+/// <c>Travel.TravelSettlement</c> can sum the actual spend against that trip's advance.
 /// </summary>
 public sealed class ExpenseClaim : TenantAggregateRoot
 {
@@ -49,6 +51,8 @@ public sealed class ExpenseClaim : TenantAggregateRoot
     public DateTime? DecidedDate { get; private set; }
 
     public Guid? TravelRequestId { get; private set; }
+
+    public Guid? WorkflowInstanceId { get; private set; }
 
     public static ExpenseClaim Create(
         string claimNo, Guid employeeId, string title, string currency, Guid? travelRequestId = null) => new()
@@ -81,14 +85,19 @@ public sealed class ExpenseClaim : TenantAggregateRoot
         SubmittedDate = submittedAtUtc;
     }
 
-    public void Approve(DateTime decidedAtUtc)
+    /// <summary>Set once the workflow instance actually starts - see
+    /// <c>ExpenseClaimService.SubmitAsync</c>'s own remarks on why this is a separate step from
+    /// <see cref="Submit"/> rather than folded into it.</summary>
+    public void LinkWorkflowInstance(Guid workflowInstanceId) => WorkflowInstanceId = Guard.NotEmpty(workflowInstanceId);
+
+    public void MarkApproved(DateTime decidedAtUtc)
     {
         Guard.Against(Status != ExpenseClaimStatus.Submitted, "EXPENSE_CLAIM_NOT_SUBMITTED", $"Claim '{ClaimNo}' must be Submitted to approve; it is {Status}.");
         Status = ExpenseClaimStatus.Approved;
         DecidedDate = decidedAtUtc;
     }
 
-    public void Reject(DateTime decidedAtUtc)
+    public void MarkRejected(DateTime decidedAtUtc)
     {
         Guard.Against(Status != ExpenseClaimStatus.Submitted, "EXPENSE_CLAIM_NOT_SUBMITTED", $"Claim '{ClaimNo}' must be Submitted to reject; it is {Status}.");
         Status = ExpenseClaimStatus.Rejected;

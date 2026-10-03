@@ -7,20 +7,22 @@ using Gggs.BuildingBlocks.Persistence.Interceptors;
 using Gggs.BuildingBlocks.Secrets;
 using Gggs.BuildingBlocks.Security;
 using Gggs.CoreHr.Contracts;
+using Gggs.Spend.Application.Expenses;
 using Gggs.Spend.Application.Snapshots;
+using Gggs.Spend.Application.Travel;
 using Gggs.Spend.Infrastructure;
+using Gggs.Workflow.Contracts;
 using Microsoft.EntityFrameworkCore;
 
 /*
  * Spend's background half.
  *
- * One responsibility so far, the same shape every other service's Worker starts from: keeping
- * ref.EmployeeSnapshot current from Core HR's own EmployeeAssignmentChanged/Exited events
+ * Keeps ref.EmployeeSnapshot current from Core HR's own EmployeeAssignmentChanged/Exited events
  * (architecture.md §5.2), so claim creation can confirm an employee exists and is not exited
- * without a synchronous call back to Core HR on every request. Drains Spend's own outbox too,
- * even though nothing publishes into it yet in this v1 slice - the relay costs nothing idle, and
- * every other service's Worker keeps it running unconditionally rather than adding it only once
- * the first event exists to relay.
+ * without a synchronous call back to Core HR on every request. Also reacts to Workflow completing
+ * an approval for an expense claim or travel request (architecture.md §13.3 step 4) - the same
+ * shape as Time.Worker's LeaveWorkflowOutcomeConsumer. Drains Spend's own outbox too, so the Api
+ * never talks to the broker directly.
  *
  * No request, so no signed-in user - writes are attributed to the system identity, same as every
  * other worker.
@@ -57,6 +59,8 @@ builder.Services.AddDbContext<SpendDbContext>((serviceProvider, options) =>
 builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<SpendDbContext>());
 
 builder.Services.AddScoped<IEmployeeSnapshotRepository, EmployeeSnapshotRepository>();
+builder.Services.AddScoped<IExpenseClaimRepository, ExpenseClaimRepository>();
+builder.Services.AddScoped<ITravelRequestRepository, TravelRequestRepository>();
 
 builder.Services.AddGggsMessaging<SpendDbContext>(builder.Configuration, platform.DeploymentProfile);
 
@@ -64,6 +68,10 @@ builder.Services.AddGggsMessaging<SpendDbContext>(builder.Configuration, platfor
 // this subscription at all - see AddGggsEventConsumer's own remarks on why that failure is silent.
 builder.Services.AddGggsEventConsumer<EmployeeAssignmentChangedIntegrationEvent, EmployeeSnapshotConsumer>();
 builder.Services.AddGggsEventConsumer<EmployeeExitedIntegrationEvent, EmployeeSnapshotConsumer>();
+builder.Services.AddGggsEventConsumer<WorkflowApprovedIntegrationEvent, ExpenseClaimWorkflowOutcomeConsumer>();
+builder.Services.AddGggsEventConsumer<WorkflowRejectedIntegrationEvent, ExpenseClaimWorkflowOutcomeConsumer>();
+builder.Services.AddGggsEventConsumer<WorkflowApprovedIntegrationEvent, TravelRequestWorkflowOutcomeConsumer>();
+builder.Services.AddGggsEventConsumer<WorkflowRejectedIntegrationEvent, TravelRequestWorkflowOutcomeConsumer>();
 
 builder.Services.AddGggsEventSubscriber<SpendDbContext>();
 

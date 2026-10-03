@@ -1,17 +1,20 @@
 using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Domain.Exceptions;
+using Gggs.BuildingBlocks.Messaging;
 using Gggs.Spend.Application.Snapshots;
 using Gggs.Spend.Application.Travel;
 using Gggs.Spend.Domain.Expenses;
 using Gggs.Spend.Domain.Snapshots;
 using Gggs.Spend.Domain.Travel;
+using Gggs.Workflow.Contracts;
 
 namespace Gggs.Spend.Application.Expenses;
 
 /// <summary>
-/// Creating a claim, adding lines to it while it is still Draft, and moving it through
-/// Submitted -&gt; Approved/Rejected. No Workflow integration yet - see <see cref="ExpenseClaim"/>'s
-/// own remarks.
+/// Creating a claim, adding lines to it while it is still Draft, and submitting it for approval -
+/// the same template as <c>Gggs.Time.Application.Leave.LeaveRequestService</c>. Submission starts
+/// a Workflow instance (architecture.md §13.3); approval/rejection themselves happen only in
+/// <c>ExpenseClaimWorkflowOutcomeConsumer</c>, reacting to that instance's outcome.
 /// </summary>
 public sealed class ExpenseClaimService(
     IExpenseClaimRepository claims,
@@ -19,9 +22,14 @@ public sealed class ExpenseClaimService(
     IExpenseCategoryRepository categories,
     IEmployeeSnapshotRepository snapshots,
     ITravelRequestRepository travelRequests,
+    ICurrentUser currentUser,
+    IIntegrationEventPublisher publisher,
     IUnitOfWork unitOfWork,
     TimeProvider clock)
 {
+    private const string ExpenseClaimWorkflowCode = "EXPENSE_CLAIM";
+    private const string ExpenseClaimEntityType = "EXPENSE_CLAIM";
+
     public async Task<ExpenseClaim> CreateAsync(
         Guid employeeId, string claimNo, string title, string currency, Guid? travelRequestId = null,
         CancellationToken cancellationToken = default)
@@ -76,25 +84,23 @@ public sealed class ExpenseClaimService(
     {
         ExpenseClaim claim = await GetOrThrowAsync(claimId, cancellationToken);
         claim.Submit(clock.GetUtcNow().UtcDateTime);
+
+        publisher.Publish(new StartWorkflowIntegrationEvent(
+            ExpenseClaimWorkflowCode,
+            ExpenseClaimEntityType,
+            claim.Id,
+            SourceService: "spend",
+            InitiatorUserId: currentUser.UserId,
+            SubjectEmployeeId: claim.EmployeeId,
+            ContextJson: BuildWorkflowContextJson(claim),
+            CorrelationId: currentUser.CorrelationId));
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return claim;
     }
 
-    public async Task<ExpenseClaim> ApproveAsync(Guid claimId, CancellationToken cancellationToken = default)
-    {
-        ExpenseClaim claim = await GetOrThrowAsync(claimId, cancellationToken);
-        claim.Approve(clock.GetUtcNow().UtcDateTime);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        return claim;
-    }
-
-    public async Task<ExpenseClaim> RejectAsync(Guid claimId, CancellationToken cancellationToken = default)
-    {
-        ExpenseClaim claim = await GetOrThrowAsync(claimId, cancellationToken);
-        claim.Reject(clock.GetUtcNow().UtcDateTime);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        return claim;
-    }
+    private static string BuildWorkflowContextJson(ExpenseClaim claim)
+        => System.Text.Json.JsonSerializer.Serialize(new { total = claim.Total, currency = claim.Currency });
 
     private async Task<ExpenseClaim> GetOrThrowAsync(Guid claimId, CancellationToken cancellationToken)
         => await claims.GetAsync(claimId, cancellationToken)

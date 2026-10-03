@@ -304,20 +304,15 @@ public static class Permissions
     {
         public const string CategoryManage = "spend.category.manage";
 
-        /// <summary>Viewing any employee's claims, not just one's own.</summary>
+        /// <summary>Viewing any employee's claims, not just one's own. Approving/rejecting a
+        /// submitted claim is not a Spend permission at all - it goes through Workflow's own task
+        /// inbox (<c>workflow.task.act</c>), the same as every other approvable entity in this
+        /// codebase (see <c>ExpenseClaim</c>'s own remarks).</summary>
         public const string ClaimView = "spend.claim.view";
 
-        /// <summary>Approving or rejecting a submitted claim - no Workflow integration yet, so this
-        /// is a direct admin action (see <c>ExpenseClaim</c>'s own remarks), not a step in an
-        /// approval chain.</summary>
-        public const string ClaimApprove = "spend.claim.approve";
-
-        /// <summary>Viewing any employee's travel requests, not just one's own.</summary>
+        /// <summary>Viewing any employee's travel requests, not just one's own. Approval goes
+        /// through Workflow, same as <see cref="ClaimView"/>'s own remark.</summary>
         public const string TravelView = "spend.travel.view";
-
-        /// <summary>Approving or rejecting a submitted travel request - same direct-admin-action
-        /// shape as <see cref="ClaimApprove"/>.</summary>
-        public const string TravelApprove = "spend.travel.approve";
 
         /// <summary>Requesting and disbursing a cash advance against an Approved travel request,
         /// and building/settling the trip's <c>Travel.TravelSettlement</c> once it is done -

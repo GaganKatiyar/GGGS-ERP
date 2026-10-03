@@ -7,14 +7,20 @@ using Gggs.Spend.Domain.Expenses;
 using Gggs.Spend.Domain.Snapshots;
 using Gggs.Spend.Domain.Travel;
 using Gggs.Spend.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
 namespace Gggs.Spend.IntegrationTests;
 
 /// <summary><c>/api/v1/spend/travel-requests*</c>, <c>/api/v1/spend/travel-advances*</c> and
-/// <c>/api/v1/spend/travel-settlements*</c> over HTTP: an employee requesting travel, an admin
-/// approving it and disbursing an advance, the employee raising an expense claim linked to the
-/// trip, and an admin building and settling the trip's reconciliation. See
+/// <c>/api/v1/spend/travel-settlements*</c> over HTTP: an employee requesting travel, the request
+/// being approved, disbursing an advance, the employee raising an expense claim linked to the
+/// trip and having it approved too, and an admin building and settling the trip's reconciliation.
+/// Approval itself happens only through <c>TravelRequestWorkflowOutcomeConsumer</c>/
+/// <c>ExpenseClaimWorkflowOutcomeConsumer</c> reacting to Workflow (architecture.md §13.3) - with
+/// no Workflow engine running in this test host, <see cref="ApproveTravelRequestDirectlyAsync"/>/
+/// <see cref="ApproveClaimDirectlyAsync"/> call the same domain methods those consumers would, the
+/// same way a real <c>WorkflowApprovedIntegrationEvent</c> would be handled. See
 /// <see cref="TravelSettlement"/>'s own remarks on the net-payable/net-recoverable math.</summary>
 [Collection(nameof(SpendApiCollection))]
 public sealed class TravelEndpointTests(SpendApiFactory factory)
@@ -25,9 +31,7 @@ public sealed class TravelEndpointTests(SpendApiFactory factory)
     [
         Permissions.Spend.CategoryManage,
         Permissions.Spend.ClaimView,
-        Permissions.Spend.ClaimApprove,
         Permissions.Spend.TravelView,
-        Permissions.Spend.TravelApprove,
         Permissions.Spend.TravelAdvanceManage,
     ];
 
@@ -39,9 +43,8 @@ public sealed class TravelEndpointTests(SpendApiFactory factory)
     }
 
     [Fact]
-    public async Task AnEmployee_CanCreateSubmitAndHaveATravelRequestApproved()
+    public async Task AnEmployee_CanCreateAndSubmitATravelRequest()
     {
-        using HttpClient adminClient = factory.CreateClientFor(AdminPermissions);
         Guid employeeId = await SeedEmployeeAsync();
         using HttpClient ownerClient = factory.CreateClientForEmployee(employeeId, Permissions.Self.TravelRequestCreate);
 
@@ -58,13 +61,9 @@ public sealed class TravelEndpointTests(SpendApiFactory factory)
         HttpResponseMessage submitResponse = await ownerClient.PostAsync(
             $"/api/v1/spend/travel-requests/{request.Id}/submit", content: null, TestContext.Current.CancellationToken);
         submitResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-
-        HttpResponseMessage approveResponse = await adminClient.PostAsync(
-            $"/api/v1/spend/travel-requests/{request.Id}/approve", content: null, TestContext.Current.CancellationToken);
-        approveResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        TravelRequestResponse? approved = await approveResponse.Content.ReadFromJsonAsync<TravelRequestResponse>(JsonOptions, TestContext.Current.CancellationToken);
-        approved.ShouldNotBeNull();
-        approved.Status.ShouldBe(TravelRequestStatus.Approved);
+        TravelRequestResponse? submitted = await submitResponse.Content.ReadFromJsonAsync<TravelRequestResponse>(JsonOptions, TestContext.Current.CancellationToken);
+        submitted.ShouldNotBeNull();
+        submitted.Status.ShouldBe(TravelRequestStatus.Submitted);
     }
 
     [Fact]
@@ -178,18 +177,18 @@ public sealed class TravelEndpointTests(SpendApiFactory factory)
         return body!.Id;
     }
 
-    private static async Task<Guid> CreateApprovedTravelRequestAsync(HttpClient adminClient, HttpClient ownerClient, Guid employeeId)
+    private async Task<Guid> CreateApprovedTravelRequestAsync(HttpClient adminClient, HttpClient ownerClient, Guid employeeId)
     {
         Guid requestId = await CreateTravelRequestAsync(ownerClient, employeeId);
         await ownerClient.PostAsync($"/api/v1/spend/travel-requests/{requestId}/submit", content: null, TestContext.Current.CancellationToken);
-        await adminClient.PostAsync($"/api/v1/spend/travel-requests/{requestId}/approve", content: null, TestContext.Current.CancellationToken);
+        await ApproveTravelRequestDirectlyAsync(requestId);
         return requestId;
     }
 
     /// <summary>Creates a category (admin), a claim linked to the trip with one line for the given
-    /// amount (owner), submits it, and has the admin approve it - the shape
+    /// amount (owner), submits it, and approves it - the shape
     /// <see cref="TravelSettlementService.BuildAsync"/> needs to see it as real spend.</summary>
-    private static async Task CreateAndApproveLinkedClaimAsync(
+    private async Task CreateAndApproveLinkedClaimAsync(
         HttpClient adminClient, HttpClient ownerClient, Guid employeeId, Guid travelRequestId, decimal amount)
     {
         HttpResponseMessage categoryResponse = await adminClient.PostAsJsonAsync(
@@ -210,7 +209,36 @@ public sealed class TravelEndpointTests(SpendApiFactory factory)
             TestContext.Current.CancellationToken);
 
         await ownerClient.PostAsync($"/api/v1/spend/claims/{claim.Id}/submit", content: null, TestContext.Current.CancellationToken);
-        await adminClient.PostAsync($"/api/v1/spend/claims/{claim.Id}/approve", content: null, TestContext.Current.CancellationToken);
+        await ApproveClaimDirectlyAsync(claim.Id);
+    }
+
+    /// <summary>Simulates <c>TravelRequestWorkflowOutcomeConsumer</c> reacting to a
+    /// <c>WorkflowApprovedIntegrationEvent</c> - there is no Workflow engine in this test host to
+    /// produce one for real.</summary>
+    private async Task ApproveTravelRequestDirectlyAsync(Guid travelRequestId)
+    {
+        using SpendDbContext db = factory.CreateTenantScopedContext(out IDisposable scopeHandle);
+        using (scopeHandle)
+        {
+            TravelRequest request = await db.TravelRequests.SingleAsync(x => x.Id == travelRequestId, TestContext.Current.CancellationToken);
+            request.LinkWorkflowInstance(Guid.NewGuid());
+            request.MarkApproved(DateTime.UtcNow);
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+    }
+
+    /// <summary>Simulates <c>ExpenseClaimWorkflowOutcomeConsumer</c> - see
+    /// <see cref="ApproveTravelRequestDirectlyAsync"/>'s own remarks.</summary>
+    private async Task ApproveClaimDirectlyAsync(Guid claimId)
+    {
+        using SpendDbContext db = factory.CreateTenantScopedContext(out IDisposable scopeHandle);
+        using (scopeHandle)
+        {
+            ExpenseClaim claim = await db.ExpenseClaims.SingleAsync(x => x.Id == claimId, TestContext.Current.CancellationToken);
+            claim.LinkWorkflowInstance(Guid.NewGuid());
+            claim.MarkApproved(DateTime.UtcNow);
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
     }
 
     private static string ShortCode() => $"C{Guid.NewGuid():N}"[..18];

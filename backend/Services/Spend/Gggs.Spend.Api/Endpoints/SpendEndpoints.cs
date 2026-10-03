@@ -88,9 +88,6 @@ public static class SpendEndpoints
             .WithName("ListExpenseLines").RequirePermission(Permissions.Self.ExpenseClaimCreate, Permissions.Spend.ClaimView);
         group.MapPost("/{id:guid}/submit", SubmitClaimAsync).WithName("SubmitExpenseClaim").RequirePermission(Permissions.Self.ExpenseClaimCreate);
 
-        group.MapPost("/{id:guid}/approve", ApproveClaimAsync).WithName("ApproveExpenseClaim").RequirePermission(Permissions.Spend.ClaimApprove);
-        group.MapPost("/{id:guid}/reject", RejectClaimAsync).WithName("RejectExpenseClaim").RequirePermission(Permissions.Spend.ClaimApprove);
-
         endpoints.MapGet("/api/v1/spend/employees/{employeeId:guid}/claims", ListEmployeeClaimsAsync)
             .WithName("ListEmployeeExpenseClaims").WithTags("Spend").RequirePermission(Permissions.Spend.ClaimView);
     }
@@ -264,17 +261,11 @@ public static class SpendEndpoints
         where TSuccess : IResult
         => access == ClaimAccess.NotFound ? TypedResults.NotFound() : TypedResults.Forbid();
 
-    private static async Task<Ok<ExpenseClaimResponse>> ApproveClaimAsync(Guid id, ExpenseClaimService service, CancellationToken ct)
-        => TypedResults.Ok(ToResponse(await service.ApproveAsync(id, ct)));
-
-    private static async Task<Ok<ExpenseClaimResponse>> RejectClaimAsync(Guid id, ExpenseClaimService service, CancellationToken ct)
-        => TypedResults.Ok(ToResponse(await service.RejectAsync(id, ct)));
-
     private static ExpenseCategoryResponse ToResponse(ExpenseCategory entity) => new(entity.Id, entity.Code, entity.Name, entity.IsActive);
 
     private static ExpenseClaimResponse ToResponse(ExpenseClaim entity) => new(
         entity.Id, entity.ClaimNo, entity.EmployeeId, entity.Title, entity.Currency, entity.Total, entity.Status,
-        entity.SubmittedDate, entity.DecidedDate, entity.TravelRequestId);
+        entity.SubmittedDate, entity.DecidedDate, entity.TravelRequestId, entity.WorkflowInstanceId);
 
     private static ExpenseLineResponse ToResponse(ExpenseLine entity) => new(
         entity.Id, entity.CategoryId, entity.ExpenseDate, entity.Amount, entity.Merchant);
@@ -291,9 +282,6 @@ public static class SpendEndpoints
         group.MapPost("/", CreateTravelRequestAsync).WithName("CreateTravelRequest").RequirePermission(Permissions.Self.TravelRequestCreate);
         group.MapPost("/{id:guid}/submit", SubmitTravelRequestAsync)
             .WithName("SubmitTravelRequest").RequirePermission(Permissions.Self.TravelRequestCreate);
-
-        group.MapPost("/{id:guid}/approve", ApproveTravelRequestAsync).WithName("ApproveTravelRequest").RequirePermission(Permissions.Spend.TravelApprove);
-        group.MapPost("/{id:guid}/reject", RejectTravelRequestAsync).WithName("RejectTravelRequest").RequirePermission(Permissions.Spend.TravelApprove);
 
         group.MapGet("/{id:guid}/advances", ListAdvancesAsync)
             .WithName("ListTravelAdvances").RequirePermission(Permissions.Self.TravelRequestCreate, Permissions.Spend.TravelView);
@@ -408,12 +396,6 @@ public static class SpendEndpoints
         return TypedResults.Ok(ToResponse(await service.SubmitAsync(id, ct)));
     }
 
-    private static async Task<Ok<TravelRequestResponse>> ApproveTravelRequestAsync(Guid id, TravelRequestService service, CancellationToken ct)
-        => TypedResults.Ok(ToResponse(await service.ApproveAsync(id, ct)));
-
-    private static async Task<Ok<TravelRequestResponse>> RejectTravelRequestAsync(Guid id, TravelRequestService service, CancellationToken ct)
-        => TypedResults.Ok(ToResponse(await service.RejectAsync(id, ct)));
-
     private static async Task<Ok<IReadOnlyList<TravelAdvanceResponse>>> ListAdvancesAsync(Guid id, SpendDbContext db, CancellationToken ct)
     {
         List<TravelAdvanceResponse> items = await db.TravelAdvances.AsNoTracking()
@@ -450,7 +432,8 @@ public static class SpendEndpoints
 
     private static TravelRequestResponse ToResponse(TravelRequest entity) => new(
         entity.Id, entity.RequestNo, entity.EmployeeId, entity.Purpose, entity.FromCity, entity.ToCity, entity.FromDate,
-        entity.ToDate, entity.EstimatedCost, entity.Currency, entity.Status, entity.SubmittedDate, entity.DecidedDate);
+        entity.ToDate, entity.EstimatedCost, entity.Currency, entity.Status, entity.SubmittedDate, entity.DecidedDate,
+        entity.WorkflowInstanceId);
 
     private static TravelAdvanceResponse ToResponse(TravelAdvance entity) => new(
         entity.Id, entity.TravelRequestId, entity.Amount, entity.Currency, entity.Status, entity.DisbursedDate);

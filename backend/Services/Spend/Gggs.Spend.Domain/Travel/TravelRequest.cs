@@ -12,11 +12,13 @@ public enum TravelRequestStatus
 }
 
 /// <summary>
-/// One employee's request to travel for work - Draft -&gt; Submitted -&gt; Approved/Rejected (both
-/// terminal), the exact same lifecycle shape as <c>Expenses.ExpenseClaim</c>: no Workflow
-/// integration yet, an admin with the right permission decides directly. No itinerary/segment
-/// detail in this v1 slice (architecture.md's <c>trv.TravelItinerary</c>) - just the trip's own
-/// purpose, cities and dates, enough for an advance to be requested against once this is Approved.
+/// One employee's request to travel for work - the exact same lifecycle shape as
+/// <c>Expenses.ExpenseClaim</c>: goes through <c>Gggs.Workflow</c> for approval (architecture.md
+/// §13.3), never approves itself. <see cref="Status"/> stays
+/// <see cref="TravelRequestStatus.Submitted"/> until <c>TravelRequestWorkflowOutcomeConsumer</c>
+/// reacts to a <c>WorkflowApproved</c>/<c>RejectedIntegrationEvent</c>. No itinerary/segment detail
+/// in this v1 slice (architecture.md's <c>trv.TravelItinerary</c>) - just the trip's own purpose,
+/// cities and dates, enough for an advance to be requested against once this is Approved.
 /// </summary>
 public sealed class TravelRequest : TenantAggregateRoot
 {
@@ -53,6 +55,8 @@ public sealed class TravelRequest : TenantAggregateRoot
 
     public DateTime? DecidedDate { get; private set; }
 
+    public Guid? WorkflowInstanceId { get; private set; }
+
     public static TravelRequest Create(
         string requestNo, Guid employeeId, string purpose, string fromCity, string toCity,
         DateOnly fromDate, DateOnly toDate, decimal estimatedCost, string currency)
@@ -83,14 +87,19 @@ public sealed class TravelRequest : TenantAggregateRoot
         SubmittedDate = submittedAtUtc;
     }
 
-    public void Approve(DateTime decidedAtUtc)
+    /// <summary>Set once the workflow instance actually starts - see
+    /// <c>TravelRequestService.SubmitAsync</c>'s own remarks on why this is a separate step from
+    /// <see cref="Submit"/> rather than folded into it.</summary>
+    public void LinkWorkflowInstance(Guid workflowInstanceId) => WorkflowInstanceId = Guard.NotEmpty(workflowInstanceId);
+
+    public void MarkApproved(DateTime decidedAtUtc)
     {
         Guard.Against(Status != TravelRequestStatus.Submitted, "TRAVEL_REQUEST_NOT_SUBMITTED", $"Request '{RequestNo}' must be Submitted to approve; it is {Status}.");
         Status = TravelRequestStatus.Approved;
         DecidedDate = decidedAtUtc;
     }
 
-    public void Reject(DateTime decidedAtUtc)
+    public void MarkRejected(DateTime decidedAtUtc)
     {
         Guard.Against(Status != TravelRequestStatus.Submitted, "TRAVEL_REQUEST_NOT_SUBMITTED", $"Request '{RequestNo}' must be Submitted to reject; it is {Status}.");
         Status = TravelRequestStatus.Rejected;
