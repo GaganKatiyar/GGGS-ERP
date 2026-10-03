@@ -2,6 +2,7 @@ using System.Globalization;
 using Gggs.BuildingBlocks.Application.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using OpenTelemetry.Metrics;
@@ -130,6 +131,14 @@ public static class ObservabilityExtensions
             options.DeploymentProfile = platform.DeploymentProfile;
             options.ServiceName = serviceName;
         });
+
+        // Every host needs this eventually (outbox relay, event subscriber, recurring jobs), but
+        // only API hosts pick it up as a side effect of AddGggsAuthorization. Registered here
+        // instead, in the one call both API and Worker hosts make first, so a Worker with no
+        // authorization pipeline of its own does not fail to start the moment anything in it
+        // asks for the time. TryAdd so a host that also calls AddGggsAuthorization keeps using
+        // the same singleton rather than getting a second, unrelated instance.
+        builder.Services.TryAddSingleton(TimeProvider.System);
 
         return platform;
     }
