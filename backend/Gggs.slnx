@@ -70,6 +70,13 @@
   <Folder Name="/Services/Sample/">
     <Project Path="Services/Sample/Gggs.Sample.Api/Gggs.Sample.Api.csproj" />
   </Folder>
+  <Folder Name="/Services/Reporting/">
+    <Project Path="Services/Reporting/Gggs.Reporting.Api/Gggs.Reporting.Api.csproj" />
+    <Project Path="Services/Reporting/Gggs.Reporting.Application/Gggs.Reporting.Application.csproj" />
+    <Project Path="Services/Reporting/Gggs.Reporting.Domain/Gggs.Reporting.Domain.csproj" />
+    <Project Path="Services/Reporting/Gggs.Reporting.Infrastructure/Gggs.Reporting.Infrastructure.csproj" />
+    <Project Path="Services/Reporting/Gggs.Reporting.Worker/Gggs.Reporting.Worker.csproj" />
+  </Folder>
   <Folder Name="/Services/Time/">
     <Project Path="Services/Time/Gggs.Time.Api/Gggs.Time.Api.csproj" />
     <Project Path="Services/Time/Gggs.Time.Application/Gggs.Time.Application.csproj" />

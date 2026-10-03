@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Reporting.Api</RootNamespace>
+    <UserSecretsId>gggs-reporting-api</UserSecretsId>
+    <Description>The headcount roster and its daily snapshot facts.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Caching\Gggs.BuildingBlocks.Caching.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Observability\Gggs.BuildingBlocks.Observability.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Secrets\Gggs.BuildingBlocks.Secrets.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Web\Gggs.BuildingBlocks.Web.csproj" />
+    <ProjectReference Include="..\Gggs.Reporting.Application\Gggs.Reporting.Application.csproj" />
+    <ProjectReference Include="..\Gggs.Reporting.Infrastructure\Gggs.Reporting.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Gggs.Reporting.IntegrationTests" />
+  </ItemGroup>
+
+</Project>

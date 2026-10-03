@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Reporting.Worker</RootNamespace>
+    <UserSecretsId>gggs-reporting-worker</UserSecretsId>
+    <Description>Reporting's background half: consumes Core HR's employee events into the roster, snapshots it daily, and relays its own outbox.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Observability\Gggs.BuildingBlocks.Observability.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Secrets\Gggs.BuildingBlocks.Secrets.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Security\Gggs.BuildingBlocks.Security.csproj" />
+    <ProjectReference Include="..\Gggs.Reporting.Infrastructure\Gggs.Reporting.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
