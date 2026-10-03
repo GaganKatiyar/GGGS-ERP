@@ -35,6 +35,7 @@ export interface ExpenseClaim {
   readonly submittedDate: string | null;
   readonly decidedDate: string | null;
   readonly travelRequestId: string | null;
+  readonly workflowInstanceId: string | null;
 }
 
 export interface CreateExpenseClaimRequest {
@@ -68,6 +69,7 @@ export interface TravelRequest {
   readonly status: TravelRequestStatus;
   readonly submittedDate: string | null;
   readonly decidedDate: string | null;
+  readonly workflowInstanceId: string | null;
 }
 
 export interface CreateTravelRequestRequest {

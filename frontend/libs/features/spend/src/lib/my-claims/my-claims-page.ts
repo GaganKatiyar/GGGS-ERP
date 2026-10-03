@@ -6,8 +6,8 @@ import type { ExpenseCategory, ExpenseClaim, ExpenseLine } from '@gggs/shared/mo
 import { SpendApi } from '../data/spend-api';
 
 /** Self-service: create a claim, add lines to it while it is Draft, submit it, and see the
- * decision once an admin approves or rejects it. No Workflow integration, receipts or
- * multi-currency in this v1 slice - see the backend's own remarks. */
+ * decision once Workflow's approval runs. No receipts or multi-currency in this v1 slice - see
+ * the backend's own remarks. */
 @Component({
   selector: 'gggs-my-claims-page',
   imports: [DecimalPipe, ReactiveFormsModule, PageHeader, Card, Button],

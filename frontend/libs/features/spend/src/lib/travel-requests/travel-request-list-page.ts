@@ -14,7 +14,7 @@ import { SpendApi } from '../data/spend-api';
   imports: [DecimalPipe, RouterLink, EmployeePicker, PageHeader, Card],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <gggs-page-header title="Travel requests" subtitle="Look up an employee to review, approve and settle their travel." />
+    <gggs-page-header title="Travel requests" subtitle="Look up an employee to review and settle their travel." />
 
     <gggs-card title="Employee" class="section">
       <span class="field__label" id="employee-label">Look up an employee</span>

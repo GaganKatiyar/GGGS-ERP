@@ -17,7 +17,9 @@ import type {
 import { firstValueFrom } from 'rxjs';
 
 /** Expense categories/claims and travel requests/advances/settlements over the gateway's
- * `/api/v1/spend/*` routes. No Workflow integration, multi-currency or receipts in this v1 slice. */
+ * `/api/v1/spend/*` routes. Approving/rejecting a submitted claim or travel request is not here -
+ * it goes through `WorkflowApi`'s unified approvals inbox, the same as leave requests. No
+ * multi-currency or receipts in this v1 slice. */
 @Injectable({ providedIn: 'root' })
 export class SpendApi {
   private readonly http = inject(HttpClient);
@@ -70,14 +72,6 @@ export class SpendApi {
     return firstValueFrom(this.http.post<ExpenseClaim>(`/api/v1/spend/claims/${id}/submit`, {}));
   }
 
-  approveClaim(id: string): Promise<ExpenseClaim> {
-    return firstValueFrom(this.http.post<ExpenseClaim>(`/api/v1/spend/claims/${id}/approve`, {}));
-  }
-
-  rejectClaim(id: string): Promise<ExpenseClaim> {
-    return firstValueFrom(this.http.post<ExpenseClaim>(`/api/v1/spend/claims/${id}/reject`, {}));
-  }
-
   // ---- Travel requests ----
 
   listMyTravelRequests(): Promise<readonly TravelRequest[]> {
@@ -98,14 +92,6 @@ export class SpendApi {
 
   submitTravelRequest(id: string): Promise<TravelRequest> {
     return firstValueFrom(this.http.post<TravelRequest>(`/api/v1/spend/travel-requests/${id}/submit`, {}));
-  }
-
-  approveTravelRequest(id: string): Promise<TravelRequest> {
-    return firstValueFrom(this.http.post<TravelRequest>(`/api/v1/spend/travel-requests/${id}/approve`, {}));
-  }
-
-  rejectTravelRequest(id: string): Promise<TravelRequest> {
-    return firstValueFrom(this.http.post<TravelRequest>(`/api/v1/spend/travel-requests/${id}/reject`, {}));
   }
 
   // ---- Travel advances ----

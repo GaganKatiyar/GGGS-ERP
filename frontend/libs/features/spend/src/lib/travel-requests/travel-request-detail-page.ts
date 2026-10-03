@@ -7,10 +7,11 @@ import { Button, Card, PageHeader } from '@gggs/shared/ui';
 import type { TravelAdvance, TravelRequest, TravelSettlement } from '@gggs/shared/models';
 import { SpendApi } from '../data/spend-api';
 
-/** Admin: one travel request's approval, its advances, and the trip's settlement once the
- * employee's actual expenses are in. Requesting/disbursing an advance and building/settling the
- * trip are always an admin/finance action (spend.travel-advance.manage) - never something the
- * traveling employee does themselves. */
+/** Admin: one travel request's status, its advances, and the trip's settlement once the
+ * employee's actual expenses are in. Approving/rejecting a submitted request happens through the
+ * unified approvals inbox (Workflow), not here - see `SpendApi`'s own remarks. Requesting/
+ * disbursing an advance and building/settling the trip are always an admin/finance action
+ * (spend.travel-advance.manage) - never something the traveling employee does themselves. */
 @Component({
   selector: 'gggs-travel-request-detail-page',
   imports: [RouterLink, DecimalPipe, ReactiveFormsModule, HasPermissionDirective, PageHeader, Card, Button],
@@ -34,10 +35,10 @@ import { SpendApi } from '../data/spend-api';
         </dl>
 
         @if (r.status === 'Submitted') {
-          <div class="actions" *gggsHasPermission="'spend.travel.approve'">
-            <gggs-button size="sm" (click)="approve()" [disabled]="isActing()">Approve</gggs-button>
-            <gggs-button size="sm" variant="secondary" (click)="reject()" [disabled]="isActing()">Reject</gggs-button>
-          </div>
+          <p class="muted">
+            Awaiting approval - see the
+            <a routerLink="/approvals">approvals inbox</a>.
+          </p>
         }
       </gggs-card>
 
@@ -214,14 +215,6 @@ export class TravelRequestDetailPage {
 
   constructor() {
     void this.load();
-  }
-
-  protected async approve(): Promise<void> {
-    await this.act(() => this.api.approveTravelRequest(this.requestId));
-  }
-
-  protected async reject(): Promise<void> {
-    await this.act(() => this.api.rejectTravelRequest(this.requestId));
   }
 
   protected async requestAdvance(): Promise<void> {
