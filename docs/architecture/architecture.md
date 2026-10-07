@@ -1,5 +1,7 @@
 # GGGS HRMS — Multi-Tenant SaaS HRMS ERP: Architecture & Implementation Plan
 
+> **Superseded in part (2026-10-07).** The product is being rebuilt as PeopleOS, a single modular monolith with one database. See [ADR-12](../adr/0012-modular-monolith.md) and [peopleos-target.md](peopleos-target.md). The tenancy, security, isolation, audit and compliance-pack sections below still apply; the microservice boundaries (§5), per-service databases (§6.1) and roadmap (§22) do not.
+
 ## Context
 
 `C:\Gagan\GGGSERP` is empty. This is a new build: a multi-tenant SaaS HRMS ERP on Angular + ASP.NET Core microservices + SQL Server, deployed on Azure. This document is the architecture baseline a team can build from. Once it is approved, implementation starts with **Phase 0 (foundation)** and then **Phase 1** (Tenant, Identity, Organization, Employee), as described in §22.
@@ -9,8 +11,8 @@
 | # | Decision | Choice | Main alternative rejected |
 |---|---|---|---|
 | ADR-01 | Tenancy model | **Hybrid: pooled shared DB + shared schema (TenantId + SQL RLS) by default, with dedicated DB per tenant for Enterprise/regulated tenants** | Schema-per-tenant (migration and ops pain) |
-| ADR-02 | Service granularity | **Ten domain/support services plus a BFF gateway**, grouped by business capability, not one per module | 15+ micro-services (too much distributed overhead) |
-| ADR-03 | Data ownership | Database per service. Modules inside a service get their own SQL schema | Shared HR database (creates coupling) |
+| ADR-02 | Service granularity *(superseded by [ADR-12](../adr/0012-modular-monolith.md): one modular monolith)* | **Ten domain/support services plus a BFF gateway**, grouped by business capability, not one per module | 15+ micro-services (too much distributed overhead) |
+| ADR-03 | Data ownership *(superseded by [ADR-12](../adr/0012-modular-monolith.md): one database, schema per module)* | Database per service. Modules inside a service get their own SQL schema | Shared HR database (creates coupling) |
 | ADR-04 | Identity | **Platform OIDC server (OpenIddict)** that federates to each tenant's Entra ID / OIDC / SAML. Built: token endpoint with the password and refresh-token grants; the authorization-code flow lands with federation | Using Entra ID directly as the only IdP |
 | ADR-05 | Browser auth | **BFF pattern**: httpOnly cookie in the browser, tokens kept server-side | Tokens stored in the SPA |
 | ADR-06 | Messaging | Azure Service Bus (prod) / RabbitMQ (dev) through **MassTransit + transactional outbox/inbox** | Kafka (not needed at this scale) |
