@@ -4,7 +4,7 @@ import { describeError } from './role-detail-page';
 
 describe('describeError (role permissions)', () => {
   it('explains an unknown permission code in plain language, matching Role.Grant\'s own guard', () => {
-    expect(describeError(new ApiError(422, { errorCode: 'PERMISSION_UNKNOWN' }))).toBe(
+    expect(describeError(new ApiError(422, { code: 'PERMISSION_UNKNOWN' }))).toBe(
       'That is not a permission this platform defines.',
     );
   });

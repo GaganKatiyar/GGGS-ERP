@@ -4,14 +4,14 @@ import { describeError } from './exit-employee-page';
 
 describe('describeError (exit)', () => {
   it('explains that this employee has already left', () => {
-    expect(describeError(new ApiError(422, { errorCode: 'EMPLOYEE_ALREADY_LEFT' }))).toBe(
+    expect(describeError(new ApiError(422, { code: 'EMPLOYEE_ALREADY_LEFT' }))).toBe(
       'This employee has already left.',
     );
   });
 
   it('explains an exit date before joining', () => {
     expect(
-      describeError(new ApiError(422, { errorCode: 'EMPLOYEE_EXIT_BEFORE_JOINING' })),
+      describeError(new ApiError(422, { code: 'EMPLOYEE_EXIT_BEFORE_JOINING' })),
     ).toBe('The exit date cannot be before the employee joined.');
   });
 

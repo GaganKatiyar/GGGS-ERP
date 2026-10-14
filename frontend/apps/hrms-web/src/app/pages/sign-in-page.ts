@@ -7,6 +7,7 @@ import {
   type PasswordSignInResult,
 } from '@gggs/core/auth';
 import { Button, FormField } from '@gggs/shared/ui';
+import { PRODUCT_NAME } from '../product-title-strategy';
 
 /**
  * Signing in.
@@ -31,6 +32,7 @@ import { Button, FormField } from '@gggs/shared/ui';
         (ngSubmit)="submit()"
         novalidate
       >
+        <p class="sign-in__product">{{ productName }}</p>
         <h1 class="sign-in__title">Sign in</h1>
 
         <gggs-form-field
@@ -104,6 +106,15 @@ import { Button, FormField } from '@gggs/shared/ui';
       box-shadow: var(--gggs-shadow-md, none);
     }
 
+    .sign-in__product {
+      margin: 0;
+      color: var(--gggs-color-primary, #3b5bdb);
+      font-size: var(--gggs-font-size-sm, 0.75rem);
+      font-weight: var(--gggs-font-weight-semibold, 600);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
     .sign-in__title {
       margin: 0;
       font-size: var(--gggs-font-size-xl, 1.25rem);
@@ -118,6 +129,7 @@ import { Button, FormField } from '@gggs/shared/ui';
   `,
 })
 export class SignInPage {
+  protected readonly productName = PRODUCT_NAME;
   private readonly session = inject(SessionStore);
   private readonly router = inject(Router);
   private readonly formBuilder = inject(FormBuilder);

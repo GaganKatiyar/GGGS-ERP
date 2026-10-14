@@ -5,7 +5,7 @@ import { describeCreateError, describeMoveError } from './departments-page';
 describe('describeCreateError', () => {
   it('names a duplicate code plainly', () => {
     expect(
-      describeCreateError(new ApiError(422, { errorCode: 'ORGANIZATION_CODE_IN_USE' })),
+      describeCreateError(new ApiError(422, { code: 'ORGANIZATION_CODE_IN_USE' })),
     ).toBe('That code is already in use.');
   });
 
@@ -20,7 +20,7 @@ describe('describeMoveError', () => {
   it('explains a cycle without repeating the server-facing error code verbatim', () => {
     expect(
       describeMoveError(
-        new ApiError(422, { errorCode: 'DEPARTMENT_MOVE_WOULD_CREATE_CYCLE' }),
+        new ApiError(422, { code: 'DEPARTMENT_MOVE_WOULD_CREATE_CYCLE' }),
       ),
     ).toBe('That move would make the department a descendant of itself.');
   });

@@ -6,14 +6,14 @@ describe('describeError (transfer/promote)', () => {
   it('explains reporting-to-self in plain language, matching EmploymentRecord.Create\'s own guard', () => {
     expect(
       describeError(
-        new ApiError(422, { errorCode: 'EMPLOYMENT_RECORD_CANNOT_REPORT_TO_SELF' }),
+        new ApiError(422, { code: 'EMPLOYMENT_RECORD_CANNOT_REPORT_TO_SELF' }),
       ),
     ).toBe('An employee cannot be their own reporting manager.');
   });
 
   it('explains an invalid effective date, matching EmploymentRecord.EndOn\'s own guard', () => {
     expect(
-      describeError(new ApiError(422, { errorCode: 'EMPLOYMENT_RECORD_DATES_INVALID' })),
+      describeError(new ApiError(422, { code: 'EMPLOYMENT_RECORD_DATES_INVALID' })),
     ).toBe('The effective date must be on or after the current assignment started.');
   });
 

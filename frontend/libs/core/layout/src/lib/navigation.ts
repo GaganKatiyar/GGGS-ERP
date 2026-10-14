@@ -16,6 +16,10 @@ export interface NavItem {
   readonly children?: readonly NavItem[];
   /** Named counter shown as a badge, e.g. pending approvals. */
   readonly badge?: 'approvals' | 'notifications';
+  /** On the roadmap but not built: never shown. See {@link isBuilt}. */
+  readonly planned?: boolean;
+  /** The roadmap milestone a planned entry ships in (docs/roadmap.md). */
+  readonly milestone?: string;
 }
 
 /** Decides whether one navigation entry is usable by the current user. */
@@ -55,9 +59,22 @@ export function filterNavigation(
   return visible;
 }
 
+/**
+ * Whether an entry's module has been built yet.
+ *
+ * The manifest describes the whole of PeopleOS (spec §117) so the sidebar's shape is decided once,
+ * but modules ship milestone by milestone (docs/roadmap.md). A planned entry has no route behind it
+ * yet, so it never reaches the sidebar whatever the user's permissions or the tenant's plan.
+ * Shipping a module means adding its route and deleting its `planned` flag - nothing else.
+ */
+export const isBuilt = (item: NavItem): boolean => item.planned !== true;
+
+/** Shorthand for a module that is on the roadmap but not built. */
+const planned = (milestone: string) => ({ planned: true, milestone }) as const;
+
 export const NAVIGATION: readonly NavItem[] = [
   {
-    label: 'Home',
+    label: 'Dashboard',
     icon: 'pi pi-home',
     route: '/dashboard',
   },
@@ -67,366 +84,195 @@ export const NAVIGATION: readonly NavItem[] = [
     route: '/approvals',
     permissions: ['workflow.task.view'],
     badge: 'approvals',
+    ...planned('M3'),
   },
   {
+    // Employee self-service (spec §16).
     label: 'My Space',
     icon: 'pi pi-user',
-    permissions: ['self.profile.view'],
     children: [
-      {
-        label: 'My profile',
-        icon: 'pi pi-id-card',
-        route: '/me/profile',
-        permissions: ['self.profile.view'],
-      },
-      {
-        label: 'My attendance',
-        icon: 'pi pi-clock',
-        route: '/me/attendance',
-        permissions: ['self.attendance.view'],
-      },
-      {
-        label: 'My leave',
-        icon: 'pi pi-calendar',
-        route: '/me/leave',
-        permissions: ['self.leave.view'],
-      },
-      {
-        label: 'My payslips',
-        icon: 'pi pi-wallet',
-        route: '/me/payslips',
-        permissions: ['self.payslip.view'],
-        feature: 'Payroll',
-      },
-      {
-        label: 'My expense claims',
-        icon: 'pi pi-receipt',
-        route: '/me/expenses',
-        permissions: ['self.expense-claim.create'],
-      },
-      {
-        label: 'My travel requests',
-        icon: 'pi pi-send',
-        route: '/me/travel',
-        permissions: ['self.travel-request.create'],
-      },
-      {
-        label: 'My assets',
-        icon: 'pi pi-desktop',
-        route: '/me/assets',
-        permissions: ['self.asset.view'],
-      },
-      {
-        label: 'My documents',
-        icon: 'pi pi-file',
-        route: '/me/documents',
-        permissions: ['self.document.view'],
-      },
+      { label: 'My profile', icon: 'pi pi-id-card', route: '/me/profile', permissions: ['self.profile.view'], ...planned('M2') },
+      { label: 'My attendance', icon: 'pi pi-clock', route: '/me/attendance', permissions: ['self.attendance.view'], feature: 'Time', ...planned('M4') },
+      { label: 'My leave', icon: 'pi pi-calendar', route: '/me/leave', permissions: ['self.leave.view'], feature: 'Time', ...planned('M4') },
+      { label: 'My timesheet', icon: 'pi pi-stopwatch', route: '/me/timesheet', permissions: ['self.timesheet.submit'], feature: 'Timesheets', ...planned('M6') },
+      { label: 'My payslips', icon: 'pi pi-wallet', route: '/me/payslips', permissions: ['self.payslip.view'], feature: 'Payroll', ...planned('M7') },
+      { label: 'My expenses', icon: 'pi pi-receipt', route: '/me/expenses', permissions: ['self.expense-claim.create'], feature: 'Expenses', ...planned('M10') },
+      { label: 'My rewards', icon: 'pi pi-star', route: '/me/rewards', permissions: ['self.reward.view'], feature: 'Rewards', ...planned('M10') },
+      { label: 'My assets', icon: 'pi pi-desktop', route: '/me/assets', permissions: ['self.asset.view'], feature: 'Assets', ...planned('M10') },
+      { label: 'My documents', icon: 'pi pi-file', route: '/me/documents', permissions: ['self.document.view'], feature: 'Documents', ...planned('M3') },
+      { label: 'My tickets', icon: 'pi pi-question-circle', route: '/me/tickets', permissions: ['self.ticket.create'], feature: 'Helpdesk', ...planned('M10') },
     ],
   },
   {
+    // Manager self-service (spec §17).
     label: 'My Team',
     icon: 'pi pi-users',
-    permissions: [
-      'employee.profile.view',
-      'attendance.record.view',
-      'leave.request.view',
-    ],
     children: [
-      {
-        label: 'Team overview',
-        icon: 'pi pi-chart-bar',
-        route: '/team',
-        permissions: ['employee.profile.view'],
-      },
-      {
-        label: 'Team attendance',
-        icon: 'pi pi-clock',
-        route: '/team/attendance',
-        permissions: ['attendance.record.view'],
-      },
-      {
-        label: 'Team leave',
-        icon: 'pi pi-calendar',
-        route: '/team/leave',
-        permissions: ['leave.request.view'],
-      },
+      { label: 'Team overview', icon: 'pi pi-chart-bar', route: '/team', permissions: ['employee.profile.view'], ...planned('M2') },
+      { label: 'Team attendance', icon: 'pi pi-clock', route: '/team/attendance', permissions: ['attendance.record.view'], feature: 'Time', ...planned('M4') },
+      { label: 'Team leave', icon: 'pi pi-calendar', route: '/team/leave', permissions: ['leave.request.view'], feature: 'Time', ...planned('M4') },
+      { label: 'Team timesheets', icon: 'pi pi-stopwatch', route: '/team/timesheets', permissions: ['timesheet.entry.approve'], feature: 'Timesheets', ...planned('M6') },
     ],
   },
   {
     label: 'Organization',
     icon: 'pi pi-sitemap',
-    permissions: ['org.structure.view'],
     children: [
-      {
-        label: 'Legal entities',
-        icon: 'pi pi-building',
-        route: '/org/legal-entities',
-        permissions: ['org.structure.view'],
-      },
-      {
-        label: 'Business units',
-        icon: 'pi pi-sitemap',
-        route: '/org/business-units',
-        permissions: ['org.structure.view'],
-      },
-      {
-        label: 'Branches',
-        icon: 'pi pi-map-marker',
-        route: '/org/branches',
-        permissions: ['org.structure.view'],
-      },
-      {
-        label: 'Locations',
-        icon: 'pi pi-map',
-        route: '/org/locations',
-        permissions: ['org.structure.view'],
-      },
-      {
-        label: 'Departments',
-        icon: 'pi pi-sitemap',
-        route: '/org/departments',
-        permissions: ['org.structure.view'],
-      },
-      {
-        label: 'Designations',
-        icon: 'pi pi-briefcase',
-        route: '/org/designations',
-        permissions: ['org.structure.view'],
-      },
-      {
-        label: 'Grades',
-        icon: 'pi pi-star',
-        route: '/org/grades',
-        permissions: ['org.structure.view'],
-      },
-      {
-        label: 'Cost centers',
-        icon: 'pi pi-wallet',
-        route: '/org/cost-centers',
-        permissions: ['org.structure.view'],
-      },
+      { label: 'Companies', icon: 'pi pi-building', route: '/org/companies', permissions: ['org.structure.view'], ...planned('M2') },
+      { label: 'Business units', icon: 'pi pi-briefcase', route: '/org/business-units', permissions: ['org.structure.view'], ...planned('M2') },
+      { label: 'Departments', icon: 'pi pi-share-alt', route: '/org/departments', permissions: ['org.structure.view'], ...planned('M2') },
+      { label: 'Locations', icon: 'pi pi-map-marker', route: '/org/locations', permissions: ['org.structure.view'], ...planned('M2') },
+      { label: 'Jobs', icon: 'pi pi-tags', route: '/org/jobs', permissions: ['org.structure.view'], ...planned('M2') },
+      { label: 'Positions', icon: 'pi pi-th-large', route: '/org/positions', permissions: ['org.structure.view'], ...planned('M2') },
+      { label: 'Grades', icon: 'pi pi-sort-amount-up', route: '/org/grades', permissions: ['org.structure.view'], ...planned('M2') },
+      { label: 'Cost & profit centers', icon: 'pi pi-percentage', route: '/org/cost-centers', permissions: ['org.structure.view'], ...planned('M2') },
+    ],
+  },
+  {
+    label: 'Workforce',
+    icon: 'pi pi-chart-line',
+    feature: 'Workforce',
+    children: [
+      { label: 'Workforce planning', icon: 'pi pi-compass', route: '/workforce/plans', permissions: ['workforce.plan.view'], ...planned('M8') },
+      { label: 'Manpower requests', icon: 'pi pi-user-plus', route: '/workforce/requests', permissions: ['workforce.request.view'], ...planned('M8') },
+    ],
+  },
+  {
+    label: 'Recruitment',
+    icon: 'pi pi-search',
+    feature: 'Recruitment',
+    children: [
+      { label: 'Requisitions', icon: 'pi pi-file-edit', route: '/recruitment/requisitions', permissions: ['recruitment.requisition.view'], ...planned('M8') },
+      { label: 'Job postings', icon: 'pi pi-megaphone', route: '/recruitment/postings', permissions: ['recruitment.posting.view'], ...planned('M8') },
+      { label: 'Candidates', icon: 'pi pi-id-card', route: '/recruitment/candidates', permissions: ['recruitment.application.view'], ...planned('M8') },
+      { label: 'Interviews', icon: 'pi pi-comments', route: '/recruitment/interviews', permissions: ['recruitment.application.view'], ...planned('M8') },
+      { label: 'Offers', icon: 'pi pi-envelope', route: '/recruitment/offers', permissions: ['recruitment.offer.view'], ...planned('M8') },
+      { label: 'Onboarding', icon: 'pi pi-sign-in', route: '/onboarding', permissions: ['onboarding.case.view'], feature: 'Onboarding', ...planned('M8') },
     ],
   },
   {
     label: 'Employees',
-    icon: 'pi pi-id-card',
-    route: '/employees',
-    permissions: ['employee.profile.view'],
-  },
-  {
-    label: 'Notifications',
-    icon: 'pi pi-bell',
-    route: '/notifications',
-    permissions: ['notification.inbox.view'],
+    icon: 'pi pi-users',
+    children: [
+      { label: 'Directory', icon: 'pi pi-list', route: '/employees', permissions: ['employee.profile.view'], ...planned('M2') },
+      { label: 'Org chart', icon: 'pi pi-sitemap', route: '/employees/org-chart', permissions: ['employee.profile.view'], ...planned('M2') },
+      { label: 'Bulk import', icon: 'pi pi-upload', route: '/employees/bulk-import', permissions: ['employee.profile.create'], ...planned('M2') },
+    ],
   },
   {
     label: 'Time',
     icon: 'pi pi-clock',
-    permissions: ['attendance.record.view', 'leave.request.view', 'attendance.device.manage'],
+    feature: 'Time',
     children: [
-      {
-        label: 'Attendance',
-        icon: 'pi pi-calendar-clock',
-        route: '/attendance',
-        permissions: ['attendance.record.view'],
-      },
-      {
-        label: 'Shifts',
-        icon: 'pi pi-sync',
-        route: '/attendance/shifts',
-        permissions: ['attendance.shift.manage'],
-      },
-      {
-        label: 'Biometric devices',
-        icon: 'pi pi-desktop',
-        route: '/attendance/devices',
-        permissions: ['attendance.device.manage'],
-      },
-      {
-        label: 'Leave requests',
-        icon: 'pi pi-calendar',
-        route: '/leave/requests',
-        permissions: ['leave.request.view'],
-      },
-      {
-        label: 'Leave policies',
-        icon: 'pi pi-book',
-        route: '/leave/policies',
-        permissions: ['leave.policy.manage'],
-      },
-      {
-        label: 'Holidays',
-        icon: 'pi pi-flag',
-        route: '/holidays',
-        permissions: ['leave.holiday.manage'],
-      },
+      { label: 'Attendance', icon: 'pi pi-check-circle', route: '/attendance', permissions: ['attendance.record.view'], ...planned('M4') },
+      { label: 'Regularization', icon: 'pi pi-pencil', route: '/attendance/regularizations', permissions: ['attendance.regularization.view'], ...planned('M4') },
+      { label: 'Shifts & rosters', icon: 'pi pi-calendar-clock', route: '/attendance/shifts', permissions: ['attendance.shift.manage'], ...planned('M4') },
+      { label: 'Leave requests', icon: 'pi pi-calendar-minus', route: '/leave/requests', permissions: ['leave.request.view'], ...planned('M4') },
+      { label: 'Leave policies', icon: 'pi pi-book', route: '/leave/policies', permissions: ['leave.policy.manage'], ...planned('M4') },
+      { label: 'Holidays', icon: 'pi pi-sun', route: '/leave/holidays', permissions: ['leave.holiday.manage'], ...planned('M4') },
     ],
   },
   {
-    label: 'Reports',
-    icon: 'pi pi-chart-line',
-    route: '/reports',
-    permissions: ['report.report.view'],
+    label: 'Clients',
+    icon: 'pi pi-globe',
+    feature: 'Projects',
+    children: [
+      { label: 'Clients', icon: 'pi pi-building', route: '/clients', permissions: ['client.client.view'], ...planned('M5') },
+      { label: 'Contracts', icon: 'pi pi-file-check', route: '/contracts', permissions: ['contract.contract.view'], ...planned('M5') },
+    ],
   },
   {
-    label: 'Recruitment',
-    icon: 'pi pi-user-plus',
-    route: '/recruitment/requisitions',
-    permissions: ['recruitment.requisition.view'],
+    label: 'Projects',
+    icon: 'pi pi-objects-column',
+    feature: 'Projects',
+    children: [
+      { label: 'Projects', icon: 'pi pi-folder', route: '/projects', permissions: ['project.project.view'], ...planned('M5') },
+      { label: 'Board', icon: 'pi pi-th-large', route: '/projects/board', permissions: ['project.task.view'], ...planned('M5') },
+      { label: 'Milestones', icon: 'pi pi-flag', route: '/projects/milestones', permissions: ['project.milestone.view'], ...planned('M5') },
+      { label: 'Sprints', icon: 'pi pi-replay', route: '/projects/sprints', permissions: ['project.sprint.view'], ...planned('M5') },
+      { label: 'Change requests', icon: 'pi pi-arrow-right-arrow-left', route: '/projects/change-requests', permissions: ['project.change-request.view'], ...planned('M5') },
+      { label: 'RAID log', icon: 'pi pi-exclamation-triangle', route: '/projects/raid', permissions: ['project.raid.view'], ...planned('M5') },
+      { label: 'Financials', icon: 'pi pi-money-bill', route: '/projects/financials', permissions: ['project.financials.view'], feature: 'ProjectFinancials', ...planned('M7') },
+    ],
   },
   {
-    label: 'Onboarding',
-    icon: 'pi pi-clipboard',
-    route: '/onboarding',
-    permissions: ['onboarding.template.view', 'onboarding.case.view'],
-  },
-  {
-    label: 'Performance',
-    icon: 'pi pi-chart-line',
-    route: '/performance',
-    permissions: ['performance.cycle.view'],
-  },
-  {
-    label: 'Learning',
-    icon: 'pi pi-graduation-cap',
-    route: '/learning',
-    permissions: ['learning.course.view'],
+    label: 'Resources',
+    icon: 'pi pi-users',
+    feature: 'Resources',
+    children: [
+      { label: 'Resource directory', icon: 'pi pi-address-book', route: '/resources', permissions: ['resource.profile.view'], ...planned('M6') },
+      { label: 'Requests', icon: 'pi pi-inbox', route: '/resources/requests', permissions: ['resource.request.view'], ...planned('M6') },
+      { label: 'Allocation calendar', icon: 'pi pi-calendar', route: '/resources/calendar', permissions: ['resource.allocation.view'], ...planned('M6') },
+      { label: 'Capacity & demand', icon: 'pi pi-chart-bar', route: '/resources/capacity', permissions: ['resource.allocation.view'], ...planned('M6') },
+      { label: 'Bench', icon: 'pi pi-pause-circle', route: '/resources/bench', permissions: ['resource.profile.view'], ...planned('M6') },
+      { label: 'Utilization', icon: 'pi pi-gauge', route: '/resources/utilization', permissions: ['resource.utilization.view'], ...planned('M6') },
+      { label: 'Timesheet approvals', icon: 'pi pi-stopwatch', route: '/timesheets/approvals', permissions: ['timesheet.entry.approve'], feature: 'Timesheets', ...planned('M6') },
+    ],
   },
   {
     label: 'Payroll',
     icon: 'pi pi-wallet',
-    permissions: [
-      'payroll.component.manage',
-      'payroll.structure.manage',
-      'payroll.employee-salary.view',
-      'payroll.pay-group.manage',
-      'payroll.run.view',
-    ],
+    feature: 'Payroll',
     children: [
-      {
-        label: 'Components',
-        icon: 'pi pi-list',
-        route: '/payroll',
-        permissions: ['payroll.component.manage'],
-      },
-      {
-        label: 'Structures',
-        icon: 'pi pi-sitemap',
-        route: '/payroll/structures',
-        permissions: ['payroll.structure.manage'],
-      },
-      {
-        label: 'Employee salary',
-        icon: 'pi pi-money-bill',
-        route: '/payroll/employee-salary',
-        permissions: ['payroll.employee-salary.view'],
-      },
-      {
-        label: 'Pay groups',
-        icon: 'pi pi-calendar',
-        route: '/payroll/pay-groups',
-        permissions: ['payroll.pay-group.manage'],
-      },
-      {
-        label: 'Runs',
-        icon: 'pi pi-play',
-        route: '/payroll/runs',
-        permissions: ['payroll.run.view'],
-      },
+      { label: 'Salary structures', icon: 'pi pi-sitemap', route: '/payroll/structures', permissions: ['payroll.structure.manage'], ...planned('M7') },
+      { label: 'Payroll runs', icon: 'pi pi-play', route: '/payroll/runs', permissions: ['payroll.run.view'], ...planned('M7') },
+      { label: 'Payslips', icon: 'pi pi-file', route: '/payroll/payslips', permissions: ['payroll.run.view'], ...planned('M7') },
+      { label: 'Statutory', icon: 'pi pi-shield', route: '/payroll/statutory', permissions: ['payroll.statutory.manage'], feature: 'Compliance', ...planned('M7') },
     ],
   },
   {
-    label: 'Spend',
-    icon: 'pi pi-receipt',
-    permissions: ['spend.category.manage', 'spend.claim.view', 'spend.travel.view'],
+    label: 'Talent',
+    icon: 'pi pi-star',
     children: [
-      {
-        label: 'Categories',
-        icon: 'pi pi-list',
-        route: '/spend',
-        permissions: ['spend.category.manage'],
-      },
-      {
-        label: 'Travel requests',
-        icon: 'pi pi-send',
-        route: '/spend/travel-requests',
-        permissions: ['spend.travel.view'],
-      },
+      { label: 'Performance', icon: 'pi pi-chart-line', route: '/performance', permissions: ['performance.cycle.view'], feature: 'Performance', ...planned('M9') },
+      { label: 'Goals', icon: 'pi pi-bullseye', route: '/goals', permissions: ['performance.goal.manage'], feature: 'Performance', ...planned('M9') },
+      { label: 'Learning', icon: 'pi pi-book', route: '/learning', permissions: ['learning.course.view'], feature: 'Learning', ...planned('M9') },
+      { label: 'Skills', icon: 'pi pi-bolt', route: '/skills', permissions: ['skill.skill.view'], ...planned('M6') },
+      { label: 'Career & succession', icon: 'pi pi-arrow-up-right', route: '/career', permissions: ['career.path.view'], feature: 'Career', ...planned('M9') },
+      { label: 'Rewards', icon: 'pi pi-gift', route: '/rewards', permissions: ['reward.catalog.view'], feature: 'Rewards', ...planned('M10') },
+      { label: 'Engagement', icon: 'pi pi-heart', route: '/engagement', permissions: ['engagement.survey.view'], feature: 'Engagement', ...planned('M10') },
     ],
   },
   {
-    label: 'Assets',
-    icon: 'pi pi-desktop',
-    permissions: ['asset.category.manage', 'asset.asset.view'],
+    label: 'Services',
+    icon: 'pi pi-briefcase',
     children: [
-      {
-        label: 'Categories',
-        icon: 'pi pi-list',
-        route: '/assets',
-        permissions: ['asset.category.manage'],
-      },
-      {
-        label: 'Register',
-        icon: 'pi pi-desktop',
-        route: '/assets/register',
-        permissions: ['asset.asset.view'],
-      },
+      { label: 'Expenses', icon: 'pi pi-receipt', route: '/expenses', permissions: ['spend.claim.view'], feature: 'Expenses', ...planned('M10') },
+      { label: 'Assets', icon: 'pi pi-desktop', route: '/assets', permissions: ['asset.asset.view'], feature: 'Assets', ...planned('M10') },
+      { label: 'Helpdesk', icon: 'pi pi-question-circle', route: '/helpdesk', permissions: ['helpdesk.ticket.view'], feature: 'Helpdesk', ...planned('M10') },
+      { label: 'Documents', icon: 'pi pi-folder-open', route: '/documents', permissions: ['document.file.view'], feature: 'Documents', ...planned('M3') },
+      { label: 'Policies', icon: 'pi pi-book', route: '/policies', permissions: ['policy.policy.view'], ...planned('M3') },
+      { label: 'Compliance', icon: 'pi pi-shield', route: '/compliance', permissions: ['compliance.rule.view'], feature: 'Compliance', ...planned('M7') },
+      { label: 'Separation', icon: 'pi pi-sign-out', route: '/separation', permissions: ['employee.exit.manage'], feature: 'Separation', ...planned('M10') },
     ],
+  },
+  {
+    label: 'Analytics',
+    icon: 'pi pi-chart-pie',
+    feature: 'Analytics',
+    route: '/analytics',
+    permissions: ['report.report.view'],
+    ...planned('M11'),
+  },
+  {
+    label: 'AI Assistant',
+    icon: 'pi pi-sparkles',
+    feature: 'AI',
+    route: '/ai',
+    permissions: ['ai.assistant.use'],
+    ...planned('M12'),
   },
   {
     label: 'Administration',
     icon: 'pi pi-cog',
-    permissions: [
-      'admin.user.view',
-      'admin.role.view',
-      'admin.setting.view',
-      'document.file.view',
-      'audit.log.view',
-    ],
     children: [
-      {
-        label: 'Users',
-        icon: 'pi pi-users',
-        route: '/admin/users',
-        permissions: ['admin.user.view'],
-      },
-      {
-        label: 'Roles',
-        icon: 'pi pi-shield',
-        route: '/admin/roles',
-        permissions: ['admin.role.view'],
-      },
-      {
-        label: 'Workflows',
-        icon: 'pi pi-share-alt',
-        route: '/admin/workflows',
-        permissions: ['workflow.definition.view'],
-      },
-      {
-        label: 'Custom fields',
-        icon: 'pi pi-pencil',
-        route: '/admin/custom-fields',
-        permissions: ['admin.custom-field.manage'],
-      },
-      {
-        label: 'Audit log',
-        icon: 'pi pi-history',
-        route: '/admin/audit',
-        permissions: ['audit.log.view'],
-      },
-      {
-        label: 'Settings',
-        icon: 'pi pi-sliders-h',
-        route: '/admin/settings',
-        permissions: ['admin.setting.view'],
-      },
-      {
-        label: 'Document types',
-        icon: 'pi pi-file',
-        route: '/admin/document-types',
-        permissions: ['document.file.view'],
-      },
+      { label: 'Users', icon: 'pi pi-user', route: '/admin/users', permissions: ['admin.user.view'] },
+      { label: 'Roles', icon: 'pi pi-lock', route: '/admin/roles', permissions: ['admin.role.view'] },
+      { label: 'Audit log', icon: 'pi pi-history', route: '/admin/audit', permissions: ['audit.log.view'] },
+      { label: 'Settings', icon: 'pi pi-sliders-h', route: '/admin/settings', permissions: ['admin.setting.view'] },
+      { label: 'Workflows', icon: 'pi pi-share-alt', route: '/admin/workflows', permissions: ['workflow.definition.view'], ...planned('M3') },
+      { label: 'Notifications', icon: 'pi pi-bell', route: '/admin/notifications', permissions: ['notification.template.view'], ...planned('M3') },
+      { label: 'Master data', icon: 'pi pi-database', route: '/admin/master-data', permissions: ['admin.setting.manage'], ...planned('M2') },
     ],
   },
 ];

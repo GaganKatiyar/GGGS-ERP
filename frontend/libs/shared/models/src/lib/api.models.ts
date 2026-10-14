@@ -21,10 +21,18 @@ export interface PageRequest {
 export const DEFAULT_PAGE_SIZE = 25;
 export const MAX_PAGE_SIZE = 200;
 
+/** One invalid field in an error response. `field` is the camelCase JSON path, e.g. `address.city`. */
+export interface FieldError {
+  readonly field: string;
+  readonly message: string;
+}
+
 /**
- * RFC 9457 problem document, as every API error arrives.
+ * RFC 9457 problem document carrying the PeopleOS error envelope, as every API error arrives:
+ * `{ success: false, code, message, errors: [{ field, message }], traceId }` alongside the standard
+ * `type`, `title`, `status` and `detail`.
  *
- * The UI switches on `errorCode`, never on `detail`: server text can change wording or arrive in
+ * The UI switches on `code`, never on `message`: server text can change wording or arrive in
  * another language, while the code is a contract.
  */
 export interface ProblemDetails {
@@ -33,10 +41,12 @@ export interface ProblemDetails {
   readonly status?: number;
   readonly detail?: string;
   readonly instance?: string;
+  readonly success?: false;
   /** Stable machine-readable code, e.g. `LEAVE_INSUFFICIENT_BALANCE`. */
-  readonly errorCode?: string;
-  /** Field-level validation failures, keyed by property name. */
-  readonly errors?: Readonly<Record<string, readonly string[]>>;
+  readonly code?: string;
+  readonly message?: string;
+  /** Field-level validation failures, in the order the server reported them. */
+  readonly errors?: readonly FieldError[];
   /** Quote this in support: it ties the UI action to server logs and the audit trail. */
   readonly traceId?: string;
   readonly context?: Readonly<Record<string, unknown>>;

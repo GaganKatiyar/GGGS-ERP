@@ -5,7 +5,7 @@ import { describeError } from './branches-page';
 describe('describeError (branches)', () => {
   it('names a duplicate code plainly', () => {
     expect(
-      describeError(new ApiError(422, { errorCode: 'ORGANIZATION_CODE_IN_USE' })),
+      describeError(new ApiError(422, { code: 'ORGANIZATION_CODE_IN_USE' })),
     ).toBe('That code is already in use.');
   });
 

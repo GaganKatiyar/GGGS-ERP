@@ -13,7 +13,7 @@
     <InvariantGlobalization>false</InvariantGlobalization>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <Company>GGGS</Company>
-    <Product>GGGS HRMS</Product>
+    <Product>PeopleOS</Product>
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>

@@ -63,18 +63,22 @@ export class ApiError extends Error {
     readonly status: number,
     readonly problem: ProblemDetails,
   ) {
-    super(problem.detail ?? problem.title ?? 'The request failed.');
+    super(problem.message ?? problem.detail ?? problem.title ?? 'The request failed.');
     this.name = 'ApiError';
   }
 
   /** Stable code to switch on, e.g. `LEAVE_INSUFFICIENT_BALANCE`. */
   get errorCode(): string {
-    return this.problem.errorCode ?? 'UNKNOWN';
+    return this.problem.code ?? 'UNKNOWN';
   }
 
-  /** Field-level messages, ready to bind onto a reactive form. */
+  /** Field-level messages grouped by field, ready to bind onto a reactive form. */
   get fieldErrors(): Readonly<Record<string, readonly string[]>> {
-    return this.problem.errors ?? {};
+    const grouped: Record<string, string[]> = {};
+    for (const { field, message } of this.problem.errors ?? []) {
+      (grouped[field] ??= []).push(message);
+    }
+    return grouped;
   }
 
   /** Quote this in a bug report. */
@@ -114,7 +118,7 @@ export const errorInterceptor: HttpInterceptorFn = (
         return throwError(() => new ApiError(error.status, problem));
       }
 
-      if (error.status === 403 && problem.errorCode === 'FEATURE_NOT_ENABLED') {
+      if (error.status === 403 && problem.code === 'FEATURE_NOT_ENABLED') {
         void router.navigate(['/feature-unavailable']);
       }
 

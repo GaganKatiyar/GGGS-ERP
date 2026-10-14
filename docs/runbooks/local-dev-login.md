@@ -1,95 +1,50 @@
-# Signing in to the Angular app locally
+# Running PeopleOS locally and signing in
 
-A working login end to end: SQL Server → Platform.Api → Identity.Api → Gateway.Bff → the Angular
-dev server, with a real tenant and a real tenant-admin account. No RabbitMQ, no Redis, no Docker -
-none of them are needed to reach a sign-in page and see the app shell.
+A working stack end to end: SQL Server, the API host, the worker host and the Angular dev server,
+with a real tenant and a real tenant-administrator account. No RabbitMQ, no Redis and no Docker
+are needed (ADR-12: one process serves the API, one runs background work, one database holds
+everything).
 
-## What this does and does not cover
+## What you can use today (M1)
 
-**Covers**: signing in as a tenant administrator and using the app shell, dashboard,
-Organization screens (legal entities, business units, branches, locations, departments,
-designations, grades, cost centers - every resource `OrganizationEndpoints.cs` exposes), the full
-Employee lifecycle (directory, hire, transfer, promote, change manager, confirm, serve notice,
-exit, rehire), employee documents (upload, download, delete, from a new section on the Employee
-detail page), document type administration (`/admin/document-types` - create one before anything
-can be uploaded anywhere), the audit log (`/admin/audit` - filter by entity type/id, action,
-service and date range; click a row for the old/new value diff), user/role administration
-(invite a user, complete their invitation from the link it hands back, enable/disable/unlock,
-manage their roles, create a role and grant/revoke its permissions), tenant settings (a raw
-module + key + JSON editor - no module has a defined settings schema yet), and the notification
-inbox (`/notifications` - list, unread count badge in the header bell, mark one or all read) with
-a full permission set. `tools/DevSeed`'s seeded admin now holds the document, audit and
-notification permissions too, so all of this is reachable without hand-editing a role.
+The foundation milestone ships the platform itself, not the business modules:
 
-**Does not cover**: notification template administration (as opposed to the inbox) has no
-frontend screen yet - exercise it with `curl` or the OpenAPI page. Job requisitions
-(`/api/v1/recruitment/requisitions`, Talent's first Phase 3 slice) likewise has no frontend yet.
-Everything else in the roadmap beyond Core HR and Identity (Payroll, the rest of Talent, …) has no
-frontend at all yet.
+- signing in and out, and the application shell with the PeopleOS navigation;
+- Administration: users (invite, complete the invitation from the link it returns,
+  enable/disable/unlock, manage roles), roles (create, grant and revoke permissions), tenant
+  settings (a raw module/key/JSON editor), and the audit log (`/admin/audit`, with the old/new
+  value diff);
+- the OIDC token endpoint (`/connect/token`) for non-browser clients.
+
+Everything else in the navigation is marked planned and stays hidden until its milestone ships
+(see [docs/roadmap.md](../roadmap.md)). Core HR (organization, employees) arrives in M2.
 
 ## One-time setup
 
 1. A local SQL Server reachable at `Server=localhost;Integrated Security=True` (the same one the
    test suite uses - see the repository README's prerequisites).
-2. `npm ci` inside `frontend/` if you have not already.
+2. `npm ci` inside `frontend/`.
+3. `dotnet tool restore` inside `backend/` (for `dotnet ef`).
 
-## Every time: eight terminals + one seed command
+## Every time: one seed command, three terminals
 
 ```bash
-# 1. Seed a tenant and a tenant-admin account directly in the databases (creates them if they
-#    do not exist, applies migrations, and is safe to re-run - it leaves an existing tenant/user
-#    alone rather than erroring). Only covers Platform and Identity - see the next step for the
-#    other databases.
+# 1. Create/upgrade the database and provision a tenant with a working administrator. Safe to
+#    re-run: it applies pending migrations and leaves an existing tenant and user alone.
 dotnet run --project tools/DevSeed -- acme admin@acme.example "Passw0rd!2026"
 
-# CoreHr's, the Documents service's and the Notification service's own databases need their
-# migrations applied once too (DevSeed does not touch any of them):
-dotnet ef database update --project backend/Services/CoreHr/Gggs.CoreHr.Infrastructure \
-  --startup-project backend/Services/CoreHr/Gggs.CoreHr.Infrastructure
-dotnet ef database update --project backend/Services/Documents/Gggs.Documents.Infrastructure \
-  --startup-project backend/Services/Documents/Gggs.Documents.Infrastructure
-dotnet ef database update --project backend/Services/Notification/Gggs.Notification.Infrastructure \
-  --startup-project backend/Services/Notification/Gggs.Notification.Infrastructure
-dotnet ef database update --project backend/Services/Talent/Gggs.Talent.Infrastructure \
-  --startup-project backend/Services/Talent/Gggs.Talent.Infrastructure
+# 2. The API (terminal 1) - http://localhost:5100
+dotnet run --project backend/Host/Gggs.Api
 
-# 2. Platform (terminal 1)
-cd backend/Services/Platform/Gggs.Platform.Api
-ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5102 dotnet run
+# 3. The worker (terminal 2) - delivers outbox events (audit entries, tenant provisioning)
+DOTNET_ENVIRONMENT=Development dotnet run --project backend/Host/Gggs.Worker
 
-# 3. Identity (terminal 2)
-cd backend/Services/Identity/Gggs.Identity.Api
-ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5101 dotnet run
-
-# 4. Core HR - organization and employees (terminal 3)
-cd backend/Services/CoreHr/Gggs.CoreHr.Api
-ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5103 dotnet run
-
-# 5. Documents - upload, list, download, delete (terminal 4)
-cd backend/Services/Documents/Gggs.Documents.Api
-ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5104 dotnet run
-
-# 6. Notification - a user's own inbox and template administration (terminal 5)
-cd backend/Services/Notification/Gggs.Notification.Api
-ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5105 dotnet run
-
-# 7. Talent - job requisitions, no frontend yet (terminal 6)
-cd backend/Services/Talent/Gggs.Talent.Api
-ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5108 dotnet run
-
-# 8. Gateway (terminal 7)
-cd backend/Gateway/Gggs.Gateway.Bff
-ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5100 dotnet run
-
-# 9. Angular (terminal 8)
+# 4. Angular (terminal 3) - http://localhost:4200, proxying /api and /bff to :5100
 cd frontend
 npx nx serve hrms-web
 ```
 
-`Gggs.Notification.Worker` is not in this list on purpose - see the next section.
-
-(PowerShell: replace `ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5102 dotnet run`
-with `$env:ASPNETCORE_ENVIRONMENT='Development'; $env:ASPNETCORE_URLS='http://localhost:5102'; dotnet run`.)
+(PowerShell: `$env:DOTNET_ENVIRONMENT='Development'; dotnet run --project backend/Host/Gggs.Worker`.)
 
 Open **http://localhost:4200/sign-in** and sign in with:
 
@@ -99,118 +54,47 @@ Open **http://localhost:4200/sign-in** and sign in with:
 | Work email | `admin@acme.example` |
 | Password | `Passw0rd!2026` |
 
-Change any of the three by passing different arguments to `DevSeed` (tenant code, email,
-password, in that order) - it provisions whatever you ask for.
+Change any of the three by passing different arguments to DevSeed (tenant code, email, password,
+in that order).
 
-## Why this needs no message broker or cache
+### If port 5100 is taken
 
-- `AddGggsMessaging`'s RabbitMQ connection is a lazy DI registration (`AddSingleton<IConnection>(factory
-  => ...)`), only resolved when something actually publishes/consumes a message. Only the
-  `*.Worker` processes (e.g. `Gggs.Identity.Worker`) do that; the `*.Api` processes only write to
-  their own outbox table, so they start and serve requests fine with no broker reachable.
-- Redis is optional everywhere: `AddGggsCaching` falls back to an in-memory `HybridCache`, and the
-  Gateway's session store falls back to an in-memory store, when `ConnectionStrings:Redis` is empty.
-- `Secure` cookies (including the `__Host-gggs-session` cookie) work over plain HTTP specifically
-  on `localhost` - browsers treat it as a secure context. Using `127.0.0.1` or any other hostname
-  instead would break this.
+The API listens on 5100 because `frontend/apps/hrms-web/proxy.conf.json` proxies there. If
+another application already holds the port, run the API elsewhere with
+`ASPNETCORE_URLS=http://localhost:5199 dotnet run --project backend/Host/Gggs.Api --no-launch-profile`
+and point the two proxy entries at the same port (do not commit that change).
 
-## Why the audit trail stays empty in this setup
+## What the worker is for
 
-Every write through Platform, Identity or Core HR's `Api` process stages an
-`AuditEntryIntegrationEvent` into that service's own outbox (`TenantAuditSaveChangesInterceptor`) -
-that part needs no broker, same as any other outbox write. What turns those staged messages into
-rows a tenant admin can read from `GET /api/v1/audit/logs` is `Gggs.Platform.Worker`, which is a
-`*.Worker` process like `Gggs.Identity.Worker`: it needs RabbitMQ (or Azure Service Bus) reachable,
-same as the tenant-provisioning saga does, and this runbook does not start one. Rows stage; nothing
-consumes them; `audit.AuditLog` (`platform` schema) stays empty until either `Gggs.Platform.Worker`
-runs against a real broker, or a test seeds rows directly the way
-`tests/Gggs.Platform.IntegrationTests/AuditEndpointTests.cs` does.
+Every write stages its audit entry (and any integration event) into `messaging.OutboxMessage` in
+the same transaction. The worker delivers those to their consumers in-process. With the worker
+stopped the application still works; the audit log simply stays empty until the worker runs, at
+which point it catches up. On start-up the worker also synchronises the plan catalog and the
+platform staff roles.
 
-## Why inviting a user does not actually send an email in this setup
+## Why no broker or cache is needed
 
-`UserManagementService.InviteAsync` stages a `UserInvitedIntegrationEvent` into Identity's own
-outbox - same shape, same "needs no broker" story as the audit trail above. Turning that into an
-in-app row and a queued email is `Gggs.Notification.Worker`'s job (`UserInvitedConsumer` →
-`NotificationDispatchService`), and this runbook does not start it either. The invitation itself
-still works: `InviteAsync` returns the token directly in its response, which is what
-`complete-invitation` already relies on (see the "Covers" list above) - the notification is a
-second, currently-inert path to the same link, not the only one. Even with the worker running, no
-template exists for `user.invited` until one is created through `POST
-/api/v1/notifications/templates` (Notification never ships a platform default - see
-`NotificationTemplate`'s own remarks), and even with a template, no SMTP host is configured by
-default, so `SmtpEmailSender` logs the rendered email instead of sending it.
+- Module events are delivered in-process by the worker (ADR-12). The RabbitMQ and Service Bus
+  adapters remain in the code for future external integrations but are not registered.
+- Redis is optional: the cache falls back to in-memory, and so do browser sessions - which is why
+  restarting the API signs everyone out locally. The API logs a warning saying so.
+- `Secure` cookies (including `__Host-gggs-session`) work over plain HTTP specifically on
+  `localhost`, which browsers treat as a secure context. Use `localhost`, not `127.0.0.1`.
 
-## Why accepting a job offer does not auto-hire an employee in this setup
+## Calling the API without the browser
 
-`OfferService.AcceptAsync` stages an `OfferAcceptedIntegrationEvent` into Talent's own outbox -
-same "needs no broker" story as the audit trail and invitation email above. Turning that into a
-real Core HR employee is `Gggs.CoreHr.Worker`'s job (`OfferAcceptedConsumer` →
-`EmployeeService.HireAsync`), and this runbook does not start it, `Gggs.Talent.Worker` (which
-relays that outbox), or any other `*.Worker` process. The offer itself still moves to Accepted and
-its application still moves to Hired - both happen synchronously inside `AcceptAsync` - only the
-downstream employee record does not appear until a broker is reachable and both workers are
-running.
+```bash
+# A session cookie, as the SPA gets one (the X-CSRF header is required on /bff and on any
+# state-changing request that carries the cookie)
+curl -c jar.txt -X POST -H "X-CSRF: 1" -H "Content-Type: application/json" \
+  -d '{"email":"admin@acme.example","password":"Passw0rd!2026","tenantCode":"acme"}' \
+  http://localhost:5100/bff/login
+curl -b jar.txt http://localhost:5100/bff/user
 
-## Why this bypasses the async tenant-provisioning saga
+# Or a bearer token, as an integration would
+curl -X POST http://localhost:5100/connect/token \
+  -d "grant_type=password&username=admin@acme.example&password=Passw0rd!2026&tenant_code=acme" \
+  -d "client_id=peopleos-api&client_secret=development-only-gateway-secret&scope=gggs.api"
+```
 
-The real path is Platform (outbox) → RabbitMQ → `Identity.Worker` → `TenantSeedingService`, which
-needs a running broker and a second process per service. `tools/DevSeed` writes the same rows
-(`platform.Tenant`, `iam.Role`/`User`/`UserRole`) directly through each service's own `DbContext`,
-including the two interceptors that make a real write pass SQL Server's row-level security
-(`TenantSessionContextInterceptor` for `SESSION_CONTEXT`, `TenantAuditSaveChangesInterceptor` for
-stamping `TenantId` on the new rows) - the same two interceptors the running services register.
-See the tool's own comments in `tools/DevSeed/Program.cs` for the full reasoning.
-
-## Gaps this surfaced (fixed as part of getting a real login working)
-
-Every prior test of the sign-in path ran against `WebApplicationFactory`'s in-memory `TestServer`
-with `ITenantRegistry` stubbed out, or against a `https://localhost` base address that satisfies
-transport-security checks without any real TLS. Standing up real Kestrel processes over real HTTP,
-talking to each other, surfaced three things nothing had exercised before:
-
-1. **`RemoteTenantRegistry` (`Gggs.BuildingBlocks.Caching`) had no endpoint to call.** Platform
-   never implemented `GET /internal/tenants/{id}` or `GET /internal/tenants/by-code/{code}` - the
-   two routes the shared tenant-registry client every downstream service uses has always called.
-   Added in `InternalTenantEndpoints.cs`, anonymous (there is no service-to-service credential in
-   this codebase yet - tracked as a gap in the file's own doc comment, not something this pass
-   invents a fix for).
-2. **`RemoteTenantRegistry` deserialized the response with default `JsonSerializerOptions`,** while
-   every API actually replies with camelCase properties and string enums (`AddGggsJson`). This
-   always failed reading `TenantInfo.Status`/`IsolationTier` from a real host; nothing caught it
-   because every test stubs `ITenantRegistry` instead of exercising this class's HTTP path. Fixed
-   with an explicit, locally-defined `JsonSerializerOptions` mirroring the wire format (duplicated
-   rather than referencing `Gggs.BuildingBlocks.Web`, to avoid a new cross-project dependency for
-   two lines).
-3. **OpenIddict refused every request over plain HTTP** (`This server only accepts HTTPS
-   requests.`). `OpenIddictSetup.cs` already relaxes several other production requirements only in
-   `IsDevelopment()` (the signing certificate, the gateway secret, the issuer) - added
-   `DisableTransportSecurityRequirement()` to that same list, on the server builder only, guarded
-   the same way.
-
-None of these needed RabbitMQ, Redis or Docker - they were reachable the moment two real HTTP
-processes actually talked to each other, which nothing before this had done.
-
-A second pass, once the Organization and Employee screens above existed to actually drive it,
-surfaced two more:
-
-4. **The gateway had no route for Core HR at all** - only Identity and Platform were proxied.
-   Every org/employee endpoint was reachable directly against `CoreHr.Api`'s own port (which is
-   all its own integration tests ever do) but not through the gateway, which is the only door the
-   browser has. Fixed with a `corehr` cluster and one route per resource prefix in
-   `Gggs.Gateway.Bff/appsettings.json`.
-5. **`gggs-data-table`'s PrimeNG bindings failed AOT compilation** the first time an app actually
-   used the component (`[value]`/`[columns]` are typed as mutable arrays; the component's own
-   `rows()`/`visibleColumns()` returned `readonly T[]`). Nothing had used it outside its own lib
-   before the Employee and Legal Entity list screens did. Fixed with `.slice()` copies.
-
-A third pass, building the Admin (users/roles) screens, surfaced two more of the same shape:
-
-6. **`GET /api/v1/users/{id}/roles` did not exist.** `PUT .../roles` replaces a user's roles
-   wholesale - there is no "add one role" endpoint - so a roles editor had no way to know what was
-   already granted before it saved, which is exactly the kind of screen that clears access on
-   first use rather than the second. Added, reusing the same
-   `IRoleRepository.GetGrantsForUserAsync` the set-roles path already calls.
-7. **The gateway never routed `/api/v1/auth/*` at all.** Identity's sign-in cookie flow and the
-   BFF's own `/bff/login` never needed it, so nobody noticed that `complete-invitation`
-   (deliberately `AllowAnonymous`, deliberately outside the BFF's OIDC exchange) had no path
-   through the one door the browser has. Same shape as gap 4 above.
+The OpenAPI document is at `http://localhost:5100/openapi/v1.json` in Development.

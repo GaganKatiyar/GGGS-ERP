@@ -4,7 +4,7 @@ import { describeError } from './hire-employee-page';
 
 describe('describeError (hire)', () => {
   it('names a duplicate employee code plainly', () => {
-    expect(describeError(new ApiError(422, { errorCode: 'EMPLOYEE_CODE_IN_USE' }))).toBe(
+    expect(describeError(new ApiError(422, { code: 'EMPLOYEE_CODE_IN_USE' }))).toBe(
       'That employee code is already in use.',
     );
   });

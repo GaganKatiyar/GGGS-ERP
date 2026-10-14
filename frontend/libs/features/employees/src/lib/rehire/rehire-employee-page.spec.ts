@@ -4,7 +4,7 @@ import { describeError } from './rehire-employee-page';
 
 describe('describeError (rehire)', () => {
   it('explains that only a former employee can be rehired', () => {
-    expect(describeError(new ApiError(422, { errorCode: 'EMPLOYEE_NOT_EXITED' }))).toBe(
+    expect(describeError(new ApiError(422, { code: 'EMPLOYEE_NOT_EXITED' }))).toBe(
       'Only a former employee who has exited can be rehired.',
     );
   });

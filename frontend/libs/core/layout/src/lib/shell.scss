@@ -36,8 +36,16 @@
   flex: 1;
 }
 
+.shell__product {
+  color: var(--gggs-color-primary, #3b5bdb);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .shell__tenant {
   font-weight: 600;
+  padding-inline-start: 0.75rem;
+  border-inline-start: 1px solid var(--gggs-color-border, #e2e5ea);
 }
 
 .shell__impersonation {

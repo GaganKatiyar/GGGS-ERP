@@ -11,12 +11,15 @@ import { SessionStore } from '@gggs/core/auth';
 import { PermissionStore } from '@gggs/core/permissions';
 import { TenantStore } from '@gggs/core/tenant';
 import { NotificationsApi } from '@gggs/shared/notifications';
-import { NAVIGATION, filterNavigation, type NavItem } from './navigation';
+import { NAVIGATION, filterNavigation, isBuilt, type NavItem } from './navigation';
 import { ThemeStore } from './theme';
 
 /** How often the header bell's unread count refreshes. There is no push yet (architecture.md
  * §14 puts SignalR in a later phase), so this is the whole story until then. */
 const UNREAD_COUNT_REFRESH_MS = 60_000;
+
+/** Flipped when the Notification module ships (docs/roadmap.md, M3). */
+const NOTIFICATIONS_AVAILABLE = false;
 
 /** Below this, the sidebar stops being a column and becomes an overlay drawer (shell.scss). */
 const MOBILE_BREAKPOINT_QUERY = '(max-width: 48rem)';
@@ -49,8 +52,12 @@ export class Shell {
     typeof window !== 'undefined' && window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches,
   );
   protected readonly unreadCount = signal(0);
-  protected readonly canSeeNotifications = computed(() =>
-    this.permissions.hasAny(['notification.inbox.view']),
+  /**
+   * The bell needs both the permission and the Notification module, which ships in M3. Until then
+   * there is no inbox endpoint to poll, so the bell stays hidden rather than failing every minute.
+   */
+  protected readonly canSeeNotifications = computed(
+    () => NOTIFICATIONS_AVAILABLE && this.permissions.hasAny(['notification.inbox.view']),
   );
 
   /** Navigation the signed-in user can actually reach. */
@@ -96,6 +103,10 @@ export class Shell {
   }
 
   private isVisible(item: NavItem): boolean {
+    if (!isBuilt(item)) {
+      return false;
+    }
+
     if (
       item.feature !== undefined &&
       !this.permissions.hasFeature(item.feature)

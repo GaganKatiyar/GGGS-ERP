@@ -4,6 +4,7 @@ import {
   type ApplicationConfig,
 } from '@angular/core';
 import {
+  TitleStrategy,
   provideRouter,
   withComponentInputBinding,
   withInMemoryScrolling,
@@ -19,6 +20,7 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { definePreset } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
 import { appRoutes } from './app.routes';
+import { ProductTitleStrategy } from './product-title-strategy';
 
 /**
  * Bridges the `--gggs-color-*` custom properties (styles.scss) into PrimeNG's own token system, so
@@ -116,6 +118,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
 
+    { provide: TitleStrategy, useClass: ProductTitleStrategy },
     provideRouter(
       appRoutes,
       withComponentInputBinding(),

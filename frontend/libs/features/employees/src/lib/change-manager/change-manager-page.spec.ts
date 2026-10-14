@@ -6,7 +6,7 @@ describe('describeError (change manager)', () => {
   it('explains reporting-to-self in plain language', () => {
     expect(
       describeError(
-        new ApiError(422, { errorCode: 'EMPLOYMENT_RECORD_CANNOT_REPORT_TO_SELF' }),
+        new ApiError(422, { code: 'EMPLOYMENT_RECORD_CANNOT_REPORT_TO_SELF' }),
       ),
     ).toBe('An employee cannot be their own reporting manager.');
   });

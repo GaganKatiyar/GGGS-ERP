@@ -4,7 +4,7 @@ import { describeError } from './invite-user-page';
 
 describe('describeError (invite user)', () => {
   it('names a duplicate email plainly', () => {
-    expect(describeError(new ApiError(422, { errorCode: 'USER_EMAIL_IN_USE' }))).toBe(
+    expect(describeError(new ApiError(422, { code: 'USER_EMAIL_IN_USE' }))).toBe(
       'Someone with that email address already has an account in this organization.',
     );
   });

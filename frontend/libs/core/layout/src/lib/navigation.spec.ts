@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NAVIGATION, filterNavigation, type NavItem } from './navigation';
+import { NAVIGATION, filterNavigation, isBuilt, type NavItem } from './navigation';
 
 /** Everything visible, for tests about structure rather than permissions. */
 const showAll = () => true;
@@ -115,7 +115,7 @@ describe('filterNavigation', () => {
     );
 
     const labels = visible.map((item) => item.label);
-    expect(labels).toContain('Home');
+    expect(labels).toContain('Dashboard');
     expect(labels).toContain('My Space');
     // Nothing administrative leaks into an employee's sidebar.
     expect(labels).not.toContain('Administration');
@@ -128,5 +128,32 @@ describe('filterNavigation', () => {
     expect(visible.map((item) => item.label)).toEqual(
       NAVIGATION.map((item) => item.label),
     );
+  });
+
+  it('never shows a module that has not been built, whatever the permissions', () => {
+    // Planned entries have no route behind them yet; an Enterprise tenant licensed for everything
+    // must still not be offered a link to a page that does not exist.
+    const visible = filterNavigation(NAVIGATION, isBuilt);
+
+    const reachable = (items: readonly NavItem[]): string[] =>
+      items.flatMap((item) => [...(item.route ? [item.route] : []), ...reachable(item.children ?? [])]);
+
+    expect(reachable(visible)).toEqual([
+      '/dashboard',
+      '/admin/users',
+      '/admin/roles',
+      '/admin/audit',
+      '/admin/settings',
+    ]);
+  });
+
+  it('names a milestone for every planned entry', () => {
+    const plannedWithoutMilestone = (items: readonly NavItem[]): string[] =>
+      items.flatMap((item) => [
+        ...(item.planned && !item.milestone ? [item.label] : []),
+        ...plannedWithoutMilestone(item.children ?? []),
+      ]);
+
+    expect(plannedWithoutMilestone(NAVIGATION)).toEqual([]);
   });
 });

@@ -200,7 +200,7 @@ No load testing or query profiling has been done, so these are structural observ
 | Step | Content | Status |
 |---|---|---|
 | M0 | This audit, the target architecture, ADR-12, roadmap | done |
-| M1 | Monolith foundation: hosts, `Gggs.Data`, Platform and Identity modules, BFF folded in, BuildingBlocks changes, old Identity/Platform/Sample/Gateway removed, infra, tests, navigation | in progress |
+| M1 | Monolith foundation: hosts, `Gggs.Data`, Platform and Identity modules, BFF folded in, BuildingBlocks changes, infra, tests, navigation | done (2026-10-14); retired code removed from the solution, folder deletion pending owner approval (§11) |
 | M2 | Organization, Employee, MasterData; UI component kit; Employee 360 shell | planned |
 | M3+ | See [roadmap.md](../roadmap.md) | planned |
 
@@ -209,3 +209,30 @@ Reporting) are deleted in M1, together with their tests and frontend feature lib
 keeps two implementations alive. The pre-rebuild code stays available as the git tag
 `pre-peopleos` (commit `483d706`). Payroll's calc types and the Workflow engine in particular are
 the reference for their rebuilds (M7 and M3).
+
+---
+
+## 11. Retired code still on disk
+
+M1 removed every retired project from `backend/Gggs.slnx` and from `tools/run-tests.ps1`, so none
+of it builds, runs or is tested. The folders themselves are still in the working tree: deleting
+them needs the repository owner's go-ahead. Everything listed is preserved in git history at the
+`pre-peopleos` tag.
+
+- `backend/Services/` (all of it: the nine business services, plus Sample, and the project files
+  and per-service migrations left behind in `Identity/` and `Platform/` after their sources moved
+  into `backend/Modules/`)
+- `backend/Gateway/` (session, guard and header code moved into the API host and Identity module)
+- `backend/Agents/`, `backend/Aspire/` (empty)
+- `tests/Gggs.{CoreHr,Documents,Notification,Payroll,Reporting,Spend,Talent,Time,Workflow}.IntegrationTests/`
+- `tests/Gggs.{Identity,Platform,Gateway}.IntegrationTests/` (their tests moved to
+  `tests/Gggs.Api.IntegrationTests/`; factories and project files remain)
+- `tests/unit/Gggs.{CoreHr,Documents,Notification,Time,Workflow}.UnitTests/`
+- Frontend feature libraries with no backend until their milestone (unrouted, still built by the
+  frontend gate): `features/{organization,employees,notifications,workflow,leave,attendance,payroll,spend,assets,recruitment,onboarding,performance,learning,reports}`,
+  `shared/{notifications,documents,org-reference}`, and `features/admin/src/lib/documents/`
+- BuildingBlocks code with no remaining caller: `Security/HttpPermissionProvider.cs` and
+  `AddGggsRemotePermissions`/`AddGggsTokenValidation` in `TokenValidationExtensions.cs`,
+  `Caching/RemoteTenantRegistry.cs`
+- The old local databases `gggs_*` on the development SQL Server
+
