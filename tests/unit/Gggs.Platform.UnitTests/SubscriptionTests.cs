@@ -1,6 +1,6 @@
 using Gggs.BuildingBlocks.Domain.Abstractions;
 using Gggs.BuildingBlocks.Domain.Exceptions;
-using Gggs.Platform.Domain.Subscriptions;
+using Gggs.Modules.Platform.Domain.Subscriptions;
 using Shouldly;
 
 namespace Gggs.Platform.UnitTests;

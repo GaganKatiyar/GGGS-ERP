@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Composition</RootNamespace>
+    <Description>The one list of modules the application is made of, shared by both hosts, migrations, tools and tests.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Data\Gggs.Data\Gggs.Data.csproj" />
+    <ProjectReference Include="..\..\Modules\Identity\Gggs.Modules.Identity\Gggs.Modules.Identity.csproj" />
+    <ProjectReference Include="..\..\Modules\Platform\Gggs.Modules.Platform\Gggs.Modules.Platform.csproj" />
+  </ItemGroup>
+
+</Project>

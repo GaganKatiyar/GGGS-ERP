@@ -5,8 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\backend\Services\Platform\Gggs.Platform.Infrastructure\Gggs.Platform.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\backend\Services\Sample\Gggs.Sample.Api\Gggs.Sample.Api.csproj" />
+    <ProjectReference Include="..\..\backend\Host\Gggs.Composition\Gggs.Composition.csproj" />
+    <ProjectReference Include="..\..\backend\Data\Gggs.Data.Migrations\Gggs.Data.Migrations.csproj" />
   </ItemGroup>
 
   <ItemGroup>

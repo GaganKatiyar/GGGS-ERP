@@ -1,7 +1,7 @@
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
-using Gggs.Platform.Application.Audit;
-using Gggs.Platform.Domain.Audit;
+using Gggs.Modules.Platform.Application.Audit;
+using Gggs.Modules.Platform.Domain.Audit;
 using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
 

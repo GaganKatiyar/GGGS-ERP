@@ -1,5 +1,5 @@
 using Gggs.BuildingBlocks.Domain.Exceptions;
-using Gggs.Identity.Domain.Users;
+using Gggs.Modules.Identity.Domain.Users;
 using Shouldly;
 
 namespace Gggs.Identity.UnitTests;

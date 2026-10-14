@@ -1,10 +1,10 @@
 using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Domain.Exceptions;
 using Gggs.BuildingBlocks.Security;
-using Gggs.Identity.Application.Authentication;
-using Gggs.Identity.Application.PlatformStaff;
-using Gggs.Identity.Application.Users;
-using Gggs.Identity.Domain.PlatformStaff;
+using Gggs.Modules.Identity.Application.Authentication;
+using Gggs.Modules.Identity.Application.PlatformStaff;
+using Gggs.Modules.Identity.Application.Users;
+using Gggs.Modules.Identity.Domain.PlatformStaff;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Shouldly;

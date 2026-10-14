@@ -1,7 +1,7 @@
 using Gggs.BuildingBlocks.Domain.Abstractions;
 using Gggs.BuildingBlocks.Domain.Exceptions;
-using Gggs.Platform.Domain.Tenants;
-using Gggs.Platform.Domain.Tenants.Events;
+using Gggs.Modules.Platform.Domain.Tenants;
+using Gggs.Modules.Platform.Domain.Tenants.Events;
 using Shouldly;
 
 namespace Gggs.Platform.UnitTests;

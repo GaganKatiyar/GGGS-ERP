@@ -4,19 +4,19 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Gggs.DevSeed</RootNamespace>
     <Description>
-      Provisions a demo tenant and a working tenant-admin account directly against the local
-      Platform and Identity databases, for signing in through the Angular app during local
-      development. Bypasses the async tenant-provisioning saga (Platform outbox -> RabbitMQ ->
-      Identity.Worker) on purpose: that path needs a running broker, and a developer who just wants
-      credentials to test the sign-in page does not need to stand one up. This tool is never
-      packaged or deployed - it exists only under tools/.
+      Migrates the local PeopleOS database and provisions a demo tenant with a working administrator,
+      through the same modules and services the application uses. Never packaged or deployed - it
+      exists only under tools/.
     </Description>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\backend\Services\Platform\Gggs.Platform.Infrastructure\Gggs.Platform.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\backend\Services\Identity\Gggs.Identity.Infrastructure\Gggs.Identity.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\backend\Services\Workflow\Gggs.Workflow.Infrastructure\Gggs.Workflow.Infrastructure.csproj" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\backend\Data\Gggs.Data.Migrations\Gggs.Data.Migrations.csproj" />
+    <ProjectReference Include="..\..\backend\Host\Gggs.Composition\Gggs.Composition.csproj" />
   </ItemGroup>
 
 </Project>

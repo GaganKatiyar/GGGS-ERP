@@ -1,24 +1,26 @@
 using Gggs.BuildingBlocks.MultiTenancy;
-using Gggs.Sample.Api.Infrastructure;
+using Gggs.Composition;
+using Gggs.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace Gggs.Architecture.Tests;
 
 /// <summary>
-/// Builds a context purely to inspect the EF model. No connection is opened, so these rules run in
-/// milliseconds on every pull request rather than needing a database.
+/// Builds the real application context, from the same module catalog the hosts use, purely to
+/// inspect its EF model. No connection is opened, so these rules run in milliseconds on every pull
+/// request rather than needing a database.
 /// </summary>
 internal static class TestDbContextFactory
 {
-    public static SampleDbContext CreateForModelInspection()
+    public static AppDbContext CreateForModelInspection()
     {
-        DbContextOptions<SampleDbContext> options = new DbContextOptionsBuilder<SampleDbContext>()
-            .UseSqlServer("Server=model-inspection-only;Database=none")
+        DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlServer("Server=model-inspection-only;Database=none", DataExtensions.ConfigureSqlServer)
             .Options;
 
         var tenantContext = new TenantContext();
         tenantContext.SetTenant(Guid.Parse("11111111-1111-1111-1111-111111111111"));
 
-        return new SampleDbContext(options, tenantContext);
+        return new AppDbContext(options, tenantContext, new ModelAssemblies(ModuleCatalog.ModelAssemblies));
     }
 }

@@ -23,6 +23,14 @@ public interface IIntegrationEventPublisher
     /// </summary>
     void Publish<TEvent>(TEvent integrationEvent, Guid? causationId = null)
         where TEvent : IntegrationEvent;
+
+    /// <summary>
+    /// Stages an event about a named tenant from platform code that runs with no tenant of its own -
+    /// provisioning, suspension, offboarding. Only valid inside a platform scope: tenant code always
+    /// publishes for its own tenant through <see cref="Publish{TEvent}"/>.
+    /// </summary>
+    void PublishForTenant<TEvent>(Guid tenantId, TEvent integrationEvent, Guid? causationId = null)
+        where TEvent : IntegrationEvent;
 }
 
 /// <summary>
@@ -53,13 +61,35 @@ public sealed class OutboxIntegrationEventPublisher(
 
     public void Publish<TEvent>(TEvent integrationEvent, Guid? causationId = null)
         where TEvent : IntegrationEvent
+        => Stage(tenantContext.TenantId, integrationEvent, causationId);
+
+    public void PublishForTenant<TEvent>(Guid tenantId, TEvent integrationEvent, Guid? causationId = null)
+        where TEvent : IntegrationEvent
+    {
+        if (!tenantContext.IsPlatformScope)
+        {
+            // A tenant publishing on another tenant's behalf is exactly the crossing the outbox's
+            // TenantId exists to prevent.
+            throw new InvalidOperationException("PublishForTenant is only valid inside a platform scope.");
+        }
+
+        if (tenantId == Guid.Empty)
+        {
+            throw new ArgumentException("Tenant id must not be empty.", nameof(tenantId));
+        }
+
+        Stage(tenantId, integrationEvent, causationId);
+    }
+
+    private void Stage<TEvent>(Guid tenantId, TEvent integrationEvent, Guid? causationId)
+        where TEvent : IntegrationEvent
     {
         ArgumentNullException.ThrowIfNull(integrationEvent);
 
         var envelope = new MessageEnvelope
         {
             MessageId = integrationEvent.MessageId,
-            TenantId = tenantContext.TenantId,
+            TenantId = tenantId,
             MessageType = MessageTypeName.For<TEvent>(),
             SchemaVersion = integrationEvent.SchemaVersion,
             OccurredDate = integrationEvent.OccurredDate,

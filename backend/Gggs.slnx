@@ -13,101 +13,33 @@
     <Project Path="BuildingBlocks/Gggs.BuildingBlocks.Security/Gggs.BuildingBlocks.Security.csproj" />
     <Project Path="BuildingBlocks/Gggs.BuildingBlocks.Web/Gggs.BuildingBlocks.Web.csproj" />
   </Folder>
-  <Folder Name="/Gateway/">
-    <Project Path="Gateway/Gggs.Gateway.Bff/Gggs.Gateway.Bff.csproj" />
+  <Folder Name="/Data/">
+    <Project Path="Data/Gggs.Data/Gggs.Data.csproj" />
+    <Project Path="Data/Gggs.Data.Migrations/Gggs.Data.Migrations.csproj" />
   </Folder>
-  <Folder Name="/Services/" />
-  <Folder Name="/Services/Identity/">
-    <Project Path="Services/Identity/Gggs.Identity.Api/Gggs.Identity.Api.csproj" />
-    <Project Path="Services/Identity/Gggs.Identity.Application/Gggs.Identity.Application.csproj" />
-    <Project Path="Services/Identity/Gggs.Identity.Contracts/Gggs.Identity.Contracts.csproj" />
-    <Project Path="Services/Identity/Gggs.Identity.Domain/Gggs.Identity.Domain.csproj" />
-    <Project Path="Services/Identity/Gggs.Identity.Infrastructure/Gggs.Identity.Infrastructure.csproj" />
-    <Project Path="Services/Identity/Gggs.Identity.Worker/Gggs.Identity.Worker.csproj" />
+  <Folder Name="/Host/">
+    <Project Path="Host/Gggs.Api/Gggs.Api.csproj" />
+    <Project Path="Host/Gggs.Composition/Gggs.Composition.csproj" />
+    <Project Path="Host/Gggs.Worker/Gggs.Worker.csproj" />
   </Folder>
-  <Folder Name="/Services/CoreHr/">
-    <Project Path="Services/CoreHr/Gggs.CoreHr.Api/Gggs.CoreHr.Api.csproj" />
-    <Project Path="Services/CoreHr/Gggs.CoreHr.Application/Gggs.CoreHr.Application.csproj" />
-    <Project Path="Services/CoreHr/Gggs.CoreHr.Contracts/Gggs.CoreHr.Contracts.csproj" />
-    <Project Path="Services/CoreHr/Gggs.CoreHr.Domain/Gggs.CoreHr.Domain.csproj" />
-    <Project Path="Services/CoreHr/Gggs.CoreHr.Infrastructure/Gggs.CoreHr.Infrastructure.csproj" />
+  <Folder Name="/Modules/" />
+  <Folder Name="/Modules/Identity/">
+    <Project Path="Modules/Identity/Gggs.Modules.Identity/Gggs.Modules.Identity.csproj" />
+    <Project Path="Modules/Identity/Gggs.Modules.Identity.Contracts/Gggs.Modules.Identity.Contracts.csproj" />
   </Folder>
-  <Folder Name="/Services/Documents/">
-    <Project Path="Services/Documents/Gggs.Documents.Api/Gggs.Documents.Api.csproj" />
-    <Project Path="Services/Documents/Gggs.Documents.Application/Gggs.Documents.Application.csproj" />
-    <Project Path="Services/Documents/Gggs.Documents.Domain/Gggs.Documents.Domain.csproj" />
-    <Project Path="Services/Documents/Gggs.Documents.Infrastructure/Gggs.Documents.Infrastructure.csproj" />
+  <Folder Name="/Modules/Platform/">
+    <Project Path="Modules/Platform/Gggs.Modules.Platform/Gggs.Modules.Platform.csproj" />
+    <Project Path="Modules/Platform/Gggs.Modules.Platform.Contracts/Gggs.Modules.Platform.Contracts.csproj" />
   </Folder>
-  <Folder Name="/Services/Notification/">
-    <Project Path="Services/Notification/Gggs.Notification.Api/Gggs.Notification.Api.csproj" />
-    <Project Path="Services/Notification/Gggs.Notification.Application/Gggs.Notification.Application.csproj" />
-    <Project Path="Services/Notification/Gggs.Notification.Domain/Gggs.Notification.Domain.csproj" />
-    <Project Path="Services/Notification/Gggs.Notification.Infrastructure/Gggs.Notification.Infrastructure.csproj" />
-    <Project Path="Services/Notification/Gggs.Notification.Worker/Gggs.Notification.Worker.csproj" />
+  <Folder Name="/Tools/">
+    <Project Path="../tools/DevSeed/Gggs.DevSeed.csproj" />
   </Folder>
-  <Folder Name="/Services/Platform/">
-    <Project Path="Services/Platform/Gggs.Platform.Api/Gggs.Platform.Api.csproj" />
-    <Project Path="Services/Platform/Gggs.Platform.Application/Gggs.Platform.Application.csproj" />
-    <Project Path="Services/Platform/Gggs.Platform.Contracts/Gggs.Platform.Contracts.csproj" />
-    <Project Path="Services/Platform/Gggs.Platform.Domain/Gggs.Platform.Domain.csproj" />
-    <Project Path="Services/Platform/Gggs.Platform.Infrastructure/Gggs.Platform.Infrastructure.csproj" />
-    <Project Path="Services/Platform/Gggs.Platform.Worker/Gggs.Platform.Worker.csproj" />
+  <Folder Name="/Tests/">
+    <Project Path="../tests/Gggs.Api.IntegrationTests/Gggs.Api.IntegrationTests.csproj" />
+    <Project Path="../tests/Gggs.Architecture.Tests/Gggs.Architecture.Tests.csproj" />
+    <Project Path="../tests/Gggs.TenantIsolation.Tests/Gggs.TenantIsolation.Tests.csproj" />
+    <Project Path="../tests/unit/Gggs.BuildingBlocks.UnitTests/Gggs.BuildingBlocks.UnitTests.csproj" />
+    <Project Path="../tests/unit/Gggs.Identity.UnitTests/Gggs.Identity.UnitTests.csproj" />
+    <Project Path="../tests/unit/Gggs.Platform.UnitTests/Gggs.Platform.UnitTests.csproj" />
   </Folder>
-  <Folder Name="/Services/Payroll/">
-    <Project Path="Services/Payroll/Gggs.Payroll.Api/Gggs.Payroll.Api.csproj" />
-    <Project Path="Services/Payroll/Gggs.Payroll.Application/Gggs.Payroll.Application.csproj" />
-    <Project Path="Services/Payroll/Gggs.Payroll.Domain/Gggs.Payroll.Domain.csproj" />
-    <Project Path="Services/Payroll/Gggs.Payroll.Infrastructure/Gggs.Payroll.Infrastructure.csproj" />
-    <Project Path="Services/Payroll/Gggs.Payroll.Worker/Gggs.Payroll.Worker.csproj" />
-  </Folder>
-  <Folder Name="/Services/Spend/">
-    <Project Path="Services/Spend/Gggs.Spend.Api/Gggs.Spend.Api.csproj" />
-    <Project Path="Services/Spend/Gggs.Spend.Application/Gggs.Spend.Application.csproj" />
-    <Project Path="Services/Spend/Gggs.Spend.Domain/Gggs.Spend.Domain.csproj" />
-    <Project Path="Services/Spend/Gggs.Spend.Infrastructure/Gggs.Spend.Infrastructure.csproj" />
-    <Project Path="Services/Spend/Gggs.Spend.Worker/Gggs.Spend.Worker.csproj" />
-  </Folder>
-  <Folder Name="/Services/Sample/">
-    <Project Path="Services/Sample/Gggs.Sample.Api/Gggs.Sample.Api.csproj" />
-  </Folder>
-  <Folder Name="/Services/Reporting/">
-    <Project Path="Services/Reporting/Gggs.Reporting.Api/Gggs.Reporting.Api.csproj" />
-    <Project Path="Services/Reporting/Gggs.Reporting.Application/Gggs.Reporting.Application.csproj" />
-    <Project Path="Services/Reporting/Gggs.Reporting.Domain/Gggs.Reporting.Domain.csproj" />
-    <Project Path="Services/Reporting/Gggs.Reporting.Infrastructure/Gggs.Reporting.Infrastructure.csproj" />
-    <Project Path="Services/Reporting/Gggs.Reporting.Worker/Gggs.Reporting.Worker.csproj" />
-  </Folder>
-  <Folder Name="/Services/Time/">
-    <Project Path="Services/Time/Gggs.Time.Api/Gggs.Time.Api.csproj" />
-    <Project Path="Services/Time/Gggs.Time.Application/Gggs.Time.Application.csproj" />
-    <Project Path="Services/Time/Gggs.Time.Domain/Gggs.Time.Domain.csproj" />
-    <Project Path="Services/Time/Gggs.Time.Infrastructure/Gggs.Time.Infrastructure.csproj" />
-    <Project Path="Services/Time/Gggs.Time.Worker/Gggs.Time.Worker.csproj" />
-  </Folder>
-  <Folder Name="/Services/Workflow/">
-    <Project Path="Services/Workflow/Gggs.Workflow.Api/Gggs.Workflow.Api.csproj" />
-    <Project Path="Services/Workflow/Gggs.Workflow.Application/Gggs.Workflow.Application.csproj" />
-    <Project Path="Services/Workflow/Gggs.Workflow.Contracts/Gggs.Workflow.Contracts.csproj" />
-    <Project Path="Services/Workflow/Gggs.Workflow.Domain/Gggs.Workflow.Domain.csproj" />
-    <Project Path="Services/Workflow/Gggs.Workflow.Infrastructure/Gggs.Workflow.Infrastructure.csproj" />
-    <Project Path="Services/Workflow/Gggs.Workflow.Worker/Gggs.Workflow.Worker.csproj" />
-  </Folder>
-  <Project Path="../tests/Gggs.Architecture.Tests/Gggs.Architecture.Tests.csproj" />
-  <Project Path="../tests/Gggs.CoreHr.IntegrationTests/Gggs.CoreHr.IntegrationTests.csproj" />
-  <Project Path="../tests/Gggs.Documents.IntegrationTests/Gggs.Documents.IntegrationTests.csproj" />
-  <Project Path="../tests/Gggs.Gateway.IntegrationTests/Gggs.Gateway.IntegrationTests.csproj" />
-  <Project Path="../tests/Gggs.Notification.IntegrationTests/Gggs.Notification.IntegrationTests.csproj" />
-  <Project Path="../tests/Gggs.Time.IntegrationTests/Gggs.Time.IntegrationTests.csproj" />
-  <Project Path="../tests/Gggs.Workflow.IntegrationTests/Gggs.Workflow.IntegrationTests.csproj" />
-  <Project Path="../tests/Gggs.Identity.IntegrationTests/Gggs.Identity.IntegrationTests.csproj" />
-  <Project Path="../tests/Gggs.Platform.IntegrationTests/Gggs.Platform.IntegrationTests.csproj" />
-  <Project Path="../tests/Gggs.TenantIsolation.Tests/Gggs.TenantIsolation.Tests.csproj" />
-  <Project Path="../tests/unit/Gggs.BuildingBlocks.UnitTests/Gggs.BuildingBlocks.UnitTests.csproj" />
-  <Project Path="../tests/unit/Gggs.CoreHr.UnitTests/Gggs.CoreHr.UnitTests.csproj" />
-  <Project Path="../tests/unit/Gggs.Documents.UnitTests/Gggs.Documents.UnitTests.csproj" />
-  <Project Path="../tests/unit/Gggs.Identity.UnitTests/Gggs.Identity.UnitTests.csproj" />
-  <Project Path="../tests/unit/Gggs.Notification.UnitTests/Gggs.Notification.UnitTests.csproj" />
-  <Project Path="../tests/unit/Gggs.Platform.UnitTests/Gggs.Platform.UnitTests.csproj" />
-  <Project Path="../tests/unit/Gggs.Time.UnitTests/Gggs.Time.UnitTests.csproj" />
-  <Project Path="../tests/unit/Gggs.Workflow.UnitTests/Gggs.Workflow.UnitTests.csproj" />
 </Solution>

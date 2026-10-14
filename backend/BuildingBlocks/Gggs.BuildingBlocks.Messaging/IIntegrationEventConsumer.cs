@@ -19,29 +19,35 @@ public interface IIntegrationEventConsumer<in TEvent>
     Task HandleAsync(TEvent integrationEvent, CancellationToken cancellationToken = default);
 }
 
+/// <summary>One consumed event type, as declared by <see cref="MessagingExtensions.AddGggsEventConsumer{TEvent, TConsumer}"/>.</summary>
+public sealed record IntegrationEventRegistration(Type EventType);
+
 /// <summary>
-/// Registers which event types a service consumes, so the subscriber knows what to bind and the
-/// dispatcher knows what to deserialize into.
+/// Which event types this host consumes, so the dispatcher (or broker subscriber) knows what to bind
+/// and what to deserialize into.
+/// <para>
+/// Built from the <see cref="IntegrationEventRegistration"/>s in the container, so declaring a
+/// consumer is the only step: there is no separate list to keep in step with the handlers.
+/// </para>
 /// </summary>
 public sealed class IntegrationEventRegistry
 {
     private readonly Dictionary<string, Type> _byMessageType = new(StringComparer.Ordinal);
 
-    public IReadOnlyCollection<string> SubscribedMessageTypes => _byMessageType.Keys;
-
-    public IntegrationEventRegistry Register<TEvent>()
-        where TEvent : IntegrationEvent
+    public IntegrationEventRegistry(IEnumerable<IntegrationEventRegistration> registrations)
     {
-        _byMessageType[MessageTypeName.For<TEvent>()] = typeof(TEvent);
-        return this;
+        ArgumentNullException.ThrowIfNull(registrations);
+
+        foreach (IntegrationEventRegistration registration in registrations)
+        {
+            _byMessageType[MessageTypeName.For(registration.EventType)] = registration.EventType;
+        }
     }
 
+    public IReadOnlyCollection<string> SubscribedMessageTypes => _byMessageType.Keys;
+
     /// <summary>
-    /// The CLR type for a wire name, or null when this service does not consume it.
-    /// <para>
-    /// An unknown type is not an error: a topic carries every service's events, and each subscriber
-    /// sees messages meant for others.
-    /// </para>
+    /// The CLR type for a wire name, or null when nothing in this host consumes it.
     /// </summary>
     public Type? Resolve(string messageType) => _byMessageType.GetValueOrDefault(messageType);
 }

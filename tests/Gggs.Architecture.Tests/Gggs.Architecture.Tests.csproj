@@ -12,7 +12,8 @@
     <ProjectReference Include="..\..\backend\BuildingBlocks\Gggs.BuildingBlocks.Secrets\Gggs.BuildingBlocks.Secrets.csproj" />
     <ProjectReference Include="..\..\backend\BuildingBlocks\Gggs.BuildingBlocks.Persistence\Gggs.BuildingBlocks.Persistence.csproj" />
     <ProjectReference Include="..\..\backend\BuildingBlocks\Gggs.BuildingBlocks.Security\Gggs.BuildingBlocks.Security.csproj" />
-    <ProjectReference Include="..\..\backend\Services\Sample\Gggs.Sample.Api\Gggs.Sample.Api.csproj" />
+    <ProjectReference Include="..\..\backend\Host\Gggs.Composition\Gggs.Composition.csproj" />
+    <ProjectReference Include="..\..\backend\Data\Gggs.Data.Migrations\Gggs.Data.Migrations.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -37,6 +37,13 @@ public interface IGggsCache
         Func<CancellationToken, ValueTask<T>> factory,
         TimeSpan? expiration = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Drops every platform entry in one area, for example the tenant registry after a tenant is
+    /// suspended. The platform counterpart of <see cref="RemoveAreaAsync"/>, which only ever reaches
+    /// the current tenant's entries and so cannot clear these.
+    /// </summary>
+    ValueTask RemovePlatformAreaAsync(string area, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Cache areas, named once so invalidation and key layout do not drift.</summary>

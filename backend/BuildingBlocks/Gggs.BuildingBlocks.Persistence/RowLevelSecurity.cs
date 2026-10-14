@@ -1,4 +1,7 @@
 using System.Text;
+using Gggs.BuildingBlocks.Domain.Abstractions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Gggs.BuildingBlocks.Persistence;
@@ -88,6 +91,45 @@ public static class RowLevelSecurity
             DROP SECURITY POLICY {SecuritySchema}.{PolicyName};
         """;
 
+    /// <summary>
+    /// Every table in the model whose entity is tenant-owned, in a stable order.
+    /// <para>
+    /// Works on a migration's <c>TargetModel</c> as well as a live one, through
+    /// <see cref="TenantOwnedAnnotation"/>. Tables shared by several entity types (table splitting,
+    /// TPH) appear once.
+    /// </para>
+    /// </summary>
+    public static IReadOnlyList<TenantTable> TenantTablesOf(IModel model)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+
+        return
+        [
+            .. model.GetEntityTypes()
+                .Where(entityType => !entityType.IsOwned() && entityType.GetTableName() is not null)
+                .Where(IsTenantOwned)
+                .Select(entityType => new TenantTable(entityType.GetSchema() ?? "dbo", entityType.GetTableName()!))
+                .Distinct()
+                .OrderBy(table => table.Schema, StringComparer.Ordinal)
+                .ThenBy(table => table.Table, StringComparer.Ordinal),
+        ];
+    }
+
+    /// <summary>
+    /// Stamped on every tenant-owned entity type by <see cref="ModelBuilderExtensions"/>.
+    /// <para>
+    /// An annotation rather than a CLR-type check, because a migration's target model is rebuilt
+    /// from the snapshot and has no CLR types to inspect. Nor can a <c>TenantId</c> column stand in
+    /// for it: platform tables such as subscriptions carry one as a foreign key and must stay
+    /// readable before any tenant is known.
+    /// </para>
+    /// </summary>
+    public const string TenantOwnedAnnotation = "Gggs:TenantOwned";
+
+    private static bool IsTenantOwned(IEntityType entityType)
+        => entityType.FindAnnotation(TenantOwnedAnnotation)?.Value is true
+            || (entityType.ClrType is { } clrType && typeof(ITenantOwned).IsAssignableFrom(clrType));
+
     /// <summary>A table covered by the policy.</summary>
     public sealed record TenantTable(string Schema, string Table, string TenantColumn = "TenantId");
 }
@@ -109,6 +151,23 @@ public static class RowLevelSecurityMigrationExtensions
         migrationBuilder.Sql(RowLevelSecurity.CreateSecuritySchemaSql());
         migrationBuilder.Sql(RowLevelSecurity.CreatePredicateFunctionSql());
         migrationBuilder.Sql(RowLevelSecurity.CreatePolicySql(tables));
+    }
+
+    /// <summary>
+    /// Brings the policy in line with the model: every tenant-owned table in
+    /// <paramref name="targetModel"/> is covered, and nothing else.
+    /// <para>
+    /// Call it at the end of any migration that adds or removes a tenant-owned table, passing the
+    /// migration's own <c>TargetModel</c>. The list is derived rather than typed out, which removes
+    /// the failure where a new table is forgotten and silently left without the database backstop.
+    /// </para>
+    /// </summary>
+    public static void SyncTenantRowLevelSecurity(this MigrationBuilder migrationBuilder, IModel targetModel)
+    {
+        ArgumentNullException.ThrowIfNull(migrationBuilder);
+        ArgumentNullException.ThrowIfNull(targetModel);
+
+        migrationBuilder.EnableTenantRowLevelSecurity([.. RowLevelSecurity.TenantTablesOf(targetModel)]);
     }
 
     public static void DisableTenantRowLevelSecurity(this MigrationBuilder migrationBuilder)

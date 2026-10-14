@@ -5,10 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\backend\Modules\Identity\Gggs.Modules.Identity\Gggs.Modules.Identity.csproj" />
     <ProjectReference Include="..\..\..\backend\BuildingBlocks\Gggs.BuildingBlocks.MultiTenancy\Gggs.BuildingBlocks.MultiTenancy.csproj" />
-    <ProjectReference Include="..\..\..\backend\Services\Identity\Gggs.Identity.Application\Gggs.Identity.Application.csproj" />
-    <ProjectReference Include="..\..\..\backend\Services\Identity\Gggs.Identity.Domain\Gggs.Identity.Domain.csproj" />
-    <ProjectReference Include="..\..\..\backend\Services\Identity\Gggs.Identity.Infrastructure\Gggs.Identity.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

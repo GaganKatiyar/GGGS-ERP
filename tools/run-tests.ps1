@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Builds and runs every test project in the repository.
+    Builds and runs every test project in the solution.
 
 .DESCRIPTION
     Test projects are executed directly rather than through `dotnet test`.
@@ -9,6 +9,9 @@
     `dotnet test` completes with "Zero tests ran" while the very same assembly runs its full suite
     when invoked directly. Running the test executables avoids that gap and gives identical
     results locally and in CI. Revisit once the SDK and xunit agree again.
+
+    The projects come from backend/Gggs.slnx rather than a folder scan, so a test project that
+    is not part of the solution is never picked up by accident.
 
 .PARAMETER Filter
     Optional substring matched against project names, e.g. -Filter Isolation.
@@ -26,7 +29,11 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $env:TESTINGPLATFORM_TELEMETRY_OPTOUT = '1'
 
-$projects = Get-ChildItem -Path (Join-Path $repositoryRoot 'tests') -Recurse -Filter '*.csproj' |
+$solutionPath = Join-Path $repositoryRoot 'backend/Gggs.slnx'
+$solutionDirectory = Split-Path -Parent $solutionPath
+$projects = ([xml](Get-Content -Raw $solutionPath)).SelectNodes('//Project') |
+    ForEach-Object { Get-Item (Join-Path $solutionDirectory $_.Path) } |
+    Where-Object { $_.FullName -like (Join-Path $repositoryRoot 'tests*') } |
     Where-Object { -not $Filter -or $_.BaseName -like "*$Filter*" } |
     Where-Object { -not ($SkipIntegration -and $_.BaseName -match 'Isolation|IntegrationTests') }
 

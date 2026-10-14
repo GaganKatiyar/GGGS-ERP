@@ -1,6 +1,6 @@
 using Gggs.BuildingBlocks.Domain.Exceptions;
-using Gggs.Identity.Domain.Users;
-using Gggs.Identity.Domain.Users.Events;
+using Gggs.Modules.Identity.Domain.Users;
+using Gggs.Modules.Identity.Domain.Users.Events;
 using Shouldly;
 
 namespace Gggs.Identity.UnitTests;

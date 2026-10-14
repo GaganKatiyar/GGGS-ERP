@@ -13,6 +13,11 @@ namespace Gggs.BuildingBlocks.Web;
 /// Turns every exception into an RFC 9457 problem document with a stable error code and the trace
 /// id, and keeps internal detail out of the response.
 /// <para>
+/// The document also carries the PeopleOS error envelope (spec §129) as extension members, so a
+/// client can read either form:
+/// <c>{ "success": false, "code": "VALIDATION_FAILED", "message": "...", "errors": [ { "field", "message" } ], "traceId": "..." }</c>.
+/// </para>
+/// <para>
 /// Two mappings are deliberate rather than obvious. A resource in another tenant returns 404, not
 /// 403, because 403 would confirm that the record exists. And a tenant mismatch is logged as a
 /// security incident even though the caller sees the same bland 404.
@@ -36,6 +41,8 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         ProblemDetails problem = Map(httpContext, exception);
         LogException(httpContext, exception, problem.Status ?? StatusCodes.Status500InternalServerError);
 
+        problem.Extensions["success"] = false;
+        problem.Extensions["message"] = problem.Detail;
         problem.Extensions["traceId"] = httpContext.TraceIdentifier;
         problem.Instance = httpContext.Request.Path;
 
@@ -114,9 +121,11 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
 
     private static ProblemDetails ValidationProblem(ValidationException validation)
     {
-        Dictionary<string, string[]> errors = validation.Errors
-            .GroupBy(e => e.PropertyName, StringComparer.Ordinal)
-            .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray(), StringComparer.Ordinal);
+        // One entry per failure, field-first, in the order the validator reported them.
+        FieldError[] errors =
+        [
+            .. validation.Errors.Select(error => new FieldError(JsonFieldName(error.PropertyName), error.ErrorMessage)),
+        ];
 
         var problem = Problem(
             StatusCodes.Status400BadRequest,
@@ -143,7 +152,8 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
             Type = $"https://docs.gggshr.com/errors/{errorCode.ToLowerInvariant()}",
         };
 
-        problem.Extensions["errorCode"] = errorCode;
+        problem.Extensions["code"] = errorCode;
+        problem.Extensions["errors"] = Array.Empty<FieldError>();
 
         if (extensions is { Count: > 0 })
         {
@@ -152,6 +162,14 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
 
         return problem;
     }
+
+    /// <summary>
+    /// <c>Address.PostalCode</c> as the client names it, <c>address.postalCode</c>: the API speaks
+    /// camelCase JSON, and an error keyed by the C# name would not match the field the form sent.
+    /// </summary>
+    private static string JsonFieldName(string propertyName)
+        => string.Join('.', propertyName.Split('.').Select(segment =>
+            segment.Length == 0 ? segment : char.ToLowerInvariant(segment[0]) + segment[1..]));
 
     private void LogException(HttpContext context, Exception exception, int status)
     {
@@ -191,3 +209,6 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         }
     }
 }
+
+/// <summary>One invalid field in an error response.</summary>
+public sealed record FieldError(string Field, string Message);

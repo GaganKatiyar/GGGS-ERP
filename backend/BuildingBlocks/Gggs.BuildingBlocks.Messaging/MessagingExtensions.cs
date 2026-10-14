@@ -5,22 +5,28 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using RabbitMQ.Client;
 
 namespace Gggs.BuildingBlocks.Messaging;
 
-/// <summary>Wires messaging, picking the transport that matches the deployment profile.</summary>
+/// <summary>
+/// Wires integration events.
+/// <para>
+/// In the modular monolith (ADR-12) delivery is in-process: <see cref="AddGggsMessaging{TDbContext}"/>
+/// in both hosts, <see cref="AddGggsOutboxDispatcher{TDbContext}"/> in the worker. The broker
+/// transports remain available through <see cref="AddGggsBrokerTransport"/> for events that must
+/// leave the process - external integrations - and are not registered by default.
+/// </para>
+/// </summary>
 public static class MessagingExtensions
 {
     /// <summary>
-    /// Registers the publisher and the transport adapter. Call this in every host: an API stages
-    /// messages even when it never runs the relay.
+    /// Registers the outbox publisher and the consumer registry. Call it in every host: the API
+    /// stages messages even though only the worker delivers them.
     /// </summary>
     public static IServiceCollection AddGggsMessaging<TDbContext>(
         this IServiceCollection services,
-        IConfiguration configuration,
-        DeploymentProfile profile)
+        IConfiguration configuration)
         where TDbContext : DbContext
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -32,14 +38,64 @@ public static class MessagingExtensions
 
         services.TryAddSingleton<IntegrationEventRegistry>();
 
-        // The publisher writes through the service's own DbContext, so the message and the
-        // business change share one transaction.
+        // The publisher writes through the shared DbContext, so the message and the business change
+        // share one transaction.
         services.AddScoped<IIntegrationEventPublisher>(serviceProvider =>
             new OutboxIntegrationEventPublisher(
                 serviceProvider.GetRequiredService<TDbContext>(),
                 serviceProvider.GetRequiredService<MultiTenancy.ITenantContext>(),
                 serviceProvider.GetRequiredService<Application.ICurrentUser>(),
                 serviceProvider.GetRequiredService<TimeProvider>()));
+
+        return services;
+    }
+
+    /// <summary>
+    /// Declares an event this host consumes, and the handler that processes it.
+    /// <para>
+    /// Several handlers may consume the same event; each is delivered to, and deduplicated,
+    /// independently.
+    /// </para>
+    /// </summary>
+    public static IServiceCollection AddGggsEventConsumer<TEvent, TConsumer>(this IServiceCollection services)
+        where TEvent : IntegrationEvent
+        where TConsumer : class, IIntegrationEventConsumer<TEvent>
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.AddSingleton(new IntegrationEventRegistration(typeof(TEvent)));
+        services.AddScoped<IIntegrationEventConsumer<TEvent>, TConsumer>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Adds in-process delivery and outbox cleanup. Worker host only, so delivery does not compete
+    /// with request handling.
+    /// </summary>
+    public static IServiceCollection AddGggsOutboxDispatcher<TDbContext>(this IServiceCollection services)
+        where TDbContext : DbContext
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.AddSingleton<OutboxDispatcher<TDbContext>>();
+        services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<OutboxDispatcher<TDbContext>>());
+        services.AddHostedService<OutboxCleanup<TDbContext>>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the broker adapter for the deployment profile: RabbitMQ on-premise, Service Bus in
+    /// the cloud (ADR-06, ADR-11). Only for events that leave the process.
+    /// </summary>
+    public static IServiceCollection AddGggsBrokerTransport(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        DeploymentProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
 
         if (profile == DeploymentProfile.OnPremise)
         {
@@ -78,31 +134,7 @@ public static class MessagingExtensions
         return services;
     }
 
-    /// <summary>
-    /// Declares an event this service consumes, and the handler that processes it.
-    /// <para>
-    /// Registering the type is what makes the subscriber bind to it, so an event with no handler
-    /// is simply never delivered here rather than piling up unread.
-    /// </para>
-    /// </summary>
-    public static IServiceCollection AddGggsEventConsumer<TEvent, TConsumer>(this IServiceCollection services)
-        where TEvent : IntegrationEvent
-        where TConsumer : class, IIntegrationEventConsumer<TEvent>
-    {
-        ArgumentNullException.ThrowIfNull(services);
-
-        services.TryAddSingleton<IntegrationEventRegistry>();
-        services.AddScoped<IIntegrationEventConsumer<TEvent>, TConsumer>();
-
-        // Resolved immediately so the registry is populated before the consumer starts; a handler
-        // registered but not bound would look wired up and receive nothing.
-        using ServiceProvider provider = services.BuildServiceProvider();
-        provider.GetRequiredService<IntegrationEventRegistry>().Register<TEvent>();
-
-        return services;
-    }
-
-    /// <summary>Adds the subscriber that delivers registered events to their handlers.</summary>
+    /// <summary>Adds the broker subscriber. Requires <see cref="AddGggsBrokerTransport"/>.</summary>
     public static IServiceCollection AddGggsEventSubscriber<TDbContext>(this IServiceCollection services)
         where TDbContext : DbContext
     {
@@ -112,10 +144,7 @@ public static class MessagingExtensions
         return services;
     }
 
-    /// <summary>
-    /// Adds the relay and cleanup workers. Worker hosts call this; API hosts usually do not, so
-    /// delivery scales on queue depth rather than on request traffic.
-    /// </summary>
+    /// <summary>Adds the broker relay and cleanup. Requires <see cref="AddGggsBrokerTransport"/>.</summary>
     public static IServiceCollection AddGggsOutboxRelay<TDbContext>(this IServiceCollection services)
         where TDbContext : DbContext
     {

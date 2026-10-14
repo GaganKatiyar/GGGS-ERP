@@ -1,6 +1,6 @@
 using Gggs.BuildingBlocks.Domain.Exceptions;
-using Gggs.Identity.Domain.PlatformStaff;
-using Gggs.Identity.Domain.PlatformStaff.Events;
+using Gggs.Modules.Identity.Domain.PlatformStaff;
+using Gggs.Modules.Identity.Domain.PlatformStaff.Events;
 using Shouldly;
 
 namespace Gggs.Identity.UnitTests;

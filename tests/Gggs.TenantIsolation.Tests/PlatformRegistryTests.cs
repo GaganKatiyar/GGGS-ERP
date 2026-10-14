@@ -1,8 +1,9 @@
 using Gggs.BuildingBlocks.Domain.Abstractions;
 using Gggs.BuildingBlocks.MultiTenancy;
-using Gggs.Platform.Domain.Subscriptions;
-using Gggs.Platform.Domain.Tenants;
-using Gggs.Platform.Infrastructure;
+using Gggs.Data;
+using Gggs.Modules.Platform.Domain.Subscriptions;
+using Gggs.Modules.Platform.Domain.Tenants;
+using Gggs.Modules.Platform.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
@@ -16,8 +17,8 @@ namespace Gggs.TenantIsolation.Tests;
 /// anyone sees.
 /// </para>
 /// </summary>
-[Collection(nameof(PlatformCollection))]
-public sealed class PlatformRegistryTests(PlatformFixture fixture)
+[Collection(nameof(SqlServerCollection))]
+public sealed class PlatformRegistryTests(SqlServerFixture fixture)
 {
     [Fact]
     public async Task AnActiveTenantWithASubscription_ResolvesWithItsPlanFeatures()
@@ -98,9 +99,9 @@ public sealed class PlatformRegistryTests(PlatformFixture fixture)
     {
         (Tenant tenant, _) = await fixture.SeedTenantAsync("resolve-suspended", activate: true, withSubscription: true);
 
-        await using (PlatformDbContext context = fixture.CreateContext())
+        await using (AppDbContext context = fixture.CreateContext())
         {
-            Tenant tracked = await context.Tenants.SingleAsync(
+            Tenant tracked = await context.Set<Tenant>().SingleAsync(
                 candidate => candidate.Id == tenant.Id,
                 TestContext.Current.CancellationToken);
 
@@ -136,14 +137,14 @@ public sealed class PlatformRegistryTests(PlatformFixture fixture)
         (Tenant acme, _) = await fixture.SeedTenantAsync("settings-acme", activate: true, withSubscription: false);
         (Tenant globex, _) = await fixture.SeedTenantAsync("settings-globex", activate: true, withSubscription: false);
 
-        await using (PlatformDbContext acmeContext = fixture.CreateContext(acme.Id))
+        await using (AppDbContext acmeContext = fixture.CreateContext(acme.Id))
         {
-            acmeContext.TenantSettings.Add(TenantSetting.Create("leave", "WorkingDays", "[1,2,3,4,5]"));
+            acmeContext.Set<TenantSetting>().Add(TenantSetting.Create("leave", "WorkingDays", "[1,2,3,4,5]"));
             await acmeContext.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
-        await using PlatformDbContext globexContext = fixture.CreateContext(globex.Id);
-        List<TenantSetting> visible = await globexContext.TenantSettings
+        await using AppDbContext globexContext = fixture.CreateContext(globex.Id);
+        List<TenantSetting> visible = await globexContext.Set<TenantSetting>()
             .ToListAsync(TestContext.Current.CancellationToken);
 
         visible.ShouldBeEmpty();

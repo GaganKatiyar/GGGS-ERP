@@ -2,7 +2,7 @@ using System.Text.Json;
 using Gggs.BuildingBlocks.Domain.Abstractions;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Security;
-using Gggs.Identity.Infrastructure;
+using Gggs.Modules.Identity.Infrastructure;
 using Shouldly;
 using DomainTenantStatus = Gggs.BuildingBlocks.Domain.Abstractions.TenantStatus;
 

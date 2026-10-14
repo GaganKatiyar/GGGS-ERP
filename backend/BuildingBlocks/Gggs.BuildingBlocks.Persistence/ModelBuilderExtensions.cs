@@ -31,6 +31,7 @@ public static class ModelBuilderExtensions
             {
                 ApplyTenantFilter(modelBuilder, context, clrType);
                 ApplyTenantKeyLayout(entityType);
+                entityType.SetAnnotation(RowLevelSecurity.TenantOwnedAnnotation, true);
             }
 
             if (typeof(ISoftDeletable).IsAssignableFrom(clrType))

@@ -1,5 +1,5 @@
-using Gggs.Identity.Application.Authentication;
-using Gggs.Identity.Infrastructure;
+using Gggs.Modules.Identity.Application.Authentication;
+using Gggs.Modules.Identity.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
 

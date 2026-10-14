@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Worker</RootNamespace>
+    <UserSecretsId>gggs-worker</UserSecretsId>
+    <Description>PeopleOS background host: delivers outbox messages to module consumers and runs scheduled jobs (ADR-12).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\Gggs.BuildingBlocks.Jobs\Gggs.BuildingBlocks.Jobs.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\Gggs.BuildingBlocks.Observability\Gggs.BuildingBlocks.Observability.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\Gggs.BuildingBlocks.Secrets\Gggs.BuildingBlocks.Secrets.csproj" />
+    <ProjectReference Include="..\Gggs.Composition\Gggs.Composition.csproj" />
+    <!-- Loaded at runtime by EF (pending-migration checks); see DataExtensions.MigrationsAssembly. -->
+    <ProjectReference Include="..\..\Data\Gggs.Data.Migrations\Gggs.Data.Migrations.csproj" />
+  </ItemGroup>
+
+</Project>

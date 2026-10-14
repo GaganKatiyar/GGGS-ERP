@@ -69,9 +69,12 @@ public sealed class GggsHybridCache(
             cacheKey,
             factory,
             BuildEntryOptions(expiration),
-            ["platform"],
+            ["platform", PlatformAreaTag(area)],
             cancellationToken);
     }
+
+    public ValueTask RemovePlatformAreaAsync(string area, CancellationToken cancellationToken = default)
+        => cache.RemoveByTagAsync(PlatformAreaTag(area), cancellationToken);
 
     private HybridCacheEntryOptions BuildEntryOptions(TimeSpan? expiration)
     {
@@ -94,6 +97,8 @@ public sealed class GggsHybridCache(
     private string TenantTag() => $"t:{tenantContext.TenantId:N}";
 
     private string AreaTag(string area) => $"t:{tenantContext.TenantId:N}:{Normalize(area)}";
+
+    private static string PlatformAreaTag(string area) => $"platform:{Normalize(area)}";
 
     /// <summary>Keeps separators out of user-supplied fragments so keys cannot be forged.</summary>
     private static string Normalize(string value)
