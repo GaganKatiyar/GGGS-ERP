@@ -163,7 +163,7 @@ event delivered through the outbox.
 | `@ngrx/signals` installed, never imported | frontend/package.json | Removed |
 | Hangfire scheduler built, never used | `BuildingBlocks.Jobs` | Wired in `Gggs.Worker` |
 | Dashboard hand-rolls card CSS | features/dashboard | Rebuilt with shared KPI cards |
-| Permissions declared with no feature | `admin.custom-field`, `admin.identity-provider`, `employee.bank`, `document.template`, `report.schedule`, `audit.privacy-request` | `employee.bank` gets a feature in M2; the rest stay reserved, since released names are never renamed |
+| Permissions declared with no feature | `admin.custom-field`, `admin.identity-provider`, `employee.bank`, `document.template`, `report.schedule`, `audit.privacy-request` `employee.bank` is used since M2 (encrypted bank details on Employee 360); the rest stay reserved, since released names are never renamed |
 | Stale on-prem compose (gateway and worker pointing at SampleDb) | `infra/onprem/compose.onprem.yml` | Rewritten for api and worker |
 | Bicep list of 11 service DBs | `infra/bicep/modules/sql.bicep` | One database |
 
@@ -176,7 +176,7 @@ event delivered through the outbox.
 | SQL row-level security is enabled only in Identity, Platform and Sample; CoreHr, Time, Payroll, Talent, Spend, Workflow, Notification, Documents and Reporting have **no RLS policy**, so the DB-layer backstop is missing for all HR data | High | The RLS policy is generated from the EF model for every `ITenantOwned` table; an arch test asserts coverage |
 | `/internal/tenants/*` is anonymous and relies on network placement | Medium | Deleted; tenant lookup is in-process |
 | Permissions fetched over HTTP on every request: availability coupling and an extra hop | Low | In-process provider with a short cache |
-| Employee statutory and bank fields not modelled yet, so there is no encryption or masking path | Medium (before go-live) | M2 adds encrypted columns and field-permission masking |
+| Employee statutory and bank fields not modelled yet, so there is no encryption or masking path | Medium (before go-live) | Resolved in M2: PAN, UAN, ESIC, national ID and bank account are encrypted (Data Protection), shown as masked hints, and revealed only under `employee.identity-document.view` / `employee.bank.view` |
 | Messaging relay requires a broker that the local stack does not run, so audit capture silently never reaches `AuditLog` locally | Medium | The in-process dispatcher in the Worker writes audit rows from the same DB |
 | No MFA/SSO yet; OIDC federation pending | Medium (before go-live) | Identity roadmap (M3+) |
 
@@ -201,7 +201,7 @@ No load testing or query profiling has been done, so these are structural observ
 |---|---|---|
 | M0 | This audit, the target architecture, ADR-12, roadmap | done |
 | M1 | Monolith foundation: hosts, `Gggs.Data`, Platform and Identity modules, BFF folded in, BuildingBlocks changes, infra, tests, navigation | done (2026-10-14); retired code removed from the solution, folder deletion pending owner approval (§11) |
-| M2 | Organization, Employee, MasterData; UI component kit; Employee 360 shell | planned |
+| M2 | Organization, Employee, MasterData; UI component kit; Employee 360 shell | done (2026-10-14): org structure (11 record kinds, department tree), employees (hire, 360, assignment changes, confirm/notice/exit, family, statutory and bank, history, org chart, CSV import with preview), master data admin, My profile, My team |
 | M3+ | See [roadmap.md](../roadmap.md) | planned |
 
 The remaining old services (CoreHr, Time, Payroll, Talent, Spend, Workflow, Notification, Documents,
@@ -229,8 +229,14 @@ them needs the repository owner's go-ahead. Everything listed is preserved in gi
   `tests/Gggs.Api.IntegrationTests/`; factories and project files remain)
 - `tests/unit/Gggs.{CoreHr,Documents,Notification,Time,Workflow}.UnitTests/`
 - Frontend feature libraries with no backend until their milestone (unrouted, still built by the
-  frontend gate): `features/{organization,employees,notifications,workflow,leave,attendance,payroll,spend,assets,recruitment,onboarding,performance,learning,reports}`,
-  `shared/{notifications,documents,org-reference}`, and `features/admin/src/lib/documents/`
+  frontend gate): `features/{notifications,workflow,leave,attendance,payroll,spend,assets,recruitment,onboarding,performance,learning,reports}`,
+  `shared/{notifications,documents}`, and `features/admin/src/lib/documents/`
+- The pre-M2 pages inside the rebuilt libraries (unreferenced since M2 routes to the new pages):
+  `features/organization/src/lib/{branches,business-units,cost-centers,departments,designations,grades,legal-entities,locations}/`,
+  `features/employees/src/lib/{bulk-import,change-assignment,change-manager,confirm,data,detail,exit,hire,list,rehire,shared,team}/`,
+  `shared/org-reference/src/lib/org-reference-api.ts`, and
+  `shared/employee-reference/src/lib/{employee-picker,employee-reference-api}.ts` (still used by
+  the unrouted libraries above, so they go together)
 - BuildingBlocks code with no remaining caller: `Security/HttpPermissionProvider.cs` and
   `AddGggsRemotePermissions`/`AddGggsTokenValidation` in `TokenValidationExtensions.cs`,
   `Caching/RemoteTenantRegistry.cs`
