@@ -16,19 +16,10 @@ param zoneRedundant bool
 param logAnalyticsWorkspaceId string
 
 @description('One database per service (ADR-03). Tenants share these on the pooled tier.')
+// One application database (ADR-12): every module's schema lives here. Dedicated-tier tenants
+// get their own copy of this same database, selected through the tenant catalog (ADR-01).
 var serviceDatabases = [
-  'gggs_platform'
-  'gggs_identity'
-  'gggs_corehr'
-  'gggs_time'
-  'gggs_payroll'
-  'gggs_talent'
-  'gggs_spend'
-  'gggs_workflow'
-  'gggs_notification'
-  'gggs_document'
-  'gggs_reporting'
-  'gggs_integration'
+  'peopleos'
 ]
 
 resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {

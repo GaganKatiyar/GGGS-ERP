@@ -82,8 +82,8 @@ var sharedEnvironmentVariables = [
   }
 ]
 
-resource gateway 'Microsoft.App/containerApps@2024-03-01' = {
-  name: '${resourcePrefix}-gateway'
+resource api 'Microsoft.App/containerApps@2024-03-01' = {
+  name: '${resourcePrefix}-api'
   location: location
   tags: tags
   identity: {
@@ -111,8 +111,8 @@ resource gateway 'Microsoft.App/containerApps@2024-03-01' = {
     template: {
       containers: [
         {
-          name: 'gateway'
-          image: '${containerRegistry}/gateway:${imageTag}'
+          name: 'api'
+          image: '${containerRegistry}/api:${imageTag}'
           env: sharedEnvironmentVariables
           resources: {
             cpu: json('1.0')
@@ -201,6 +201,6 @@ resource worker 'Microsoft.App/containerApps@2024-03-01' = {
   }
 }
 
-output gatewayUrl string = 'https://${gateway.properties.configuration.ingress.fqdn}'
+output apiUrl string = 'https://${api.properties.configuration.ingress.fqdn}'
 output identityPrincipalId string = identity.properties.principalId
 output environmentName string = environment.name

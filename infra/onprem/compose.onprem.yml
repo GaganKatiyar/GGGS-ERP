@@ -1,26 +1,27 @@
 # On-premise deployment.
 #
-# What a customer runs on their own server. The application images are identical to the ones in our
-# cloud; only the profile and the backing services differ (ADR-11).
+# What a customer runs on their own server: two application containers (the API and the worker)
+# against one SQL Server database (ADR-11, ADR-12). The images are identical to the ones in our
+# cloud; only the profile and the backing services differ.
 #
-# Customers who already run SQL Server, RabbitMQ or Redis point the connection strings at those and
-# remove the corresponding service here. The defaults exist so a first install works unattended.
+# Customers who already run SQL Server or Redis point the connection strings at those and remove
+# the corresponding service here. The defaults exist so a first install works unattended.
 #
 #   docker compose -f compose.onprem.yml --env-file gggs.env up -d
 #
-name: gggs
+name: peopleos
 
 x-service-defaults: &service-defaults
   restart: unless-stopped
   environment: &service-environment
     ASPNETCORE_ENVIRONMENT: Production
     # The switch that selects every on-premise adapter: file storage instead of Blob, the encrypted
-    # local secret file instead of Key Vault, RabbitMQ instead of Service Bus.
+    # local secret file instead of Key Vault.
     Gggs__Platform__DeploymentProfile: OnPremise
     Gggs__Telemetry__OtlpEndpoint: ${GGGS_OTLP_ENDPOINT:-http://seq:5341/ingest/otlp/v1/traces}
     Gggs__Storage__FileSystem__RootPath: /var/gggs/storage
     Gggs__Secrets__File__FilePath: /var/gggs/secrets/secrets.protected.json
-    ConnectionStrings__RabbitMq: amqp://${GGGS_RABBIT_USER:-gggs}:${GGGS_RABBIT_PASSWORD}@rabbitmq:5672
+    ConnectionStrings__AppDb: ${GGGS_SQL_CONNECTION}
     ConnectionStrings__Redis: redis:6379
   volumes:
     # Documents and the secret file live on the host, so a container rebuild never touches them.
@@ -30,18 +31,14 @@ x-service-defaults: &service-defaults
     # backup checklist in README.md for exactly that reason.
     - gggs-dataprotection:/root/.aspnet/DataProtection-Keys
   depends_on:
-    rabbitmq:
-      condition: service_healthy
     redis:
       condition: service_started
 
 services:
-  gateway:
+  # The web host: API, browser sessions, OIDC token endpoint and the SPA, on one origin.
+  api:
     <<: *service-defaults
-    image: ${GGGS_REGISTRY:-gggs}/gateway:${GGGS_VERSION:-latest}
-    environment:
-      <<: *service-environment
-      ConnectionStrings__SampleDb: ${GGGS_SQL_CONNECTION}
+    image: ${GGGS_REGISTRY:-peopleos}/api:${GGGS_VERSION:-latest}
     ports:
       - '${GGGS_HTTP_PORT:-8080}:8080'
     healthcheck:
@@ -51,29 +48,12 @@ services:
       retries: 3
       start_period: 40s
 
-  # One worker host runs the outbox relay and the scheduled jobs. Kept separate from the API so
-  # message delivery and nightly accruals do not compete with user requests.
+  # The background host: delivers every module's integration events in-process and runs the
+  # scheduled jobs. Kept separate from the API so delivery and nightly accruals do not compete
+  # with user requests.
   worker:
     <<: *service-defaults
-    image: ${GGGS_REGISTRY:-gggs}/worker:${GGGS_VERSION:-latest}
-    environment:
-      <<: *service-environment
-      ConnectionStrings__SampleDb: ${GGGS_SQL_CONNECTION}
-      ConnectionStrings__JobsDb: ${GGGS_SQL_CONNECTION}
-
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    restart: unless-stopped
-    environment:
-      RABBITMQ_DEFAULT_USER: ${GGGS_RABBIT_USER:-gggs}
-      RABBITMQ_DEFAULT_PASS: ${GGGS_RABBIT_PASSWORD}
-    volumes:
-      - gggs-rabbitmq:/var/lib/rabbitmq
-    healthcheck:
-      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
-      interval: 15s
-      timeout: 5s
-      retries: 5
+    image: ${GGGS_REGISTRY:-peopleos}/worker:${GGGS_VERSION:-latest}
 
   redis:
     image: redis:7-alpine
@@ -97,6 +77,5 @@ volumes:
   gggs-storage:
   gggs-secrets:
   gggs-dataprotection:
-  gggs-rabbitmq:
   gggs-redis:
   gggs-seq:

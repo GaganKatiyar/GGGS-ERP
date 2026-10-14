@@ -1,14 +1,16 @@
 # Infrastructure
 
-The platform deploys two ways from the same images (ADR-11): our Azure SaaS, and a customer's own
-servers. `Gggs:Platform:DeploymentProfile` picks the adapters at startup.
+PeopleOS deploys two ways from the same two images (ADR-11, ADR-12): our Azure SaaS, and a
+customer's own servers. Either way it is an **API** container and a **worker** container against
+**one** SQL Server database. `Gggs:Platform:DeploymentProfile` picks the adapters at startup.
 
 | | Cloud | OnPremise |
 |---|---|---|
 | Defined by | `bicep/` | `onprem/` |
 | Compute | Container Apps | Docker Compose, or IIS |
 | Database | Azure SQL elastic pool | Customer's SQL Server 2019+ |
-| Messaging | Service Bus topic | RabbitMQ topic exchange |
+| Integration events | In-process, delivered by the worker from the outbox | Same |
+| External messaging (future integrations only) | Service Bus topic | RabbitMQ topic exchange |
 | Documents | Blob, container per tenant | File share, folder per tenant |
 | Secrets | Key Vault | Encrypted local file (Data Protection) |
 | Telemetry | Azure Monitor (OTLP) | Seq, Grafana or any OTLP collector |
@@ -32,7 +34,11 @@ redundancy, Business Critical SQL, Premium Service Bus, geo-redundant storage, a
 retention. A QA bill should not look like a production one.
 
 Tenants are rows, not resources. Onboarding a customer deploys nothing; a tenant promoted to the
-dedicated tier gets a database inside the existing pool, created by the provisioning saga.
+dedicated tier gets its own copy of the `peopleos` database inside the existing pool.
+
+The Service Bus namespace is still provisioned, but nothing in the application uses it yet: module
+events are delivered in-process (ADR-12). It stays for the external integrations planned in M11 and
+can be removed from `main.bicep` until then if the cost matters.
 
 ### Not in the templates yet
 

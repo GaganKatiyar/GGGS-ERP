@@ -130,6 +130,6 @@ module apps 'modules/container-apps.bicep' = {
   }
 }
 
-output applicationUrl string = apps.outputs.gatewayUrl
+output applicationUrl string = apps.outputs.apiUrl
 output keyVaultName string = keyVault.outputs.name
 output sqlServerName string = sql.outputs.serverName

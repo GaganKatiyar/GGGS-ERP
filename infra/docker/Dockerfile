@@ -1,8 +1,9 @@
-# Build image shared by every service. The service is chosen at build time:
-#   docker build -f infra/docker/Dockerfile --build-arg SERVICE_PATH=backend/Services/Sample/Gggs.Sample.Api .
+# Build image for the two PeopleOS hosts (ADR-12). The host is chosen at build time:
+#   docker build -f infra/docker/Dockerfile --build-arg SERVICE_PATH=backend/Host/Gggs.Api --build-arg SERVICE_DLL=Gggs.Api.dll -t peopleos/api .
+#   docker build -f infra/docker/Dockerfile --build-arg SERVICE_PATH=backend/Host/Gggs.Worker --build-arg SERVICE_DLL=Gggs.Worker.dll -t peopleos/worker .
 #
-# One Dockerfile rather than one per service, so a hardening change (non-root user, base image
-# bump, ICU) lands everywhere at once instead of in eleven places that drift apart.
+# One Dockerfile for both, so a hardening change (non-root user, base image bump, ICU) lands in
+# both images at once.
 
 ARG DOTNET_VERSION=10.0
 
