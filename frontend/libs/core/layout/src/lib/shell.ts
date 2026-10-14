@@ -11,15 +11,13 @@ import { SessionStore } from '@gggs/core/auth';
 import { PermissionStore } from '@gggs/core/permissions';
 import { TenantStore } from '@gggs/core/tenant';
 import { NotificationsApi } from '@gggs/shared/notifications';
+import { WorkflowApi } from '@gggs/shared/workflow';
 import { NAVIGATION, filterNavigation, isBuilt, type NavItem } from './navigation';
 import { ThemeStore } from './theme';
 
 /** How often the header bell's unread count refreshes. There is no push yet (architecture.md
  * §14 puts SignalR in a later phase), so this is the whole story until then. */
 const UNREAD_COUNT_REFRESH_MS = 60_000;
-
-/** Flipped when the Notification module ships (docs/roadmap.md, M3). */
-const NOTIFICATIONS_AVAILABLE = false;
 
 /** Below this, the sidebar stops being a column and becomes an overlay drawer (shell.scss). */
 const MOBILE_BREAKPOINT_QUERY = '(max-width: 48rem)';
@@ -41,6 +39,7 @@ const MOBILE_BREAKPOINT_QUERY = '(max-width: 48rem)';
 export class Shell {
   private readonly permissions = inject(PermissionStore);
   private readonly notificationsApi = inject(NotificationsApi);
+  private readonly workflowApi = inject(WorkflowApi);
   protected readonly session = inject(SessionStore);
   protected readonly tenant = inject(TenantStore);
   protected readonly theme = inject(ThemeStore);
@@ -52,13 +51,11 @@ export class Shell {
     typeof window !== 'undefined' && window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches,
   );
   protected readonly unreadCount = signal(0);
-  /**
-   * The bell needs both the permission and the Notification module, which ships in M3. Until then
-   * there is no inbox endpoint to poll, so the bell stays hidden rather than failing every minute.
-   */
-  protected readonly canSeeNotifications = computed(
-    () => NOTIFICATIONS_AVAILABLE && this.permissions.hasAny(['notification.inbox.view']),
-  );
+  /** Tasks waiting in the approvals inbox, shown on the Approvals entry. */
+  protected readonly approvalsCount = signal(0);
+
+  protected readonly canSeeNotifications = computed(() => this.permissions.hasAny(['notification.inbox.view']));
+  private readonly canSeeApprovals = computed(() => this.permissions.hasAny(['workflow.task.view']));
 
   /** Navigation the signed-in user can actually reach. */
   protected readonly navigation = computed(() =>
@@ -66,15 +63,20 @@ export class Shell {
   );
 
   constructor() {
-    if (this.canSeeNotifications()) {
-      void this.refreshUnreadCount();
+    if (this.canSeeNotifications() || this.canSeeApprovals()) {
+      void this.refreshCounts();
 
       const interval = setInterval(
-        () => void this.refreshUnreadCount(),
+        () => void this.refreshCounts(),
         UNREAD_COUNT_REFRESH_MS,
       );
       inject(DestroyRef).onDestroy(() => clearInterval(interval));
     }
+  }
+
+  /** The counter a navigation entry shows, if any. */
+  protected badgeFor(item: NavItem): number {
+    return item.badge === 'approvals' ? this.approvalsCount() : item.badge === 'notifications' ? this.unreadCount() : 0;
   }
 
   protected toggleSidebar(): void {
@@ -89,12 +91,23 @@ export class Shell {
     }
   }
 
-  private async refreshUnreadCount(): Promise<void> {
-    try {
-      this.unreadCount.set(await this.notificationsApi.unreadCount());
-    } catch {
-      // A failed refresh leaves the last known count showing rather than resetting to zero,
-      // which would read as "everything is read" when it might just be the network.
+  private async refreshCounts(): Promise<void> {
+    // A failed refresh leaves the last known count showing rather than resetting to zero, which
+    // would read as "everything is read" when it might just be the network.
+    if (this.canSeeNotifications()) {
+      try {
+        this.unreadCount.set(await this.notificationsApi.unreadCount());
+      } catch {
+        // Keep the last count.
+      }
+    }
+
+    if (this.canSeeApprovals()) {
+      try {
+        this.approvalsCount.set(await this.workflowApi.pendingCount());
+      } catch {
+        // Keep the last count.
+      }
     }
   }
 

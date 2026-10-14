@@ -72,6 +72,44 @@ export const appRoutes: Route[] = [
           import('@gggs/features/employees').then((m) => m.EMPLOYEES_ROUTES),
       },
       {
+        path: 'approvals',
+        ...withPermissions(['workflow.task.view', 'workflow.instance.view-all']),
+        loadChildren: () =>
+          import('@gggs/features/approvals').then((m) => m.APPROVALS_ROUTES),
+      },
+      {
+        path: 'notifications',
+        ...withPermissions(['notification.inbox.view']),
+        loadChildren: () =>
+          import('@gggs/features/notifications').then(
+            (m) => m.NOTIFICATIONS_ROUTES,
+          ),
+      },
+      {
+        path: 'documents',
+        ...withPermissions(['document.file.view']),
+        loadChildren: () =>
+          import('@gggs/features/documents').then((m) => m.DOCUMENTS_ROUTES),
+      },
+      {
+        path: 'me/documents',
+        ...withPermissions(['self.document.view']),
+        loadChildren: () =>
+          import('@gggs/features/documents').then((m) => m.MY_DOCUMENTS_ROUTES),
+      },
+      {
+        path: 'policies',
+        ...withPermissions(['policy.policy.view']),
+        loadChildren: () =>
+          import('@gggs/features/policies').then((m) => m.POLICIES_ROUTES),
+      },
+      {
+        path: 'me/policies',
+        ...withPermissions(['self.policy.view']),
+        loadChildren: () =>
+          import('@gggs/features/policies').then((m) => m.MY_POLICIES_ROUTES),
+      },
+      {
         path: 'admin',
         // Matches NAVIGATION's "Administration" group: any one of these lets someone in, and each
         // child route narrows further to the specific permission it actually needs.
@@ -81,6 +119,8 @@ export const appRoutes: Route[] = [
           'admin.setting.view',
           'audit.log.view',
           'master-data.lookup.manage',
+          'workflow.definition.view',
+          'notification.template.view',
         ]),
         loadChildren: () =>
           import('@gggs/features/admin').then((m) => m.ADMIN_ROUTES),

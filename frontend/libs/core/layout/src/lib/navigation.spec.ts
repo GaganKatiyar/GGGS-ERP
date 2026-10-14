@@ -140,7 +140,10 @@ describe('filterNavigation', () => {
 
     expect(reachable(visible)).toEqual([
       '/dashboard',
+      '/approvals',
       '/me/profile',
+      '/me/documents',
+      '/me/policies',
       '/team',
       '/org/structure',
       '/org/companies',
@@ -157,10 +160,14 @@ describe('filterNavigation', () => {
       '/employees',
       '/employees/org-chart',
       '/employees/import',
+      '/documents',
+      '/policies',
       '/admin/users',
       '/admin/roles',
       '/admin/audit',
       '/admin/settings',
+      '/admin/workflows',
+      '/admin/notifications',
       '/admin/master-data',
     ]);
   });

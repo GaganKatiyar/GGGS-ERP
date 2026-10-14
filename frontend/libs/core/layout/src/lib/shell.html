@@ -83,6 +83,9 @@
         >
           <i class="nav__icon {{ item.icon }}" aria-hidden="true"></i>
           <span class="nav__label">{{ item.label }}</span>
+          @if (badgeFor(item) > 0) {
+          <span class="nav__badge" [attr.aria-label]="badgeFor(item) + ' waiting'">{{ badgeFor(item) }}</span>
+          }
         </a>
         } @else {
         <span class="nav__group">

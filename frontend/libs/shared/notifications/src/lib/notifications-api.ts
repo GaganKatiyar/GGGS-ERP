@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import type { InAppNotificationItem, PagedResult } from '@gggs/shared/models';
+import type { InAppNotificationItem, NotificationTemplate, PagedResult } from '@gggs/shared/models';
 import { firstValueFrom } from 'rxjs';
 
 /**
@@ -15,12 +15,12 @@ import { firstValueFrom } from 'rxjs';
 export class NotificationsApi {
   private readonly http = inject(HttpClient);
 
-  list(query: { page: number; pageSize: number }): Promise<PagedResult<InAppNotificationItem>> {
-    return firstValueFrom(
-      this.http.get<PagedResult<InAppNotificationItem>>('/api/v1/notifications', {
-        params: { page: String(query.page), pageSize: String(query.pageSize) },
-      }),
-    );
+  list(query: { page: number; pageSize: number; unreadOnly?: boolean }): Promise<PagedResult<InAppNotificationItem>> {
+    const params: Record<string, string> = { page: String(query.page), pageSize: String(query.pageSize) };
+    if (query.unreadOnly) {
+      params['unreadOnly'] = 'true';
+    }
+    return firstValueFrom(this.http.get<PagedResult<InAppNotificationItem>>('/api/v1/notifications', { params }));
   }
 
   async unreadCount(): Promise<number> {
@@ -36,5 +36,13 @@ export class NotificationsApi {
 
   markAllRead(): Promise<void> {
     return firstValueFrom(this.http.post<void>('/api/v1/notifications/read-all', {}));
+  }
+
+  templates(): Promise<readonly NotificationTemplate[]> {
+    return firstValueFrom(this.http.get<readonly NotificationTemplate[]>('/api/v1/notifications/templates'));
+  }
+
+  updateTemplate(id: string, body: Pick<NotificationTemplate, 'subject' | 'body' | 'sendInApp' | 'sendEmail' | 'isActive'>): Promise<NotificationTemplate> {
+    return firstValueFrom(this.http.put<NotificationTemplate>(`/api/v1/notifications/templates/${id}`, body));
   }
 }

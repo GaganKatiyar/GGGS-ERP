@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, si
 import { RouterLink } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import { PermissionStore } from '@gggs/core/permissions';
+import { EmployeeDocuments } from '@gggs/shared/documents';
 import { EmployeeDirectoryApi } from '@gggs/shared/employee-reference';
 import type { Employee360, Employee360Section } from '@gggs/shared/models';
 import { EmptyState, KpiCard, PageHeader, Skeleton, StatusBadge, Tabs, type TabItem } from '@gggs/shared/ui';
@@ -19,7 +20,7 @@ import { StatutoryTab } from './tabs/statutory-tab';
  */
 @Component({
   selector: 'gggs-employee-360-page',
-  imports: [DatePipe, RouterLink, PageHeader, KpiCard, StatusBadge, Tabs, Skeleton, EmptyState, EmploymentTab, PersonalTab, FamilyTab, StatutoryTab, HistoryTab],
+  imports: [DatePipe, RouterLink, PageHeader, KpiCard, StatusBadge, Tabs, Skeleton, EmptyState, EmployeeDocuments, EmploymentTab, PersonalTab, FamilyTab, StatutoryTab, HistoryTab],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (error()) {
@@ -103,6 +104,9 @@ import { StatutoryTab } from './tabs/statutory-tab';
           @case ('history') {
             <gggs-history-tab [employeeId]="p.id" />
           }
+          @case ('documents') {
+            <gggs-employee-documents [employeeId]="p.id" [canUpload]="canUploadDocuments" [canArchive]="canArchiveDocuments" />
+          }
           @default {
             @if (comingSoon(); as section) {
               <gggs-empty-state icon="pi pi-clock" [title]="section.title + ' arrives in ' + section.milestone" description="This part of Employee 360 is filled in when its module ships." />
@@ -129,13 +133,23 @@ export class Employee360Page {
   /** Bound from the `:id` route parameter. */
   readonly id = input.required<string>();
 
+  /** Bound from the `tab` query parameter: open on a section, e.g. after generating a letter. */
+  readonly tab = input<string | undefined>(undefined);
+
+  protected readonly canUploadDocuments = this.permissions.has('document.file.upload');
+  protected readonly canArchiveDocuments = this.permissions.has('document.file.delete');
+
   protected readonly data = signal<Employee360 | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly selected = signal('overview');
 
   /** Sections the caller may open; history hides without its permission rather than failing. */
   private readonly sections = computed<readonly Employee360Section[]>(() =>
-    (this.data()?.sections ?? []).filter((section) => section.key !== 'history' || this.permissions.has('employee.history.view')),
+    (this.data()?.sections ?? []).filter(
+      (section) =>
+        (section.key !== 'history' || this.permissions.has('employee.history.view')) &&
+        (section.key !== 'documents' || this.permissions.has('document.file.view')),
+    ),
   );
 
   protected readonly tabs = computed<readonly TabItem[]>(() =>
@@ -160,7 +174,7 @@ export class Employee360Page {
     effect(() => {
       const id = this.id();
       this.data.set(null);
-      this.selected.set('overview');
+      this.selected.set(this.tab() ?? 'overview');
       void this.load(id);
     });
   }

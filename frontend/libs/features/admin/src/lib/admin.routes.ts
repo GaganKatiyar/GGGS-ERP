@@ -8,6 +8,8 @@ import { RoleListPage } from './roles/role-list-page';
 import { TenantSettingsPage } from './settings/tenant-settings-page';
 import { AuditLogPage } from './audit/audit-log-page';
 import { MasterDataPage } from './master-data/master-data-page';
+import { NotificationTemplatesPage } from './notifications/notification-templates-page';
+import { WorkflowDefinitionsPage } from './workflows/workflow-definitions-page';
 
 /** Lazily loaded by the shell at `/admin/*`; see `NAVIGATION`'s "Administration" entry. */
 export const ADMIN_ROUTES: Routes = [
@@ -53,6 +55,18 @@ export const ADMIN_ROUTES: Routes = [
     component: AuditLogPage,
     title: 'Audit log',
     ...withPermissions(['audit.log.view']),
+  },
+  {
+    path: 'workflows',
+    component: WorkflowDefinitionsPage,
+    title: 'Workflows',
+    ...withPermissions(['workflow.definition.view']),
+  },
+  {
+    path: 'notifications',
+    component: NotificationTemplatesPage,
+    title: 'Notifications',
+    ...withPermissions(['notification.template.view']),
   },
   {
     path: 'master-data',

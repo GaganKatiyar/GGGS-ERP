@@ -76,6 +76,10 @@ export default [
                 'scope:organization',
                 'scope:employees',
                 'scope:admin',
+                'scope:approvals',
+                'scope:notifications',
+                'scope:documents',
+                'scope:policies',
               ],
             },
             {
@@ -121,6 +125,22 @@ export default [
                 'scope:shared',
                 'scope:admin',
               ],
+            },
+            {
+              sourceTag: 'scope:approvals',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:approvals'],
+            },
+            {
+              sourceTag: 'scope:notifications',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:notifications'],
+            },
+            {
+              sourceTag: 'scope:documents',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:documents'],
+            },
+            {
+              sourceTag: 'scope:policies',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:policies'],
             },
           ],
         },
