@@ -18,7 +18,7 @@ The tenancy, isolation and security design in
 [docs/architecture/architecture.md](docs/architecture/architecture.md) (§3, §6.2–6.3, §8, §9) still
 applies.
 
-**Status: M2 (Core HR) complete.**
+**Status: M3 (platform services) complete.**
 
 - Platform (tenants, plans, subscriptions, settings, audit log) and Identity (users, roles,
   permissions, browser sessions, the OIDC token server) run as modules in a single API host.
@@ -28,12 +28,16 @@ applies.
   dating and a department tree), and employees: hire, Employee 360, transfers and promotions,
   confirmation, notice and exit, family, encrypted statutory and bank details, history, org chart,
   and CSV import with a validation preview.
+- Platform services: approval workflows (sequential stages, parallel approvers, conditions, SLA
+  escalation, delegation, send back and resubmit) with an approvals inbox; notifications in-app and
+  by email through templates; versioned documents with generated letters and click-to-sign; and
+  company policies with approval-gated publishing and acknowledgements.
 - The frontend has the PeopleOS shell, a shared UI kit (KPI cards, charts, drawers, form dialogs,
   filter bar, timeline, tabs, an upgraded data table with column chooser and CSV export), and the
   Core HR and administration screens. Unbuilt modules stay hidden in the navigation.
-- 315 backend tests pass, including architecture rules for module boundaries and a tenant-isolation
-  suite against a real SQL Server.
-- Platform services (workflow, notifications, documents, policies) are next (M3).
+- 369 backend tests pass, including architecture rules for module boundaries, a tenant-isolation
+  suite against a real SQL Server, and end-to-end flows that run the worker's event delivery.
+- Time (shifts, attendance, leave, holidays) is next (M4).
 
 ## Prerequisites
 

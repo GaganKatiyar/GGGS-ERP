@@ -72,6 +72,24 @@ stopped the application still works; the audit log simply stays empty until the 
 which point it catches up. On start-up the worker also synchronises the plan catalog and the
 platform staff roles.
 
+Since M3 the worker also:
+
+- delivers notifications: in-app rows appear at once, and emails are queued and sent by the
+  worker. Locally `Gggs:Notifications:EmailProvider` is `Log`, so emails - invitation links
+  included - are written to the worker's console instead of being sent. Set it to `Smtp` (with
+  `Gggs:Notifications:Smtp:*`) to send for real.
+- runs the workflow SLA sweep every ten minutes (Hangfire, schema `hangfire`), escalating overdue
+  approval tasks.
+- completes approval-gated actions, such as publishing a policy once its approval comes through.
+
+Uploaded documents are stored under `.local/files` (one folder per tenant), configured by
+`Gggs:Storage:FileSystem:RootPath` in both hosts' development settings.
+
+DevSeed links the administrator to the demo employee Priya Menon (HR), so My profile, My
+documents, My policies and the approvals inbox have someone to act as. An approver cannot approve
+their own request, so to try an approval workflow, sign in a second user linked to another
+employee, or make Priya the approver of someone else's request.
+
 ## Why no broker or cache is needed
 
 - Module events are delivered in-process by the worker (ADR-12). The RabbitMQ and Service Bus

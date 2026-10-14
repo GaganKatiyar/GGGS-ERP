@@ -202,7 +202,8 @@ No load testing or query profiling has been done, so these are structural observ
 | M0 | This audit, the target architecture, ADR-12, roadmap | done |
 | M1 | Monolith foundation: hosts, `Gggs.Data`, Platform and Identity modules, BFF folded in, BuildingBlocks changes, infra, tests, navigation | done (2026-10-14); retired code deleted after M2 (§11) |
 | M2 | Organization, Employee, MasterData; UI component kit; Employee 360 shell | done (2026-10-14): org structure (11 record kinds, department tree), employees (hire, 360, assignment changes, confirm/notice/exit, family, statutory and bank, history, org chart, CSV import with preview), master data admin, My profile, My team |
-| M3+ | See [roadmap.md](../roadmap.md) | planned |
+| M3 | Workflow, Notification, Documents, Policies; approvals inbox | done (2026-10-14): staged approvals (parallel, conditional, SLA escalation, delegation, send-back/resubmit), in-app and email notifications, versioned documents with letters and click-to-sign, policies with approval-gated publishing and acknowledgements |
+| M4+ | See [roadmap.md](../roadmap.md) | planned |
 
 The remaining old services (CoreHr, Time, Payroll, Talent, Spend, Workflow, Notification, Documents,
 Reporting) are deleted in M1, together with their tests and frontend feature libraries. Nothing
