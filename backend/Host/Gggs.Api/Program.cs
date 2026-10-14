@@ -1,6 +1,7 @@
 using Gggs.Api.Browser;
 using Gggs.BuildingBlocks.Application.Hosting;
 using Gggs.BuildingBlocks.Caching;
+using Gggs.BuildingBlocks.Files;
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Observability;
@@ -41,6 +42,7 @@ builder.Services.AddGggsMultiTenancy();
 builder.Services.AddGggsCaching(builder.Configuration, ServiceName);
 builder.Services.AddGggsSecretStore(builder.Configuration, platform.DeploymentProfile);
 builder.Services.AddGggsSensitiveData();
+builder.Services.AddGggsFileStorage(builder.Configuration, platform.DeploymentProfile);
 builder.Services.AddGggsAuthorization(builder.Configuration);
 
 string? redis = builder.Configuration.GetConnectionString("Redis");

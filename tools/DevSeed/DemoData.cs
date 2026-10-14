@@ -1,11 +1,15 @@
 using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Security;
 using Gggs.Data;
+using Gggs.Modules.Documents.Application;
 using Gggs.Modules.Employee.Application;
+using Gggs.Modules.Identity.Application.Authentication;
 using Gggs.Modules.Identity.Application.Provisioning;
 using Gggs.Modules.Identity.Application.Users;
 using Gggs.Modules.Identity.Domain.Roles;
+using Gggs.Modules.Identity.Domain.Users;
 using Gggs.Modules.MasterData.Infrastructure;
+using Gggs.Modules.Notification.Application;
 using Gggs.Modules.Organization.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +26,43 @@ internal static class DemoData
     {
         int added = await scope.GetRequiredService<MasterDataSeeder>().SeedCurrentTenantAsync();
         Console.WriteLine($"Master data: {added} value(s) added.");
+    }
+
+    /// <summary>Notification templates and the document catalog, as provisioning gives a new tenant.</summary>
+    public static async Task SeedPlatformCatalogsAsync(IServiceProvider scope)
+    {
+        int templates = await scope.GetRequiredService<NotificationTemplateSeeder>().SeedCurrentTenantAsync();
+        int documents = await scope.GetRequiredService<DocumentCatalogSeeder>().SeedCurrentTenantAsync();
+        Console.WriteLine($"Notification templates: {templates} added. Document types and templates: {documents} added.");
+    }
+
+    /// <summary>
+    /// Development convenience: the administrator signs in as an employee (the HR business partner),
+    /// so self-service, My team and the approvals inbox have someone to show. Left alone when the
+    /// account is already linked.
+    /// </summary>
+    public static async Task LinkAdministratorToEmployeeAsync(IServiceProvider scope, string adminEmail)
+    {
+        AppDbContext db = scope.GetRequiredService<AppDbContext>();
+        User? admin = await scope.GetRequiredService<IUserRepository>().FindByEmailAsync(User.NormalizeEmailForLookup(adminEmail));
+        if (admin is null || admin.EmployeeId is not null)
+        {
+            return;
+        }
+
+        Guid? hrbp = await db.Set<Gggs.Modules.Employee.Domain.Employee>()
+            .Where(employee => employee.EmployeeCode == "EMP00007")
+            .Select(employee => (Guid?)employee.Id)
+            .FirstOrDefaultAsync();
+
+        if (hrbp is null)
+        {
+            return;
+        }
+
+        admin.LinkToEmployee(hrbp.Value);
+        await scope.GetRequiredService<IUnitOfWork>().SaveChangesAsync();
+        Console.WriteLine("Administrator linked to employee EMP00007 (Priya Menon, HR).");
     }
 
     /// <summary>

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Modules.Notification</RootNamespace>
+    <Description>Notifications (spec §108): tenant templates, the in-app inbox, and email delivery through a channel port.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Web\Gggs.BuildingBlocks.Web.csproj" />
+    <ProjectReference Include="..\..\..\Data\Gggs.Data\Gggs.Data.csproj" />
+    <ProjectReference Include="..\..\Employee\Gggs.Modules.Employee.Contracts\Gggs.Modules.Employee.Contracts.csproj" />
+    <ProjectReference Include="..\..\Identity\Gggs.Modules.Identity.Contracts\Gggs.Modules.Identity.Contracts.csproj" />
+    <ProjectReference Include="..\..\Platform\Gggs.Modules.Platform.Contracts\Gggs.Modules.Platform.Contracts.csproj" />
+    <ProjectReference Include="..\..\Workflow\Gggs.Modules.Workflow.Contracts\Gggs.Modules.Workflow.Contracts.csproj" />
+    <ProjectReference Include="..\Gggs.Modules.Notification.Contracts\Gggs.Modules.Notification.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Gggs.Api.IntegrationTests" />
+  </ItemGroup>
+
+</Project>

@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\Gggs.BuildingBlocks.Files\Gggs.BuildingBlocks.Files.csproj" />
     <ProjectReference Include="..\..\BuildingBlocks\Gggs.BuildingBlocks.Observability\Gggs.BuildingBlocks.Observability.csproj" />
     <ProjectReference Include="..\..\BuildingBlocks\Gggs.BuildingBlocks.Secrets\Gggs.BuildingBlocks.Secrets.csproj" />
     <ProjectReference Include="..\Gggs.Composition\Gggs.Composition.csproj" />

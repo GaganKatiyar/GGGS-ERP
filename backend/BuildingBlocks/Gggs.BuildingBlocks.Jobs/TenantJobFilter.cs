@@ -4,7 +4,6 @@ using Gggs.BuildingBlocks.MultiTenancy;
 using Hangfire;
 using Hangfire.Client;
 using Hangfire.Common;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Gggs.BuildingBlocks.Jobs;
 
@@ -20,10 +19,13 @@ namespace Gggs.BuildingBlocks.Jobs;
 /// so forgetting is a loud failure at enqueue time rather than a silent one at 2am.
 /// </para>
 /// </summary>
-public sealed class TenantJobFilter(IServiceScopeFactory scopeFactory) : IClientFilter
+public sealed class TenantJobFilter : IClientFilter
 {
     public const string TenantParameterName = "GggsTenantId";
     public const string PlatformReasonParameterName = "GggsPlatformJobReason";
+
+    /// <summary>Set by Hangfire on a job a recurring schedule creates.</summary>
+    private const string RecurringJobIdParameterName = "RecurringJobId";
 
     public void OnCreating(CreatingContext context)
     {
@@ -36,19 +38,19 @@ public sealed class TenantJobFilter(IServiceScopeFactory scopeFactory) : IClient
             return;
         }
 
-        // Resolved per call: this filter is a singleton, while the tenant context is scoped to the
-        // request queuing the job.
-        using IServiceScope scope = scopeFactory.CreateScope();
-        ITenantContext tenantContext = scope.ServiceProvider.GetRequiredService<ITenantContext>();
+        // The tenant comes from whoever is queuing: the scheduler states it explicitly around each
+        // call (EnqueueingTenant), and a recurring schedule carries it in its id. It is never read
+        // from a DI scope here - this filter is a singleton, and a fresh scope has no tenant in it.
+        Guid? tenantId = EnqueueingTenant.Current ?? TenantFromRecurringJobId(context);
 
-        if (!tenantContext.IsResolved)
+        if (tenantId is not { } resolved || resolved == Guid.Empty)
         {
             throw new InvalidOperationException(
                 $"Job '{context.Job.Type.Name}.{context.Job.Method.Name}' was queued without a tenant. " +
-                "Queue it inside a tenant scope, or mark it [PlatformJob] with a reason.");
+                "Queue it through ITenantJobScheduler or ITenantFanOutScheduler, or mark it [PlatformJob] with a reason.");
         }
 
-        context.SetJobParameter(TenantParameterName, tenantContext.TenantId);
+        context.SetJobParameter(TenantParameterName, resolved);
     }
 
     public void OnCreated(CreatedContext context)
@@ -58,9 +60,45 @@ public sealed class TenantJobFilter(IServiceScopeFactory scopeFactory) : IClient
     internal static PlatformJobAttribute? GetPlatformJobAttribute(Job job)
         => job.Method.GetCustomAttribute<PlatformJobAttribute>()
             ?? job.Type.GetCustomAttribute<PlatformJobAttribute>();
+
+    /// <summary>Recurring ids are <c>name:tenantId</c> (<see cref="RecurringJobId.For"/>).</summary>
+    private static Guid? TenantFromRecurringJobId(CreatingContext context)
+    {
+        string? recurringId = context.GetJobParameter<string>(RecurringJobIdParameterName);
+        if (string.IsNullOrEmpty(recurringId))
+        {
+            return null;
+        }
+
+        int separator = recurringId.LastIndexOf(':');
+        return separator > 0 && Guid.TryParseExact(recurringId[(separator + 1)..], "N", out Guid tenantId) ? tenantId : null;
+    }
 }
 
-/// <summary>Builds a per-tenant recurring job id, so tenants never share a schedule entry.</summary>
+/// <summary>
+/// The tenant a job is being queued for, stated by the scheduler around the Hangfire call so the
+/// client filter can stamp it. Async-local, so concurrent requests queuing jobs never see each
+/// other's tenant.
+/// </summary>
+public static class EnqueueingTenant
+{
+    private static readonly AsyncLocal<Guid?> Ambient = new();
+
+    public static Guid? Current => Ambient.Value;
+
+    public static IDisposable Begin(Guid tenantId)
+    {
+        Guid? previous = Ambient.Value;
+        Ambient.Value = tenantId;
+        return new Restore(previous);
+    }
+
+    private sealed class Restore(Guid? previous) : IDisposable
+    {
+        public void Dispose() => Ambient.Value = previous;
+    }
+}
+
 public static class RecurringJobId
 {
     public static string For(string jobName, Guid tenantId)

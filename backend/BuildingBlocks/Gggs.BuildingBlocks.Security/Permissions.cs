@@ -128,6 +128,9 @@ public static class Permissions
         /// <summary>Seeing which assets are currently assigned to oneself - read-only; registering,
         /// assigning or returning an asset is always an admin action (<see cref="Asset.Manage"/>).</summary>
         public const string AssetView = "self.asset.view";
+
+        /// <summary>Reading the policies that apply to oneself and acknowledging them.</summary>
+        public const string PolicyView = "self.policy.view";
     }
 
     /// <summary>Leave administration and approvals.</summary>
@@ -179,6 +182,18 @@ public static class Permissions
         public const string Delete = "document.file.delete";
         public const string TypeManage = "document.type.manage";
         public const string TemplateManage = "document.template.manage";
+    }
+
+    /// <summary>
+    /// Company policies (spec §110): writing and versioning them, publishing a version (which goes
+    /// through Workflow when the tenant has defined an approval for it), and reading who has
+    /// acknowledged what.
+    /// </summary>
+    public static class Policy
+    {
+        public const string View = "policy.policy.view";
+        public const string Manage = "policy.policy.manage";
+        public const string AcknowledgementView = "policy.acknowledgement.view";
     }
 
     /// <summary>Audit and compliance.</summary>

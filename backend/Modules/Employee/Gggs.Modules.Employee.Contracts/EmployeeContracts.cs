@@ -14,7 +14,10 @@ public sealed record EmployeeSummary(
     Guid? JobId,
     Guid? ManagerEmployeeId,
     Guid? LocationId,
-    Guid? LegalEntityId);
+    Guid? LegalEntityId,
+    Guid? HrbpEmployeeId = null,
+    string? Designation = null,
+    DateOnly? JoiningDate = null);
 
 /// <summary>
 /// The employee directory other modules read (ADR-12). It replaces the five replicated employee
@@ -34,6 +37,22 @@ public interface IEmployeeDirectory
 
     /// <summary>How many active employees are currently assigned to each department - one query for any number of departments.</summary>
     Task<IReadOnlyDictionary<Guid, int>> CountByDepartmentAsync(IEnumerable<Guid> departmentIds, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Active employees, optionally only those in the given departments or locations (either
+    /// matching is enough). Both null means everyone - a policy for the whole company.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> ListActiveIdsAsync(
+        IReadOnlyCollection<Guid>? departmentIds,
+        IReadOnlyCollection<Guid>? locationIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Whether the caller's grant of <paramref name="permission"/> reaches this employee - the same
+    /// data-scope rule Core HR applies to its own lists, for modules that hold records about people
+    /// (documents, approvals) and must not show them more widely than the person themselves.
+    /// </summary>
+    Task<bool> IsInScopeAsync(Guid employeeId, string permission, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Someone joined. Recruitment, onboarding, payroll and resourcing react to this.</summary>

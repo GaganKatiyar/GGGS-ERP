@@ -75,6 +75,35 @@ internal sealed class OrgStructure(AppDbContext dbContext) : IOrgStructure
                 position.Id, position.JobId, position.DepartmentId, position.LocationId, position.GradeId, position.ReportsToPositionId, position.Headcount))
             .FirstOrDefaultAsync(cancellationToken);
 
+    public async Task<Guid?> GetDepartmentHeadAsync(Guid departmentId, CancellationToken cancellationToken = default)
+    {
+        // Walk up at most a dozen levels: deeper trees do not exist in practice, and a bound keeps a
+        // data error (a cycle) from turning into an endless loop.
+        Guid? current = departmentId;
+        for (int depth = 0; depth < 12 && current is { } id; depth++)
+        {
+            var department = await dbContext.Departments
+                .AsNoTracking()
+                .Where(unit => unit.Id == id)
+                .Select(unit => new { unit.HeadEmployeeId, unit.ParentDepartmentId })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (department is null)
+            {
+                return null;
+            }
+
+            if (department.HeadEmployeeId is { } head)
+            {
+                return head;
+            }
+
+            current = department.ParentDepartmentId;
+        }
+
+        return null;
+    }
+
     private async Task<List<Guid>> ActiveIdsAsync(OrgUnitKind kind, List<Guid> ids, CancellationToken cancellationToken)
         => await UnitsOf(kind)
             .AsNoTracking()

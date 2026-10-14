@@ -61,6 +61,41 @@ public sealed class TenantFanOutSchedulerTests
     }
 
     [Fact]
+    public async Task FanOut_StatesEachJobsTenantWhileQueuingIt_ForTheClientFilterToStamp()
+    {
+        // The client filter cannot read a tenant from DI (it is a singleton; a fresh scope has no
+        // tenant), so the scheduler states it around each Hangfire call instead.
+        IBackgroundJobClient jobClient = Substitute.For<IBackgroundJobClient>();
+        List<Guid?> stated = [];
+
+        jobClient
+            .Create(Arg.Do<Job>(_ => stated.Add(EnqueueingTenant.Current)), Arg.Any<EnqueuedState>())
+            .Returns(callInfo => Guid.NewGuid().ToString());
+
+        TenantFanOutScheduler scheduler = CreateScheduler(jobClient, AcmeTenantId, GlobexTenantId);
+        await scheduler.FanOutAsync<IAccrualJob>((job, tenantId) => job.RunAsync(tenantId), TestContext.Current.CancellationToken);
+
+        stated.ShouldBe([AcmeTenantId, GlobexTenantId], ignoreOrder: true);
+        EnqueueingTenant.Current.ShouldBeNull("the stated tenant does not outlive the call");
+    }
+
+    [Fact]
+    public void EnqueueingTenant_Nests_AndRestoresTheOuterTenant()
+    {
+        using (EnqueueingTenant.Begin(AcmeTenantId))
+        {
+            using (EnqueueingTenant.Begin(GlobexTenantId))
+            {
+                EnqueueingTenant.Current.ShouldBe(GlobexTenantId);
+            }
+
+            EnqueueingTenant.Current.ShouldBe(AcmeTenantId);
+        }
+
+        EnqueueingTenant.Current.ShouldBeNull();
+    }
+
+    [Fact]
     public void RecurringJobId_IsScopedPerTenant()
     {
         // Two tenants sharing a recurring-job id would mean one tenant's reschedule silently

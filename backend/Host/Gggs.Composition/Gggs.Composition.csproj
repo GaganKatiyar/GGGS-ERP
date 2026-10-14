@@ -16,6 +16,10 @@
     <ProjectReference Include="..\..\Modules\MasterData\Gggs.Modules.MasterData\Gggs.Modules.MasterData.csproj" />
     <ProjectReference Include="..\..\Modules\Organization\Gggs.Modules.Organization\Gggs.Modules.Organization.csproj" />
     <ProjectReference Include="..\..\Modules\Platform\Gggs.Modules.Platform\Gggs.Modules.Platform.csproj" />
+    <ProjectReference Include="..\..\Modules\Workflow\Gggs.Modules.Workflow\Gggs.Modules.Workflow.csproj" />
+    <ProjectReference Include="..\..\Modules\Notification\Gggs.Modules.Notification\Gggs.Modules.Notification.csproj" />
+    <ProjectReference Include="..\..\Modules\Documents\Gggs.Modules.Documents\Gggs.Modules.Documents.csproj" />
+    <ProjectReference Include="..\..\Modules\Policies\Gggs.Modules.Policies\Gggs.Modules.Policies.csproj" />
   </ItemGroup>
 
 </Project>

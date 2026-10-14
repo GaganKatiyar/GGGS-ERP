@@ -39,4 +39,10 @@ public interface IOrgStructure
 
     /// <summary>The job, department and reporting line a position defines, or null when it does not exist.</summary>
     Task<PositionPlacement?> GetPositionAsync(Guid positionId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The head of a department, or - when it has none - of the nearest parent department that has
+    /// one. Null when no department up the chain names a head. Approval routing uses this.
+    /// </summary>
+    Task<Guid?> GetDepartmentHeadAsync(Guid departmentId, CancellationToken cancellationToken = default);
 }

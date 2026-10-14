@@ -1,12 +1,20 @@
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using Gggs.BuildingBlocks.Application;
+using Gggs.BuildingBlocks.Application.Hosting;
+using Gggs.BuildingBlocks.Caching;
 using Gggs.BuildingBlocks.Domain.Abstractions;
+using Gggs.BuildingBlocks.Files;
+using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Persistence.Interceptors;
+using Gggs.BuildingBlocks.Secrets;
 using Gggs.BuildingBlocks.Security;
+using Gggs.BuildingBlocks.Web.Modules;
 using Gggs.Composition;
 using Gggs.Data;
+using Gggs.Modules.Documents.Application;
 using Gggs.Modules.Identity.Application.Authentication;
 using Gggs.Modules.Identity.Domain.Roles;
 using Gggs.Modules.Identity.Domain.Users;
@@ -14,8 +22,10 @@ using Gggs.Modules.Identity.Endpoints;
 using Gggs.Modules.Identity.Infrastructure;
 using Gggs.Modules.Identity.Sessions;
 using Gggs.Modules.MasterData.Infrastructure;
+using Gggs.Modules.Notification.Application;
 using Gggs.Modules.Platform.Domain.Subscriptions;
 using Gggs.Modules.Platform.Domain.Tenants;
+using Gggs.Modules.Workflow.Contracts;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -24,6 +34,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -74,6 +85,11 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
 
     public string ConnectionString { get; private set; } = string.Empty;
 
+    /// <summary>Uploaded documents for this run; removed with the database.</summary>
+    public string FileRoot { get; } = Path.Combine(Path.GetTempPath(), $"peopleos-files-{Guid.NewGuid():N}");
+
+    private ServiceProvider? _worker;
+
     public async ValueTask InitializeAsync()
     {
         string master = Environment.GetEnvironmentVariable("GGGS_TEST_SQL") ?? LocalSqlServer;
@@ -104,6 +120,8 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             using IServiceScope scope = Services.CreateScope();
             scope.ServiceProvider.GetRequiredService<ITenantContextSetter>().SetTenant(tenantId);
             await scope.ServiceProvider.GetRequiredService<MasterDataSeeder>().SeedCurrentTenantAsync();
+            await scope.ServiceProvider.GetRequiredService<NotificationTemplateSeeder>().SeedCurrentTenantAsync();
+            await scope.ServiceProvider.GetRequiredService<DocumentCatalogSeeder>().SeedCurrentTenantAsync();
         }
 
         // The worker seeds the platform roles at start-up; this host is the API alone, so run the
@@ -113,7 +131,24 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
 
     public override async ValueTask DisposeAsync()
     {
+        if (_worker is not null)
+        {
+            await _worker.DisposeAsync();
+        }
+
         await base.DisposeAsync();
+
+        try
+        {
+            if (Directory.Exists(FileRoot))
+            {
+                Directory.Delete(FileRoot, recursive: true);
+            }
+        }
+        catch (IOException)
+        {
+            // A leftover temp folder is noise, not a failure.
+        }
 
         try
         {
@@ -130,6 +165,67 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
         {
             // A leftover test database is noise, not a failure.
         }
+    }
+
+    /// <summary>
+    /// Delivers every pending integration event to its consumers, as the worker would - repeated
+    /// until nothing is left, so events raised by consumers are delivered too.
+    /// </summary>
+    public async Task DeliverEventsAsync()
+    {
+        OutboxDispatcher<AppDbContext> dispatcher = Worker.GetRequiredService<OutboxDispatcher<AppDbContext>>();
+        for (int pass = 0; pass < 10 && await dispatcher.DispatchPendingAsync(TestContext.Current.CancellationToken) > 0; pass++)
+        {
+        }
+    }
+
+    /// <summary>Runs work as the worker does: in a tenant, as the system identity, with background services available.</summary>
+    public async Task RunAsWorkerAsync(Guid tenantId, Func<IServiceProvider, Task> work)
+    {
+        ArgumentNullException.ThrowIfNull(work);
+
+        await using AsyncServiceScope scope = Worker.CreateAsyncScope();
+        scope.ServiceProvider.GetRequiredService<ITenantContextSetter>().SetTenant(tenantId);
+        await work(scope.ServiceProvider);
+    }
+
+    /// <summary>
+    /// The worker host's composition - every module's services and background consumers - against
+    /// this run's database. Hosted services are registered but never started; tests drive delivery.
+    /// </summary>
+    private ServiceProvider Worker => _worker ??= BuildWorker();
+
+    private ServiceProvider BuildWorker()
+    {
+        IConfiguration configuration = Services.GetRequiredService<IConfiguration>();
+        IHostEnvironment environment = Services.GetRequiredService<IHostEnvironment>();
+
+        var services = new ServiceCollection();
+        services.AddLogging(logging => logging.SetMinimumLevel(LogLevel.Warning));
+        services.AddSingleton(configuration);
+        services.AddSingleton(environment);
+        services.AddSingleton(Services.GetRequiredService<GggsPlatformOptions>());
+        services.AddSingleton(TimeProvider.System);
+        services.AddDistributedMemoryCache();
+        services.AddGggsMultiTenancy();
+        services.AddGggsCaching(configuration, "worker-test");
+        services.AddGggsSecretStore(configuration, DeploymentProfile.OnPremise);
+        services.AddGggsSensitiveData();
+        services.AddGggsFileStorage(configuration, DeploymentProfile.OnPremise);
+        services.AddScoped<ICurrentUser>(_ => new SystemCurrentUser(SystemUsers.System));
+        services.AddGggsAppDbContext(configuration, ModuleCatalog.ModelAssemblies);
+        services.AddGggsMessaging<AppDbContext>(configuration);
+
+        var moduleContext = new ModuleContext(configuration, environment);
+        foreach (IModule module in ModuleCatalog.All)
+        {
+            module.AddServices(services, moduleContext);
+            module.AddBackgroundServices(services, moduleContext);
+        }
+
+        services.AddWorkflowSubject(PlatformServicesApi.TestSubjectDefinition);
+        services.AddSingleton<OutboxDispatcher<AppDbContext>>();
+        return services.BuildServiceProvider();
     }
 
     /// <summary>
@@ -304,11 +400,16 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
                 ["Gggs:Secrets:File:FilePath"] = Path.Combine(Path.GetTempPath(), $"{DatabaseName}-secrets.json"),
                 ["Gggs:Security:EnforceStepUp"] = "false",
                 ["Gggs:Identity:Tokens:Issuer"] = "https://localhost/",
+                ["Gggs:Storage:FileSystem:RootPath"] = FileRoot,
+                ["Gggs:Notifications:EmailProvider"] = "Log",
             });
         });
 
         builder.ConfigureServices(services =>
         {
+            // A workflow subject only the tests start, so approval tests never collide with a module's own.
+            services.AddWorkflowSubject(PlatformServicesApi.TestSubjectDefinition);
+
             services.AddAuthentication()
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
 
@@ -393,6 +494,12 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             Permissions.Employee.HistoryView, Permissions.Employee.ExitManage,
             Permissions.Employee.IdentityDocumentView, Permissions.Employee.IdentityDocumentManage,
             Permissions.Employee.BankView, Permissions.Employee.BankManage,
+            Permissions.Workflow.DefinitionView, Permissions.Workflow.DefinitionManage, Permissions.Workflow.TaskReassign,
+            Permissions.Workflow.InstanceViewAll, Permissions.Workflow.DelegationManage,
+            Permissions.Document.View, Permissions.Document.Upload, Permissions.Document.Delete,
+            Permissions.Document.TypeManage, Permissions.Document.TemplateManage,
+            Permissions.Policy.View, Permissions.Policy.Manage, Permissions.Policy.AcknowledgementView,
+            Permissions.Notification.TemplateView, Permissions.Notification.TemplateManage,
         })
         {
             role.Grant(permission, DataScope.Tenant);

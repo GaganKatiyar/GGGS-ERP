@@ -111,6 +111,13 @@ public static class RoleTemplates
                 new(Permissions.Document.TypeManage, DataScope.Tenant),
                 new(Permissions.Document.TemplateManage, DataScope.Tenant),
 
+                new(Permissions.Policy.View, DataScope.Tenant),
+                new(Permissions.Policy.Manage, DataScope.Tenant),
+                new(Permissions.Policy.AcknowledgementView, DataScope.Tenant),
+
+                new(Permissions.Notification.TemplateView, DataScope.Tenant),
+                new(Permissions.Notification.TemplateManage, DataScope.Tenant),
+
                 new(Permissions.Audit.LogView, DataScope.Tenant),
                 new(Permissions.Report.View, DataScope.Tenant),
                 new(Permissions.Report.ScheduleManage, DataScope.Tenant),
@@ -162,6 +169,12 @@ public static class RoleTemplates
                 new(Permissions.Document.Upload, DataScope.Tenant),
                 new(Permissions.Document.TypeManage, DataScope.Tenant),
                 new(Permissions.Document.TemplateManage, DataScope.Tenant),
+
+                new(Permissions.Policy.View, DataScope.Tenant),
+                new(Permissions.Policy.Manage, DataScope.Tenant),
+                new(Permissions.Policy.AcknowledgementView, DataScope.Tenant),
+
+                new(Permissions.Notification.TemplateView, DataScope.Tenant),
 
                 new(Permissions.Report.View, DataScope.Tenant),
 
@@ -399,6 +412,9 @@ public static class RoleTemplates
                 new(Permissions.Employee.View, DataScope.Tenant),
                 new(Permissions.Audit.LogView, DataScope.Tenant),
                 new(Permissions.Document.View, DataScope.Tenant),
+                new(Permissions.Policy.View, DataScope.Tenant),
+                new(Permissions.Policy.Manage, DataScope.Tenant),
+                new(Permissions.Policy.AcknowledgementView, DataScope.Tenant),
                 new(Permissions.Report.View, DataScope.Tenant),
 
                 .. SelfService(),
@@ -539,6 +555,11 @@ public static class RoleTemplates
         new(Permissions.Self.LeaveApply, DataScope.Own),
         new(Permissions.Self.PayslipView, DataScope.Own),
         new(Permissions.Self.DocumentView, DataScope.Own),
+        new(Permissions.Self.PolicyView, DataScope.Own),
+
+        // Everyone receives notifications - approvals, policies to acknowledge, invitations.
+        new(Permissions.Notification.InboxView, DataScope.Own),
+        new(Permissions.Notification.InboxManage, DataScope.Own),
 
         // Every form's dropdowns read lookup lists, so reading them is part of using the product.
         new(Permissions.MasterData.View, DataScope.Tenant),

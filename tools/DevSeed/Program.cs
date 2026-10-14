@@ -142,6 +142,12 @@ await RunAsync(provider, "master data", async (scope, tenant) =>
     await Gggs.DevSeed.DemoData.SeedMasterDataAsync(scope);
 });
 
+await RunAsync(provider, "platform catalogs", async (scope, tenant) =>
+{
+    tenant.SetTenant(tenantId);
+    await Gggs.DevSeed.DemoData.SeedPlatformCatalogsAsync(scope);
+});
+
 await RunAsync(provider, "administrator role", async (scope, tenant) =>
 {
     tenant.SetTenant(tenantId);
@@ -167,6 +173,12 @@ await RunAsync(provider, "demo company", async (scope, tenant) =>
 {
     tenant.SetTenant(tenantId);
     await Gggs.DevSeed.DemoData.SeedDemoCompanyAsync(scope);
+});
+
+await RunAsync(provider, "administrator employee", async (scope, tenant) =>
+{
+    tenant.SetTenant(tenantId);
+    await Gggs.DevSeed.DemoData.LinkAdministratorToEmployeeAsync(scope, adminEmail);
 });
 
 Console.WriteLine();

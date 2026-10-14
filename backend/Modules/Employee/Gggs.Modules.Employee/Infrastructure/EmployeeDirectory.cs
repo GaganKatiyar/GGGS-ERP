@@ -1,4 +1,5 @@
 using Gggs.Data;
+using Gggs.Modules.Employee.Application;
 using Gggs.Modules.Employee.Contracts;
 using Gggs.Modules.Employee.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -6,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Gggs.Modules.Employee.Infrastructure;
 
 /// <summary>The employee directory other modules read through <see cref="IEmployeeDirectory"/>.</summary>
-internal sealed class EmployeeDirectory(AppDbContext dbContext) : IEmployeeDirectory
+internal sealed class EmployeeDirectory(AppDbContext dbContext, EmployeeScope scope) : IEmployeeDirectory
 {
     public async Task<EmployeeSummary?> GetAsync(Guid employeeId, CancellationToken cancellationToken = default)
     {
@@ -29,7 +30,8 @@ internal sealed class EmployeeDirectory(AppDbContext dbContext) : IEmployeeDirec
             .Where(employee => ids.Contains(employee.Id))
             .Select(employee => new EmployeeSummary(
                 employee.Id, employee.EmployeeCode, employee.DisplayName, employee.OfficialEmail, employee.Status.ToString(),
-                employee.DepartmentId, employee.PositionId, employee.JobId, employee.ManagerEmployeeId, employee.LocationId, employee.LegalEntityId))
+                employee.DepartmentId, employee.PositionId, employee.JobId, employee.ManagerEmployeeId, employee.LocationId, employee.LegalEntityId,
+                employee.HrbpEmployeeId, employee.Designation, employee.JoiningDate))
             .ToListAsync(cancellationToken);
     }
 
@@ -60,5 +62,31 @@ internal sealed class EmployeeDirectory(AppDbContext dbContext) : IEmployeeDirec
             .GroupBy(employee => employee.DepartmentId!.Value)
             .Select(group => new { group.Key, Count = group.Count() })
             .ToDictionaryAsync(group => group.Key, group => group.Count, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Guid>> ListActiveIdsAsync(
+        IReadOnlyCollection<Guid>? departmentIds,
+        IReadOnlyCollection<Guid>? locationIds,
+        CancellationToken cancellationToken = default)
+    {
+        IQueryable<Domain.Employee> query = dbContext.Employees.AsNoTracking().Where(employee => employee.Status != EmployeeStatus.Exited);
+
+        bool byDepartment = departmentIds is { Count: > 0 };
+        bool byLocation = locationIds is { Count: > 0 };
+
+        if (byDepartment || byLocation)
+        {
+            List<Guid?> departments = byDepartment ? [.. departmentIds!.Select(id => (Guid?)id)] : [];
+            List<Guid?> locations = byLocation ? [.. locationIds!.Select(id => (Guid?)id)] : [];
+            query = query.Where(employee => departments.Contains(employee.DepartmentId) || locations.Contains(employee.LocationId));
+        }
+
+        return await query.Select(employee => employee.Id).ToListAsync(cancellationToken);
+    }
+
+    public async Task<bool> IsInScopeAsync(Guid employeeId, string permission, CancellationToken cancellationToken = default)
+    {
+        IQueryable<Domain.Employee> visible = await scope.ApplyAsync(dbContext.Employees.AsNoTracking(), permission, cancellationToken);
+        return await visible.AnyAsync(employee => employee.Id == employeeId, cancellationToken);
     }
 }

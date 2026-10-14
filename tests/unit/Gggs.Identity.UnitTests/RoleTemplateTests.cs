@@ -139,8 +139,10 @@ public sealed class RoleTemplateTests
             .Select(permission => permission.PermissionCode)
 
             // Self-service is excluded: an auditor is still a person who has to edit their own
-            // profile and apply for their own leave.
+            // profile and apply for their own leave. So is their own inbox - marking a notification
+            // read changes nothing anyone else sees.
             .Where(code => !code.StartsWith("self.", StringComparison.Ordinal))
+            .Where(code => !code.StartsWith("notification.inbox.", StringComparison.Ordinal))
             .Where(code => writeVerbs.Any(verb => code.EndsWith('.' + verb, StringComparison.Ordinal)));
 
         writes.ShouldBeEmpty();

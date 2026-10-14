@@ -27,7 +27,7 @@ public static class JobsExtensions
         string connectionString = configuration.GetConnectionString(connectionStringName)
             ?? throw new InvalidOperationException($"Connection string '{connectionStringName}' is required for background jobs.");
 
-        services.AddHangfire((serviceProvider, options) =>
+        services.AddHangfire(options =>
         {
             options
                 .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
@@ -44,7 +44,7 @@ public static class JobsExtensions
                     UseRecommendedIsolationLevel = true,
                     DisableGlobalLocks = true,
                 })
-                .UseFilter(new TenantJobFilter(serviceProvider.GetRequiredService<IServiceScopeFactory>()))
+                .UseFilter(new TenantJobFilter())
                 // Retries are per job so a transient database blip does not lose a payroll run;
                 // after that it goes to the failed list for an operator to look at.
                 .UseFilter(new AutomaticRetryAttribute { Attempts = 5, DelaysInSeconds = [60, 300, 900, 3600, 7200] });

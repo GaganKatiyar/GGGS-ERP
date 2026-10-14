@@ -1,6 +1,7 @@
 using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Application.Hosting;
 using Gggs.BuildingBlocks.Caching;
+using Gggs.BuildingBlocks.Files;
 using Gggs.BuildingBlocks.Jobs;
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
@@ -40,6 +41,7 @@ builder.Services.AddGggsMultiTenancy();
 builder.Services.AddGggsCaching(builder.Configuration, ServiceName);
 builder.Services.AddGggsSecretStore(builder.Configuration, platform.DeploymentProfile);
 builder.Services.AddGggsSensitiveData();
+builder.Services.AddGggsFileStorage(builder.Configuration, platform.DeploymentProfile);
 
 // No request, so no signed-in user. Writes are attributed to the system identity - honest about the
 // fact that no person made the change.

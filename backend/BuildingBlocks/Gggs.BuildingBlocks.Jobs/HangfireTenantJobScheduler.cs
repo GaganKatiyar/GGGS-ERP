@@ -12,10 +12,16 @@ public sealed class HangfireTenantJobScheduler(
     ITenantContext tenantContext) : ITenantJobScheduler
 {
     public string Enqueue<TJob>(Expression<Func<TJob, Task>> methodCall)
-        => backgroundJobs.Enqueue(methodCall);
+    {
+        using IDisposable tenant = EnqueueingTenant.Begin(tenantContext.TenantId);
+        return backgroundJobs.Enqueue(methodCall);
+    }
 
     public string Schedule<TJob>(Expression<Func<TJob, Task>> methodCall, TimeSpan delay)
-        => backgroundJobs.Schedule(methodCall, delay);
+    {
+        using IDisposable tenant = EnqueueingTenant.Begin(tenantContext.TenantId);
+        return backgroundJobs.Schedule(methodCall, delay);
+    }
 
     public void AddOrUpdateRecurring<TJob>(string jobName, Expression<Func<TJob, Task>> methodCall, string cronExpression)
     {
@@ -59,6 +65,7 @@ public sealed class TenantFanOutScheduler(
             // The tenant id is baked into the queued call, and the client filter stamps it as a job
             // parameter too, so the activator can restore the context before resolving dependencies.
             Expression<Func<TJob, Task>> tenantCall = BindTenant(methodCall, tenantId);
+            using IDisposable tenant = EnqueueingTenant.Begin(tenantId);
             backgroundJobs.Create(tenantCall, new Hangfire.States.EnqueuedState());
         }
 

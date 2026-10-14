@@ -360,7 +360,7 @@ public sealed class EmployeeQueries(
             Section("learning", "Learning", false, Features.Learning, "M9"),
             Section("career", "Career", false, Features.Career, "M9"),
             Section("rewards", "Rewards", false, Features.Rewards, "M10"),
-            Section("documents", "Documents", false, Features.Documents, "M3"),
+            Section("documents", "Documents", true, Features.Documents, null),
             Section("assets", "Assets", false, Features.Assets, "M10"),
             Section("expenses", "Expenses", false, Features.Expenses, "M10"),
             Section("helpdesk", "Helpdesk", false, Features.Helpdesk, "M10"),
