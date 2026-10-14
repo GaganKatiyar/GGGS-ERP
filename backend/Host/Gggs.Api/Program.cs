@@ -40,6 +40,7 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddGggsMultiTenancy();
 builder.Services.AddGggsCaching(builder.Configuration, ServiceName);
 builder.Services.AddGggsSecretStore(builder.Configuration, platform.DeploymentProfile);
+builder.Services.AddGggsSensitiveData();
 builder.Services.AddGggsAuthorization(builder.Configuration);
 
 string? redis = builder.Configuration.GetConnectionString("Redis");

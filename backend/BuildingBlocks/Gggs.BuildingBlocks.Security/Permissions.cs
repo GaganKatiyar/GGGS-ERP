@@ -56,6 +56,16 @@ public static class Permissions
     }
 
     /// <summary>Employee records. Sensitive sub-resources have their own codes on purpose.</summary>
+    /// <summary>
+    /// Tenant-maintained lookup lists (spec §113): countries, currencies, employment types and the
+    /// rest of every dropdown. Reading them is what any form needs; changing them is administration.
+    /// </summary>
+    public static class MasterData
+    {
+        public const string View = "master-data.lookup.view";
+        public const string Manage = "master-data.lookup.manage";
+    }
+
     public static class Employee
     {
         public const string View = "employee.profile.view";

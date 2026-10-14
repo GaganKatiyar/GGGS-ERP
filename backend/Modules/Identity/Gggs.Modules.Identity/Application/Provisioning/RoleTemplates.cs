@@ -69,6 +69,7 @@ public static class RoleTemplates
                 new(Permissions.Organization.Manage, DataScope.Tenant),
                 new(Permissions.Organization.LegalEntityManage, DataScope.Tenant),
                 new(Permissions.Organization.DepartmentManage, DataScope.Tenant),
+                new(Permissions.MasterData.Manage, DataScope.Tenant),
 
                 // Employee records but not the sensitive sub-resources, and no delete: employment
                 // ends through the exit process, which keeps the history a soft delete would hide.
@@ -127,6 +128,7 @@ public static class RoleTemplates
                 new(Permissions.Organization.View, DataScope.Tenant),
                 new(Permissions.Organization.Manage, DataScope.Tenant),
                 new(Permissions.Organization.DepartmentManage, DataScope.Tenant),
+                new(Permissions.MasterData.Manage, DataScope.Tenant),
 
                 new(Permissions.Employee.View, DataScope.Tenant),
                 new(Permissions.Employee.Create, DataScope.Tenant),
@@ -537,6 +539,9 @@ public static class RoleTemplates
         new(Permissions.Self.LeaveApply, DataScope.Own),
         new(Permissions.Self.PayslipView, DataScope.Own),
         new(Permissions.Self.DocumentView, DataScope.Own),
+
+        // Every form's dropdowns read lookup lists, so reading them is part of using the product.
+        new(Permissions.MasterData.View, DataScope.Tenant),
     ];
 }
 

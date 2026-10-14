@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Modules.MasterData.Contracts</RootNamespace>
+    <Description>The MasterData module's public surface: lookup validation other modules call in-process.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Application\Gggs.BuildingBlocks.Application.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -31,6 +31,18 @@
     <Project Path="Modules/Platform/Gggs.Modules.Platform/Gggs.Modules.Platform.csproj" />
     <Project Path="Modules/Platform/Gggs.Modules.Platform.Contracts/Gggs.Modules.Platform.Contracts.csproj" />
   </Folder>
+  <Folder Name="/Modules/MasterData/">
+    <Project Path="Modules/MasterData/Gggs.Modules.MasterData/Gggs.Modules.MasterData.csproj" />
+    <Project Path="Modules/MasterData/Gggs.Modules.MasterData.Contracts/Gggs.Modules.MasterData.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/Modules/Organization/">
+    <Project Path="Modules/Organization/Gggs.Modules.Organization/Gggs.Modules.Organization.csproj" />
+    <Project Path="Modules/Organization/Gggs.Modules.Organization.Contracts/Gggs.Modules.Organization.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/Modules/Employee/">
+    <Project Path="Modules/Employee/Gggs.Modules.Employee/Gggs.Modules.Employee.csproj" />
+    <Project Path="Modules/Employee/Gggs.Modules.Employee.Contracts/Gggs.Modules.Employee.Contracts.csproj" />
+  </Folder>
   <Folder Name="/Tools/">
     <Project Path="../tools/DevSeed/Gggs.DevSeed.csproj" />
   </Folder>
@@ -39,6 +51,7 @@
     <Project Path="../tests/Gggs.Architecture.Tests/Gggs.Architecture.Tests.csproj" />
     <Project Path="../tests/Gggs.TenantIsolation.Tests/Gggs.TenantIsolation.Tests.csproj" />
     <Project Path="../tests/unit/Gggs.BuildingBlocks.UnitTests/Gggs.BuildingBlocks.UnitTests.csproj" />
+    <Project Path="../tests/unit/Gggs.Employee.UnitTests/Gggs.Employee.UnitTests.csproj" />
     <Project Path="../tests/unit/Gggs.Identity.UnitTests/Gggs.Identity.UnitTests.csproj" />
     <Project Path="../tests/unit/Gggs.Platform.UnitTests/Gggs.Platform.UnitTests.csproj" />
   </Folder>

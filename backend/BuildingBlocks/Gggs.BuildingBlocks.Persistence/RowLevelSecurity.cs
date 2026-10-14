@@ -148,6 +148,10 @@ public static class RowLevelSecurityMigrationExtensions
     {
         ArgumentNullException.ThrowIfNull(migrationBuilder);
 
+        // The existing policy goes first: it is schema-bound to the predicate function, and SQL
+        // Server refuses to alter a function a policy still references - which is exactly what
+        // every migration after the first one does.
+        migrationBuilder.Sql(RowLevelSecurity.DropPolicySql());
         migrationBuilder.Sql(RowLevelSecurity.CreateSecuritySchemaSql());
         migrationBuilder.Sql(RowLevelSecurity.CreatePredicateFunctionSql());
         migrationBuilder.Sql(RowLevelSecurity.CreatePolicySql(tables));

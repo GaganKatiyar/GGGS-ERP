@@ -11,7 +11,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Data\Gggs.Data\Gggs.Data.csproj" />
+    <ProjectReference Include="..\..\Modules\Employee\Gggs.Modules.Employee\Gggs.Modules.Employee.csproj" />
     <ProjectReference Include="..\..\Modules\Identity\Gggs.Modules.Identity\Gggs.Modules.Identity.csproj" />
+    <ProjectReference Include="..\..\Modules\MasterData\Gggs.Modules.MasterData\Gggs.Modules.MasterData.csproj" />
+    <ProjectReference Include="..\..\Modules\Organization\Gggs.Modules.Organization\Gggs.Modules.Organization.csproj" />
     <ProjectReference Include="..\..\Modules\Platform\Gggs.Modules.Platform\Gggs.Modules.Platform.csproj" />
   </ItemGroup>
 

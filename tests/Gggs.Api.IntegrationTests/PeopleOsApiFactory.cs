@@ -13,6 +13,7 @@ using Gggs.Modules.Identity.Domain.Users;
 using Gggs.Modules.Identity.Endpoints;
 using Gggs.Modules.Identity.Infrastructure;
 using Gggs.Modules.Identity.Sessions;
+using Gggs.Modules.MasterData.Infrastructure;
 using Gggs.Modules.Platform.Domain.Subscriptions;
 using Gggs.Modules.Platform.Domain.Tenants;
 using Microsoft.AspNetCore.Authentication;
@@ -96,6 +97,14 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
 
         await SeedUserAsync(SeededUserEmail, SeededPassword);
         await SeedAdministratorAsync();
+
+        // Every tenant starts with the lookup lists, as provisioning gives them.
+        foreach (Guid tenantId in new[] { SeededTenantId, OtherTenantId })
+        {
+            using IServiceScope scope = Services.CreateScope();
+            scope.ServiceProvider.GetRequiredService<ITenantContextSetter>().SetTenant(tenantId);
+            await scope.ServiceProvider.GetRequiredService<MasterDataSeeder>().SeedCurrentTenantAsync();
+        }
 
         // The worker seeds the platform roles at start-up; this host is the API alone, so run the
         // same seeder here.
@@ -234,6 +243,38 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
         return email;
     }
 
+    /// <summary>
+    /// A signed-in browser for a new user linked to <paramref name="employeeId"/>, holding exactly
+    /// the given permissions at the given scopes - for testing data scope with the real provider.
+    /// </summary>
+    public async Task<HttpClient> CreateScopedUserClientAsync(string email, Guid? employeeId, params (string Permission, DataScope Scope)[] grants)
+    {
+        const string password = "a scoped test passphrase";
+
+        using (IServiceScope scope = Services.CreateScope())
+        {
+            scope.ServiceProvider.GetRequiredService<ITenantContextSetter>().SetTenant(SeededTenantId);
+            AppDbContext context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            IPasswordHasher hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+
+            Role role = Role.Create($"Scoped {Guid.NewGuid():N}", "Test role");
+            foreach ((string permission, DataScope dataScope) in grants)
+            {
+                role.Grant(permission, dataScope);
+            }
+
+            User user = User.Invite(email, email, UserType.TenantUser, employeeId, DateTime.UtcNow);
+            user.CompleteInvitation(hasher.Hash(password), DateTime.UtcNow);
+
+            context.Set<Role>().Add(role);
+            context.Set<User>().Add(user);
+            context.Set<UserRole>().Add(UserRole.Grant(user.Id, role.Id, DateOnly.FromDateTime(DateTime.UtcNow)));
+            await context.SaveChangesAsync();
+        }
+
+        return await CreateSignedInClientAsync(email, password, SeededTenantCode);
+    }
+
     /// <summary>Creates a user who was invited but has never set a password.</summary>
     public async Task<string> SeedInvitedUserAsync(string email)
     {
@@ -341,6 +382,21 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
         role.Grant(Permissions.Admin.RoleView, DataScope.Tenant);
         role.Grant(Permissions.Admin.RoleManage, DataScope.Tenant);
         role.Grant(Permissions.Audit.LogView, DataScope.Tenant);
+
+        // Core HR, including the sensitive fields: the suite tests that they are guarded, so the
+        // administrator it acts as must be able to reach them.
+        foreach (string permission in new[]
+        {
+            Permissions.MasterData.View, Permissions.MasterData.Manage,
+            Permissions.Organization.View, Permissions.Organization.Manage, Permissions.Organization.LegalEntityManage, Permissions.Organization.DepartmentManage,
+            Permissions.Employee.View, Permissions.Employee.Create, Permissions.Employee.Edit, Permissions.Employee.EmploymentManage,
+            Permissions.Employee.HistoryView, Permissions.Employee.ExitManage,
+            Permissions.Employee.IdentityDocumentView, Permissions.Employee.IdentityDocumentManage,
+            Permissions.Employee.BankView, Permissions.Employee.BankManage,
+        })
+        {
+            role.Grant(permission, DataScope.Tenant);
+        }
 
         User admin = User.Invite(AdminEmail, "Test Administrator", UserType.TenantUser, null, DateTime.UtcNow);
         admin.CompleteInvitation(hasher.Hash(AdminPassword), DateTime.UtcNow);

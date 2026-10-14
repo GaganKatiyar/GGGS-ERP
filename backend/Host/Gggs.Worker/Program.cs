@@ -39,6 +39,7 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddGggsMultiTenancy();
 builder.Services.AddGggsCaching(builder.Configuration, ServiceName);
 builder.Services.AddGggsSecretStore(builder.Configuration, platform.DeploymentProfile);
+builder.Services.AddGggsSensitiveData();
 
 // No request, so no signed-in user. Writes are attributed to the system identity - honest about the
 // fact that no person made the change.

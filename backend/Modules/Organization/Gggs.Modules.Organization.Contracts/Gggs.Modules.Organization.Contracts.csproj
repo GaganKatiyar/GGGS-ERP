@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Modules.Organization.Contracts</RootNamespace>
+    <Description>The Organization module's public surface: structure lookups other modules call in-process.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Application\Gggs.BuildingBlocks.Application.csproj" />
+  </ItemGroup>
+
+</Project>

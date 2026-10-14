@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Modules.Employee.Contracts</RootNamespace>
+    <Description>The Employee module's public surface: the employee directory and lifecycle events other modules consume.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Messaging\Gggs.BuildingBlocks.Messaging.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -122,12 +122,12 @@ public sealed class RoleTemplateTests
     {
         IReadOnlyList<PermissionAssignment> employee = RoleTemplates.For(RoleTemplates.EmployeeTemplateCode);
 
-        // The org structure is the single exception: people need to find a department or a
-        // colleague's manager, and none of that is personal data.
+        // Two exceptions, neither personal data: the org structure (people need to find a
+        // department or a colleague's manager) and the lookup lists every form's dropdowns read.
         employee
             .Where(permission => permission.Scope != DataScope.Own)
             .Select(permission => permission.PermissionCode)
-            .ShouldBe([Permissions.Organization.View]);
+            .ShouldBe([Permissions.Organization.View, Permissions.MasterData.View], ignoreOrder: true);
     }
 
     [Fact]

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Modules.Organization</RootNamespace>
+    <Description>Organization structure (spec §10): companies, business units, divisions, departments, locations, cost and profit centers, grades, job levels, jobs and positions.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Web\Gggs.BuildingBlocks.Web.csproj" />
+    <ProjectReference Include="..\..\..\Data\Gggs.Data\Gggs.Data.csproj" />
+    <ProjectReference Include="..\..\Employee\Gggs.Modules.Employee.Contracts\Gggs.Modules.Employee.Contracts.csproj" />
+    <ProjectReference Include="..\..\MasterData\Gggs.Modules.MasterData.Contracts\Gggs.Modules.MasterData.Contracts.csproj" />
+    <ProjectReference Include="..\Gggs.Modules.Organization.Contracts\Gggs.Modules.Organization.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Gggs.Api.IntegrationTests" />
+  </ItemGroup>
+
+</Project>

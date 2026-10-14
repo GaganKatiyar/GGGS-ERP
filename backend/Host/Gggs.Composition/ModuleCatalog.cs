@@ -1,6 +1,9 @@
 using System.Reflection;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Employee;
 using Gggs.Modules.Identity;
+using Gggs.Modules.MasterData;
+using Gggs.Modules.Organization;
 using Gggs.Modules.Platform;
 
 namespace Gggs.Composition;
@@ -19,6 +22,9 @@ public static class ModuleCatalog
     [
         new PlatformModule(),
         new IdentityModule(),
+        new MasterDataModule(),
+        new OrganizationModule(),
+        new EmployeeModule(),
     ];
 
     /// <summary>The assemblies the shared <c>AppDbContext</c> builds its model from.</summary>

@@ -3,6 +3,7 @@ using Gggs.BuildingBlocks.Application.Hosting;
 using Gggs.BuildingBlocks.Caching;
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
+using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web.Modules;
 using Gggs.Composition;
 using Gggs.Data;
@@ -51,6 +52,7 @@ services.AddSingleton(TimeProvider.System);
 services.AddSingleton(new GggsPlatformOptions { ServiceName = "dev-seed" });
 services.AddGggsMultiTenancy();
 services.AddGggsCaching(configuration, "dev-seed");
+services.AddGggsSensitiveData();
 services.AddScoped<ICurrentUser, SeedActor>();
 services.AddGggsAppDbContext(configuration, ModuleCatalog.ModelAssemblies);
 services.AddGggsMessaging<AppDbContext>(configuration);
@@ -134,6 +136,18 @@ await RunAsync(provider, "admin password", async (scope, tenant) =>
     Console.WriteLine($"Administrator '{adminEmail}' activated.");
 });
 
+await RunAsync(provider, "master data", async (scope, tenant) =>
+{
+    tenant.SetTenant(tenantId);
+    await Gggs.DevSeed.DemoData.SeedMasterDataAsync(scope);
+});
+
+await RunAsync(provider, "administrator role", async (scope, tenant) =>
+{
+    tenant.SetTenant(tenantId);
+    await Gggs.DevSeed.DemoData.TopUpAdministratorRoleAsync(scope);
+});
+
 await RunAsync(provider, "activate", async (scope, tenant) =>
 {
     using IDisposable platform = tenant.BeginPlatformScope("dev-seed");
@@ -146,6 +160,13 @@ await RunAsync(provider, "activate", async (scope, tenant) =>
 
     await scope.GetRequiredService<TenantProvisioningService>().ActivateAsync(tenantId);
     Console.WriteLine($"Tenant '{tenantCode}' activated.");
+});
+
+// After activation: hiring checks lookups and structure exactly as the API would.
+await RunAsync(provider, "demo company", async (scope, tenant) =>
+{
+    tenant.SetTenant(tenantId);
+    await Gggs.DevSeed.DemoData.SeedDemoCompanyAsync(scope);
 });
 
 Console.WriteLine();
