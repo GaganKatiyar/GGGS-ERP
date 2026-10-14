@@ -6,6 +6,8 @@ export interface PagedResult<T> {
   /** Absent when the caller asked the server not to count. */
   readonly totalCount?: number;
   readonly totalPages?: number;
+  /** Whether another page exists - known even when the total was not counted. */
+  readonly hasNextPage?: boolean;
 }
 
 /** Paging, sorting and search parameters shared by every list endpoint. */

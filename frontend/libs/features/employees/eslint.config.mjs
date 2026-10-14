@@ -28,7 +28,13 @@ export default [
   },
   {
     files: ['**/*.html'],
-    // Override or add rules here
-    rules: {},
+    rules: {
+      // The shared pickers are form controls (ControlValueAccessor), so a label around one is
+      // associated with it just as with a native input.
+      '@angular-eslint/template/label-has-associated-control': [
+        'error',
+        { controlComponents: ['gggs-org-select', 'gggs-lookup-select', 'gggs-employee-select'] },
+      ],
+    },
   },
 ];

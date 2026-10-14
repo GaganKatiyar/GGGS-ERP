@@ -17,6 +17,7 @@
     "@ngrx/signals": "^21.1.1",
     "@primeuix/themes": "~2.0.3",
     "beasties": "^0.5.4",
+    "chart.js": "^4.5.1",
     "oxc-parser": "^0.151.0",
     "primeicons": "^8.0.1",
     "primeng": "~21.1.10",

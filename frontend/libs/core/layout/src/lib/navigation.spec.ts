@@ -140,10 +140,28 @@ describe('filterNavigation', () => {
 
     expect(reachable(visible)).toEqual([
       '/dashboard',
+      '/me/profile',
+      '/team',
+      '/org/structure',
+      '/org/companies',
+      '/org/business-units',
+      '/org/divisions',
+      '/org/departments',
+      '/org/locations',
+      '/org/jobs',
+      '/org/positions',
+      '/org/grades',
+      '/org/job-levels',
+      '/org/cost-centers',
+      '/org/profit-centers',
+      '/employees',
+      '/employees/org-chart',
+      '/employees/import',
       '/admin/users',
       '/admin/roles',
       '/admin/audit',
       '/admin/settings',
+      '/admin/master-data',
     ]);
   });
 

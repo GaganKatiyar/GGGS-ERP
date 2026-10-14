@@ -108,3 +108,170 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+ * Shared page building blocks.
+ *
+ * Forms, panels and buttons look the same on every screen, so they are defined once here instead
+ * of each page re-declaring its own copy (the audit found eight near-identical organization pages
+ * doing exactly that). Components may still add local styles for what is genuinely theirs.
+ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gggs-space-2);
+  padding: var(--gggs-space-2) var(--gggs-space-4);
+  border: 1px solid var(--gggs-color-border);
+  border-radius: var(--gggs-radius-sm);
+  background: var(--gggs-color-surface-raised);
+  color: var(--gggs-color-text);
+  font: inherit;
+  font-size: var(--gggs-font-size-base);
+  font-weight: var(--gggs-font-weight-medium);
+  cursor: pointer;
+  text-decoration: none;
+
+  &:hover:not(:disabled) {
+    background: var(--gggs-color-surface-hover);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--gggs-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+.btn--primary {
+  border-color: var(--gggs-color-primary);
+  background: var(--gggs-color-primary);
+  color: #ffffff;
+
+  &:hover:not(:disabled) {
+    background: var(--gggs-color-primary);
+    filter: brightness(1.08);
+  }
+}
+
+.btn--danger {
+  border-color: var(--gggs-color-danger);
+  color: var(--gggs-color-danger);
+}
+
+.btn--link {
+  border-color: transparent;
+  background: transparent;
+  color: var(--gggs-color-primary);
+  padding-inline: var(--gggs-space-1);
+}
+
+.btn--sm {
+  padding: var(--gggs-space-1) var(--gggs-space-2);
+  font-size: var(--gggs-font-size-sm);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gggs-space-2);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gggs-space-4);
+  padding: var(--gggs-space-4);
+  border: 1px solid var(--gggs-color-border);
+  border-radius: var(--gggs-radius-md);
+  background: var(--gggs-color-surface-raised);
+}
+
+.form-grid {
+  display: grid;
+  gap: var(--gggs-space-3) var(--gggs-space-4);
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.form-grid__full {
+  grid-column: 1 / -1;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gggs-space-1);
+  font-size: var(--gggs-font-size-base);
+
+  input,
+  select,
+  textarea {
+    padding: var(--gggs-space-2);
+    border: 1px solid var(--gggs-color-border);
+    border-radius: var(--gggs-radius-sm);
+    background: var(--gggs-color-surface-raised);
+    color: var(--gggs-color-text);
+    font: inherit;
+  }
+
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--gggs-color-primary);
+    outline-offset: 1px;
+  }
+}
+
+.field__label {
+  font-weight: var(--gggs-font-weight-semibold);
+}
+
+.field__hint {
+  color: var(--gggs-color-text-muted);
+  font-size: var(--gggs-font-size-xs);
+}
+
+.field__error {
+  margin: 0;
+  color: var(--gggs-color-danger);
+  font-size: var(--gggs-font-size-sm);
+}
+
+.definition-list {
+  display: grid;
+  gap: var(--gggs-space-3) var(--gggs-space-6);
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  margin: 0;
+
+  dt {
+    color: var(--gggs-color-text-muted);
+    font-size: var(--gggs-font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  dd {
+    margin: var(--gggs-space-1) 0 0;
+    font-weight: var(--gggs-font-weight-medium);
+  }
+}
+
+.muted {
+  color: var(--gggs-color-text-muted);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gggs-space-4);
+}
+
+.kpi-row {
+  display: grid;
+  gap: var(--gggs-space-4);
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+}

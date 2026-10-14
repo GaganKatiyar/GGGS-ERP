@@ -46,6 +46,32 @@ export const appRoutes: Route[] = [
           import('@gggs/features/dashboard').then((m) => m.DASHBOARD_ROUTES),
       },
       {
+        path: 'me/profile',
+        ...withPermissions(['self.profile.view']),
+        loadChildren: () =>
+          import('@gggs/features/employees').then((m) => m.MY_PROFILE_ROUTES),
+      },
+      {
+        path: 'team',
+        ...withPermissions(['employee.profile.view']),
+        loadChildren: () =>
+          import('@gggs/features/employees').then((m) => m.TEAM_ROUTES),
+      },
+      {
+        path: 'org',
+        ...withPermissions(['org.structure.view']),
+        loadChildren: () =>
+          import('@gggs/features/organization').then(
+            (m) => m.ORGANIZATION_ROUTES,
+          ),
+      },
+      {
+        path: 'employees',
+        ...withPermissions(['employee.profile.view']),
+        loadChildren: () =>
+          import('@gggs/features/employees').then((m) => m.EMPLOYEES_ROUTES),
+      },
+      {
         path: 'admin',
         // Matches NAVIGATION's "Administration" group: any one of these lets someone in, and each
         // child route narrows further to the specific permission it actually needs.
@@ -54,6 +80,7 @@ export const appRoutes: Route[] = [
           'admin.role.view',
           'admin.setting.view',
           'audit.log.view',
+          'master-data.lookup.manage',
         ]),
         loadChildren: () =>
           import('@gggs/features/admin').then((m) => m.ADMIN_ROUTES),

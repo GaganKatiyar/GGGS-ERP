@@ -7,6 +7,7 @@ import { RoleDetailPage } from './roles/role-detail-page';
 import { RoleListPage } from './roles/role-list-page';
 import { TenantSettingsPage } from './settings/tenant-settings-page';
 import { AuditLogPage } from './audit/audit-log-page';
+import { MasterDataPage } from './master-data/master-data-page';
 
 /** Lazily loaded by the shell at `/admin/*`; see `NAVIGATION`'s "Administration" entry. */
 export const ADMIN_ROUTES: Routes = [
@@ -52,5 +53,11 @@ export const ADMIN_ROUTES: Routes = [
     component: AuditLogPage,
     title: 'Audit log',
     ...withPermissions(['audit.log.view']),
+  },
+  {
+    path: 'master-data',
+    component: MasterDataPage,
+    title: 'Master data',
+    ...withPermissions(['master-data.lookup.manage']),
   },
 ];
