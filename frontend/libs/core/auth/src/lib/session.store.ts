@@ -15,7 +15,7 @@ export interface PasswordSignInRequest {
 }
 
 /**
- * What the gateway says about an attempt.
+ * What the API says about an attempt.
  *
  * `errorCode` is what the page switches on. There is deliberately only one code for a wrong address
  * and a wrong password, because telling them apart would let anyone find out who has an account.
@@ -73,10 +73,10 @@ export class SessionStore {
   /**
    * Sends the user to the sign-in page.
    *
-   * An in-app navigation, not a redirect to the gateway: with local accounts the credentials are
+   * An in-app navigation, not a redirect to the API: with local accounts the credentials are
    * collected by our own page and posted to `/bff/login`. Federation will add a second path that
-   * does redirect - the gateway starting an OIDC flow at the customer's provider - and both will end
-   * at the same place, a session cookie set by the gateway.
+   * does redirect - the API starting an OIDC flow at the customer's provider - and both will end
+   * at the same place, a session cookie set by the API.
    */
   signIn(returnUrl: string = window.location.pathname): void {
     const target =
@@ -90,7 +90,7 @@ export class SessionStore {
   /**
    * Signs in with a password.
    *
-   * The response carries no credential: the gateway sets an httpOnly cookie and the session is then
+   * The response carries no credential: the API sets an httpOnly cookie and the session is then
    * read from `/bff/user`, so there is one description of a session rather than two that can drift.
    */
   async signInWithPassword(
@@ -110,7 +110,7 @@ export class SessionStore {
   /**
    * Ends the session, then reloads.
    *
-   * A POST rather than a navigation, because signing out changes state and the gateway refuses
+   * A POST rather than a navigation, because signing out changes state and the API refuses
    * unsafe requests without the CSRF header - which a plain navigation cannot send. The reload is
    * what guarantees no store, cache or open screen keeps the previous user's data.
    */

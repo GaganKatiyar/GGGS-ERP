@@ -9,15 +9,20 @@
   </PropertyGroup>
 
   <ItemGroup Label="ASP.NET Core / Extensions">
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Caching.Hybrid" Version="10.10.0" />
     <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(ExtensionsVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="$(ExtensionsVersion)" />
-    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.10.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="$(ExtensionsVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="$(ExtensionsVersion)" />
+    <!--
+      Transitive pins: Data Protection, SqlClient and OpenIddict resolve System.Security.Cryptography.Pkcs
+      9.0.11/10.0.11 and System.Security.Cryptography.Xml 10.0.11, which carry high-severity advisories
+      (GHSA-846f-f764-76mx, GHSA-2fmv-rv2c-59x7, GHSA-7hqp-7c5m-4vq6, GHSA-c399-9853-6jmj).
+    -->
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+    <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.13" />
   </ItemGroup>
 
   <ItemGroup Label="Cloud adapters (Cloud profile only; on-premise uses the file/local equivalents)">
@@ -43,8 +48,6 @@
     <PackageVersion Include="Asp.Versioning.Mvc.ApiExplorer" Version="10.2.1" />
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
-    <PackageVersion Include="Riok.Mapperly" Version="4.3.1" />
-    <PackageVersion Include="Scalar.AspNetCore" Version="2.17.8" />
   </ItemGroup>
 
   <ItemGroup Label="Identity">
@@ -54,33 +57,17 @@
     -->
     <PackageVersion Include="OpenIddict.AspNetCore" Version="7.7.1" />
     <PackageVersion Include="OpenIddict.EntityFrameworkCore" Version="7.7.1" />
-    <PackageVersion Include="OpenIddict.Validation.AspNetCore" Version="7.7.1" />
-    <PackageVersion Include="OpenIddict.Validation.ServerIntegration" Version="7.7.1" />
-    <PackageVersion Include="OpenIddict.Validation.SystemNetHttp" Version="7.7.1" />
-  </ItemGroup>
-
-  <ItemGroup Label="Gateway">
-    <!-- YARP: the BFF's reverse proxy. MIT, and the same team as ASP.NET Core. -->
-    <PackageVersion Include="Yarp.ReverseProxy" Version="2.3.0" />
   </ItemGroup>
 
   <ItemGroup Label="Observability">
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageVersion Include="Serilog.Enrichers.Environment" Version="3.0.1" />
-    <PackageVersion Include="Serilog.Sinks.Seq" Version="9.0.0" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.19.1" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.19.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.12.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.12.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.19.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.SqlClient" Version="1.12.0-beta.2" />
-  </ItemGroup>
-
-  <ItemGroup Label="Documents">
-    <!-- QuestPDF: free under the Community licence below the revenue threshold (architecture.md
-         §15). .NET-native code-based layout, no browser/Chromium dependency - the right fit for a
-         structured document like a payslip, as opposed to a rendered HTML letter. -->
-    <PackageVersion Include="QuestPDF" Version="2025.7.1" />
   </ItemGroup>
 
   <ItemGroup Label="Jobs">
@@ -94,9 +81,7 @@
   </ItemGroup>
 
   <ItemGroup Label="Testing">
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit.v3" Version="4.0.1" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.6" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />
     <PackageVersion Include="NSubstitute" Version="5.3.0" />
     <PackageVersion Include="NetArchTest.Rules" Version="1.3.2" />

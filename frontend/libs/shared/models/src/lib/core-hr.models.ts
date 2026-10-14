@@ -1,7 +1,6 @@
 /**
  * Core HR contracts (M2): master data, organization structure and employees, as the PeopleOS API
- * returns them. Names are distinct from the legacy GGGS models still compiled by unrouted feature
- * libraries; those files go when the libraries are deleted.
+ * returns them.
  */
 
 // ----- Master data ---------------------------------------------------------------------------

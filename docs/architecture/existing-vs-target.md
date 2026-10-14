@@ -200,7 +200,7 @@ No load testing or query profiling has been done, so these are structural observ
 | Step | Content | Status |
 |---|---|---|
 | M0 | This audit, the target architecture, ADR-12, roadmap | done |
-| M1 | Monolith foundation: hosts, `Gggs.Data`, Platform and Identity modules, BFF folded in, BuildingBlocks changes, infra, tests, navigation | done (2026-10-14); retired code removed from the solution, folder deletion pending owner approval (§11) |
+| M1 | Monolith foundation: hosts, `Gggs.Data`, Platform and Identity modules, BFF folded in, BuildingBlocks changes, infra, tests, navigation | done (2026-10-14); retired code deleted after M2 (§11) |
 | M2 | Organization, Employee, MasterData; UI component kit; Employee 360 shell | done (2026-10-14): org structure (11 record kinds, department tree), employees (hire, 360, assignment changes, confirm/notice/exit, family, statutory and bank, history, org chart, CSV import with preview), master data admin, My profile, My team |
 | M3+ | See [roadmap.md](../roadmap.md) | planned |
 
@@ -212,33 +212,26 @@ the reference for their rebuilds (M7 and M3).
 
 ---
 
-## 11. Retired code still on disk
+## 11. Retired code
 
-M1 removed every retired project from `backend/Gggs.slnx` and from `tools/run-tests.ps1`, so none
-of it builds, runs or is tested. The folders themselves are still in the working tree: deleting
-them needs the repository owner's go-ahead. Everything listed is preserved in git history at the
-`pre-peopleos` tag.
+Deleted on 2026-10-14, after M2, with the owner's approval. Everything below is preserved in git
+history at the `pre-peopleos` tag (commit `483d706`).
 
-- `backend/Services/` (all of it: the nine business services, plus Sample, and the project files
-  and per-service migrations left behind in `Identity/` and `Platform/` after their sources moved
-  into `backend/Modules/`)
-- `backend/Gateway/` (session, guard and header code moved into the API host and Identity module)
-- `backend/Agents/`, `backend/Aspire/` (empty)
-- `tests/Gggs.{CoreHr,Documents,Notification,Payroll,Reporting,Spend,Talent,Time,Workflow}.IntegrationTests/`
-- `tests/Gggs.{Identity,Platform,Gateway}.IntegrationTests/` (their tests moved to
-  `tests/Gggs.Api.IntegrationTests/`; factories and project files remain)
-- `tests/unit/Gggs.{CoreHr,Documents,Notification,Time,Workflow}.UnitTests/`
-- Frontend feature libraries with no backend until their milestone (unrouted, still built by the
-  frontend gate): `features/{notifications,workflow,leave,attendance,payroll,spend,assets,recruitment,onboarding,performance,learning,reports}`,
-  `shared/{notifications,documents}`, and `features/admin/src/lib/documents/`
-- The pre-M2 pages inside the rebuilt libraries (unreferenced since M2 routes to the new pages):
-  `features/organization/src/lib/{branches,business-units,cost-centers,departments,designations,grades,legal-entities,locations}/`,
-  `features/employees/src/lib/{bulk-import,change-assignment,change-manager,confirm,data,detail,exit,hire,list,rehire,shared,team}/`,
-  `shared/org-reference/src/lib/org-reference-api.ts`, and
-  `shared/employee-reference/src/lib/{employee-picker,employee-reference-api}.ts` (still used by
-  the unrouted libraries above, so they go together)
-- BuildingBlocks code with no remaining caller: `Security/HttpPermissionProvider.cs` and
-  `AddGggsRemotePermissions`/`AddGggsTokenValidation` in `TokenValidationExtensions.cs`,
-  `Caching/RemoteTenantRegistry.cs`
-- The old local databases `gggs_*` on the development SQL Server
+- `backend/Services/` (the nine business services, Sample, and what was left of Identity and
+  Platform after their sources moved into `backend/Modules/`), `backend/Gateway/`, and the empty
+  `backend/Agents/` and `backend/Aspire/`
+- the per-service integration and unit test projects (their surviving tests live in
+  `tests/Gggs.Api.IntegrationTests/` and the module unit-test projects)
+- BuildingBlocks code with no remaining caller: `HttpPermissionProvider`, the JWT-bearer and remote
+  permission extensions, `RemoteTenantRegistry`, and the package versions only those and the
+  retired services used (JwtBearer, YARP, Mapperly, Scalar, QuestPDF, OpenIddict validation, Seq
+  sink, HTTP resilience, VSTest runner)
+- frontend feature libraries with no backend yet
+  (`features/{notifications,workflow,leave,attendance,payroll,spend,assets,recruitment,onboarding,performance,learning,reports}`,
+  `shared/documents`, `features/admin/.../documents`), the pre-M2 organization and employee pages,
+  the old org and employee reference APIs, the legacy models in `shared/models` that only those used,
+  and the unused `@ngrx/signals` dependency. Each module's UI is rebuilt in its milestone.
 
+Kept on purpose: `shared/notifications`, which the shell's notification bell uses (switched off until
+M3 rebuilds it), and the old `gggs_*` databases on the development SQL Server, which are data rather
+than code and are dropped only on the owner's say-so.

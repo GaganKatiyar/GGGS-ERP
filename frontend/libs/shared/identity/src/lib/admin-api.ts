@@ -16,11 +16,9 @@ import type {
 import { firstValueFrom } from 'rxjs';
 
 /**
- * Users, roles, the permission catalog and tenant settings, over the gateway's
- * `/api/v1/{users,roles,permissions,settings}` routes - the first three from Identity, the last
- * from Platform. The frontend does not care which service answers which route (that split is the
- * gateway's job to hide), so one client for everything "administration" touches, matching how
- * `OrgReferenceApi` bundles six backend aggregate types behind one class for the same reason.
+ * Users, roles, the permission catalog and tenant settings, over the API's
+ * `/api/v1/{users,roles,permissions,settings}` routes - the first three from the Identity module,
+ * the last from Platform. One client for everything "administration" touches.
  *
  * Lives in `shared`, not inside the admin feature, for two independent reasons:
  *  - `completeInvitation` is called by `apps/hrms-web`'s own complete-invitation page, which sits

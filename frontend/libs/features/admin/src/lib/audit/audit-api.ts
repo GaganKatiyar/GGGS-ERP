@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import type { AuditLogItem, AuditLogQuery, PagedResult } from '@gggs/shared/models';
 import { firstValueFrom } from 'rxjs';
 
-/** The tenant audit trail, over the gateway's `/api/v1/audit/logs` routes. Read-only: the only
+/** The tenant audit trail, over the API's `/api/v1/audit/logs` routes. Read-only: the only
  * writer is `AuditEntryConsumer` in `Gggs.Platform.Worker`, never this or any other API. */
 @Injectable({ providedIn: 'root' })
 export class AuditApi {

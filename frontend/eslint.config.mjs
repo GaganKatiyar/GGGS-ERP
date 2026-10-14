@@ -76,18 +76,6 @@ export default [
                 'scope:organization',
                 'scope:employees',
                 'scope:admin',
-                'scope:notifications',
-                'scope:leave',
-                'scope:workflow',
-                'scope:attendance',
-                'scope:reports',
-                'scope:recruitment',
-                'scope:onboarding',
-                'scope:performance',
-                'scope:learning',
-                'scope:payroll',
-                'scope:spend',
-                'scope:assets',
               ],
             },
             {
@@ -133,66 +121,6 @@ export default [
                 'scope:shared',
                 'scope:admin',
               ],
-            },
-            {
-              sourceTag: 'scope:notifications',
-              onlyDependOnLibsWithTags: [
-                'scope:core',
-                'scope:shared',
-                'scope:notifications',
-              ],
-            },
-            {
-              sourceTag: 'scope:leave',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:leave'],
-            },
-            {
-              sourceTag: 'scope:workflow',
-              onlyDependOnLibsWithTags: [
-                'scope:core',
-                'scope:shared',
-                'scope:workflow',
-              ],
-            },
-            {
-              sourceTag: 'scope:attendance',
-              onlyDependOnLibsWithTags: [
-                'scope:core',
-                'scope:shared',
-                'scope:attendance',
-              ],
-            },
-            {
-              sourceTag: 'scope:reports',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:reports'],
-            },
-            {
-              sourceTag: 'scope:recruitment',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:recruitment'],
-            },
-            {
-              sourceTag: 'scope:onboarding',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:onboarding'],
-            },
-            {
-              sourceTag: 'scope:performance',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:performance'],
-            },
-            {
-              sourceTag: 'scope:learning',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:learning'],
-            },
-            {
-              sourceTag: 'scope:payroll',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:payroll'],
-            },
-            {
-              sourceTag: 'scope:spend',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:spend'],
-            },
-            {
-              sourceTag: 'scope:assets',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:assets'],
             },
           ],
         },

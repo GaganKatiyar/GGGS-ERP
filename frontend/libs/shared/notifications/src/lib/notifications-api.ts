@@ -4,7 +4,7 @@ import type { InAppNotificationItem, PagedResult } from '@gggs/shared/models';
 import { firstValueFrom } from 'rxjs';
 
 /**
- * A signed-in user's own notification inbox, over the gateway's `/api/v1/notifications` routes.
+ * A signed-in user's own notification inbox, over the API's `/api/v1/notifications` routes.
  *
  * Every read and write here is implicitly scoped to the caller - there is no id or user parameter
  * anywhere in this API, because the server never accepts one either (see

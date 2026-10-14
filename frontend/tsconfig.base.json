@@ -34,29 +34,10 @@
       ],
       "@gggs/features/admin": ["./libs/features/admin/src/index.ts"],
       "@gggs/shared/identity": ["./libs/shared/identity/src/index.ts"],
-      "@gggs/shared/documents": ["./libs/shared/documents/src/index.ts"],
       "@gggs/shared/notifications": ["./libs/shared/notifications/src/index.ts"],
-      "@gggs/features/notifications": ["./libs/features/notifications/src/index.ts"],
-      "@gggs/features/leave": ["./libs/features/leave/src/index.ts"],
-      "@gggs/features/workflow": ["./libs/features/workflow/src/index.ts"],
-      "@gggs/features/attendance": ["./libs/features/attendance/src/index.ts"],
       "@gggs/shared/employee-reference": [
         "./libs/shared/employee-reference/src/index.ts"
-      ],
-      "@gggs/features/reports": ["./libs/features/reports/src/index.ts"],
-      "@gggs/features/recruitment": [
-        "./libs/features/recruitment/src/index.ts"
-      ],
-      "@gggs/features/onboarding": [
-        "./libs/features/onboarding/src/index.ts"
-      ],
-      "@gggs/features/performance": [
-        "./libs/features/performance/src/index.ts"
-      ],
-      "@gggs/features/learning": ["./libs/features/learning/src/index.ts"],
-      "@gggs/features/payroll": ["./libs/features/payroll/src/index.ts"],
-      "@gggs/features/spend": ["./libs/features/spend/src/index.ts"],
-      "@gggs/features/assets": ["./libs/features/assets/src/index.ts"]
+      ]
     }
   },
   "exclude": ["node_modules", "tmp"]

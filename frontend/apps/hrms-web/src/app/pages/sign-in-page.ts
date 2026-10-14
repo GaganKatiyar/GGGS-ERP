@@ -13,7 +13,7 @@ import { PRODUCT_NAME } from '../product-title-strategy';
  * Signing in.
  *
  * The one page that collects a credential, and the only one outside the shell. It posts to the
- * gateway and never sees a token: the gateway sets an httpOnly cookie, so nothing this page runs
+ * API and never sees a token: the API sets an httpOnly cookie, so nothing this page runs
  * could read or store one even if it tried.
  *
  * The tenant code is a hint about where to look, not an assertion about who the user is. It picks
