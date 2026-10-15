@@ -134,6 +134,12 @@ public static class Permissions
 
         /// <summary>Asking to trade one's own shift with a colleague for a day.</summary>
         public const string ShiftSwapRequest = "self.shift-swap.request";
+
+        /// <summary>Filling in and submitting one's own timesheet.</summary>
+        public const string TimesheetSubmit = "self.timesheet.submit";
+
+        /// <summary>Keeping one's own skills and certifications up to date (self-assessed).</summary>
+        public const string SkillManage = "self.skill.manage";
     }
 
     /// <summary>Leave administration and approvals.</summary>
@@ -244,6 +250,51 @@ public static class Permissions
 
         /// <summary>Project roles and the health thresholds every project is judged by.</summary>
         public const string SettingsManage = "project.settings.manage";
+    }
+
+    /// <summary>The skill catalog and who has which skill at what level (spec §29).</summary>
+    public static class Skill
+    {
+        public const string View = "skill.skill.view";
+        public const string Manage = "skill.skill.manage";
+
+        /// <summary>Reading people's skills; scoped like employee records.</summary>
+        public const string EmployeeSkillView = "skill.employee-skill.view";
+
+        /// <summary>Assessing people's skills; scoped like employee records.</summary>
+        public const string EmployeeSkillManage = "skill.employee-skill.manage";
+    }
+
+    /// <summary>
+    /// Resource management (spec §57-69): profiles and rates, requests and matching, allocation,
+    /// capacity, bench, forecast and utilization.
+    /// </summary>
+    public static class Resource
+    {
+        public const string ProfileView = "resource.profile.view";
+
+        /// <summary>Cost and billing rates, notice and capacity - financial, so separate from viewing.</summary>
+        public const string ProfileManage = "resource.profile.manage";
+        public const string RequestView = "resource.request.view";
+        public const string RequestManage = "resource.request.manage";
+        public const string AllocationView = "resource.allocation.view";
+
+        /// <summary>Allocating, changing and releasing people on any project, and transfers between projects.</summary>
+        public const string AllocationManage = "resource.allocation.manage";
+        public const string UtilizationView = "resource.utilization.view";
+    }
+
+    /// <summary>Timesheets (spec §70-71) beyond one's own: reading, approving, reopening, locking periods.</summary>
+    public static class Timesheet
+    {
+        /// <summary>Reading other people's timesheets; scoped like employee records.</summary>
+        public const string View = "timesheet.entry.view";
+
+        /// <summary>Acting on timesheets outside the approval inbox: reopening an approved one for correction.</summary>
+        public const string Approve = "timesheet.entry.approve";
+
+        /// <summary>The rules (hours, weekends, deadlines) and locking periods so nothing in them changes.</summary>
+        public const string SettingsManage = "timesheet.settings.manage";
     }
 
     /// <summary>Audit and compliance.</summary>

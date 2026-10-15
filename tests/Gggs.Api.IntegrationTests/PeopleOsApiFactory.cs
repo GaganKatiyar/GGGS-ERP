@@ -124,6 +124,7 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             await scope.ServiceProvider.GetRequiredService<DocumentCatalogSeeder>().SeedCurrentTenantAsync();
             await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Leave.Application.LeaveCatalogSeeder>().SeedCurrentTenantAsync();
             await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Project.Application.ProjectCatalogSeeder>().SeedCurrentTenantAsync();
+            await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Skills.Application.SkillCatalogSeeder>().SeedCurrentTenantAsync();
         }
 
         // The worker seeds the platform roles at start-up; this host is the API alone, so run the
@@ -512,6 +513,10 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             Permissions.Project.MilestoneView, Permissions.Project.MilestoneManage, Permissions.Project.SprintView, Permissions.Project.SprintManage,
             Permissions.Project.ChangeRequestView, Permissions.Project.ChangeRequestManage, Permissions.Project.RaidView, Permissions.Project.RaidManage,
             Permissions.Project.SettingsManage,
+            Permissions.Skill.View, Permissions.Skill.Manage, Permissions.Skill.EmployeeSkillView, Permissions.Skill.EmployeeSkillManage,
+            Permissions.Resource.ProfileView, Permissions.Resource.ProfileManage, Permissions.Resource.RequestView, Permissions.Resource.RequestManage,
+            Permissions.Resource.AllocationView, Permissions.Resource.AllocationManage, Permissions.Resource.UtilizationView,
+            Permissions.Timesheet.View, Permissions.Timesheet.Approve, Permissions.Timesheet.SettingsManage,
         })
         {
             role.Grant(permission, DataScope.Tenant);

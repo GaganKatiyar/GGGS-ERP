@@ -40,4 +40,6 @@ public static class NotificationTemplates
     public const string ContractRenewalDue = "contract.renewal-due";
     public const string ProjectTeamAdded = "project.team-added";
     public const string ProjectTaskAssigned = "project.task-assigned";
+    public const string TimesheetMissing = "timesheet.missing";
+    public const string ResourceTransferDecided = "resource.transfer-decided";
 }

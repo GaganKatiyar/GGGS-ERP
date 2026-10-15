@@ -471,6 +471,7 @@ internal sealed class ProjectService(
             throw new DomainRuleException("PROJECT_TEAM_EMPLOYEE", $"{person.DisplayName} is not an active employee.");
         }
 
+        await TeamSeats.RetireLapsedAsync(dbContext, projectId, body.EmployeeId, role.Id, await clock.TodayAsync(cancellationToken), cancellationToken);
         if (await dbContext.ProjectTeamMembers.AnyAsync(
                 member => member.ProjectId == projectId && member.EmployeeId == body.EmployeeId && member.ProjectRoleId == role.Id && member.Status == TeamMemberStatus.Active,
                 cancellationToken))
@@ -524,7 +525,7 @@ internal sealed class ProjectService(
     {
         await access.EnsureAsync(projectId, Permissions.Project.Manage, cancellationToken);
         ProjectTeamMember member = await FindMemberAsync(projectId, memberId, cancellationToken);
-        member.Release(on);
+        member.Release(on, await clock.TodayAsync(cancellationToken));
         publisher.Publish(new ProjectTeamChangedIntegrationEvent(projectId, member.Id, member.EmployeeId, "Released"));
         await dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -535,9 +536,10 @@ internal sealed class ProjectService(
         List<ProjectTeamMember> seats = await dbContext.ProjectTeamMembers
             .Where(member => member.EmployeeId == employeeId && member.Status == TeamMemberStatus.Active)
             .ToListAsync(cancellationToken);
+        DateOnly today = await clock.TodayAsync(cancellationToken);
         foreach (ProjectTeamMember seat in seats)
         {
-            seat.Release(on);
+            seat.Release(on, today);
             publisher.Publish(new ProjectTeamChangedIntegrationEvent(seat.ProjectId, seat.Id, seat.EmployeeId, "Released"));
         }
     }

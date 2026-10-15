@@ -101,6 +101,35 @@ public static class RoleTemplates
         new(Permissions.Project.RaidView, DataScope.Tenant),
     ];
 
+    /// <summary>Seeing skills, resourcing and timesheets across the company without changing them.</summary>
+    private static PermissionAssignment[] ResourceReadOnly() =>
+    [
+        new(Permissions.Skill.View, DataScope.Tenant),
+        new(Permissions.Skill.EmployeeSkillView, DataScope.Tenant),
+        new(Permissions.Resource.ProfileView, DataScope.Tenant),
+        new(Permissions.Resource.RequestView, DataScope.Tenant),
+        new(Permissions.Resource.AllocationView, DataScope.Tenant),
+        new(Permissions.Resource.UtilizationView, DataScope.Tenant),
+        new(Permissions.Timesheet.View, DataScope.Tenant),
+    ];
+
+    /// <summary>Running resourcing (spec section 57-69): profiles and rates, requests, allocation, transfers.</summary>
+    private static PermissionAssignment[] ResourceManagement() =>
+    [
+        new(Permissions.Skill.View, DataScope.Tenant),
+        new(Permissions.Skill.Manage, DataScope.Tenant),
+        new(Permissions.Skill.EmployeeSkillView, DataScope.Tenant),
+        new(Permissions.Skill.EmployeeSkillManage, DataScope.Tenant),
+        new(Permissions.Resource.ProfileView, DataScope.Tenant),
+        new(Permissions.Resource.ProfileManage, DataScope.Tenant),
+        new(Permissions.Resource.RequestView, DataScope.Tenant),
+        new(Permissions.Resource.RequestManage, DataScope.Tenant),
+        new(Permissions.Resource.AllocationView, DataScope.Tenant),
+        new(Permissions.Resource.AllocationManage, DataScope.Tenant),
+        new(Permissions.Resource.UtilizationView, DataScope.Tenant),
+        new(Permissions.Timesheet.View, DataScope.Tenant),
+    ];
+
     private static readonly Dictionary<string, IReadOnlyList<PermissionAssignment>> Templates =
         new(StringComparer.OrdinalIgnoreCase)
         {
@@ -173,6 +202,9 @@ public static class RoleTemplates
                 new(Permissions.Contract.Manage, DataScope.Tenant),
                 .. ProjectLead(DataScope.Tenant),
                 new(Permissions.Project.SettingsManage, DataScope.Tenant),
+                .. ResourceManagement(),
+                new(Permissions.Timesheet.Approve, DataScope.Tenant),
+                new(Permissions.Timesheet.SettingsManage, DataScope.Tenant),
 
                 new(Permissions.Notification.TemplateView, DataScope.Tenant),
                 new(Permissions.Notification.TemplateManage, DataScope.Tenant),
@@ -232,6 +264,14 @@ public static class RoleTemplates
                 new(Permissions.Policy.View, DataScope.Tenant),
                 new(Permissions.Policy.Manage, DataScope.Tenant),
                 new(Permissions.Policy.AcknowledgementView, DataScope.Tenant),
+
+                new(Permissions.Skill.View, DataScope.Tenant),
+                new(Permissions.Skill.Manage, DataScope.Tenant),
+                new(Permissions.Skill.EmployeeSkillView, DataScope.Tenant),
+                new(Permissions.Skill.EmployeeSkillManage, DataScope.Tenant),
+                new(Permissions.Timesheet.View, DataScope.Tenant),
+                new(Permissions.Timesheet.Approve, DataScope.Tenant),
+                new(Permissions.Timesheet.SettingsManage, DataScope.Tenant),
 
                 new(Permissions.Notification.TemplateView, DataScope.Tenant),
 
@@ -293,6 +333,9 @@ public static class RoleTemplates
                 new(Permissions.Client.View, DataScope.Tenant),
                 new(Permissions.Contract.View, DataScope.Tenant),
                 new(Permissions.Project.View, DataScope.Tenant),
+                new(Permissions.Resource.ProfileView, DataScope.Tenant),
+                new(Permissions.Resource.UtilizationView, DataScope.Tenant),
+                new(Permissions.Timesheet.View, DataScope.Tenant),
                 new(Permissions.Workflow.TaskView, DataScope.Own),
                 new(Permissions.Workflow.TaskAct, DataScope.Own),
                 new(Permissions.Report.View, DataScope.LegalEntity),
@@ -311,6 +354,9 @@ public static class RoleTemplates
 
                 new(Permissions.Attendance.View, DataScope.Department),
                 new(Permissions.Attendance.RegularizationView, DataScope.Department),
+
+                new(Permissions.Timesheet.View, DataScope.Department),
+                new(Permissions.Skill.EmployeeSkillView, DataScope.Department),
 
                 new(Permissions.Workflow.TaskView, DataScope.Own),
                 new(Permissions.Workflow.TaskAct, DataScope.Own),
@@ -332,6 +378,10 @@ public static class RoleTemplates
 
                 new(Permissions.Attendance.View, DataScope.DirectReports),
                 new(Permissions.Attendance.RegularizationView, DataScope.DirectReports),
+
+                new(Permissions.Timesheet.View, DataScope.DirectReports),
+                new(Permissions.Skill.EmployeeSkillView, DataScope.DirectReports),
+                new(Permissions.Skill.EmployeeSkillManage, DataScope.DirectReports),
 
                 new(Permissions.Workflow.TaskView, DataScope.Own),
                 new(Permissions.Workflow.TaskAct, DataScope.Own),
@@ -428,8 +478,20 @@ public static class RoleTemplates
             ],
 
             // Delivery roles (M5): a project manager runs their own projects; delivery and program
-            // managers the whole portfolio. Resource permissions arrive with M6.
-            ["PROJECT_MANAGER"] = [.. DeliveryBaseline(DataScope.Department), .. ProjectLead(DataScope.Own)],
+            // managers the whole portfolio. Resource management arrives with M6.
+            ["PROJECT_MANAGER"] =
+            [
+                .. DeliveryBaseline(DataScope.Department),
+                .. ProjectLead(DataScope.Own),
+
+                // Finding people for their projects: who has which skills, who is free, and asking for them.
+                new(Permissions.Skill.View, DataScope.Tenant),
+                new(Permissions.Skill.EmployeeSkillView, DataScope.Tenant),
+                new(Permissions.Resource.ProfileView, DataScope.Tenant),
+                new(Permissions.Resource.AllocationView, DataScope.Tenant),
+                new(Permissions.Resource.RequestView, DataScope.Own),
+                new(Permissions.Resource.RequestManage, DataScope.Own),
+            ],
             ["DELIVERY_MANAGER"] =
             [
                 .. DeliveryBaseline(DataScope.Tenant),
@@ -438,9 +500,11 @@ public static class RoleTemplates
                 new(Permissions.Client.ContactManage, DataScope.Tenant),
                 new(Permissions.Contract.Manage, DataScope.Tenant),
                 new(Permissions.Project.SettingsManage, DataScope.Tenant),
+                .. ResourceReadOnly(),
+                new(Permissions.Resource.RequestManage, DataScope.Tenant),
             ],
-            ["PROGRAM_MANAGER"] = [.. DeliveryBaseline(DataScope.Tenant), .. ProjectLead(DataScope.Tenant)],
-            ["RESOURCE_MANAGER"] = [.. DeliveryBaseline(DataScope.Tenant), .. DeliveryReadOnly()],
+            ["PROGRAM_MANAGER"] = [.. DeliveryBaseline(DataScope.Tenant), .. ProjectLead(DataScope.Tenant), .. ResourceReadOnly()],
+            ["RESOURCE_MANAGER"] = [.. DeliveryBaseline(DataScope.Tenant), .. DeliveryReadOnly(), .. ResourceManagement()],
 
             ["PERFORMANCE_ADMIN"] =
             [
@@ -526,6 +590,7 @@ public static class RoleTemplates
                 new(Permissions.Performance.CycleView, DataScope.Tenant),
                 new(Permissions.Report.View, DataScope.Tenant),
                 .. DeliveryReadOnly(),
+                .. ResourceReadOnly(),
 
                 .. SelfService(),
             ],
@@ -554,6 +619,7 @@ public static class RoleTemplates
                 new(Permissions.Audit.LogView, DataScope.Tenant),
                 new(Permissions.Report.View, DataScope.Tenant),
                 .. DeliveryReadOnly(),
+                .. ResourceReadOnly(),
 
                 .. SelfService(),
             ],
@@ -631,6 +697,8 @@ public static class RoleTemplates
         new(Permissions.Self.DocumentView, DataScope.Own),
         new(Permissions.Self.PolicyView, DataScope.Own),
         new(Permissions.Self.ShiftSwapRequest, DataScope.Own),
+        new(Permissions.Self.TimesheetSubmit, DataScope.Own),
+        new(Permissions.Self.SkillManage, DataScope.Own),
 
         // Everyone receives notifications - approvals, policies to acknowledge, invitations.
         new(Permissions.Notification.InboxView, DataScope.Own),

@@ -8,6 +8,9 @@
     <ProjectReference Include="..\..\..\backend\Modules\Client\Gggs.Modules.Client\Gggs.Modules.Client.csproj" />
     <ProjectReference Include="..\..\..\backend\Modules\Contract\Gggs.Modules.Contract\Gggs.Modules.Contract.csproj" />
     <ProjectReference Include="..\..\..\backend\Modules\Project\Gggs.Modules.Project\Gggs.Modules.Project.csproj" />
+    <ProjectReference Include="..\..\..\backend\Modules\Resources\Gggs.Modules.Resources\Gggs.Modules.Resources.csproj" />
+    <ProjectReference Include="..\..\..\backend\Modules\Skills\Gggs.Modules.Skills\Gggs.Modules.Skills.csproj" />
+    <ProjectReference Include="..\..\..\backend\Modules\Timesheets\Gggs.Modules.Timesheets\Gggs.Modules.Timesheets.csproj" />
   </ItemGroup>
 
   <ItemGroup>

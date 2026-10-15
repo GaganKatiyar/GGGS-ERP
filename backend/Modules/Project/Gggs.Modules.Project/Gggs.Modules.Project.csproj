@@ -21,6 +21,7 @@
     <ProjectReference Include="..\..\Notification\Gggs.Modules.Notification.Contracts\Gggs.Modules.Notification.Contracts.csproj" />
     <ProjectReference Include="..\..\Organization\Gggs.Modules.Organization.Contracts\Gggs.Modules.Organization.Contracts.csproj" />
     <ProjectReference Include="..\..\Platform\Gggs.Modules.Platform.Contracts\Gggs.Modules.Platform.Contracts.csproj" />
+    <ProjectReference Include="..\..\Timesheets\Gggs.Modules.Timesheets.Contracts\Gggs.Modules.Timesheets.Contracts.csproj" />
     <ProjectReference Include="..\..\Workflow\Gggs.Modules.Workflow.Contracts\Gggs.Modules.Workflow.Contracts.csproj" />
     <ProjectReference Include="..\Gggs.Modules.Project.Contracts\Gggs.Modules.Project.Contracts.csproj" />
   </ItemGroup>

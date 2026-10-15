@@ -195,6 +195,9 @@ public sealed class ProjectTask : TenantAggregateRoot
 
     public void PlanInto(Guid? sprintId) => SprintId = sprintId;
 
+    /// <summary>Approved timesheet hours land here (or come off, when a timesheet is reopened).</summary>
+    public void AddActualHours(decimal hours) => ActualHours = Math.Max(0, (ActualHours ?? 0) + hours);
+
     public bool IsOverdue(DateOnly today) => !IsDone && DueDate is { } due && due < today;
 }
 

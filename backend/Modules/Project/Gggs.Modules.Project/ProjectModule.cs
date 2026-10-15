@@ -6,6 +6,7 @@ using Gggs.Modules.Platform.Contracts;
 using Gggs.Modules.Project.Application;
 using Gggs.Modules.Project.Contracts;
 using Gggs.Modules.Project.Endpoints;
+using Gggs.Modules.Timesheets.Contracts;
 using Gggs.Modules.Workflow.Contracts;
 
 namespace Gggs.Modules.Project;
@@ -25,6 +26,8 @@ public sealed class ProjectModule : IModule
         services.AddScoped<InsightService>();
         services.AddScoped<ProjectCatalogSeeder>();
         services.AddScoped<IProjectDirectory, ProjectDirectory>();
+        services.AddScoped<IProjectStaffing, ProjectStaffing>();
+        services.AddScoped<IProjectPermissions, ProjectPermissions>();
         services.AddScoped<IDocumentOwnerAccess, ProjectDocumentAccess>();
         services.AddWorkflowSubject(GovernanceService.ChangeRequestSubject);
     }
@@ -39,6 +42,8 @@ public sealed class ProjectModule : IModule
         services.AddGggsEventConsumer<WorkflowApprovedIntegrationEvent, ApproveChangeOnApproval>();
         services.AddGggsEventConsumer<WorkflowRejectedIntegrationEvent, RejectChangeOnRejection>();
         services.AddGggsEventConsumer<WorkflowSentBackIntegrationEvent, ReturnChangeOnSendBack>();
+        services.AddGggsEventConsumer<TimesheetApprovedIntegrationEvent, AddHoursOnTimesheetApproval>();
+        services.AddGggsEventConsumer<TimesheetReopenedIntegrationEvent, RemoveHoursOnTimesheetReopened>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints) => endpoints.MapProjectEndpoints();

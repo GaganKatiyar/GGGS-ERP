@@ -13,7 +13,10 @@ using Gggs.Modules.Organization;
 using Gggs.Modules.Platform;
 using Gggs.Modules.Policies;
 using Gggs.Modules.Project;
+using Gggs.Modules.Resources;
 using Gggs.Modules.Shift;
+using Gggs.Modules.Skills;
+using Gggs.Modules.Timesheets;
 using Gggs.Modules.Workflow;
 
 namespace Gggs.Composition;
@@ -45,6 +48,9 @@ public static class ModuleCatalog
         new ClientModule(),
         new ContractModule(),
         new ProjectModule(),
+        new SkillsModule(),
+        new TimesheetsModule(),
+        new ResourcesModule(),
     ];
 
     /// <summary>The assemblies the shared <c>AppDbContext</c> builds its model from.</summary>

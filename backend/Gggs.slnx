@@ -60,6 +60,11 @@
     <Project Path="Modules/Contract/Gggs.Modules.Contract.Contracts/Gggs.Modules.Contract.Contracts.csproj" />
     <Project Path="Modules/Project/Gggs.Modules.Project/Gggs.Modules.Project.csproj" />
     <Project Path="Modules/Project/Gggs.Modules.Project.Contracts/Gggs.Modules.Project.Contracts.csproj" />
+    <Project Path="Modules/Skills/Gggs.Modules.Skills/Gggs.Modules.Skills.csproj" />
+    <Project Path="Modules/Skills/Gggs.Modules.Skills.Contracts/Gggs.Modules.Skills.Contracts.csproj" />
+    <Project Path="Modules/Timesheets/Gggs.Modules.Timesheets/Gggs.Modules.Timesheets.csproj" />
+    <Project Path="Modules/Timesheets/Gggs.Modules.Timesheets.Contracts/Gggs.Modules.Timesheets.Contracts.csproj" />
+    <Project Path="Modules/Resources/Gggs.Modules.Resources/Gggs.Modules.Resources.csproj" />
   </Folder>
   <Folder Name="/Tools/">
     <Project Path="../tools/DevSeed/Gggs.DevSeed.csproj" />

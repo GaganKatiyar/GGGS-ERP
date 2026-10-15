@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Modules.Resources</RootNamespace>
+    <Description>Resource management (spec §57-69, §72-73, §80): profiles and rates, capacity and availability, requests and matching, allocation, transfers, bench, forecast and utilization.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Web\Gggs.BuildingBlocks.Web.csproj" />
+    <ProjectReference Include="..\..\..\Data\Gggs.Data\Gggs.Data.csproj" />
+    <ProjectReference Include="..\..\Employee\Gggs.Modules.Employee.Contracts\Gggs.Modules.Employee.Contracts.csproj" />
+    <ProjectReference Include="..\..\Leave\Gggs.Modules.Leave.Contracts\Gggs.Modules.Leave.Contracts.csproj" />
+    <ProjectReference Include="..\..\MasterData\Gggs.Modules.MasterData.Contracts\Gggs.Modules.MasterData.Contracts.csproj" />
+    <ProjectReference Include="..\..\Notification\Gggs.Modules.Notification.Contracts\Gggs.Modules.Notification.Contracts.csproj" />
+    <ProjectReference Include="..\..\Organization\Gggs.Modules.Organization.Contracts\Gggs.Modules.Organization.Contracts.csproj" />
+    <ProjectReference Include="..\..\Project\Gggs.Modules.Project.Contracts\Gggs.Modules.Project.Contracts.csproj" />
+    <ProjectReference Include="..\..\Shift\Gggs.Modules.Shift.Contracts\Gggs.Modules.Shift.Contracts.csproj" />
+    <ProjectReference Include="..\..\Skills\Gggs.Modules.Skills.Contracts\Gggs.Modules.Skills.Contracts.csproj" />
+    <ProjectReference Include="..\..\Timesheets\Gggs.Modules.Timesheets.Contracts\Gggs.Modules.Timesheets.Contracts.csproj" />
+    <ProjectReference Include="..\..\Workflow\Gggs.Modules.Workflow.Contracts\Gggs.Modules.Workflow.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Gggs.Delivery.UnitTests" />
+    <InternalsVisibleTo Include="Gggs.Api.IntegrationTests" />
+  </ItemGroup>
+
+</Project>

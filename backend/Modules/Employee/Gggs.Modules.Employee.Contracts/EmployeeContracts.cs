@@ -20,7 +20,10 @@ public sealed record EmployeeSummary(
     DateOnly? JoiningDate = null,
     string? EmploymentTypeCode = null,
     DateOnly? ProbationEndDate = null,
-    DateOnly? ConfirmationDate = null);
+    DateOnly? ConfirmationDate = null,
+    string? WorkModeCode = null,
+    Guid? GradeId = null,
+    DateOnly? ExitDate = null);
 
 /// <summary>
 /// The employee directory other modules read (ADR-12). It replaces the five replicated employee

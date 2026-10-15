@@ -8,6 +8,7 @@ using Gggs.Modules.Platform.Contracts;
 using Gggs.Modules.Project.Contracts;
 using Gggs.Modules.Project.Domain;
 using Gggs.Modules.Project.Infrastructure;
+using Gggs.Modules.Timesheets.Contracts;
 using Gggs.Modules.Workflow.Contracts;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
@@ -47,6 +48,77 @@ internal sealed class ProjectDirectory(AppDbContext dbContext) : IProjectDirecto
                 row.member.AllocationPercent, row.member.StartDate, row.member.EndDate, row.member.Billable, row.member.Status == TeamMemberStatus.Active))
             .OrderByDescending(membership => membership.IsActive)
             .ThenByDescending(membership => membership.StartDate)];
+    }
+
+    public async Task<IReadOnlyList<ProjectAllocation>> AllocationsAsync(IEnumerable<Guid>? employeeIds, DateOnly firstDay, DateOnly lastDay, CancellationToken cancellationToken = default)
+    {
+        IQueryable<ProjectTeamMember> members = dbContext.ProjectTeamMembers.AsNoTracking()
+            .Where(member => member.StartDate <= lastDay && (member.EndDate == null || member.EndDate >= firstDay));
+        if (employeeIds is not null)
+        {
+            List<Guid> ids = [.. employeeIds.Distinct()];
+            members = members.Where(member => ids.Contains(member.EmployeeId));
+        }
+
+        var rows = await members
+            .Join(dbContext.Projects.AsNoTracking(), member => member.ProjectId, project => project.Id, (member, project) => new { member, project })
+            .Join(dbContext.ProjectRoles.AsNoTracking(), row => row.member.ProjectRoleId, role => role.Id, (row, role) => new { row.member, row.project, RoleName = role.Name })
+            .ToListAsync(cancellationToken);
+
+        return [.. rows.Select(row => new ProjectAllocation(
+            row.member.Id, row.project.Id, row.project.Code, row.project.Name, row.project.Status.ToString(), row.member.EmployeeId, row.member.ProjectRoleId,
+            row.RoleName, row.member.AllocationPercent, row.member.StartDate, row.member.EndDate, row.member.Billable, row.member.BillingRate,
+            row.member.CostRate, row.member.Status == TeamMemberStatus.Active))];
+    }
+
+    public async Task<bool> IsOnTeamAsync(Guid projectId, Guid employeeId, DateOnly day, CancellationToken cancellationToken = default)
+        => await dbContext.ProjectTeamMembers.AnyAsync(
+                member => member.ProjectId == projectId && member.EmployeeId == employeeId && member.StartDate <= day && (member.EndDate == null || member.EndDate >= day),
+                cancellationToken)
+            || await dbContext.Projects.AnyAsync(
+                project => project.Id == projectId
+                    && (project.ProjectManagerEmployeeId == employeeId || project.DeliveryManagerEmployeeId == employeeId || project.AccountManagerEmployeeId == employeeId),
+                cancellationToken);
+
+    public async Task<IReadOnlyList<TimesheetTarget>> TimesheetTargetsAsync(Guid employeeId, DateOnly firstDay, DateOnly lastDay, CancellationToken cancellationToken = default)
+    {
+        List<Guid> memberOf = await dbContext.ProjectTeamMembers.AsNoTracking()
+            .Where(member => member.EmployeeId == employeeId && member.StartDate <= lastDay && (member.EndDate == null || member.EndDate >= firstDay))
+            .Select(member => member.ProjectId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var billable = await dbContext.ProjectTeamMembers.AsNoTracking()
+            .Where(member => member.EmployeeId == employeeId && memberOf.Contains(member.ProjectId))
+            .GroupBy(member => member.ProjectId)
+            .Select(group => new { group.Key, Billable = group.Any(member => member.Billable) })
+            .ToDictionaryAsync(row => row.Key, row => row.Billable, cancellationToken);
+
+        List<Domain.Project> projects = await dbContext.Projects.AsNoTracking()
+            .Where(project => memberOf.Contains(project.Id)
+                || project.ProjectManagerEmployeeId == employeeId || project.DeliveryManagerEmployeeId == employeeId)
+            .Where(project => project.Status == ProjectStatus.Active || project.Status == ProjectStatus.OnHold)
+            .OrderBy(project => project.Code)
+            .ToListAsync(cancellationToken);
+        List<Guid> projectIds = [.. projects.Select(project => project.Id)];
+        var tasks = await dbContext.ProjectTasks.AsNoTracking()
+            .Where(task => projectIds.Contains(task.ProjectId) && task.AssigneeEmployeeId == employeeId && task.Type != TaskType.Epic
+                && (task.CompletedDate == null || task.CompletedDate >= firstDay.ToDateTime(TimeOnly.MinValue)))
+            .OrderBy(task => task.Number)
+            .Select(task => new { task.ProjectId, task.Id, task.Code, task.Title })
+            .ToListAsync(cancellationToken);
+
+        return [.. projects.Select(project => new TimesheetTarget(
+            project.Id, project.Code, project.Name,
+            billable.TryGetValue(project.Id, out bool isBillable) ? isBillable : project.BillingType != ProjectBillingType.NonBillable,
+            [.. tasks.Where(task => task.ProjectId == project.Id).Select(task => new TimesheetTask(task.Id, task.Code, task.Title))]))];
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, Guid>> TaskProjectsAsync(IEnumerable<Guid> taskIds, CancellationToken cancellationToken = default)
+    {
+        List<Guid> ids = [.. taskIds.Distinct()];
+        return ids.Count == 0
+            ? new Dictionary<Guid, Guid>()
+            : await dbContext.ProjectTasks.AsNoTracking().Where(task => ids.Contains(task.Id)).ToDictionaryAsync(task => task.Id, task => task.ProjectId, cancellationToken);
     }
 }
 
@@ -177,6 +249,44 @@ internal sealed class ReturnChangeOnSendBack(GovernanceService governance) : IIn
         if (integrationEvent.SubjectType == GovernanceService.ChangeRequestSubjectType)
         {
             await governance.ApplyDecisionAsync(integrationEvent.SubjectId, approved: null, cancellationToken);
+        }
+    }
+}
+
+/// <summary>Approved timesheet hours become tasks' actual hours (spec §70: timesheets feed the project).</summary>
+internal sealed class AddHoursOnTimesheetApproval(AppDbContext dbContext) : IIntegrationEventConsumer<TimesheetApprovedIntegrationEvent>
+{
+    public Task HandleAsync(TimesheetApprovedIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(integrationEvent);
+        return TaskHoursLedger.ApplyAsync(dbContext, integrationEvent.TaskHours, sign: 1, cancellationToken);
+    }
+}
+
+/// <summary>A reopened timesheet's hours come off its tasks until it is approved again.</summary>
+internal sealed class RemoveHoursOnTimesheetReopened(AppDbContext dbContext) : IIntegrationEventConsumer<TimesheetReopenedIntegrationEvent>
+{
+    public Task HandleAsync(TimesheetReopenedIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(integrationEvent);
+        return TaskHoursLedger.ApplyAsync(dbContext, integrationEvent.TaskHours, sign: -1, cancellationToken);
+    }
+}
+
+internal static class TaskHoursLedger
+{
+    public static async Task ApplyAsync(AppDbContext dbContext, IReadOnlyList<TaskHours> hours, int sign, CancellationToken cancellationToken)
+    {
+        List<Guid> ids = [.. hours.Select(row => row.TaskId)];
+        if (ids.Count == 0)
+        {
+            return;
+        }
+
+        List<ProjectTask> tasks = await dbContext.ProjectTasks.Where(task => ids.Contains(task.Id)).ToListAsync(cancellationToken);
+        foreach (ProjectTask task in tasks)
+        {
+            task.AddActualHours(sign * hours.Where(row => row.TaskId == task.Id).Sum(row => row.Hours));
         }
     }
 }

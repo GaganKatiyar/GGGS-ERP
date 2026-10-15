@@ -523,15 +523,22 @@ public sealed class ProjectTeamMember : TenantAggregateRoot
         Notes = Project.Clean(assignment.Notes, 500);
     }
 
-    public void Release(DateOnly on)
+    /// <summary>
+    /// Ends the allocation on <paramref name="on"/>. A release dated ahead (a transfer next month, a
+    /// notice period) only sets the end date: the person is still on the project until then.
+    /// </summary>
+    public void Release(DateOnly on, DateOnly today)
     {
         if (Status == TeamMemberStatus.Released)
         {
             return;
         }
 
-        Status = TeamMemberStatus.Released;
         EndDate = on < StartDate ? StartDate : on;
+        if (EndDate < today)
+        {
+            Status = TeamMemberStatus.Released;
+        }
     }
 
     /// <summary>On the project on <paramref name="day"/>.</summary>

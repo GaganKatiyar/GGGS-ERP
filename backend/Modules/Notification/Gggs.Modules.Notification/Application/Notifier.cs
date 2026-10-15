@@ -50,6 +50,12 @@ internal static class NotificationTemplateCatalog
         new(NotificationTemplates.ProjectTaskAssigned, "Task assigned",
             "{{taskCode}}: {{taskTitle}}",
             "Hi {{recipientName}}, {{taskCode}} {{taskTitle}} in {{projectName}} has been assigned to you.", SendInApp: true, SendEmail: false),
+        new(NotificationTemplates.TimesheetMissing, "Timesheet missing",
+            "Timesheet due: week of {{weekStart}}",
+            "Hi {{recipientName}}, your timesheet for the week of {{weekStart}} has not been submitted yet.", SendInApp: true, SendEmail: true),
+        new(NotificationTemplates.ResourceTransferDecided, "Project transfer",
+            "Moving to {{projectName}}",
+            "Hi {{recipientName}}, you move to {{projectName}} from {{effectiveDate}}.", SendInApp: true, SendEmail: true),
     ];
 }
 
