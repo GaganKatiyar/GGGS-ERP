@@ -5,3 +5,4 @@ export * from './lib/audit.models';
 export * from './lib/notification.models';
 export * from './lib/core-hr.models';
 export * from './lib/platform.models';
+export * from './lib/time.models';

@@ -80,6 +80,7 @@ export default [
                 'scope:notifications',
                 'scope:documents',
                 'scope:policies',
+                'scope:time',
               ],
             },
             {
@@ -141,6 +142,10 @@ export default [
             {
               sourceTag: 'scope:policies',
               onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:policies'],
+            },
+            {
+              sourceTag: 'scope:time',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:time'],
             },
           ],
         },

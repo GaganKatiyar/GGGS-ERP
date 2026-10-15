@@ -52,6 +52,18 @@ export const appRoutes: Route[] = [
           import('@gggs/features/employees').then((m) => m.MY_PROFILE_ROUTES),
       },
       {
+        path: 'team/attendance',
+        ...withPermissions(['attendance.record.view']),
+        loadChildren: () =>
+          import('@gggs/features/time').then((m) => m.TEAM_ATTENDANCE_ROUTES),
+      },
+      {
+        path: 'team/leave',
+        ...withPermissions(['leave.request.view']),
+        loadChildren: () =>
+          import('@gggs/features/time').then((m) => m.TEAM_LEAVE_ROUTES),
+      },
+      {
         path: 'team',
         ...withPermissions(['employee.profile.view']),
         loadChildren: () =>
@@ -108,6 +120,30 @@ export const appRoutes: Route[] = [
         ...withPermissions(['self.policy.view']),
         loadChildren: () =>
           import('@gggs/features/policies').then((m) => m.MY_POLICIES_ROUTES),
+      },
+      {
+        path: 'me/attendance',
+        ...withPermissions(['self.attendance.view']),
+        loadChildren: () =>
+          import('@gggs/features/time').then((m) => m.MY_ATTENDANCE_ROUTES),
+      },
+      {
+        path: 'me/leave',
+        ...withPermissions(['self.leave.view']),
+        loadChildren: () =>
+          import('@gggs/features/time').then((m) => m.MY_LEAVE_ROUTES),
+      },
+      {
+        path: 'attendance',
+        ...withPermissions(['attendance.record.view']),
+        loadChildren: () =>
+          import('@gggs/features/time').then((m) => m.ATTENDANCE_ROUTES),
+      },
+      {
+        path: 'leave',
+        ...withPermissions(['leave.request.view', 'leave.type.manage', 'leave.policy.manage', 'leave.holiday.manage']),
+        loadChildren: () =>
+          import('@gggs/features/time').then((m) => m.LEAVE_ROUTES),
       },
       {
         path: 'admin',

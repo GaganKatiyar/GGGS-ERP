@@ -5,6 +5,7 @@ import { ApiError } from '@gggs/core/http';
 import { PermissionStore } from '@gggs/core/permissions';
 import { EmployeeDocuments } from '@gggs/shared/documents';
 import { EmployeeDirectoryApi } from '@gggs/shared/employee-reference';
+import { EmployeeAttendance, EmployeeLeave } from '@gggs/shared/time';
 import type { Employee360, Employee360Section } from '@gggs/shared/models';
 import { EmptyState, KpiCard, PageHeader, Skeleton, StatusBadge, Tabs, type TabItem } from '@gggs/shared/ui';
 import { EmploymentTab } from './tabs/employment-tab';
@@ -20,7 +21,7 @@ import { StatutoryTab } from './tabs/statutory-tab';
  */
 @Component({
   selector: 'gggs-employee-360-page',
-  imports: [DatePipe, RouterLink, PageHeader, KpiCard, StatusBadge, Tabs, Skeleton, EmptyState, EmployeeDocuments, EmploymentTab, PersonalTab, FamilyTab, StatutoryTab, HistoryTab],
+  imports: [DatePipe, RouterLink, PageHeader, KpiCard, StatusBadge, Tabs, Skeleton, EmptyState, EmployeeDocuments, EmployeeAttendance, EmployeeLeave, EmploymentTab, PersonalTab, FamilyTab, StatutoryTab, HistoryTab],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (error()) {
@@ -104,6 +105,12 @@ import { StatutoryTab } from './tabs/statutory-tab';
           @case ('history') {
             <gggs-history-tab [employeeId]="p.id" />
           }
+          @case ('attendance') {
+            <gggs-employee-attendance [employeeId]="p.id" />
+          }
+          @case ('leave') {
+            <gggs-employee-leave [employeeId]="p.id" />
+          }
           @case ('documents') {
             <gggs-employee-documents [employeeId]="p.id" [canUpload]="canUploadDocuments" [canArchive]="canArchiveDocuments" />
           }
@@ -148,7 +155,9 @@ export class Employee360Page {
     (this.data()?.sections ?? []).filter(
       (section) =>
         (section.key !== 'history' || this.permissions.has('employee.history.view')) &&
-        (section.key !== 'documents' || this.permissions.has('document.file.view')),
+        (section.key !== 'documents' || this.permissions.has('document.file.view')) &&
+        (section.key !== 'attendance' || this.permissions.has('attendance.record.view')) &&
+        (section.key !== 'leave' || this.permissions.has('leave.balance.view')),
     ),
   );
 
