@@ -101,6 +101,17 @@ Since M5 it also:
 DevSeed adds a demo client (Northwind Retail) with an MSA, a SOW and the project NWCOM: five people
 on the team, a board with a sprint running, milestones, a risk, an issue and a change request.
 
+Since M6 it also:
+
+- reminds everyone in scope who has not submitted last week's timesheet, every Monday at 04:00
+  (`timesheet-reminders`).
+- applies approved timesheets (posting their hours to project tasks) and approved project transfers.
+
+DevSeed's `resourcing` step rates fourteen employee skills, sets up seven resource profiles with
+rates, raises an open resource request on NWCOM and books eight approved weeks of timesheets, so
+Resources, Utilization and the bench have data. Every tenant gets the standard skill catalogue
+when it is provisioned.
+
 Uploaded documents are stored under `.local/files` (one folder per tenant), configured by
 `Gggs:Storage:FileSystem:RootPath` in both hosts' development settings.
 

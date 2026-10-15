@@ -18,7 +18,7 @@ The tenancy, isolation and security design in
 [docs/architecture/architecture.md](docs/architecture/architecture.md) (§3, §6.2–6.3, §8, §9) still
 applies.
 
-**Status: M5 (delivery: clients, contracts, projects) complete.**
+**Status: M6 (delivery: resources, skills, timesheets, utilization) complete.**
 
 - Platform (tenants, plans, subscriptions, settings, audit log) and Identity (users, roles,
   permissions, browser sessions, the OIDC token server) run as modules in a single API host.
@@ -39,12 +39,20 @@ applies.
   reminders; projects with lifecycle, team, phases, tasks on a Kanban board, dependencies,
   milestones, sprints (burndown, velocity), requirements, change requests through approval, the
   RAID log, meetings, a calendar, documents, and health judged on configurable thresholds.
+- Resourcing: a skill catalogue with employee skills, targets and certifications (self-rated and
+  manager-assessed) and a skill matrix; resource profiles with rates and capacity; an allocation
+  calendar with over-allocation flagged, the bench, and release and approval-gated transfer between
+  projects; resource requests with ranked matching (skills, availability, experience, location,
+  cost) and a shortlist; capacity and skill demand against supply over the coming months; weekly
+  timesheets checked against configurable rules, approved through the workflow, reopened for
+  correction and closed by a period lock, with approved hours posted to tasks; and utilization by
+  person, project, department, manager or location.
 - The frontend has the PeopleOS shell, a shared UI kit (KPI cards, charts, drawers, form dialogs,
   filter bar, timeline, tabs, an upgraded data table with column chooser and CSV export), and the
   Core HR and administration screens. Unbuilt modules stay hidden in the navigation.
-- 445 backend tests pass, including architecture rules for module boundaries, a tenant-isolation
+- 476 backend tests pass, including architecture rules for module boundaries, a tenant-isolation
   suite against a real SQL Server, and end-to-end flows that run the worker's event delivery.
-- Resources, skills, timesheets and utilization are next (M6).
+- Money (payroll, compliance, compensation, benefits, project financials) is next (M7).
 
 ## Prerequisites
 
