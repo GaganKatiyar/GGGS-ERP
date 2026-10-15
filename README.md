@@ -18,7 +18,7 @@ The tenancy, isolation and security design in
 [docs/architecture/architecture.md](docs/architecture/architecture.md) (§3, §6.2–6.3, §8, §9) still
 applies.
 
-**Status: M3 (platform services) complete.**
+**Status: M4 (time) complete.**
 
 - Platform (tenants, plans, subscriptions, settings, audit log) and Identity (users, roles,
   permissions, browser sessions, the OIDC token server) run as modules in a single API host.
@@ -32,12 +32,15 @@ applies.
   escalation, delegation, send back and resubmit) with an approvals inbox; notifications in-app and
   by email through templates; versioned documents with generated letters and click-to-sign; and
   company policies with approval-gated publishing and acknowledgements.
+- Time: shifts and rosters with swaps, attendance from web punches and devices with
+  regularization, leave types and policies on a ledger (accrual job, carry-forward, probation,
+  notice and sandwich rules), holiday calendars by location, and self-service and team views.
 - The frontend has the PeopleOS shell, a shared UI kit (KPI cards, charts, drawers, form dialogs,
   filter bar, timeline, tabs, an upgraded data table with column chooser and CSV export), and the
   Core HR and administration screens. Unbuilt modules stay hidden in the navigation.
-- 369 backend tests pass, including architecture rules for module boundaries, a tenant-isolation
+- 404 backend tests pass, including architecture rules for module boundaries, a tenant-isolation
   suite against a real SQL Server, and end-to-end flows that run the worker's event delivery.
-- Time (shifts, attendance, leave, holidays) is next (M4).
+- Delivery (clients, contracts, projects) is next (M5).
 
 ## Prerequisites
 

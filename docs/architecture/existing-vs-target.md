@@ -203,7 +203,8 @@ No load testing or query profiling has been done, so these are structural observ
 | M1 | Monolith foundation: hosts, `Gggs.Data`, Platform and Identity modules, BFF folded in, BuildingBlocks changes, infra, tests, navigation | done (2026-10-14); retired code deleted after M2 (§11) |
 | M2 | Organization, Employee, MasterData; UI component kit; Employee 360 shell | done (2026-10-14): org structure (11 record kinds, department tree), employees (hire, 360, assignment changes, confirm/notice/exit, family, statutory and bank, history, org chart, CSV import with preview), master data admin, My profile, My team |
 | M3 | Workflow, Notification, Documents, Policies; approvals inbox | done (2026-10-14): staged approvals (parallel, conditional, SLA escalation, delegation, send-back/resubmit), in-app and email notifications, versioned documents with letters and click-to-sign, policies with approval-gated publishing and acknowledgements |
-| M4+ | See [roadmap.md](../roadmap.md) | planned |
+| M4 | Shifts, Attendance, Leave, Holidays; ESS/MSS | done (2026-10-15): shifts with weekly offs, assignments and roster overrides, shift swaps through approval; attendance from web punches and devices (CSV import), evaluated against the shift (grace, half day, missing punch) and closed nightly, regularization through approval; leave types and policies (monthly/yearly accrual job, carry-forward and lapse, probation, notice, longest stretch, negative balance, sandwich rule) on a ledger; holiday calendars by location; self-service, team and Employee 360 views |
+| M5+ | See [roadmap.md](../roadmap.md) | planned |
 
 The remaining old services (CoreHr, Time, Payroll, Talent, Spend, Workflow, Notification, Documents,
 Reporting) are deleted in M1, together with their tests and frontend feature libraries. Nothing

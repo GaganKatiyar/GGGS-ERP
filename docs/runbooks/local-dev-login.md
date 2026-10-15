@@ -82,6 +82,15 @@ Since M3 the worker also:
   approval tasks.
 - completes approval-gated actions, such as publishing a policy once its approval comes through.
 
+Since M4 it also:
+
+- closes attendance every hour, storing the evaluated day for the last three days so late punches
+  and approved corrections are picked up.
+- runs leave accrual daily at 01:30 (crediting each month once) and lapses balances above the
+  carry-forward limit in January. DevSeed seeds the leave catalog and credits the current month;
+  **Leave > Leave policies > Run accrual** runs any month by hand.
+- applies approved leave, regularizations and shift swaps.
+
 Uploaded documents are stored under `.local/files` (one folder per tenant), configured by
 `Gggs:Storage:FileSystem:RootPath` in both hosts' development settings.
 
