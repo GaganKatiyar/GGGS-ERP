@@ -91,6 +91,16 @@ Since M4 it also:
   **Leave > Leave policies > Run accrual** runs any month by hand.
 - applies approved leave, regularizations and shift swaps.
 
+Since M5 it also:
+
+- sweeps contracts daily at 02:00: expires those past their end date (or rolls auto-renewing ones
+  on) and reminds the owner 30 days before a renewal is due.
+- records every open project's health at 02:45, so the dashboard shows a trend.
+- applies approved contract activations and change requests, and takes leavers off project teams.
+
+DevSeed adds a demo client (Northwind Retail) with an MSA, a SOW and the project NWCOM: five people
+on the team, a board with a sprint running, milestones, a risk, an issue and a change request.
+
 Uploaded documents are stored under `.local/files` (one folder per tenant), configured by
 `Gggs:Storage:FileSystem:RootPath` in both hosts' development settings.
 
