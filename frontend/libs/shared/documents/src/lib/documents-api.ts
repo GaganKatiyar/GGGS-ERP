@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import type {
   DocumentDetail,
   DocumentItem,
+  DocumentOwnerType,
   DocumentSignature,
   DocumentTemplateItem,
   DocumentTypeItem,
@@ -12,7 +13,7 @@ import type {
 import { firstValueFrom } from 'rxjs';
 
 export interface DocumentQuery {
-  readonly ownerType?: 'Employee' | 'Organization';
+  readonly ownerType?: DocumentOwnerType;
   readonly ownerId?: string;
   readonly documentTypeId?: string;
   readonly search?: string;

@@ -146,6 +146,24 @@ export const appRoutes: Route[] = [
           import('@gggs/features/time').then((m) => m.LEAVE_ROUTES),
       },
       {
+        path: 'clients',
+        ...withPermissions(['client.client.view']),
+        loadChildren: () =>
+          import('@gggs/features/clients').then((m) => m.CLIENTS_ROUTES),
+      },
+      {
+        path: 'contracts',
+        ...withPermissions(['contract.contract.view']),
+        loadChildren: () =>
+          import('@gggs/features/clients').then((m) => m.CONTRACTS_ROUTES),
+      },
+      {
+        path: 'projects',
+        ...withPermissions(['project.project.view']),
+        loadChildren: () =>
+          import('@gggs/features/projects').then((m) => m.PROJECTS_ROUTES),
+      },
+      {
         path: 'admin',
         // Matches NAVIGATION's "Administration" group: any one of these lets someone in, and each
         // child route narrows further to the specific permission it actually needs.

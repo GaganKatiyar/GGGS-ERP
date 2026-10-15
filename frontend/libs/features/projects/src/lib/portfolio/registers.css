@@ -1,0 +1,34 @@
+.register__filters {
+  margin-block-end: var(--gggs-space-3);
+}
+
+.register__row {
+  display: grid;
+  grid-template-columns: 1.4fr 2fr 8rem 9rem 7rem 8rem;
+  gap: var(--gggs-space-3);
+  align-items: center;
+  padding-block: var(--gggs-space-2);
+  border-block-end: 1px solid var(--gggs-color-border);
+  color: inherit;
+  text-decoration: none;
+}
+
+.register__row:hover {
+  background: var(--gggs-color-surface-hover, transparent);
+}
+
+.register__late {
+  color: var(--gggs-color-danger, #dc2626);
+}
+
+.register__goal {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 56rem) {
+  .register__row {
+    grid-template-columns: 1fr 1fr;
+  }
+}

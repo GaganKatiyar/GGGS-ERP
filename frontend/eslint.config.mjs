@@ -80,6 +80,8 @@ export default [
                 'scope:notifications',
                 'scope:documents',
                 'scope:policies',
+                'scope:clients',
+                'scope:projects',
                 'scope:time',
               ],
             },
@@ -146,6 +148,14 @@ export default [
             {
               sourceTag: 'scope:time',
               onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:time'],
+            },
+            {
+              sourceTag: 'scope:projects',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:projects'],
+            },
+            {
+              sourceTag: 'scope:clients',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:clients'],
             },
           ],
         },

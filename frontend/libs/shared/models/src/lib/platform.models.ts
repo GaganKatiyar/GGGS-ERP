@@ -188,9 +188,9 @@ export interface NotificationTemplate {
 
 // ----- Documents -----------------------------------------------------------------------------
 
-export type DocumentCategory = 'Identity' | 'Education' | 'Employment' | 'Letter' | 'Policy' | 'Contract' | 'Other';
+export type DocumentCategory = 'Identity' | 'Education' | 'Employment' | 'Letter' | 'Policy' | 'Contract' | 'Other' | 'Project';
 
-export type DocumentOwnerType = 'Employee' | 'Organization';
+export type DocumentOwnerType = 'Employee' | 'Organization' | 'Client' | 'Project';
 
 export interface DocumentTypeItem {
   readonly id: string;
@@ -399,6 +399,7 @@ export const DOCUMENT_CATEGORY_LABELS: Readonly<Record<DocumentCategory, string>
   Policy: 'Policies',
   Contract: 'Contracts',
   Other: 'Other',
+  Project: 'Project',
 };
 
 export const APPROVER_KIND_LABELS: Readonly<Record<ApproverKind, string>> = {

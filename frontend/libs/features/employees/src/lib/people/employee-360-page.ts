@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, si
 import { RouterLink } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import { PermissionStore } from '@gggs/core/permissions';
+import { EmployeeProjects } from '@gggs/shared/delivery';
 import { EmployeeDocuments } from '@gggs/shared/documents';
 import { EmployeeDirectoryApi } from '@gggs/shared/employee-reference';
 import { EmployeeAttendance, EmployeeLeave } from '@gggs/shared/time';
@@ -21,7 +22,7 @@ import { StatutoryTab } from './tabs/statutory-tab';
  */
 @Component({
   selector: 'gggs-employee-360-page',
-  imports: [DatePipe, RouterLink, PageHeader, KpiCard, StatusBadge, Tabs, Skeleton, EmptyState, EmployeeDocuments, EmployeeAttendance, EmployeeLeave, EmploymentTab, PersonalTab, FamilyTab, StatutoryTab, HistoryTab],
+  imports: [DatePipe, RouterLink, PageHeader, KpiCard, StatusBadge, Tabs, Skeleton, EmptyState, EmployeeDocuments, EmployeeAttendance, EmployeeLeave, EmployeeProjects, EmploymentTab, PersonalTab, FamilyTab, StatutoryTab, HistoryTab],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (error()) {
@@ -110,6 +111,9 @@ import { StatutoryTab } from './tabs/statutory-tab';
           }
           @case ('leave') {
             <gggs-employee-leave [employeeId]="p.id" />
+          }
+          @case ('projects') {
+            <gggs-employee-projects [employeeId]="p.id" />
           }
           @case ('documents') {
             <gggs-employee-documents [employeeId]="p.id" [canUpload]="canUploadDocuments" [canArchive]="canArchiveDocuments" />

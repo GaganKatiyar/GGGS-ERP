@@ -36,6 +36,25 @@ export const DEFAULT_STATUS_VARIANTS: Readonly<Record<string, BadgeVariant>> = {
   expired: 'danger',
   overdue: 'danger',
   failed: 'danger',
+  // Delivery (M5): project health, milestones, sprints, contracts, change requests and RAID.
+  green: 'success',
+  amber: 'warning',
+  red: 'danger',
+  notassessed: 'neutral',
+  achieved: 'success',
+  done: 'success',
+  resolved: 'success',
+  held: 'success',
+  planned: 'primary',
+  scheduled: 'primary',
+  prospect: 'primary',
+  implementing: 'primary',
+  testing: 'primary',
+  onhold: 'warning',
+  accepted: 'warning',
+  notstarted: 'neutral',
+  released: 'neutral',
+  terminated: 'danger',
 };
 
 /** A status as a coloured pill, with a readable label ("OnNotice" shows as "On notice"). */
