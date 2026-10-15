@@ -93,6 +93,7 @@ internal sealed partial class DocumentService(
     INotifier notifier,
     IIntegrationEventPublisher publisher,
     ISignatureProvider signatureProvider,
+    IEnumerable<IDocumentOwnerAccess> ownerAccess,
     TimeProvider timeProvider)
 {
     public const long MaxFileBytes = 10 * 1024 * 1024;
@@ -127,6 +128,15 @@ internal sealed partial class DocumentService(
             }
 
             documents = documents.Where(document => document.OwnerType == DocumentOwnerType.Employee && document.OwnerId == ownerId);
+        }
+        else if (query.OwnerType is { } external && IsExternal(external) && query.OwnerId is { } externalId)
+        {
+            if (!await AccessFor(external).CanReadAsync(externalId, cancellationToken))
+            {
+                throw new NotFoundException(external.ToString(), externalId);
+            }
+
+            documents = documents.Where(document => document.OwnerType == external && document.OwnerId == externalId);
         }
         else
         {
@@ -499,9 +509,14 @@ internal sealed partial class DocumentService(
         Document document = await source.FirstOrDefaultAsync(row => row.Id == id, cancellationToken)
             ?? throw new NotFoundException(nameof(Document), id);
 
-        bool allowed = document.OwnerType == DocumentOwnerType.Employee
-            ? await employees.IsInScopeAsync(document.OwnerId!.Value, permission, cancellationToken)
-            : await HasTenantScopeAsync(permission, cancellationToken);
+        bool allowed = document.OwnerType switch
+        {
+            DocumentOwnerType.Employee => await employees.IsInScopeAsync(document.OwnerId!.Value, permission, cancellationToken),
+            DocumentOwnerType.Client or DocumentOwnerType.Project => permission == Permissions.Document.View
+                ? await AccessFor(document.OwnerType).CanReadAsync(document.OwnerId!.Value, cancellationToken)
+                : await AccessFor(document.OwnerType).CanWriteAsync(document.OwnerId!.Value, cancellationToken),
+            _ => await HasTenantScopeAsync(permission, cancellationToken),
+        };
 
         return allowed ? document : throw new NotFoundException(nameof(Document), id);
     }
@@ -518,8 +533,25 @@ internal sealed partial class DocumentService(
             return;
         }
 
+        if (IsExternal(ownerType))
+        {
+            if (ownerId is not { } externalId || !await AccessFor(ownerType).CanWriteAsync(externalId, cancellationToken))
+            {
+                throw new NotFoundException(ownerType.ToString(), ownerId ?? Guid.Empty);
+            }
+
+            return;
+        }
+
         await RequireTenantScopeAsync(permission, cancellationToken);
     }
+
+    private static bool IsExternal(DocumentOwnerType ownerType) => ownerType is DocumentOwnerType.Client or DocumentOwnerType.Project;
+
+    /// <summary>The owning module's access rules; a kind of owner nobody answers for is closed.</summary>
+    private IDocumentOwnerAccess AccessFor(DocumentOwnerType ownerType)
+        => ownerAccess.FirstOrDefault(access => string.Equals(access.OwnerType, ownerType.ToString(), StringComparison.OrdinalIgnoreCase))
+            ?? throw new ForbiddenException("DOCUMENT_OWNER_CLOSED", $"Documents cannot be held for a {ownerType.ToString().ToLowerInvariant()} here.");
 
     private async Task RequireTenantScopeAsync(string permission, CancellationToken cancellationToken)
     {
@@ -565,9 +597,21 @@ internal sealed partial class DocumentService(
             .ToDictionaryAsync(type => type.Id, cancellationToken);
 
         Dictionary<Guid, string> owners = (await employees.GetManyAsync(
-                documents.Where(document => document.OwnerId is not null).Select(document => document.OwnerId!.Value),
+                documents.Where(document => document.OwnerType == DocumentOwnerType.Employee && document.OwnerId is not null).Select(document => document.OwnerId!.Value),
                 cancellationToken))
             .ToDictionary(person => person.Id, person => person.DisplayName);
+
+        foreach (IGrouping<DocumentOwnerType, Document> external in documents.Where(document => IsExternal(document.OwnerType) && document.OwnerId is not null).GroupBy(document => document.OwnerType))
+        {
+            IDocumentOwnerAccess? access = ownerAccess.FirstOrDefault(candidate => string.Equals(candidate.OwnerType, external.Key.ToString(), StringComparison.OrdinalIgnoreCase));
+            if (access is not null)
+            {
+                foreach ((Guid id, string name) in await access.GetNamesAsync(external.Select(document => document.OwnerId!.Value), cancellationToken))
+                {
+                    owners.TryAdd(id, name);
+                }
+            }
+        }
 
         DateOnly today = DateOnly.FromDateTime(Now);
         return [.. documents.Select(document =>

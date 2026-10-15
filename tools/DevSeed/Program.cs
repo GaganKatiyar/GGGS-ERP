@@ -181,6 +181,12 @@ await RunAsync(provider, "leave", async (scope, tenant) =>
     await Gggs.DevSeed.DemoData.SeedLeaveAsync(scope);
 });
 
+await RunAsync(provider, "delivery", async (scope, tenant) =>
+{
+    tenant.SetTenant(tenantId);
+    await Gggs.DevSeed.DeliveryDemo.SeedAsync(scope);
+});
+
 await RunAsync(provider, "administrator employee", async (scope, tenant) =>
 {
     tenant.SetTenant(tenantId);

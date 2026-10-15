@@ -41,6 +41,15 @@ internal static class NotificationTemplateCatalog
         new(NotificationTemplates.DocumentSignatureRequested, "Signature requested",
             "Please sign: {{documentTitle}}",
             "Hi {{recipientName}}, {{documentTitle}} is waiting for your signature.", SendInApp: true, SendEmail: true),
+        new(NotificationTemplates.ContractRenewalDue, "Contract renewal due",
+            "Renewal due: {{contractNumber}} with {{clientName}}",
+            "Hi {{recipientName}}, contract {{contractNumber}} ({{contractTitle}}) with {{clientName}} is due for renewal on {{dueDate}}.", SendInApp: true, SendEmail: true),
+        new(NotificationTemplates.ProjectTeamAdded, "Added to a project",
+            "You're on {{projectName}}",
+            "Hi {{recipientName}}, you have been added to {{projectName}} as {{roleName}} from {{startDate}}.", SendInApp: true, SendEmail: true),
+        new(NotificationTemplates.ProjectTaskAssigned, "Task assigned",
+            "{{taskCode}}: {{taskTitle}}",
+            "Hi {{recipientName}}, {{taskCode}} {{taskTitle}} in {{projectName}} has been assigned to you.", SendInApp: true, SendEmail: false),
     ];
 }
 

@@ -13,6 +13,7 @@ public enum DocumentCategory
     Policy = 5,
     Contract = 6,
     Other = 7,
+    Project = 8,
 }
 
 /// <summary>A kind of document - "PAN card", "Offer letter" - with the rules every document of that kind follows.</summary>
@@ -64,6 +65,12 @@ public enum DocumentOwnerType
 {
     Employee = 1,
     Organization = 2,
+
+    /// <summary>Held for a client; access follows the Client module's rules.</summary>
+    Client = 3,
+
+    /// <summary>Held for a project (spec §55); access follows the project's team.</summary>
+    Project = 4,
 }
 
 public enum DocumentSource
@@ -85,7 +92,7 @@ public sealed class Document : TenantAggregateRoot
 
     public DocumentOwnerType OwnerType { get; private set; }
 
-    /// <summary>The employee it belongs to; null for organization documents.</summary>
+    /// <summary>The employee, client or project it belongs to; null for organization documents.</summary>
     public Guid? OwnerId { get; private set; }
 
     public Guid DocumentTypeId { get; private set; }
@@ -111,9 +118,9 @@ public sealed class Document : TenantAggregateRoot
     {
         ArgumentNullException.ThrowIfNull(type);
 
-        if (ownerType == DocumentOwnerType.Employee && ownerId is null)
+        if (ownerType != DocumentOwnerType.Organization && ownerId is null)
         {
-            throw new DomainRuleException("DOCUMENT_OWNER_REQUIRED", "An employee document needs the employee it belongs to.");
+            throw new DomainRuleException("DOCUMENT_OWNER_REQUIRED", $"A {ownerType.ToString().ToLowerInvariant()} document needs the record it belongs to.");
         }
 
         if (type.RequiresExpiry && expiresOn is null)
@@ -124,7 +131,7 @@ public sealed class Document : TenantAggregateRoot
         return new Document
         {
             OwnerType = ownerType,
-            OwnerId = ownerType == DocumentOwnerType.Employee ? ownerId : null,
+            OwnerId = ownerType == DocumentOwnerType.Organization ? null : ownerId,
             DocumentTypeId = type.Id,
             Title = Guard.MaxLength(Guard.NotNullOrWhiteSpace(title).Trim(), 200),
             ExpiresOn = expiresOn,

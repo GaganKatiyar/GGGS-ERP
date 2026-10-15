@@ -54,6 +54,12 @@
     <Project Path="Modules/Leave/Gggs.Modules.Leave/Gggs.Modules.Leave.csproj" />
     <Project Path="Modules/Leave/Gggs.Modules.Leave.Contracts/Gggs.Modules.Leave.Contracts.csproj" />
     <Project Path="Modules/Attendance/Gggs.Modules.Attendance/Gggs.Modules.Attendance.csproj" />
+    <Project Path="Modules/Client/Gggs.Modules.Client/Gggs.Modules.Client.csproj" />
+    <Project Path="Modules/Client/Gggs.Modules.Client.Contracts/Gggs.Modules.Client.Contracts.csproj" />
+    <Project Path="Modules/Contract/Gggs.Modules.Contract/Gggs.Modules.Contract.csproj" />
+    <Project Path="Modules/Contract/Gggs.Modules.Contract.Contracts/Gggs.Modules.Contract.Contracts.csproj" />
+    <Project Path="Modules/Project/Gggs.Modules.Project/Gggs.Modules.Project.csproj" />
+    <Project Path="Modules/Project/Gggs.Modules.Project.Contracts/Gggs.Modules.Project.Contracts.csproj" />
   </Folder>
   <Folder Name="/Tools/">
     <Project Path="../tools/DevSeed/Gggs.DevSeed.csproj" />
@@ -66,6 +72,7 @@
     <Project Path="../tests/unit/Gggs.Employee.UnitTests/Gggs.Employee.UnitTests.csproj" />
     <Project Path="../tests/unit/Gggs.Workflow.UnitTests/Gggs.Workflow.UnitTests.csproj" />
     <Project Path="../tests/unit/Gggs.Time.UnitTests/Gggs.Time.UnitTests.csproj" />
+    <Project Path="../tests/unit/Gggs.Delivery.UnitTests/Gggs.Delivery.UnitTests.csproj" />
     <Project Path="../tests/unit/Gggs.Identity.UnitTests/Gggs.Identity.UnitTests.csproj" />
     <Project Path="../tests/unit/Gggs.Platform.UnitTests/Gggs.Platform.UnitTests.csproj" />
   </Folder>

@@ -1,6 +1,8 @@
 using System.Reflection;
 using Gggs.BuildingBlocks.Web.Modules;
 using Gggs.Modules.Attendance;
+using Gggs.Modules.Client;
+using Gggs.Modules.Contract;
 using Gggs.Modules.Documents;
 using Gggs.Modules.Employee;
 using Gggs.Modules.Identity;
@@ -10,6 +12,7 @@ using Gggs.Modules.Notification;
 using Gggs.Modules.Organization;
 using Gggs.Modules.Platform;
 using Gggs.Modules.Policies;
+using Gggs.Modules.Project;
 using Gggs.Modules.Shift;
 using Gggs.Modules.Workflow;
 
@@ -39,6 +42,9 @@ public static class ModuleCatalog
         new ShiftModule(),
         new LeaveModule(),
         new AttendanceModule(),
+        new ClientModule(),
+        new ContractModule(),
+        new ProjectModule(),
     ];
 
     /// <summary>The assemblies the shared <c>AppDbContext</c> builds its model from.</summary>

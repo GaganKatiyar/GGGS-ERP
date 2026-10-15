@@ -349,7 +349,7 @@ public sealed class EmployeeQueries(
             Section("history", "History", true, null, null),
             Section("attendance", "Attendance", true, Features.Time, null),
             Section("leave", "Leave", true, Features.Time, null),
-            Section("projects", "Projects", false, Features.Projects, "M5"),
+            Section("projects", "Projects", true, Features.Projects, null),
             Section("resources", "Allocation", false, Features.Resources, "M6"),
             Section("timesheet", "Timesheet", false, Features.Timesheets, "M6"),
             Section("skills", "Skills", false, null, "M6"),

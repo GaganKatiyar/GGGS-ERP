@@ -28,6 +28,15 @@ internal static class DocumentCatalog
         new("CONTRACT", "Contract", DocumentCategory.Contract, EmployeeVisible: true, RequiresExpiry: false),
         new("POLICY", "Company policy", DocumentCategory.Policy, EmployeeVisible: false, RequiresExpiry: false),
         new("OTHER", "Other", DocumentCategory.Other, EmployeeVisible: false, RequiresExpiry: false),
+        new("SOW", "Statement of work", DocumentCategory.Project, EmployeeVisible: false, RequiresExpiry: false),
+        new("BRD", "Business requirements (BRD)", DocumentCategory.Project, EmployeeVisible: false, RequiresExpiry: false),
+        new("FRD", "Functional requirements (FRD)", DocumentCategory.Project, EmployeeVisible: false, RequiresExpiry: false),
+        new("ARCHITECTURE", "Architecture", DocumentCategory.Project, EmployeeVisible: false, RequiresExpiry: false),
+        new("DESIGN", "Design", DocumentCategory.Project, EmployeeVisible: false, RequiresExpiry: false),
+        new("TEST_PLAN", "Test plan", DocumentCategory.Project, EmployeeVisible: false, RequiresExpiry: false),
+        new("UAT_SIGNOFF", "UAT sign-off", DocumentCategory.Project, EmployeeVisible: false, RequiresExpiry: false),
+        new("MEETING_MINUTES", "Meeting minutes", DocumentCategory.Project, EmployeeVisible: false, RequiresExpiry: false),
+        new("CLIENT_DOCUMENT", "Client document", DocumentCategory.Project, EmployeeVisible: false, RequiresExpiry: false),
     ];
 
     public static IReadOnlyList<DocumentTemplateSeed> Templates { get; } =

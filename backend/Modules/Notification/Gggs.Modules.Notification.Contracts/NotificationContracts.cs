@@ -37,4 +37,7 @@ public static class NotificationTemplates
     public const string UserInvited = "identity.user-invited";
     public const string PolicyPublished = "policy.published";
     public const string DocumentSignatureRequested = "document.signature-requested";
+    public const string ContractRenewalDue = "contract.renewal-due";
+    public const string ProjectTeamAdded = "project.team-added";
+    public const string ProjectTaskAssigned = "project.task-assigned";
 }

@@ -23,6 +23,9 @@
     <ProjectReference Include="..\..\Modules\Shift\Gggs.Modules.Shift\Gggs.Modules.Shift.csproj" />
     <ProjectReference Include="..\..\Modules\Leave\Gggs.Modules.Leave\Gggs.Modules.Leave.csproj" />
     <ProjectReference Include="..\..\Modules\Attendance\Gggs.Modules.Attendance\Gggs.Modules.Attendance.csproj" />
+    <ProjectReference Include="..\..\Modules\Client\Gggs.Modules.Client\Gggs.Modules.Client.csproj" />
+    <ProjectReference Include="..\..\Modules\Contract\Gggs.Modules.Contract\Gggs.Modules.Contract.csproj" />
+    <ProjectReference Include="..\..\Modules\Project\Gggs.Modules.Project\Gggs.Modules.Project.csproj" />
   </ItemGroup>
 
 </Project>

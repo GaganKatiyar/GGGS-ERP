@@ -35,7 +35,7 @@ public static class RoleTemplates
     /// <summary>The role the first administrator is given, and the only one that can grant the rest.</summary>
     public const string TenantAdministratorTemplateCode = "TENANT_ADMIN";
 
-    /// <summary>What a delivery role can see until project and resource permissions exist.</summary>
+    /// <summary>The people and structure a delivery role plans with.</summary>
     private static IReadOnlyList<PermissionAssignment> DeliveryBaseline(DataScope peopleScope) =>
     [
         new(Permissions.Organization.View, DataScope.Tenant),
@@ -45,7 +45,60 @@ public static class RoleTemplates
         new(Permissions.Workflow.TaskAct, DataScope.Own),
         new(Permissions.Report.View, peopleScope),
 
+        // Project documents follow the project's own access; these let the endpoints through.
+        new(Permissions.Document.View, DataScope.Own),
+        new(Permissions.Document.Upload, DataScope.Own),
+
         .. SelfService(),
+    ];
+
+    /// <summary>
+    /// Working on the projects one is on (spec §41-52): every employee's share of delivery. Own
+    /// scope means "projects I am on", so this reaches nothing until someone is added to a team.
+    /// </summary>
+    private static PermissionAssignment[] ProjectMember() =>
+    [
+        new(Permissions.Project.View, DataScope.Own),
+        new(Permissions.Project.TaskView, DataScope.Own),
+        new(Permissions.Project.TaskManage, DataScope.Own),
+        new(Permissions.Project.MilestoneView, DataScope.Own),
+        new(Permissions.Project.SprintView, DataScope.Own),
+        new(Permissions.Project.ChangeRequestView, DataScope.Own),
+        new(Permissions.Project.RaidView, DataScope.Own),
+        new(Permissions.Project.RaidManage, DataScope.Own),
+    ];
+
+    /// <summary>Running projects, at the given reach: Own for a project manager's own projects, Tenant for a portfolio.</summary>
+    private static PermissionAssignment[] ProjectLead(DataScope scope) =>
+    [
+        new(Permissions.Client.View, DataScope.Tenant),
+        new(Permissions.Contract.View, DataScope.Tenant),
+        new(Permissions.Project.View, scope),
+        new(Permissions.Project.Create, DataScope.Tenant),
+        new(Permissions.Project.Manage, scope),
+        new(Permissions.Project.TaskView, scope),
+        new(Permissions.Project.TaskManage, scope),
+        new(Permissions.Project.MilestoneView, scope),
+        new(Permissions.Project.MilestoneManage, scope),
+        new(Permissions.Project.SprintView, scope),
+        new(Permissions.Project.SprintManage, scope),
+        new(Permissions.Project.ChangeRequestView, scope),
+        new(Permissions.Project.ChangeRequestManage, scope),
+        new(Permissions.Project.RaidView, scope),
+        new(Permissions.Project.RaidManage, scope),
+    ];
+
+    /// <summary>Seeing every client, contract and project without changing any.</summary>
+    private static PermissionAssignment[] DeliveryReadOnly() =>
+    [
+        new(Permissions.Client.View, DataScope.Tenant),
+        new(Permissions.Contract.View, DataScope.Tenant),
+        new(Permissions.Project.View, DataScope.Tenant),
+        new(Permissions.Project.TaskView, DataScope.Tenant),
+        new(Permissions.Project.MilestoneView, DataScope.Tenant),
+        new(Permissions.Project.SprintView, DataScope.Tenant),
+        new(Permissions.Project.ChangeRequestView, DataScope.Tenant),
+        new(Permissions.Project.RaidView, DataScope.Tenant),
     ];
 
     private static readonly Dictionary<string, IReadOnlyList<PermissionAssignment>> Templates =
@@ -114,6 +167,12 @@ public static class RoleTemplates
                 new(Permissions.Policy.View, DataScope.Tenant),
                 new(Permissions.Policy.Manage, DataScope.Tenant),
                 new(Permissions.Policy.AcknowledgementView, DataScope.Tenant),
+
+                new(Permissions.Client.Manage, DataScope.Tenant),
+                new(Permissions.Client.ContactManage, DataScope.Tenant),
+                new(Permissions.Contract.Manage, DataScope.Tenant),
+                .. ProjectLead(DataScope.Tenant),
+                new(Permissions.Project.SettingsManage, DataScope.Tenant),
 
                 new(Permissions.Notification.TemplateView, DataScope.Tenant),
                 new(Permissions.Notification.TemplateManage, DataScope.Tenant),
@@ -231,6 +290,9 @@ public static class RoleTemplates
             [
                 new(Permissions.Organization.View, DataScope.Tenant),
                 new(Permissions.Employee.View, DataScope.LegalEntity),
+                new(Permissions.Client.View, DataScope.Tenant),
+                new(Permissions.Contract.View, DataScope.Tenant),
+                new(Permissions.Project.View, DataScope.Tenant),
                 new(Permissions.Workflow.TaskView, DataScope.Own),
                 new(Permissions.Workflow.TaskAct, DataScope.Own),
                 new(Permissions.Report.View, DataScope.LegalEntity),
@@ -295,6 +357,8 @@ public static class RoleTemplates
 
                 new(Permissions.Document.View, DataScope.Own),
                 new(Permissions.Document.Upload, DataScope.Own),
+
+                .. ProjectMember(),
 
                 .. SelfService(),
             ],
@@ -363,12 +427,20 @@ public static class RoleTemplates
                 .. SelfService(),
             ],
 
-            // Delivery roles. Project and resource permissions arrive with M5/M6; until then these
-            // roles can see the people and structure they will be planning with.
-            ["PROJECT_MANAGER"] = DeliveryBaseline(DataScope.Department),
-            ["DELIVERY_MANAGER"] = DeliveryBaseline(DataScope.Tenant),
-            ["PROGRAM_MANAGER"] = DeliveryBaseline(DataScope.Tenant),
-            ["RESOURCE_MANAGER"] = DeliveryBaseline(DataScope.Tenant),
+            // Delivery roles (M5): a project manager runs their own projects; delivery and program
+            // managers the whole portfolio. Resource permissions arrive with M6.
+            ["PROJECT_MANAGER"] = [.. DeliveryBaseline(DataScope.Department), .. ProjectLead(DataScope.Own)],
+            ["DELIVERY_MANAGER"] =
+            [
+                .. DeliveryBaseline(DataScope.Tenant),
+                .. ProjectLead(DataScope.Tenant),
+                new(Permissions.Client.Manage, DataScope.Tenant),
+                new(Permissions.Client.ContactManage, DataScope.Tenant),
+                new(Permissions.Contract.Manage, DataScope.Tenant),
+                new(Permissions.Project.SettingsManage, DataScope.Tenant),
+            ],
+            ["PROGRAM_MANAGER"] = [.. DeliveryBaseline(DataScope.Tenant), .. ProjectLead(DataScope.Tenant)],
+            ["RESOURCE_MANAGER"] = [.. DeliveryBaseline(DataScope.Tenant), .. DeliveryReadOnly()],
 
             ["PERFORMANCE_ADMIN"] =
             [
@@ -453,6 +525,7 @@ public static class RoleTemplates
                 new(Permissions.Attendance.View, DataScope.Tenant),
                 new(Permissions.Performance.CycleView, DataScope.Tenant),
                 new(Permissions.Report.View, DataScope.Tenant),
+                .. DeliveryReadOnly(),
 
                 .. SelfService(),
             ],
@@ -480,6 +553,7 @@ public static class RoleTemplates
                 new(Permissions.Document.View, DataScope.Tenant),
                 new(Permissions.Audit.LogView, DataScope.Tenant),
                 new(Permissions.Report.View, DataScope.Tenant),
+                .. DeliveryReadOnly(),
 
                 .. SelfService(),
             ],

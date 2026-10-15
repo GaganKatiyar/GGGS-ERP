@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Delivery.UnitTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\backend\Modules\Client\Gggs.Modules.Client\Gggs.Modules.Client.csproj" />
+    <ProjectReference Include="..\..\..\backend\Modules\Contract\Gggs.Modules.Contract\Gggs.Modules.Contract.csproj" />
+    <ProjectReference Include="..\..\..\backend\Modules\Project\Gggs.Modules.Project\Gggs.Modules.Project.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Shouldly" />
+  </ItemGroup>
+
+</Project>

@@ -199,6 +199,53 @@ public static class Permissions
         public const string AcknowledgementView = "policy.acknowledgement.view";
     }
 
+    /// <summary>Clients and their contacts (spec §37).</summary>
+    public static class Client
+    {
+        public const string View = "client.client.view";
+        public const string Manage = "client.client.manage";
+        public const string ContactManage = "client.contact.manage";
+    }
+
+    /// <summary>Client contracts - MSA, SOW, PO, SLA, retainer, T&amp;M (spec §38).</summary>
+    public static class Contract
+    {
+        public const string View = "contract.contract.view";
+        public const string Manage = "contract.contract.manage";
+    }
+
+    /// <summary>
+    /// Projects and everything inside them (spec §39-56, §78). A grant at Tenant scope reaches every
+    /// project; at any narrower scope it reaches the projects the holder is on - as a team member or
+    /// as the project, delivery or account manager.
+    /// </summary>
+    public static class Project
+    {
+        public const string View = "project.project.view";
+        public const string Create = "project.project.create";
+
+        /// <summary>The project itself: details, stage, team, phases, board columns, meetings.</summary>
+        public const string Manage = "project.project.manage";
+
+        /// <summary>Tasks, requirements and their dependencies.</summary>
+        public const string TaskView = "project.task.view";
+        public const string TaskManage = "project.task.manage";
+
+        public const string MilestoneView = "project.milestone.view";
+        public const string MilestoneManage = "project.milestone.manage";
+        public const string SprintView = "project.sprint.view";
+        public const string SprintManage = "project.sprint.manage";
+        public const string ChangeRequestView = "project.change-request.view";
+        public const string ChangeRequestManage = "project.change-request.manage";
+
+        /// <summary>Risks, assumptions, issues and dependencies.</summary>
+        public const string RaidView = "project.raid.view";
+        public const string RaidManage = "project.raid.manage";
+
+        /// <summary>Project roles and the health thresholds every project is judged by.</summary>
+        public const string SettingsManage = "project.settings.manage";
+    }
+
     /// <summary>Audit and compliance.</summary>
     public static class Audit
     {
