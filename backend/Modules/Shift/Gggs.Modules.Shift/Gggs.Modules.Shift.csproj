@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Modules.Shift</RootNamespace>
+    <Description>Shifts and rosters (spec §19): working patterns, dated assignments, day overrides and swaps.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Web\Gggs.BuildingBlocks.Web.csproj" />
+    <ProjectReference Include="..\..\..\Data\Gggs.Data\Gggs.Data.csproj" />
+    <ProjectReference Include="..\..\Employee\Gggs.Modules.Employee.Contracts\Gggs.Modules.Employee.Contracts.csproj" />
+    <ProjectReference Include="..\..\Workflow\Gggs.Modules.Workflow.Contracts\Gggs.Modules.Workflow.Contracts.csproj" />
+    <ProjectReference Include="..\Gggs.Modules.Shift.Contracts\Gggs.Modules.Shift.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Gggs.Time.UnitTests" />
+    <InternalsVisibleTo Include="Gggs.Api.IntegrationTests" />
+  </ItemGroup>
+
+</Project>

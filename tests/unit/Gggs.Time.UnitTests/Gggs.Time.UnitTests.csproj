@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Time.UnitTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\backend\Modules\Attendance\Gggs.Modules.Attendance\Gggs.Modules.Attendance.csproj" />
+    <ProjectReference Include="..\..\..\backend\Modules\Leave\Gggs.Modules.Leave\Gggs.Modules.Leave.csproj" />
+    <ProjectReference Include="..\..\..\backend\Modules\Shift\Gggs.Modules.Shift\Gggs.Modules.Shift.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Shouldly" />
+  </ItemGroup>
+
+</Project>

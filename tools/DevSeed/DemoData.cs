@@ -8,6 +8,7 @@ using Gggs.Modules.Identity.Application.Provisioning;
 using Gggs.Modules.Identity.Application.Users;
 using Gggs.Modules.Identity.Domain.Roles;
 using Gggs.Modules.Identity.Domain.Users;
+using Gggs.Modules.Leave.Application;
 using Gggs.Modules.MasterData.Infrastructure;
 using Gggs.Modules.Notification.Application;
 using Gggs.Modules.Organization.Domain;
@@ -34,6 +35,18 @@ internal static class DemoData
         int templates = await scope.GetRequiredService<NotificationTemplateSeeder>().SeedCurrentTenantAsync();
         int documents = await scope.GetRequiredService<DocumentCatalogSeeder>().SeedCurrentTenantAsync();
         Console.WriteLine($"Notification templates: {templates} added. Document types and templates: {documents} added.");
+    }
+
+    /// <summary>
+    /// Leave types, policies and a default holiday calendar, then this month's accrual - so the
+    /// demo employees have balances to apply against. Both steps add nothing when run again.
+    /// </summary>
+    public static async Task SeedLeaveAsync(IServiceProvider scope)
+    {
+        int catalog = await scope.GetRequiredService<LeaveCatalogSeeder>().SeedCurrentTenantAsync();
+        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+        AccrualResult accrual = await scope.GetRequiredService<LeaveAccrualService>().RunAsync(today.Year, today.Month, CancellationToken.None);
+        Console.WriteLine($"Leave catalog: {catalog} added. Accrual {accrual.Period}: {accrual.Accrued} entries.");
     }
 
     /// <summary>

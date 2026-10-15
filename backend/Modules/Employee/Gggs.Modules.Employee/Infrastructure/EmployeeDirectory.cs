@@ -31,7 +31,8 @@ internal sealed class EmployeeDirectory(AppDbContext dbContext, EmployeeScope sc
             .Select(employee => new EmployeeSummary(
                 employee.Id, employee.EmployeeCode, employee.DisplayName, employee.OfficialEmail, employee.Status.ToString(),
                 employee.DepartmentId, employee.PositionId, employee.JobId, employee.ManagerEmployeeId, employee.LocationId, employee.LegalEntityId,
-                employee.HrbpEmployeeId, employee.Designation, employee.JoiningDate))
+                employee.HrbpEmployeeId, employee.Designation, employee.JoiningDate,
+                employee.EmploymentTypeCode, employee.ProbationEndDate, employee.ConfirmationDate))
             .ToListAsync(cancellationToken);
     }
 
@@ -88,5 +89,33 @@ internal sealed class EmployeeDirectory(AppDbContext dbContext, EmployeeScope sc
     {
         IQueryable<Domain.Employee> visible = await scope.ApplyAsync(dbContext.Employees.AsNoTracking(), permission, cancellationToken);
         return await visible.AnyAsync(employee => employee.Id == employeeId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<Guid>?> InScopeIdsAsync(string permission, CancellationToken cancellationToken = default)
+    {
+        if (await scope.ReachesEveryoneAsync(permission, cancellationToken))
+        {
+            return null;
+        }
+
+        IQueryable<Domain.Employee> visible = await scope.ApplyAsync(dbContext.Employees.AsNoTracking(), permission, cancellationToken);
+        return await visible.Select(employee => employee.Id).ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyDictionary<string, Guid>> ResolveCodesAsync(IEnumerable<string> employeeCodes, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(employeeCodes);
+        List<string> codes = [.. employeeCodes.Where(code => !string.IsNullOrWhiteSpace(code)).Select(code => code.Trim().ToUpperInvariant()).Distinct()];
+        if (codes.Count == 0)
+        {
+            return new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        var found = await dbContext.Employees.AsNoTracking()
+            .Where(employee => codes.Contains(employee.EmployeeCode))
+            .Select(employee => new { employee.EmployeeCode, employee.Id })
+            .ToListAsync(cancellationToken);
+
+        return found.ToDictionary(row => row.EmployeeCode, row => row.Id, StringComparer.OrdinalIgnoreCase);
     }
 }

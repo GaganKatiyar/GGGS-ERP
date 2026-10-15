@@ -556,6 +556,7 @@ public static class RoleTemplates
         new(Permissions.Self.PayslipView, DataScope.Own),
         new(Permissions.Self.DocumentView, DataScope.Own),
         new(Permissions.Self.PolicyView, DataScope.Own),
+        new(Permissions.Self.ShiftSwapRequest, DataScope.Own),
 
         // Everyone receives notifications - approvals, policies to acknowledge, invitations.
         new(Permissions.Notification.InboxView, DataScope.Own),

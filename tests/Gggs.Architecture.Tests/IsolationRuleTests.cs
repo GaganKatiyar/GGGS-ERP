@@ -174,12 +174,15 @@ public sealed class IsolationRuleTests
     public void RequestDtos_NeverCarryATenantId()
     {
         // The tenant comes from the credential. A TenantId on a request DTO is an invitation to trust
-        // the client, which is the one thing the isolation design never does.
+        // the client, which is the one thing the isolation design never does. Domain entities are
+        // not DTOs - a leave request is tenant-owned by design, its TenantId set by the interceptor -
+        // so only types that are not entities are checked.
         List<string> offenders =
         [
             .. ModuleCatalog.ModelAssemblies
                 .SelectMany(assembly => assembly.GetTypes())
                 .Where(type => type.Name.EndsWith("Request", StringComparison.Ordinal))
+                .Where(type => !typeof(Entity).IsAssignableFrom(type))
                 .Where(type => type.GetProperties().Any(property =>
                     property.Name.Equals("TenantId", StringComparison.OrdinalIgnoreCase)))
                 .Select(type => type.FullName!)

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Modules.Leave.Contracts</RootNamespace>
+    <Description>The Leave module's public surface: approved leave and holidays by day, and leave events.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Messaging\Gggs.BuildingBlocks.Messaging.csproj" />
+  </ItemGroup>
+
+</Project>

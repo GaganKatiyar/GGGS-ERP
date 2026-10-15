@@ -17,7 +17,10 @@ public sealed record EmployeeSummary(
     Guid? LegalEntityId,
     Guid? HrbpEmployeeId = null,
     string? Designation = null,
-    DateOnly? JoiningDate = null);
+    DateOnly? JoiningDate = null,
+    string? EmploymentTypeCode = null,
+    DateOnly? ProbationEndDate = null,
+    DateOnly? ConfirmationDate = null);
 
 /// <summary>
 /// The employee directory other modules read (ADR-12). It replaces the five replicated employee
@@ -53,6 +56,15 @@ public interface IEmployeeDirectory
     /// (documents, approvals) and must not show them more widely than the person themselves.
     /// </summary>
     Task<bool> IsInScopeAsync(Guid employeeId, string permission, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The employees the caller's grant of <paramref name="permission"/> reaches, or null when it
+    /// reaches everyone (tenant scope) - so a list can filter by the set without loading it whole.
+    /// </summary>
+    Task<IReadOnlyCollection<Guid>?> InScopeIdsAsync(string permission, CancellationToken cancellationToken = default);
+
+    /// <summary>Ids for employee codes (case-insensitive), for imports that name people by code. Unknown codes are left out.</summary>
+    Task<IReadOnlyDictionary<string, Guid>> ResolveCodesAsync(IEnumerable<string> employeeCodes, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Someone joined. Recruitment, onboarding, payroll and resourcing react to this.</summary>

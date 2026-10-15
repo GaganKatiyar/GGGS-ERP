@@ -131,6 +131,9 @@ public static class Permissions
 
         /// <summary>Reading the policies that apply to oneself and acknowledging them.</summary>
         public const string PolicyView = "self.policy.view";
+
+        /// <summary>Asking to trade one's own shift with a colleague for a day.</summary>
+        public const string ShiftSwapRequest = "self.shift-swap.request";
     }
 
     /// <summary>Leave administration and approvals.</summary>

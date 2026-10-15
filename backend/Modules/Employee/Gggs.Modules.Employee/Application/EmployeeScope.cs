@@ -18,6 +18,10 @@ namespace Gggs.Modules.Employee.Application;
 /// </summary>
 public sealed class EmployeeScope(AppDbContext dbContext, IPermissionProvider permissions, ICurrentUser currentUser)
 {
+    /// <summary>Whether the caller's grant of <paramref name="permission"/> is tenant-wide.</summary>
+    public async Task<bool> ReachesEveryoneAsync(string permission, CancellationToken cancellationToken = default)
+        => (await permissions.GetCurrentAsync(cancellationToken)).ScopeFor(permission) == DataScope.Tenant;
+
     /// <summary>The employees the caller may see under <paramref name="permission"/>.</summary>
     public async Task<IQueryable<EmployeeEntity>> ApplyAsync(
         IQueryable<EmployeeEntity> query,

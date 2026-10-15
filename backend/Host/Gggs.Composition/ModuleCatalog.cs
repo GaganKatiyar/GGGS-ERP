@@ -1,13 +1,16 @@
 using System.Reflection;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Attendance;
 using Gggs.Modules.Documents;
 using Gggs.Modules.Employee;
 using Gggs.Modules.Identity;
+using Gggs.Modules.Leave;
 using Gggs.Modules.MasterData;
 using Gggs.Modules.Notification;
 using Gggs.Modules.Organization;
 using Gggs.Modules.Platform;
 using Gggs.Modules.Policies;
+using Gggs.Modules.Shift;
 using Gggs.Modules.Workflow;
 
 namespace Gggs.Composition;
@@ -33,6 +36,9 @@ public static class ModuleCatalog
         new NotificationModule(),
         new DocumentsModule(),
         new PoliciesModule(),
+        new ShiftModule(),
+        new LeaveModule(),
+        new AttendanceModule(),
     ];
 
     /// <summary>The assemblies the shared <c>AppDbContext</c> builds its model from.</summary>

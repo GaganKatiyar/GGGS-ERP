@@ -20,6 +20,9 @@
     <ProjectReference Include="..\..\Modules\Notification\Gggs.Modules.Notification\Gggs.Modules.Notification.csproj" />
     <ProjectReference Include="..\..\Modules\Documents\Gggs.Modules.Documents\Gggs.Modules.Documents.csproj" />
     <ProjectReference Include="..\..\Modules\Policies\Gggs.Modules.Policies\Gggs.Modules.Policies.csproj" />
+    <ProjectReference Include="..\..\Modules\Shift\Gggs.Modules.Shift\Gggs.Modules.Shift.csproj" />
+    <ProjectReference Include="..\..\Modules\Leave\Gggs.Modules.Leave\Gggs.Modules.Leave.csproj" />
+    <ProjectReference Include="..\..\Modules\Attendance\Gggs.Modules.Attendance\Gggs.Modules.Attendance.csproj" />
   </ItemGroup>
 
 </Project>

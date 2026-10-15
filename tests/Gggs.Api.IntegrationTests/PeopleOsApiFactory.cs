@@ -122,6 +122,7 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             await scope.ServiceProvider.GetRequiredService<MasterDataSeeder>().SeedCurrentTenantAsync();
             await scope.ServiceProvider.GetRequiredService<NotificationTemplateSeeder>().SeedCurrentTenantAsync();
             await scope.ServiceProvider.GetRequiredService<DocumentCatalogSeeder>().SeedCurrentTenantAsync();
+            await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Leave.Application.LeaveCatalogSeeder>().SeedCurrentTenantAsync();
         }
 
         // The worker seeds the platform roles at start-up; this host is the API alone, so run the
@@ -500,6 +501,10 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             Permissions.Document.TypeManage, Permissions.Document.TemplateManage,
             Permissions.Policy.View, Permissions.Policy.Manage, Permissions.Policy.AcknowledgementView,
             Permissions.Notification.TemplateView, Permissions.Notification.TemplateManage,
+            Permissions.Leave.TypeManage, Permissions.Leave.PolicyManage, Permissions.Leave.BalanceView, Permissions.Leave.BalanceAdjust,
+            Permissions.Leave.RequestView, Permissions.Leave.RequestCreateOnBehalf, Permissions.Leave.RequestCancel, Permissions.Leave.HolidayManage,
+            Permissions.Attendance.View, Permissions.Attendance.Manage, Permissions.Attendance.RegularizationView,
+            Permissions.Attendance.ShiftManage, Permissions.Attendance.RosterManage, Permissions.Attendance.DeviceManage,
         })
         {
             role.Grant(permission, DataScope.Tenant);
