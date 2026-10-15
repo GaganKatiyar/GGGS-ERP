@@ -55,6 +55,16 @@ export const DEFAULT_STATUS_VARIANTS: Readonly<Record<string, BadgeVariant>> = {
   notstarted: 'neutral',
   released: 'neutral',
   terminated: 'danger',
+  // Resourcing (M6): capacity states and requests.
+  bench: 'warning',
+  partiallyavailable: 'primary',
+  fullyallocated: 'success',
+  overallocated: 'danger',
+  leave: 'neutral',
+  partiallyfulfilled: 'primary',
+  fulfilled: 'success',
+  proposed: 'primary',
+  allocated: 'success',
 };
 
 /** A status as a coloured pill, with a readable label ("OnNotice" shows as "On notice"). */

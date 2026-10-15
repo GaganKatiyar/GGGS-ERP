@@ -64,6 +64,12 @@ export const appRoutes: Route[] = [
           import('@gggs/features/time').then((m) => m.TEAM_LEAVE_ROUTES),
       },
       {
+        path: 'team/timesheets',
+        ...withPermissions(['timesheet.entry.view']),
+        loadChildren: () =>
+          import('@gggs/features/timesheets').then((m) => m.TEAM_TIMESHEETS_ROUTES),
+      },
+      {
         path: 'team',
         ...withPermissions(['employee.profile.view']),
         loadChildren: () =>
@@ -162,6 +168,41 @@ export const appRoutes: Route[] = [
         ...withPermissions(['project.project.view']),
         loadChildren: () =>
           import('@gggs/features/projects').then((m) => m.PROJECTS_ROUTES),
+      },
+      {
+        path: 'me/timesheet',
+        ...withPermissions(['self.timesheet.submit']),
+        loadChildren: () =>
+          import('@gggs/features/timesheets').then((m) => m.MY_TIMESHEET_ROUTES),
+      },
+      {
+        path: 'timesheets',
+        ...withPermissions(['timesheet.entry.approve', 'timesheet.settings.manage']),
+        loadChildren: () =>
+          import('@gggs/features/timesheets').then((m) => m.TIMESHEETS_ROUTES),
+      },
+      {
+        path: 'me/skills',
+        ...withPermissions(['self.skill.manage']),
+        loadChildren: () =>
+          import('@gggs/features/skills').then((m) => m.MY_SKILLS_ROUTES),
+      },
+      {
+        path: 'skills',
+        ...withPermissions(['skill.skill.view']),
+        loadChildren: () =>
+          import('@gggs/features/skills').then((m) => m.SKILLS_ROUTES),
+      },
+      {
+        path: 'resources',
+        ...withPermissions([
+          'resource.profile.view',
+          'resource.request.view',
+          'resource.allocation.view',
+          'resource.utilization.view',
+        ]),
+        loadChildren: () =>
+          import('@gggs/features/resources').then((m) => m.RESOURCES_ROUTES),
       },
       {
         path: 'admin',

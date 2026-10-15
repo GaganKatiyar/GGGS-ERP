@@ -82,6 +82,9 @@ export default [
                 'scope:policies',
                 'scope:clients',
                 'scope:projects',
+                'scope:resources',
+                'scope:timesheets',
+                'scope:skills',
                 'scope:time',
               ],
             },
@@ -148,6 +151,18 @@ export default [
             {
               sourceTag: 'scope:time',
               onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:time'],
+            },
+            {
+              sourceTag: 'scope:skills',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:skills'],
+            },
+            {
+              sourceTag: 'scope:timesheets',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:timesheets'],
+            },
+            {
+              sourceTag: 'scope:resources',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:resources'],
             },
             {
               sourceTag: 'scope:projects',

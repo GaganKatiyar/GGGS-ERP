@@ -7,3 +7,4 @@ export * from './lib/core-hr.models';
 export * from './lib/platform.models';
 export * from './lib/time.models';
 export * from './lib/delivery.models';
+export * from './lib/resource.models';
