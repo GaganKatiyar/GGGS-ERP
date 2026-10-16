@@ -1,0 +1,124 @@
+.comp__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--gggs-space-3);
+  margin-block-end: var(--gggs-space-3);
+}
+
+.comp__filters {
+  margin-block: var(--gggs-space-3);
+  align-items: end;
+}
+
+.comp__heading {
+  margin: 0;
+  font-size: var(--gggs-font-size-md);
+}
+
+.comp__spacer {
+  flex: 1;
+}
+
+.comp__row {
+  display: grid;
+  grid-template-columns: 1.6fr 1.2fr 1.2fr 1.2fr 8rem;
+  gap: var(--gggs-space-3);
+  align-items: center;
+  padding-block: var(--gggs-space-2);
+  border-block-end: 1px solid var(--gggs-color-border);
+  color: inherit;
+  text-decoration: none;
+  background: none;
+  border-inline: 0;
+  border-block-start: 0;
+  font: inherit;
+  text-align: start;
+  width: 100%;
+}
+
+a.comp__row:hover,
+button.comp__row:hover {
+  background: var(--gggs-color-surface-hover, transparent);
+  cursor: pointer;
+}
+
+.comp__scroll {
+  overflow-x: auto;
+}
+
+.comp__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.comp__table th,
+.comp__table td {
+  padding: var(--gggs-space-1) var(--gggs-space-2);
+  border-block-end: 1px solid var(--gggs-color-border);
+  text-align: start;
+  vertical-align: middle;
+}
+
+.comp__num {
+  text-align: end !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.comp__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--gggs-space-3);
+}
+
+.comp__flag {
+  display: flex;
+  gap: var(--gggs-space-2);
+  align-items: center;
+}
+
+.comp__notice {
+  color: var(--gggs-color-success);
+}
+
+.comp__danger {
+  color: var(--gggs-color-danger, #dc2626);
+}
+
+.comp__warning {
+  color: var(--gggs-color-warning, #b45309);
+}
+
+.comp__check {
+  display: flex;
+  gap: var(--gggs-space-2);
+  align-items: flex-start;
+  margin: 0;
+}
+
+.comp__two {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: var(--gggs-space-3);
+  align-items: start;
+}
+
+@media (max-width: 56rem) {
+  .comp__row,
+  .comp__two {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media print {
+  .comp__no-print {
+    display: none;
+  }
+}
+
+.comp__row {
+  grid-template-columns: 1.6fr 1.8fr 2fr auto;
+}
+
+.comp__row--button {
+  cursor: pointer;
+}

@@ -1,0 +1,116 @@
+.pay__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--gggs-space-3);
+  margin-block-end: var(--gggs-space-3);
+}
+
+.pay__filters {
+  margin-block: var(--gggs-space-3);
+  align-items: end;
+}
+
+.pay__heading {
+  margin: 0;
+  font-size: var(--gggs-font-size-md);
+}
+
+.pay__spacer {
+  flex: 1;
+}
+
+.pay__row {
+  display: grid;
+  grid-template-columns: 1.6fr 1.2fr 1.2fr 1.2fr 8rem;
+  gap: var(--gggs-space-3);
+  align-items: center;
+  padding-block: var(--gggs-space-2);
+  border-block-end: 1px solid var(--gggs-color-border);
+  color: inherit;
+  text-decoration: none;
+  background: none;
+  border-inline: 0;
+  border-block-start: 0;
+  font: inherit;
+  text-align: start;
+  width: 100%;
+}
+
+a.pay__row:hover,
+button.pay__row:hover {
+  background: var(--gggs-color-surface-hover, transparent);
+  cursor: pointer;
+}
+
+.pay__scroll {
+  overflow-x: auto;
+}
+
+.pay__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pay__table th,
+.pay__table td {
+  padding: var(--gggs-space-1) var(--gggs-space-2);
+  border-block-end: 1px solid var(--gggs-color-border);
+  text-align: start;
+  vertical-align: middle;
+}
+
+.pay__num {
+  text-align: end !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.pay__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--gggs-space-3);
+}
+
+.pay__flag {
+  display: flex;
+  gap: var(--gggs-space-2);
+  align-items: center;
+}
+
+.pay__notice {
+  color: var(--gggs-color-success);
+}
+
+.pay__danger {
+  color: var(--gggs-color-danger, #dc2626);
+}
+
+.pay__warning {
+  color: var(--gggs-color-warning, #b45309);
+}
+
+.pay__check {
+  display: flex;
+  gap: var(--gggs-space-2);
+  align-items: flex-start;
+  margin: 0;
+}
+
+.pay__two {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: var(--gggs-space-3);
+  align-items: start;
+}
+
+@media (max-width: 56rem) {
+  .pay__row,
+  .pay__two {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media print {
+  .pay__no-print {
+    display: none;
+  }
+}

@@ -85,6 +85,10 @@ export default [
                 'scope:resources',
                 'scope:timesheets',
                 'scope:skills',
+                'scope:payroll',
+                'scope:compliance',
+                'scope:compensation',
+                'scope:benefits',
                 'scope:time',
               ],
             },
@@ -151,6 +155,22 @@ export default [
             {
               sourceTag: 'scope:time',
               onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:time'],
+            },
+            {
+              sourceTag: 'scope:benefits',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:benefits'],
+            },
+            {
+              sourceTag: 'scope:compensation',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:compensation'],
+            },
+            {
+              sourceTag: 'scope:compliance',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:compliance'],
+            },
+            {
+              sourceTag: 'scope:payroll',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:payroll'],
             },
             {
               sourceTag: 'scope:skills',

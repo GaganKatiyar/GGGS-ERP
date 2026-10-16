@@ -65,6 +65,24 @@ export const DEFAULT_STATUS_VARIANTS: Readonly<Record<string, BadgeVariant>> = {
   fulfilled: 'success',
   proposed: 'primary',
   allocated: 'success',
+  // Money (M7): payroll runs and results, filings, registrations, revisions and invoices.
+  calculated: 'primary',
+  finalized: 'success',
+  paid: 'success',
+  applied: 'success',
+  verified: 'success',
+  filed: 'success',
+  valid: 'success',
+  ok: 'success',
+  sent: 'primary',
+  planning: 'neutral',
+  warning: 'warning',
+  expiringsoon: 'warning',
+  retired: 'neutral',
+  noexpiry: 'neutral',
+  waived: 'neutral',
+  exercised: 'neutral',
+  error: 'danger',
 };
 
 /** A status as a coloured pill, with a readable label ("OnNotice" shows as "On notice"). */

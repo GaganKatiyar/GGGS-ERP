@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, si
 import { Router, RouterLink } from '@angular/router';
 import { SessionStore } from '@gggs/core/auth';
 import { ApiError } from '@gggs/core/http';
+import { PermissionStore } from '@gggs/core/permissions';
 import { ProjectsApi } from '@gggs/shared/delivery';
 import { RecordDocuments } from '@gggs/shared/documents';
 import type { ProjectDetail, ProjectStage, ProjectStatus } from '@gggs/shared/models';
@@ -10,6 +11,7 @@ import { PROJECT_STAGES, PROJECT_TYPE_LABELS, STAGE_LABELS } from '@gggs/shared/
 import { FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type TabItem } from '@gggs/shared/ui';
 import { ProjectForm } from '../project-form';
 import { CalendarTab } from './calendar-tab';
+import { FinancialsTab } from './financials-tab';
 import { ChangesTab } from './changes-tab';
 import { MeetingsTab } from './meetings-tab';
 import { OverviewTab } from './overview-tab';
@@ -35,6 +37,7 @@ const TABS: readonly TabItem[] = [
   { key: 'meetings', label: 'Meetings' },
   { key: 'calendar', label: 'Calendar' },
   { key: 'documents', label: 'Documents' },
+  { key: 'financials', label: 'Financials' },
   { key: 'settings', label: 'Board & history' },
 ];
 
@@ -50,6 +53,7 @@ const TABS: readonly TabItem[] = [
     Skeleton,
     FormDialog,
     RecordDocuments,
+    FinancialsTab,
     ProjectForm,
     OverviewTab,
     TasksTab,
@@ -154,6 +158,9 @@ const TABS: readonly TabItem[] = [
           }
           @case ('documents') {
             <gggs-record-documents ownerType="Project" [ownerId]="d.project.id" [canUpload]="d.can.manage || d.can.manageTasks" />
+          }
+          @case ('financials') {
+            <gggs-financials-tab [projectId]="d.project.id" />
           }
           @case ('settings') {
             <gggs-settings-tab [projectId]="d.project.id" [canManage]="d.can.manage" />
@@ -268,6 +275,7 @@ export class ProjectWorkspacePage {
   private readonly api = inject(ProjectsApi);
   private readonly router = inject(Router);
   private readonly session = inject(SessionStore);
+  private readonly permissions = inject(PermissionStore);
 
   /** Bound from the `:id` route parameter. */
   readonly id = input.required<string>();
@@ -278,7 +286,7 @@ export class ProjectWorkspacePage {
   /** Bound from the `task` query parameter: opens that task in the tasks tab. */
   readonly task = input<string | undefined>(undefined);
 
-  protected readonly tabs = TABS;
+  protected readonly tabs = this.permissions.has('project.financials.view') ? TABS : TABS.filter((tab) => tab.key !== 'financials');
   protected readonly stages = PROJECT_STAGES;
   protected readonly stageLabels = STAGE_LABELS;
   protected readonly detail = signal<ProjectDetail | null>(null);

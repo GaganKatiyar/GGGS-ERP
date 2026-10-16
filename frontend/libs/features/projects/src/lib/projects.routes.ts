@@ -1,6 +1,7 @@
 import type { Routes } from '@angular/router';
 import { withPermissions } from '@gggs/core/permissions';
 import { BoardPage } from './portfolio/board-page';
+import { PortfolioFinancialsPage } from './portfolio/financials-page';
 import { MyTasksPage } from './portfolio/my-tasks-page';
 import { ChangeRequestsPage, MilestonesPage, RaidPage, SprintsPage } from './portfolio/registers-pages';
 import { ProjectSettingsPage } from './project-settings-page';
@@ -16,6 +17,7 @@ export const PROJECTS_ROUTES: Routes = [
   { path: 'sprints', component: SprintsPage, title: 'Sprints', ...withPermissions(['project.sprint.view']) },
   { path: 'change-requests', component: ChangeRequestsPage, title: 'Change requests', ...withPermissions(['project.change-request.view']) },
   { path: 'raid', component: RaidPage, title: 'RAID log', ...withPermissions(['project.raid.view']) },
+  { path: 'financials', component: PortfolioFinancialsPage, title: 'Project financials', ...withPermissions(['project.financials.view']) },
   { path: 'settings', component: ProjectSettingsPage, title: 'Project settings', ...withPermissions(['project.settings.manage']) },
   { path: ':id', component: ProjectWorkspacePage, title: 'Project' },
 ];

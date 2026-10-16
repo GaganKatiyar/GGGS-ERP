@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import { PermissionStore } from '@gggs/core/permissions';
 import { EmployeeAllocation, EmployeeProjects, EmployeeSkills, EmployeeTimesheets } from '@gggs/shared/delivery';
+import { EmployeeBenefits, EmployeeCompensation, EmployeePayroll } from '@gggs/shared/money';
 import { EmployeeDocuments } from '@gggs/shared/documents';
 import { EmployeeDirectoryApi } from '@gggs/shared/employee-reference';
 import { EmployeeAttendance, EmployeeLeave } from '@gggs/shared/time';
@@ -22,7 +23,7 @@ import { StatutoryTab } from './tabs/statutory-tab';
  */
 @Component({
   selector: 'gggs-employee-360-page',
-  imports: [DatePipe, RouterLink, PageHeader, KpiCard, StatusBadge, Tabs, Skeleton, EmptyState, EmployeeDocuments, EmployeeAttendance, EmployeeLeave, EmployeeProjects, EmployeeSkills, EmployeeAllocation, EmployeeTimesheets, EmploymentTab, PersonalTab, FamilyTab, StatutoryTab, HistoryTab],
+  imports: [DatePipe, RouterLink, PageHeader, KpiCard, StatusBadge, Tabs, Skeleton, EmptyState, EmployeeDocuments, EmployeeAttendance, EmployeeLeave, EmployeeProjects, EmployeeSkills, EmployeeAllocation, EmployeeTimesheets, EmployeePayroll, EmployeeCompensation, EmployeeBenefits, EmploymentTab, PersonalTab, FamilyTab, StatutoryTab, HistoryTab],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (error()) {
@@ -124,6 +125,15 @@ import { StatutoryTab } from './tabs/statutory-tab';
           @case ('skills') {
             <gggs-employee-skills [employeeId]="p.id" />
           }
+          @case ('payroll') {
+            <gggs-employee-payroll [employeeId]="p.id" />
+          }
+          @case ('compensation') {
+            <gggs-employee-compensation [employeeId]="p.id" />
+          }
+          @case ('benefits') {
+            <gggs-employee-benefits [employeeId]="p.id" />
+          }
           @case ('documents') {
             <gggs-employee-documents [employeeId]="p.id" [canUpload]="canUploadDocuments" [canArchive]="canArchiveDocuments" />
           }
@@ -173,7 +183,10 @@ export class Employee360Page {
         (section.key !== 'leave' || this.permissions.has('leave.balance.view')) &&
         (section.key !== 'resources' || this.permissions.has('resource.profile.view')) &&
         (section.key !== 'timesheet' || this.permissions.has('timesheet.entry.view')) &&
-        (section.key !== 'skills' || this.permissions.has('skill.employee-skill.view')),
+        (section.key !== 'skills' || this.permissions.has('skill.employee-skill.view')) &&
+        (section.key !== 'payroll' || this.permissions.has('payroll.employee-salary.view')) &&
+        (section.key !== 'compensation' || this.permissions.has('compensation.revision.view')) &&
+        (section.key !== 'benefits' || this.permissions.has('benefit.enrollment.view')),
     ),
   );
 

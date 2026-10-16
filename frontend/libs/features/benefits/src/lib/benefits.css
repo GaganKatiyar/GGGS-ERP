@@ -1,0 +1,143 @@
+.ben__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--gggs-space-3);
+  margin-block-end: var(--gggs-space-3);
+}
+
+.ben__filters {
+  margin-block: var(--gggs-space-3);
+  align-items: end;
+}
+
+.ben__heading {
+  margin: 0;
+  font-size: var(--gggs-font-size-md);
+}
+
+.ben__spacer {
+  flex: 1;
+}
+
+.ben__row {
+  display: grid;
+  grid-template-columns: 1.6fr 1.2fr 1.2fr 1.2fr 8rem;
+  gap: var(--gggs-space-3);
+  align-items: center;
+  padding-block: var(--gggs-space-2);
+  border-block-end: 1px solid var(--gggs-color-border);
+  color: inherit;
+  text-decoration: none;
+  background: none;
+  border-inline: 0;
+  border-block-start: 0;
+  font: inherit;
+  text-align: start;
+  width: 100%;
+}
+
+a.ben__row:hover,
+button.ben__row:hover {
+  background: var(--gggs-color-surface-hover, transparent);
+  cursor: pointer;
+}
+
+.ben__scroll {
+  overflow-x: auto;
+}
+
+.ben__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ben__table th,
+.ben__table td {
+  padding: var(--gggs-space-1) var(--gggs-space-2);
+  border-block-end: 1px solid var(--gggs-color-border);
+  text-align: start;
+  vertical-align: middle;
+}
+
+.ben__num {
+  text-align: end !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.ben__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--gggs-space-3);
+}
+
+.ben__flag {
+  display: flex;
+  gap: var(--gggs-space-2);
+  align-items: center;
+}
+
+.ben__notice {
+  color: var(--gggs-color-success);
+}
+
+.ben__danger {
+  color: var(--gggs-color-danger, #dc2626);
+}
+
+.ben__warning {
+  color: var(--gggs-color-warning, #b45309);
+}
+
+.ben__check {
+  display: flex;
+  gap: var(--gggs-space-2);
+  align-items: flex-start;
+  margin: 0;
+}
+
+.ben__two {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: var(--gggs-space-3);
+  align-items: start;
+}
+
+@media (max-width: 56rem) {
+  .ben__row,
+  .ben__two {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media print {
+  .ben__no-print {
+    display: none;
+  }
+}
+
+.ben__row {
+  grid-template-columns: 1.6fr 1.6fr 2.2fr auto;
+}
+
+.ben__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: var(--gggs-space-3);
+}
+
+.ben__card p {
+  margin: 0;
+}
+
+.ben__card--on {
+  border-color: var(--gggs-color-primary);
+}
+
+.ben__fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gggs-space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}

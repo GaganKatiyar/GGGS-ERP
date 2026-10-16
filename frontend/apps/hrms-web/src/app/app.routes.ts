@@ -205,6 +205,54 @@ export const appRoutes: Route[] = [
           import('@gggs/features/resources').then((m) => m.RESOURCES_ROUTES),
       },
       {
+        path: 'me/payslips',
+        ...withPermissions(['self.payslip.view']),
+        loadChildren: () =>
+          import('@gggs/features/payroll').then((m) => m.MY_PAYSLIPS_ROUTES),
+      },
+      {
+        path: 'me/tax-declaration',
+        ...withPermissions(['self.tax-declaration.manage']),
+        loadChildren: () =>
+          import('@gggs/features/payroll').then((m) => m.MY_TAX_DECLARATION_ROUTES),
+      },
+      {
+        path: 'me/compensation',
+        ...withPermissions(['self.compensation.view']),
+        loadChildren: () =>
+          import('@gggs/features/compensation').then((m) => m.MY_COMPENSATION_ROUTES),
+      },
+      {
+        path: 'me/benefits',
+        ...withPermissions(['self.benefit.manage']),
+        loadChildren: () =>
+          import('@gggs/features/benefits').then((m) => m.MY_BENEFITS_ROUTES),
+      },
+      {
+        path: 'payroll',
+        ...withPermissions(['payroll.run.view', 'payroll.employee-salary.view', 'payroll.structure.manage', 'payroll.component.manage', 'payroll.input.manage', 'payroll.tax-declaration.view', 'payroll.settings.manage']),
+        loadChildren: () =>
+          import('@gggs/features/payroll').then((m) => m.PAYROLL_ROUTES),
+      },
+      {
+        path: 'compliance',
+        ...withPermissions(['compliance.rule.view', 'compliance.filing.view']),
+        loadChildren: () =>
+          import('@gggs/features/compliance').then((m) => m.COMPLIANCE_ROUTES),
+      },
+      {
+        path: 'compensation',
+        ...withPermissions(['compensation.band.view', 'compensation.revision.view', 'compensation.variable-pay.view', 'compensation.equity.view']),
+        loadChildren: () =>
+          import('@gggs/features/compensation').then((m) => m.COMPENSATION_ROUTES),
+      },
+      {
+        path: 'benefits',
+        ...withPermissions(['benefit.plan.view', 'benefit.enrollment.view']),
+        loadChildren: () =>
+          import('@gggs/features/benefits').then((m) => m.BENEFITS_ROUTES),
+      },
+      {
         path: 'admin',
         // Matches NAVIGATION's "Administration" group: any one of these lets someone in, and each
         // child route narrows further to the specific permission it actually needs.
