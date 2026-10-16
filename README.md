@@ -18,7 +18,7 @@ The tenancy, isolation and security design in
 [docs/architecture/architecture.md](docs/architecture/architecture.md) (§3, §6.2–6.3, §8, §9) still
 applies.
 
-**Status: M6 (delivery: resources, skills, timesheets, utilization) complete.**
+**Status: M7 (money: payroll, compliance, compensation, benefits, project financials) complete.**
 
 - Platform (tenants, plans, subscriptions, settings, audit log) and Identity (users, roles,
   permissions, browser sessions, the OIDC token server) run as modules in a single API host.
@@ -47,12 +47,22 @@ applies.
   timesheets checked against configurable rules, approved through the workflow, reopened for
   correction and closed by a period lock, with approved hours posted to tasks; and utilization by
   person, project, department, manager or location.
+- Money: a compliance centre with versioned statutory rules (EPF, ESI, professional tax by state,
+  income tax in both regimes, gratuity, labour welfare - seeded for India, edited by publishing new
+  versions), a filing calendar with reminders, and licences and certificates watched for expiry;
+  payroll with formula-driven components and structures, effective-dated salaries, variable inputs
+  (including overtime from timesheets), Form 12BB declarations, monthly runs approved through the
+  workflow and finalized into payslips that keep the rule versions they used, and the bank file,
+  EPF ECR, ESI and PT returns, journal and Form 16 Part B; benefits with employee and employer
+  shares, dependents and automatic enrollment; compensation bands, review cycles, revisions applied
+  to payroll, variable pay paid through payroll and equity vesting; and project financials - budget,
+  rate cards, costs, invoices, revenue by billing type, margin and forecast.
 - The frontend has the PeopleOS shell, a shared UI kit (KPI cards, charts, drawers, form dialogs,
   filter bar, timeline, tabs, an upgraded data table with column chooser and CSV export), and the
   Core HR and administration screens. Unbuilt modules stay hidden in the navigation.
-- 476 backend tests pass, including architecture rules for module boundaries, a tenant-isolation
+- 546 backend tests pass, including architecture rules for module boundaries, a tenant-isolation
   suite against a real SQL Server, and end-to-end flows that run the worker's event delivery.
-- Money (payroll, compliance, compensation, benefits, project financials) is next (M7).
+- Hiring (workforce plans, recruitment, onboarding) is next (M8).
 
 ## Prerequisites
 

@@ -112,6 +112,23 @@ rates, raises an open resource request on NWCOM and books eight approved weeks o
 Resources, Utilization and the bench have data. Every tenant gets the standard skill catalogue
 when it is provisioned.
 
+Since M7 it also:
+
+- runs the compliance sweep daily at 03:15 (`compliance-sweep`): generates the next 60 days' filings
+  and reminds obligation owners a week before a filing is due and once it is overdue, and registration
+  owners as expiry approaches.
+- records every live project's financials at 03:00 (`project-financials`) and alerts the project
+  manager when actual cost passes 90% and 100% of the budget.
+- applies approved payroll runs, salary revisions, variable pay and benefit enrollments, and marks
+  variable pay paid when the payroll that paid it is finalized.
+
+Every tenant is seeded with India's statutory rules, the usual filing obligations, payroll components
+and a standard structure, and four benefit plans. DevSeed's `money` step adds statutory and bank
+details and salaries for the demo people, benefit enrollments, salary bands, last month's payroll
+finalized with payslips, this month's run calculated, two registrations and NWCOM's budget, costs
+and an invoice. It also gives the administrator the Payroll Administrator role - payroll's sensitive
+permissions are not part of the Tenant Administrator role.
+
 Uploaded documents are stored under `.local/files` (one folder per tenant), configured by
 `Gggs:Storage:FileSystem:RootPath` in both hosts' development settings.
 
