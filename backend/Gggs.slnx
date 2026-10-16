@@ -54,6 +54,7 @@
     <Project Path="Modules/Leave/Gggs.Modules.Leave/Gggs.Modules.Leave.csproj" />
     <Project Path="Modules/Leave/Gggs.Modules.Leave.Contracts/Gggs.Modules.Leave.Contracts.csproj" />
     <Project Path="Modules/Attendance/Gggs.Modules.Attendance/Gggs.Modules.Attendance.csproj" />
+    <Project Path="Modules/Attendance/Gggs.Modules.Attendance.Contracts/Gggs.Modules.Attendance.Contracts.csproj" />
     <Project Path="Modules/Client/Gggs.Modules.Client/Gggs.Modules.Client.csproj" />
     <Project Path="Modules/Client/Gggs.Modules.Client.Contracts/Gggs.Modules.Client.Contracts.csproj" />
     <Project Path="Modules/Contract/Gggs.Modules.Contract/Gggs.Modules.Contract.csproj" />
@@ -64,6 +65,14 @@
     <Project Path="Modules/Skills/Gggs.Modules.Skills.Contracts/Gggs.Modules.Skills.Contracts.csproj" />
     <Project Path="Modules/Timesheets/Gggs.Modules.Timesheets/Gggs.Modules.Timesheets.csproj" />
     <Project Path="Modules/Timesheets/Gggs.Modules.Timesheets.Contracts/Gggs.Modules.Timesheets.Contracts.csproj" />
+    <Project Path="Modules/ProjectFinancials/Gggs.Modules.ProjectFinancials/Gggs.Modules.ProjectFinancials.csproj" />
+    <Project Path="Modules/Compensation/Gggs.Modules.Compensation/Gggs.Modules.Compensation.csproj" />
+    <Project Path="Modules/Payroll/Gggs.Modules.Payroll/Gggs.Modules.Payroll.csproj" />
+    <Project Path="Modules/Payroll/Gggs.Modules.Payroll.Contracts/Gggs.Modules.Payroll.Contracts.csproj" />
+    <Project Path="Modules/Benefits/Gggs.Modules.Benefits/Gggs.Modules.Benefits.csproj" />
+    <Project Path="Modules/Benefits/Gggs.Modules.Benefits.Contracts/Gggs.Modules.Benefits.Contracts.csproj" />
+    <Project Path="Modules/Compliance/Gggs.Modules.Compliance/Gggs.Modules.Compliance.csproj" />
+    <Project Path="Modules/Compliance/Gggs.Modules.Compliance.Contracts/Gggs.Modules.Compliance.Contracts.csproj" />
     <Project Path="Modules/Resources/Gggs.Modules.Resources/Gggs.Modules.Resources.csproj" />
   </Folder>
   <Folder Name="/Tools/">
@@ -78,6 +87,7 @@
     <Project Path="../tests/unit/Gggs.Workflow.UnitTests/Gggs.Workflow.UnitTests.csproj" />
     <Project Path="../tests/unit/Gggs.Time.UnitTests/Gggs.Time.UnitTests.csproj" />
     <Project Path="../tests/unit/Gggs.Delivery.UnitTests/Gggs.Delivery.UnitTests.csproj" />
+    <Project Path="../tests/unit/Gggs.Money.UnitTests/Gggs.Money.UnitTests.csproj" />
     <Project Path="../tests/unit/Gggs.Identity.UnitTests/Gggs.Identity.UnitTests.csproj" />
     <Project Path="../tests/unit/Gggs.Platform.UnitTests/Gggs.Platform.UnitTests.csproj" />
   </Folder>

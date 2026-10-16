@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Modules.Payroll</RootNamespace>
+    <Description>Payroll (spec §21-22, §94, §103): components, structures, salaries, inputs, tax declarations, monthly runs, payslips and statutory outputs.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Jobs\Gggs.BuildingBlocks.Jobs.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Web\Gggs.BuildingBlocks.Web.csproj" />
+    <ProjectReference Include="..\..\..\Data\Gggs.Data\Gggs.Data.csproj" />
+    <ProjectReference Include="..\..\Attendance\Gggs.Modules.Attendance.Contracts\Gggs.Modules.Attendance.Contracts.csproj" />
+    <ProjectReference Include="..\..\Benefits\Gggs.Modules.Benefits.Contracts\Gggs.Modules.Benefits.Contracts.csproj" />
+    <ProjectReference Include="..\..\Compliance\Gggs.Modules.Compliance.Contracts\Gggs.Modules.Compliance.Contracts.csproj" />
+    <ProjectReference Include="..\..\Employee\Gggs.Modules.Employee.Contracts\Gggs.Modules.Employee.Contracts.csproj" />
+    <ProjectReference Include="..\..\Leave\Gggs.Modules.Leave.Contracts\Gggs.Modules.Leave.Contracts.csproj" />
+    <ProjectReference Include="..\..\Notification\Gggs.Modules.Notification.Contracts\Gggs.Modules.Notification.Contracts.csproj" />
+    <ProjectReference Include="..\..\Organization\Gggs.Modules.Organization.Contracts\Gggs.Modules.Organization.Contracts.csproj" />
+    <ProjectReference Include="..\..\Platform\Gggs.Modules.Platform.Contracts\Gggs.Modules.Platform.Contracts.csproj" />
+    <ProjectReference Include="..\..\Timesheets\Gggs.Modules.Timesheets.Contracts\Gggs.Modules.Timesheets.Contracts.csproj" />
+    <ProjectReference Include="..\..\Workflow\Gggs.Modules.Workflow.Contracts\Gggs.Modules.Workflow.Contracts.csproj" />
+    <ProjectReference Include="..\Gggs.Modules.Payroll.Contracts\Gggs.Modules.Payroll.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Gggs.Money.UnitTests" />
+    <InternalsVisibleTo Include="Gggs.Api.IntegrationTests" />
+    <InternalsVisibleTo Include="Gggs.DevSeed" />
+  </ItemGroup>
+
+</Project>

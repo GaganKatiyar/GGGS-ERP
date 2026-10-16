@@ -140,6 +140,15 @@ public static class Permissions
 
         /// <summary>Keeping one's own skills and certifications up to date (self-assessed).</summary>
         public const string SkillManage = "self.skill.manage";
+
+        /// <summary>One's own income-tax regime and investment declaration (Form 12BB).</summary>
+        public const string TaxDeclarationManage = "self.tax-declaration.manage";
+
+        /// <summary>Enrolling oneself (and dependents) in benefit plans.</summary>
+        public const string BenefitManage = "self.benefit.manage";
+
+        /// <summary>One's own total rewards: salary, band position, revisions, variable pay and equity.</summary>
+        public const string CompensationView = "self.compensation.view";
     }
 
     /// <summary>Leave administration and approvals.</summary>
@@ -250,6 +259,12 @@ public static class Permissions
 
         /// <summary>Project roles and the health thresholds every project is judged by.</summary>
         public const string SettingsManage = "project.settings.manage";
+
+        /// <summary>Budget, cost, revenue, invoices and margin (spec §74-77).</summary>
+        public const string FinancialsView = "project.financials.view";
+
+        /// <summary>Budget lines, rate cards, non-labour costs and invoices.</summary>
+        public const string FinancialsManage = "project.financials.manage";
     }
 
     /// <summary>The skill catalog and who has which skill at what level (spec §29).</summary>
@@ -408,7 +423,20 @@ public static class Permissions
         /// <see cref="EmployeeSalaryView"/>.</summary>
         public const string EmployeeSalaryManage = "payroll.employee-salary.manage";
 
-        public const string PayGroupManage = "payroll.pay-group.manage";
+        /// <summary>Pay day, proration, loss-of-pay and overtime rules for the payroll as a whole.</summary>
+        public const string SettingsManage = "payroll.settings.manage";
+
+        /// <summary>One-off inputs for a period: overtime, bonus, incentive, arrears, reimbursements.</summary>
+        public const string InputManage = "payroll.input.manage";
+
+        /// <summary>Reading employees' tax declarations. Sensitive for the same reason as <see cref="EmployeeSalaryView"/>.</summary>
+        public const string TaxDeclarationView = "payroll.tax-declaration.view";
+
+        /// <summary>Verifying declarations against proofs. Sensitive for the same reason as <see cref="EmployeeSalaryView"/>.</summary>
+        public const string TaxDeclarationVerify = "payroll.tax-declaration.verify";
+
+        /// <summary>The payroll register, statutory returns (ECR, ESI, PT), the bank file and the journal. Sensitive.</summary>
+        public const string ReportView = "payroll.report.view";
 
         /// <summary>Viewing a run and its per-employee results. Sensitive for the same reason as
         /// <see cref="EmployeeSalaryView"/> - a run's numbers are just as much compensation data.</summary>
@@ -422,6 +450,51 @@ public static class Permissions
         /// be trusted to calculate and review without also being able to lock the period for good.
         /// Sensitive for the same reason as <see cref="RunView"/>.</summary>
         public const string RunFinalize = "payroll.run.finalize";
+    }
+
+    /// <summary>The compliance centre (spec §22, §107): versioned statutory rules, filings and registrations.</summary>
+    public static class Compliance
+    {
+        public const string RuleView = "compliance.rule.view";
+
+        /// <summary>Drafting and publishing new versions of statutory rules.</summary>
+        public const string RuleManage = "compliance.rule.manage";
+
+        /// <summary>The filing calendar, licences, certificates and audits.</summary>
+        public const string FilingView = "compliance.filing.view";
+        public const string FilingManage = "compliance.filing.manage";
+    }
+
+    /// <summary>Compensation (spec §23): bands, revisions, variable pay and equity.</summary>
+    public static class Compensation
+    {
+        public const string BandView = "compensation.band.view";
+        public const string BandManage = "compensation.band.manage";
+
+        /// <summary>Salary revisions (merit, promotion, correction) and review cycles. Sensitive.</summary>
+        public const string RevisionView = "compensation.revision.view";
+
+        /// <summary>Proposing revisions and running review cycles. Sensitive.</summary>
+        public const string RevisionManage = "compensation.revision.manage";
+
+        /// <summary>Bonus, commission and incentive awards.</summary>
+        public const string VariablePayView = "compensation.variable-pay.view";
+        public const string VariablePayManage = "compensation.variable-pay.manage";
+
+        /// <summary>ESOP and other equity grants.</summary>
+        public const string EquityView = "compensation.equity.view";
+        public const string EquityManage = "compensation.equity.manage";
+    }
+
+    /// <summary>Benefits (spec §24): plans, contributions and enrollments.</summary>
+    public static class Benefit
+    {
+        public const string PlanView = "benefit.plan.view";
+        public const string PlanManage = "benefit.plan.manage";
+
+        /// <summary>Anyone's enrollments, scoped like employee records.</summary>
+        public const string EnrollmentView = "benefit.enrollment.view";
+        public const string EnrollmentManage = "benefit.enrollment.manage";
     }
 
     /// <summary>Expense categories and claim review - submitting one's own claim is

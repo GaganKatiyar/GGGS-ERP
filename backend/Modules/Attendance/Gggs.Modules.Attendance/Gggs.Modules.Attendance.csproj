@@ -14,6 +14,7 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Web\Gggs.BuildingBlocks.Web.csproj" />
     <ProjectReference Include="..\..\..\Data\Gggs.Data\Gggs.Data.csproj" />
     <ProjectReference Include="..\..\Employee\Gggs.Modules.Employee.Contracts\Gggs.Modules.Employee.Contracts.csproj" />
+    <ProjectReference Include="..\Gggs.Modules.Attendance.Contracts\Gggs.Modules.Attendance.Contracts.csproj" />
     <ProjectReference Include="..\..\Leave\Gggs.Modules.Leave.Contracts\Gggs.Modules.Leave.Contracts.csproj" />
     <ProjectReference Include="..\..\Shift\Gggs.Modules.Shift.Contracts\Gggs.Modules.Shift.Contracts.csproj" />
     <ProjectReference Include="..\..\Workflow\Gggs.Modules.Workflow.Contracts\Gggs.Modules.Workflow.Contracts.csproj" />

@@ -186,9 +186,10 @@ public sealed class EmployeeTests(PeopleOsApiFactory factory)
         JsonElement[] sections = [.. view.GetProperty("sections").EnumerateArray()];
 
         sections.Single(section => section.GetProperty("key").GetString() == "employment").GetProperty("available").GetBoolean().ShouldBeTrue();
-        JsonElement payroll = sections.Single(section => section.GetProperty("key").GetString() == "payroll");
-        payroll.GetProperty("available").GetBoolean().ShouldBeFalse();
-        payroll.GetProperty("milestone").GetString().ShouldBe("M7");
+        sections.Single(section => section.GetProperty("key").GetString() == "payroll").GetProperty("available").GetBoolean().ShouldBeTrue();
+        JsonElement performance = sections.Single(section => section.GetProperty("key").GetString() == "performance");
+        performance.GetProperty("available").GetBoolean().ShouldBeFalse();
+        performance.GetProperty("milestone").GetString().ShouldBe("M9");
     }
 
     [Fact]

@@ -70,6 +70,36 @@ public interface IEmployeeDirectory
     Task<IReadOnlyDictionary<string, Guid>> ResolveCodesAsync(IEnumerable<string> employeeCodes, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// The statutory and bank details payroll works with. Masked unless the caller asks for them
+/// revealed - for a bank file or a statutory return - and the caller is responsible for having
+/// checked a permission that justifies seeing them.
+/// </summary>
+public sealed record PayrollIdentity(
+    Guid EmployeeId,
+    string? Pan,
+    string? Uan,
+    string? EsicNumber,
+    string? ProfessionalTaxStateCode,
+    string? BankName,
+    string? BankIfsc,
+    string? BankAccountHolder,
+    string? BankAccountNumber,
+    DateOnly? DateOfBirth,
+    string? GenderCode,
+    bool Revealed);
+
+/// <summary>A family member recorded against an employee, for benefit enrollment.</summary>
+public sealed record DependentInfo(Guid Id, Guid EmployeeId, string FullName, string RelationshipCode, DateOnly? DateOfBirth);
+
+/// <summary>Employee details for payroll and benefits (ADR-12).</summary>
+public interface IEmployeePayrollDetails
+{
+    Task<IReadOnlyDictionary<Guid, PayrollIdentity>> GetAsync(IEnumerable<Guid> employeeIds, bool reveal, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<DependentInfo>> DependentsAsync(IEnumerable<Guid> employeeIds, CancellationToken cancellationToken = default);
+}
+
 /// <summary>Someone joined. Recruitment, onboarding, payroll and resourcing react to this.</summary>
 [MessageType("gggs.employee.hired")]
 public sealed record EmployeeHiredIntegrationEvent(

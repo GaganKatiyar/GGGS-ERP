@@ -42,4 +42,10 @@ public static class NotificationTemplates
     public const string ProjectTaskAssigned = "project.task-assigned";
     public const string TimesheetMissing = "timesheet.missing";
     public const string ResourceTransferDecided = "resource.transfer-decided";
+    public const string PayslipPublished = "payroll.payslip-published";
+    public const string ComplianceFilingDue = "compliance.filing-due";
+    public const string ComplianceRegistrationExpiring = "compliance.registration-expiring";
+    public const string CompensationRevisionDecided = "compensation.revision-decided";
+    public const string BenefitEnrollmentDecided = "benefit.enrollment-decided";
+    public const string ProjectBudgetAlert = "project.budget-alert";
 }

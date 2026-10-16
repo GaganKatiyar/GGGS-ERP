@@ -120,6 +120,55 @@ internal sealed class ProjectDirectory(AppDbContext dbContext) : IProjectDirecto
             ? new Dictionary<Guid, Guid>()
             : await dbContext.ProjectTasks.AsNoTracking().Where(task => ids.Contains(task.Id)).ToDictionaryAsync(task => task.Id, task => task.ProjectId, cancellationToken);
     }
+
+    public async Task<IReadOnlyList<ProjectFinancialFacts>> FinancialFactsAsync(IEnumerable<Guid>? projectIds, CancellationToken cancellationToken = default)
+    {
+        IQueryable<Domain.Project> query = dbContext.Projects.AsNoTracking();
+        if (projectIds is not null)
+        {
+            List<Guid> wanted = [.. projectIds.Distinct()];
+            query = query.Where(project => wanted.Contains(project.Id));
+        }
+        else
+        {
+            query = query.Where(project => project.Status != ProjectStatus.Cancelled);
+        }
+
+        List<Domain.Project> projects = await query.OrderBy(project => project.Code).ToListAsync(cancellationToken);
+        List<Guid> ids = [.. projects.Select(project => project.Id)];
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        var tasks = await dbContext.ProjectTasks.AsNoTracking()
+            .Where(task => ids.Contains(task.ProjectId))
+            .Select(task => new { task.ProjectId, task.Type, task.StoryPoints, task.EstimatedHours, task.Progress, Done = task.CompletedDate != null })
+            .ToListAsync(cancellationToken);
+        List<ProjectMilestone> milestones = await dbContext.ProjectMilestones.AsNoTracking()
+            .Where(milestone => ids.Contains(milestone.ProjectId) && milestone.Status != MilestoneStatus.Cancelled)
+            .OrderBy(milestone => milestone.PlannedDate)
+            .ToListAsync(cancellationToken);
+        var team = await dbContext.ProjectTeamMembers.AsNoTracking()
+            .Where(member => ids.Contains(member.ProjectId))
+            .Join(dbContext.ProjectRoles.AsNoTracking(), member => member.ProjectRoleId, role => role.Id, (member, role) => new { member, RoleName = role.Name })
+            .ToListAsync(cancellationToken);
+
+        return [.. projects.Select(project =>
+        {
+            (decimal progress, _) = ProgressMeter.Of(tasks.Where(task => task.ProjectId == project.Id).Select(task => (task.Type, task.StoryPoints, task.EstimatedHours, task.Progress, task.Done)));
+            return new ProjectFinancialFacts(
+                project.Id, project.Code, project.Name, project.Status.ToString(), project.BillingType.ToString(), project.Currency, project.Budget,
+                project.RevenueTarget, project.CostBudget, project.ClientId, project.ContractId, project.ProjectManagerEmployeeId, project.DepartmentId,
+                project.StartDate, project.EndDate, progress,
+                [.. milestones.Where(milestone => milestone.ProjectId == project.Id).Select(milestone => new MilestoneFact(
+                    milestone.Id, milestone.Name, milestone.PlannedDate, milestone.ActualDate, milestone.Status.ToString(), milestone.IsBillable))],
+                [.. team.Where(row => row.member.ProjectId == project.Id).Select(row => new ProjectAllocation(
+                    row.member.Id, project.Id, project.Code, project.Name, project.Status.ToString(), row.member.EmployeeId, row.member.ProjectRoleId,
+                    row.RoleName, row.member.AllocationPercent, row.member.StartDate, row.member.EndDate, row.member.Billable, row.member.BillingRate,
+                    row.member.CostRate, row.member.Status == TeamMemberStatus.Active))]);
+        })];
+    }
 }
 
 /// <summary>Project documents (spec §55) follow the project: the team reads them, those who run the project add them.</summary>

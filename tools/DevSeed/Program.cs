@@ -63,6 +63,10 @@ foreach (IModule module in ModuleCatalog.All)
     module.AddServices(services, moduleContext);
 }
 
+// The seed acts as a tool that can do everything, so module services that scope by permission (payroll
+// runs, project financials) see every record - as a tenant administrator holding every grant would.
+services.AddScoped<IPermissionProvider, SeedPermissions>();
+
 await using ServiceProvider provider = services.BuildServiceProvider(validateScopes: true);
 
 await RunAsync(provider, "migrate", async (scope, tenant) =>
@@ -199,6 +203,12 @@ await RunAsync(provider, "administrator employee", async (scope, tenant) =>
     await Gggs.DevSeed.DemoData.LinkAdministratorToEmployeeAsync(scope, adminEmail);
 });
 
+await RunAsync(provider, "money", async (scope, tenant) =>
+{
+    tenant.SetTenant(tenantId);
+    await Gggs.DevSeed.MoneyDemo.SeedAsync(scope, adminEmail);
+});
+
 Console.WriteLine();
 Console.WriteLine("Done. Sign in with:");
 Console.WriteLine($"  Organisation code: {tenantCode}");
@@ -220,6 +230,20 @@ static async Task RunAsync(IServiceProvider provider, string step, Func<IService
         Console.Error.WriteLine($"Step '{step}' failed: {exception.Message}");
         throw;
     }
+}
+
+/// <summary>Every tenant permission at tenant scope: the seed is not a user and is not limited like one.</summary>
+file sealed class SeedPermissions : IPermissionProvider
+{
+    private static readonly PermissionSet Everything = new(
+        PermissionCatalog.All.Where(definition => !definition.IsPlatformOnly).Select(definition => new PermissionGrant { Code = definition.Code, Scope = DataScope.Tenant }),
+        0);
+
+    public Task<PermissionSet> GetCurrentAsync(CancellationToken cancellationToken = default) => Task.FromResult(Everything);
+
+    public Task<PermissionSet> GetForUserAsync(Guid userId, CancellationToken cancellationToken = default) => Task.FromResult(Everything);
+
+    public Task InvalidateAsync(Guid userId, CancellationToken cancellationToken = default) => Task.CompletedTask;
 }
 
 /// <summary>

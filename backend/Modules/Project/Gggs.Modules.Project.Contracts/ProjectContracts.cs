@@ -51,7 +51,37 @@ public interface IProjectDirectory
 
     /// <summary>The project each task belongs to.</summary>
     Task<IReadOnlyDictionary<Guid, Guid>> TaskProjectsAsync(IEnumerable<Guid> taskIds, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// What project financials need: billing type, budgets, progress, milestones and the whole team
+    /// with their rates. <paramref name="projectIds"/> null means every project that is not cancelled.
+    /// </summary>
+    Task<IReadOnlyList<ProjectFinancialFacts>> FinancialFactsAsync(IEnumerable<Guid>? projectIds, CancellationToken cancellationToken = default);
 }
+
+/// <summary>A milestone as billing sees it: achieved or not, and whether it is invoiced on achievement.</summary>
+public sealed record MilestoneFact(Guid Id, string Name, DateOnly PlannedDate, DateOnly? ActualDate, string Status, bool IsBillable);
+
+/// <summary>A project's commercial facts (spec §74-77).</summary>
+public sealed record ProjectFinancialFacts(
+    Guid Id,
+    string Code,
+    string Name,
+    string Status,
+    string BillingType,
+    string Currency,
+    decimal? Budget,
+    decimal? RevenueTarget,
+    decimal? CostBudget,
+    Guid? ClientId,
+    Guid? ContractId,
+    Guid? ProjectManagerEmployeeId,
+    Guid? DepartmentId,
+    DateOnly StartDate,
+    DateOnly EndDate,
+    decimal ProgressPercent,
+    IReadOnlyList<MilestoneFact> Milestones,
+    IReadOnlyList<ProjectAllocation> Team);
 
 public sealed record ProjectAllocation(
     Guid MemberId,

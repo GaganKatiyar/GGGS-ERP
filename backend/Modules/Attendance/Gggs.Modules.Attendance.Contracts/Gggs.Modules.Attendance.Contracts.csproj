@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Modules.Attendance.Contracts</RootNamespace>
+    <Description>The Attendance module's public surface: judged days, for payroll.</Description>
+  </PropertyGroup>
+
+</Project>

@@ -1,6 +1,7 @@
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.Web.Modules;
 using Gggs.Modules.Attendance.Application;
+using Gggs.Modules.Attendance.Contracts;
 using Gggs.Modules.Attendance.Endpoints;
 using Gggs.Modules.Leave.Contracts;
 using Gggs.Modules.Workflow.Contracts;
@@ -15,6 +16,7 @@ public sealed class AttendanceModule : IModule
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
         services.AddScoped<AttendanceService>();
+        services.AddScoped<IAttendanceLedger, AttendanceLedger>();
         services.AddWorkflowSubject(AttendanceService.RegularizationSubject);
     }
 

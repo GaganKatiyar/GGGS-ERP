@@ -28,6 +28,11 @@
     <ProjectReference Include="..\..\Modules\Project\Gggs.Modules.Project\Gggs.Modules.Project.csproj" />
     <ProjectReference Include="..\..\Modules\Skills\Gggs.Modules.Skills\Gggs.Modules.Skills.csproj" />
     <ProjectReference Include="..\..\Modules\Timesheets\Gggs.Modules.Timesheets\Gggs.Modules.Timesheets.csproj" />
+    <ProjectReference Include="..\..\Modules\ProjectFinancials\Gggs.Modules.ProjectFinancials\Gggs.Modules.ProjectFinancials.csproj" />
+    <ProjectReference Include="..\..\Modules\Compensation\Gggs.Modules.Compensation\Gggs.Modules.Compensation.csproj" />
+    <ProjectReference Include="..\..\Modules\Payroll\Gggs.Modules.Payroll\Gggs.Modules.Payroll.csproj" />
+    <ProjectReference Include="..\..\Modules\Benefits\Gggs.Modules.Benefits\Gggs.Modules.Benefits.csproj" />
+    <ProjectReference Include="..\..\Modules\Compliance\Gggs.Modules.Compliance\Gggs.Modules.Compliance.csproj" />
     <ProjectReference Include="..\..\Modules\Resources\Gggs.Modules.Resources\Gggs.Modules.Resources.csproj" />
   </ItemGroup>
 

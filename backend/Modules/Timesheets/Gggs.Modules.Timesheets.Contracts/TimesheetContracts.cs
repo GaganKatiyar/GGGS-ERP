@@ -24,6 +24,15 @@ public interface ITimesheetLedger
 {
     /// <summary>Hours in the window from submitted and approved timesheets; <paramref name="employeeIds"/> null means everyone.</summary>
     Task<IReadOnlyList<LoggedHours>> HoursAsync(IEnumerable<Guid>? employeeIds, DateOnly firstDay, DateOnly lastDay, bool approvedOnly, CancellationToken cancellationToken = default);
+
+    /// <summary>Hours booked to the given projects in the window (all projects when null), for project costing and revenue.</summary>
+    Task<IReadOnlyList<LoggedHours>> ProjectHoursAsync(IEnumerable<Guid>? projectIds, DateOnly firstDay, DateOnly lastDay, bool approvedOnly, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Approved hours beyond the standard day, per person, in the window (spec §94): hours over the
+    /// standard on a working day, and every hour on a weekly off or holiday. Payroll prices them.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, decimal>> OvertimeAsync(IEnumerable<Guid>? employeeIds, DateOnly firstDay, DateOnly lastDay, CancellationToken cancellationToken = default);
 }
 
 public sealed record TaskHours(Guid TaskId, decimal Hours);

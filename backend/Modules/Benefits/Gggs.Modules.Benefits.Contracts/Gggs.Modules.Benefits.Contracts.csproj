@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Modules.Benefits.Contracts</RootNamespace>
+    <Description>The Benefits module's public surface: what each enrollment costs the employee and the employer, for payroll and total rewards.</Description>
+  </PropertyGroup>
+
+</Project>

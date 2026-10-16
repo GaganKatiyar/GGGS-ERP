@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Modules.Compliance.Contracts</RootNamespace>
+    <Description>The Compliance module's public surface: versioned statutory rules in force.</Description>
+  </PropertyGroup>
+
+</Project>

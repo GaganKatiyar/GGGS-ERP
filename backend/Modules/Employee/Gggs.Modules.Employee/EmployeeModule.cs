@@ -14,6 +14,7 @@ public sealed class EmployeeModule : IModule
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
         services.AddScoped<IEmployeeDirectory, EmployeeDirectory>();
+        services.AddScoped<IEmployeePayrollDetails, EmployeePayrollDetails>();
         services.AddScoped<EmployeeScope>();
         services.AddScoped<EmployeeService>();
         services.AddScoped<EmployeeQueries>();

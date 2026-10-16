@@ -554,9 +554,60 @@ internal sealed class TimesheetService(
     }
 }
 
-/// <summary>Booked hours for utilization.</summary>
-internal sealed class TimesheetLedger(AppDbContext dbContext) : ITimesheetLedger
+/// <summary>Booked hours for utilization, project financials and payroll.</summary>
+internal sealed class TimesheetLedger(AppDbContext dbContext, IShiftSchedule shifts, ILeaveCalendar leave) : ITimesheetLedger
 {
+    public async Task<IReadOnlyList<LoggedHours>> ProjectHoursAsync(IEnumerable<Guid>? projectIds, DateOnly firstDay, DateOnly lastDay, bool approvedOnly, CancellationToken cancellationToken = default)
+    {
+        IQueryable<TimesheetEntry> entries = dbContext.TimesheetEntries.AsNoTracking().Where(entry => entry.ProjectId != null && entry.Date >= firstDay && entry.Date <= lastDay);
+        if (projectIds is not null)
+        {
+            List<Guid> ids = [.. projectIds.Distinct()];
+            entries = entries.Where(entry => ids.Contains(entry.ProjectId!.Value));
+        }
+
+        IQueryable<Timesheet> sheets = dbContext.Timesheets.AsNoTracking()
+            .Where(sheet => sheet.Status == TimesheetStatus.Approved || (!approvedOnly && sheet.Status == TimesheetStatus.Submitted));
+
+        return await entries
+            .Join(sheets, entry => entry.TimesheetId, sheet => sheet.Id, (entry, sheet) => new LoggedHours(
+                entry.EmployeeId, entry.ProjectId, entry.TaskId, entry.Date, entry.Category, entry.Hours, sheet.Status == TimesheetStatus.Approved))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, decimal>> OvertimeAsync(IEnumerable<Guid>? employeeIds, DateOnly firstDay, DateOnly lastDay, CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<LoggedHours> hours = await HoursAsync(employeeIds, firstDay, lastDay, approvedOnly: true, cancellationToken);
+        List<Guid> people = [.. hours.Select(row => row.EmployeeId).Distinct()];
+        if (people.Count == 0)
+        {
+            return new Dictionary<Guid, decimal>();
+        }
+
+        TimesheetRules rules = (await dbContext.TimesheetSettings.AsNoTracking().FirstOrDefaultAsync(cancellationToken))?.ToRules() ?? TimesheetRules.Default;
+        ILookup<Guid, ScheduledDay> schedule = (await shifts.GetAsync(people, firstDay, lastDay, cancellationToken)).ToLookup(day => day.EmployeeId);
+        IReadOnlyDictionary<Guid, IReadOnlyList<HolidayEntry>> holidays = await leave.GetHolidaysAsync(people, firstDay, lastDay, cancellationToken);
+
+        var overtime = new Dictionary<Guid, decimal>();
+        foreach (IGrouping<Guid, LoggedHours> person in hours.GroupBy(row => row.EmployeeId))
+        {
+            Dictionary<DateOnly, ScheduledDay> days = schedule[person.Key].ToDictionary(day => day.Date);
+            HashSet<DateOnly> offDays = [.. (holidays.GetValueOrDefault(person.Key) ?? []).Where(entry => !entry.IsOptional).Select(entry => entry.Date)];
+            List<DayFacts> facts = [.. person.Select(row => row.Date).Distinct().Select(date => new DayFacts(
+                date,
+                days.TryGetValue(date, out ScheduledDay? day) ? !day.IsWeeklyOff : date.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday),
+                offDays.Contains(date) ? "Holiday" : null,
+                0))];
+            decimal extra = TimesheetChecks.Overtime(rules, facts, person.Select(row => (row.Date, row.Hours)));
+            if (extra > 0)
+            {
+                overtime[person.Key] = extra;
+            }
+        }
+
+        return overtime;
+    }
+
     public async Task<IReadOnlyList<LoggedHours>> HoursAsync(IEnumerable<Guid>? employeeIds, DateOnly firstDay, DateOnly lastDay, bool approvedOnly, CancellationToken cancellationToken = default)
     {
         IQueryable<TimesheetEntry> entries = dbContext.TimesheetEntries.AsNoTracking().Where(entry => entry.Date >= firstDay && entry.Date <= lastDay);

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Money.UnitTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\backend\Modules\Benefits\Gggs.Modules.Benefits\Gggs.Modules.Benefits.csproj" />
+    <ProjectReference Include="..\..\..\backend\Modules\Compensation\Gggs.Modules.Compensation\Gggs.Modules.Compensation.csproj" />
+    <ProjectReference Include="..\..\..\backend\Modules\Compliance\Gggs.Modules.Compliance\Gggs.Modules.Compliance.csproj" />
+    <ProjectReference Include="..\..\..\backend\Modules\Payroll\Gggs.Modules.Payroll\Gggs.Modules.Payroll.csproj" />
+    <ProjectReference Include="..\..\..\backend\Modules\ProjectFinancials\Gggs.Modules.ProjectFinancials\Gggs.Modules.ProjectFinancials.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Shouldly" />
+  </ItemGroup>
+
+</Project>

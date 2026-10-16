@@ -125,6 +125,9 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Leave.Application.LeaveCatalogSeeder>().SeedCurrentTenantAsync();
             await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Project.Application.ProjectCatalogSeeder>().SeedCurrentTenantAsync();
             await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Skills.Application.SkillCatalogSeeder>().SeedCurrentTenantAsync();
+            await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Compliance.Application.ComplianceSeeder>().SeedCurrentTenantAsync();
+            await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Payroll.Application.PayrollSeeder>().SeedCurrentTenantAsync();
+            await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Benefits.Application.BenefitSeeder>().SeedCurrentTenantAsync();
         }
 
         // The worker seeds the platform roles at start-up; this host is the API alone, so run the
@@ -517,6 +520,16 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             Permissions.Resource.ProfileView, Permissions.Resource.ProfileManage, Permissions.Resource.RequestView, Permissions.Resource.RequestManage,
             Permissions.Resource.AllocationView, Permissions.Resource.AllocationManage, Permissions.Resource.UtilizationView,
             Permissions.Timesheet.View, Permissions.Timesheet.Approve, Permissions.Timesheet.SettingsManage,
+            Permissions.Project.FinancialsView, Permissions.Project.FinancialsManage,
+            Permissions.Payroll.ComponentManage, Permissions.Payroll.StructureManage, Permissions.Payroll.SettingsManage,
+            Permissions.Payroll.EmployeeSalaryView, Permissions.Payroll.EmployeeSalaryManage, Permissions.Payroll.InputManage,
+            Permissions.Payroll.TaxDeclarationView, Permissions.Payroll.TaxDeclarationVerify,
+            Permissions.Payroll.RunView, Permissions.Payroll.RunProcess, Permissions.Payroll.RunFinalize, Permissions.Payroll.ReportView,
+            Permissions.Compliance.RuleView, Permissions.Compliance.RuleManage, Permissions.Compliance.FilingView, Permissions.Compliance.FilingManage,
+            Permissions.Compensation.BandView, Permissions.Compensation.BandManage, Permissions.Compensation.RevisionView, Permissions.Compensation.RevisionManage,
+            Permissions.Compensation.VariablePayView, Permissions.Compensation.VariablePayManage, Permissions.Compensation.EquityView, Permissions.Compensation.EquityManage,
+            Permissions.Benefit.PlanView, Permissions.Benefit.PlanManage, Permissions.Benefit.EnrollmentView, Permissions.Benefit.EnrollmentManage,
+            Permissions.Self.TaxDeclarationManage, Permissions.Self.BenefitManage, Permissions.Self.CompensationView,
         })
         {
             role.Grant(permission, DataScope.Tenant);

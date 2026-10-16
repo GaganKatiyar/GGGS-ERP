@@ -1,7 +1,10 @@
 using System.Reflection;
 using Gggs.BuildingBlocks.Web.Modules;
 using Gggs.Modules.Attendance;
+using Gggs.Modules.Benefits;
 using Gggs.Modules.Client;
+using Gggs.Modules.Compensation;
+using Gggs.Modules.Compliance;
 using Gggs.Modules.Contract;
 using Gggs.Modules.Documents;
 using Gggs.Modules.Employee;
@@ -10,9 +13,11 @@ using Gggs.Modules.Leave;
 using Gggs.Modules.MasterData;
 using Gggs.Modules.Notification;
 using Gggs.Modules.Organization;
+using Gggs.Modules.Payroll;
 using Gggs.Modules.Platform;
 using Gggs.Modules.Policies;
 using Gggs.Modules.Project;
+using Gggs.Modules.ProjectFinancials;
 using Gggs.Modules.Resources;
 using Gggs.Modules.Shift;
 using Gggs.Modules.Skills;
@@ -50,6 +55,11 @@ public static class ModuleCatalog
         new ProjectModule(),
         new SkillsModule(),
         new TimesheetsModule(),
+        new ProjectFinancialsModule(),
+        new CompensationModule(),
+        new PayrollModule(),
+        new BenefitsModule(),
+        new ComplianceModule(),
         new ResourcesModule(),
     ];
 

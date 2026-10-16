@@ -22,9 +22,9 @@ namespace Gggs.Modules.Identity.Application.Provisioning;
 /// bank accounts because we shipped it that way.
 /// </para>
 /// <para>
-/// Payroll, expense and travel permissions are absent because those modules do not exist yet. The
-/// roles that will need them (<c>PAYROLL_ADMIN</c>, <c>FINANCE_USER</c>) are seeded now with the
-/// access they can have, and gain the rest when the catalog does.
+/// Expense and travel permissions are absent because those modules do not exist yet. Payroll's
+/// sensitive permissions (salaries, runs, declarations, reports) go to the Payroll Administrator,
+/// scoped to their legal entity, and reading runs and reports to Finance.
 /// </para>
 /// </summary>
 public static class RoleTemplates
@@ -205,6 +205,15 @@ public static class RoleTemplates
                 .. ResourceManagement(),
                 new(Permissions.Timesheet.Approve, DataScope.Tenant),
                 new(Permissions.Timesheet.SettingsManage, DataScope.Tenant),
+                new(Permissions.Project.FinancialsView, DataScope.Tenant),
+                new(Permissions.Project.FinancialsManage, DataScope.Tenant),
+
+                // Money set-up, but none of the sensitive grants: no salaries, runs or declarations.
+                .. PayrollSetup(),
+                .. ComplianceManagement(),
+                .. BenefitManagement(),
+                new(Permissions.Compensation.BandView, DataScope.Tenant),
+                new(Permissions.Compensation.BandManage, DataScope.Tenant),
 
                 new(Permissions.Notification.TemplateView, DataScope.Tenant),
                 new(Permissions.Notification.TemplateManage, DataScope.Tenant),
@@ -273,6 +282,14 @@ public static class RoleTemplates
                 new(Permissions.Timesheet.Approve, DataScope.Tenant),
                 new(Permissions.Timesheet.SettingsManage, DataScope.Tenant),
 
+                .. BenefitManagement(),
+                new(Permissions.Compensation.BandView, DataScope.Tenant),
+                new(Permissions.Compensation.BandManage, DataScope.Tenant),
+                new(Permissions.Compensation.VariablePayView, DataScope.Tenant),
+                new(Permissions.Compensation.VariablePayManage, DataScope.Tenant),
+                new(Permissions.Compensation.EquityView, DataScope.Tenant),
+                new(Permissions.Compensation.EquityManage, DataScope.Tenant),
+
                 new(Permissions.Notification.TemplateView, DataScope.Tenant),
 
                 new(Permissions.Report.View, DataScope.Tenant),
@@ -323,6 +340,26 @@ public static class RoleTemplates
                 new(Permissions.Workflow.TaskAct, DataScope.Own),
                 new(Permissions.Report.View, DataScope.LegalEntity),
 
+                .. PayrollSetup(),
+                new(Permissions.Payroll.EmployeeSalaryView, DataScope.LegalEntity),
+                new(Permissions.Payroll.EmployeeSalaryManage, DataScope.LegalEntity),
+                new(Permissions.Payroll.InputManage, DataScope.LegalEntity),
+                new(Permissions.Payroll.TaxDeclarationView, DataScope.LegalEntity),
+                new(Permissions.Payroll.TaxDeclarationVerify, DataScope.LegalEntity),
+                new(Permissions.Payroll.RunView, DataScope.LegalEntity),
+                new(Permissions.Payroll.RunProcess, DataScope.LegalEntity),
+                new(Permissions.Payroll.RunFinalize, DataScope.LegalEntity),
+                new(Permissions.Payroll.ReportView, DataScope.LegalEntity),
+                new(Permissions.Compliance.RuleView, DataScope.Tenant),
+                new(Permissions.Compliance.FilingView, DataScope.Tenant),
+                new(Permissions.Compliance.FilingManage, DataScope.Tenant),
+                new(Permissions.Benefit.PlanView, DataScope.Tenant),
+                new(Permissions.Benefit.EnrollmentView, DataScope.LegalEntity),
+                new(Permissions.Compensation.BandView, DataScope.Tenant),
+                new(Permissions.Compensation.RevisionView, DataScope.LegalEntity),
+                new(Permissions.Compensation.RevisionManage, DataScope.LegalEntity),
+                new(Permissions.Compensation.VariablePayView, DataScope.LegalEntity),
+
                 .. SelfService(),
             ],
 
@@ -339,6 +376,16 @@ public static class RoleTemplates
                 new(Permissions.Workflow.TaskView, DataScope.Own),
                 new(Permissions.Workflow.TaskAct, DataScope.Own),
                 new(Permissions.Report.View, DataScope.LegalEntity),
+
+                new(Permissions.Project.FinancialsView, DataScope.Tenant),
+                new(Permissions.Project.FinancialsManage, DataScope.Tenant),
+                new(Permissions.Payroll.RunView, DataScope.LegalEntity),
+                new(Permissions.Payroll.ReportView, DataScope.LegalEntity),
+                new(Permissions.Compliance.RuleView, DataScope.Tenant),
+                new(Permissions.Compliance.FilingView, DataScope.Tenant),
+                new(Permissions.Benefit.PlanView, DataScope.Tenant),
+                new(Permissions.Compensation.BandView, DataScope.Tenant),
+                new(Permissions.Compensation.VariablePayView, DataScope.Tenant),
 
                 .. SelfService(),
             ],
@@ -491,6 +538,7 @@ public static class RoleTemplates
                 new(Permissions.Resource.AllocationView, DataScope.Tenant),
                 new(Permissions.Resource.RequestView, DataScope.Own),
                 new(Permissions.Resource.RequestManage, DataScope.Own),
+                new(Permissions.Project.FinancialsView, DataScope.Own),
             ],
             ["DELIVERY_MANAGER"] =
             [
@@ -502,8 +550,16 @@ public static class RoleTemplates
                 new(Permissions.Project.SettingsManage, DataScope.Tenant),
                 .. ResourceReadOnly(),
                 new(Permissions.Resource.RequestManage, DataScope.Tenant),
+                new(Permissions.Project.FinancialsView, DataScope.Tenant),
+                new(Permissions.Project.FinancialsManage, DataScope.Tenant),
             ],
-            ["PROGRAM_MANAGER"] = [.. DeliveryBaseline(DataScope.Tenant), .. ProjectLead(DataScope.Tenant), .. ResourceReadOnly()],
+            ["PROGRAM_MANAGER"] =
+            [
+                .. DeliveryBaseline(DataScope.Tenant),
+                .. ProjectLead(DataScope.Tenant),
+                .. ResourceReadOnly(),
+                new(Permissions.Project.FinancialsView, DataScope.Tenant),
+            ],
             ["RESOURCE_MANAGER"] = [.. DeliveryBaseline(DataScope.Tenant), .. DeliveryReadOnly(), .. ResourceManagement()],
 
             ["PERFORMANCE_ADMIN"] =
@@ -552,6 +608,7 @@ public static class RoleTemplates
                 new(Permissions.Policy.Manage, DataScope.Tenant),
                 new(Permissions.Policy.AcknowledgementView, DataScope.Tenant),
                 new(Permissions.Report.View, DataScope.Tenant),
+                .. ComplianceManagement(),
 
                 .. SelfService(),
             ],
@@ -591,6 +648,7 @@ public static class RoleTemplates
                 new(Permissions.Report.View, DataScope.Tenant),
                 .. DeliveryReadOnly(),
                 .. ResourceReadOnly(),
+                .. MoneyReadOnly(),
 
                 .. SelfService(),
             ],
@@ -620,6 +678,7 @@ public static class RoleTemplates
                 new(Permissions.Report.View, DataScope.Tenant),
                 .. DeliveryReadOnly(),
                 .. ResourceReadOnly(),
+                .. MoneyReadOnly(),
 
                 .. SelfService(),
             ],
@@ -680,6 +739,40 @@ public static class RoleTemplates
     public static IReadOnlyList<PermissionAssignment> For(string templateCode)
         => Templates.GetValueOrDefault(templateCode) ?? [];
 
+    /// <summary>Salary components, structures and payroll rules: set-up, not anyone's pay.</summary>
+    private static PermissionAssignment[] PayrollSetup() =>
+    [
+        new(Permissions.Payroll.ComponentManage, DataScope.Tenant),
+        new(Permissions.Payroll.StructureManage, DataScope.Tenant),
+        new(Permissions.Payroll.SettingsManage, DataScope.Tenant),
+    ];
+
+    private static PermissionAssignment[] ComplianceManagement() =>
+    [
+        new(Permissions.Compliance.RuleView, DataScope.Tenant),
+        new(Permissions.Compliance.RuleManage, DataScope.Tenant),
+        new(Permissions.Compliance.FilingView, DataScope.Tenant),
+        new(Permissions.Compliance.FilingManage, DataScope.Tenant),
+    ];
+
+    private static PermissionAssignment[] BenefitManagement() =>
+    [
+        new(Permissions.Benefit.PlanView, DataScope.Tenant),
+        new(Permissions.Benefit.PlanManage, DataScope.Tenant),
+        new(Permissions.Benefit.EnrollmentView, DataScope.Tenant),
+        new(Permissions.Benefit.EnrollmentManage, DataScope.Tenant),
+    ];
+
+    /// <summary>Margins, rules and plans for those who oversee but do not run them - nothing personal or sensitive.</summary>
+    private static PermissionAssignment[] MoneyReadOnly() =>
+    [
+        new(Permissions.Project.FinancialsView, DataScope.Tenant),
+        new(Permissions.Compliance.RuleView, DataScope.Tenant),
+        new(Permissions.Compliance.FilingView, DataScope.Tenant),
+        new(Permissions.Benefit.PlanView, DataScope.Tenant),
+        new(Permissions.Compensation.BandView, DataScope.Tenant),
+    ];
+
     /// <summary>
     /// Self-service, which every role carries. A payroll administrator still has to apply for
     /// their own leave, and a role that took that away would leave the holder unable to use the
@@ -699,6 +792,9 @@ public static class RoleTemplates
         new(Permissions.Self.ShiftSwapRequest, DataScope.Own),
         new(Permissions.Self.TimesheetSubmit, DataScope.Own),
         new(Permissions.Self.SkillManage, DataScope.Own),
+        new(Permissions.Self.TaxDeclarationManage, DataScope.Own),
+        new(Permissions.Self.BenefitManage, DataScope.Own),
+        new(Permissions.Self.CompensationView, DataScope.Own),
 
         // Everyone receives notifications - approvals, policies to acknowledge, invitations.
         new(Permissions.Notification.InboxView, DataScope.Own),
