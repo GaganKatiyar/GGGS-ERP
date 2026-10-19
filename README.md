@@ -18,7 +18,7 @@ The tenancy, isolation and security design in
 [docs/architecture/architecture.md](docs/architecture/architecture.md) (§3, §6.2–6.3, §8, §9) still
 applies.
 
-**Status: M7 (money: payroll, compliance, compensation, benefits, project financials) complete.**
+**Status: M8 (hiring: workforce planning, recruitment, onboarding) complete.**
 
 - Platform (tenants, plans, subscriptions, settings, audit log) and Identity (users, roles,
   permissions, browser sessions, the OIDC token server) run as modules in a single API host.
@@ -57,12 +57,23 @@ applies.
   shares, dependents and automatic enrollment; compensation bands, review cycles, revisions applied
   to payroll, variable pay paid through payroll and equity vesting; and project financials - budget,
   rate cards, costs, invoices, revenue by billing type, margin and forecast.
+- Hiring: yearly workforce plans by department, location and job against live headcount, approved
+  through the workflow; manpower requests checked against the plan and approved into requisitions;
+  postings on the internal job board; one candidate profile per person (found again by email or
+  mobile), sourced directly, through agencies or by employee referral; a pipeline board ranked by a
+  transparent rule-based match (people make every decision); interviews with panels who give
+  scorecard feedback from self-service; background verification; offers approved through the
+  workflow, sent and accepted; and a hire that creates the employee, records the starting salary in
+  payroll and pays the referrer's bonus after the qualifying period. Recruitment analytics cover time
+  to hire, cost per hire, offer acceptance, sources and recruiters. Onboarding starts on hire from the
+  best-fitting configurable checklist, with tasks owned by HR, IT, admin, the manager, a buddy or
+  the joiner, due relative to joining (pre-boarding included), reminded when overdue.
 - The frontend has the PeopleOS shell, a shared UI kit (KPI cards, charts, drawers, form dialogs,
   filter bar, timeline, tabs, an upgraded data table with column chooser and CSV export), and the
   Core HR and administration screens. Unbuilt modules stay hidden in the navigation.
-- 546 backend tests pass, including architecture rules for module boundaries, a tenant-isolation
+- 591 backend tests pass, including architecture rules for module boundaries, a tenant-isolation
   suite against a real SQL Server, and end-to-end flows that run the worker's event delivery.
-- Hiring (workforce plans, recruitment, onboarding) is next (M8).
+- Talent (goals, performance, learning, career) is next (M9).
 
 ## Prerequisites
 

@@ -129,6 +129,22 @@ finalized with payslips, this month's run calculated, two registrations and NWCO
 and an invoice. It also gives the administrator the Payroll Administrator role - payroll's sensitive
 permissions are not part of the Tenant Administrator role.
 
+Since M8 it also:
+
+- opens a requisition for every approved manpower request and fulfils the request when the
+  requisition is filled; applies approved workforce plans, manpower requests and offers.
+- starts onboarding for every hire, from the best-fitting checklist.
+- runs the onboarding pass daily at 02:00 (`onboarding-daily`): moves pre-boarding joiners on at
+  joining and reminds task owners of overdue tasks (again every three days).
+- pays referral bonuses that have come due daily at 02:30 (`referral-bonuses`), as a payroll input,
+  while both the referrer and the hire are still employed.
+
+Every tenant gets a default onboarding checklist. DevSeed's `hiring` step approves this year's
+workforce plan, raises two manpower requests (one approved into a requisition), opens a second
+requisition, publishes a posting, adds an agency and six candidates across the pipeline with two
+interviews, a scorecard and an offer out, and starts onboarding for Rohan Das with Priya Menon
+(the administrator) as HR, IT and admin owner, so My onboarding tasks has work in it. It tops up the tenant's roles with the M8 permissions.
+
 Uploaded documents are stored under `.local/files` (one folder per tenant), configured by
 `Gggs:Storage:FileSystem:RootPath` in both hosts' development settings.
 
