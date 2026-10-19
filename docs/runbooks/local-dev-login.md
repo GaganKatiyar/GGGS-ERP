@@ -183,6 +183,15 @@ routed to EMP00004; a closed pulse survey with seven anonymous responses and an 
 everyone; six recognitions, a company budget and a redemption to fulfil; and Sara Khan (EMP00005) serving notice
 with clearance open, plus two alumni. It tops up every template role with the M10 permissions.
 
+Since M11 it also sends report digests daily at 06:00 (`insight-report-digests`): weekly
+subscriptions go out on Mondays and monthly ones on the 1st, only to people whose report access is
+company-wide (or who hold executive access) when the digest is sent.
+
+DevSeed's `insight` step adds a bank-transfer connection and a Tally journal connection (run them
+from Administration > Integrations against a month with a finalized payroll) and a weekly executive
+digest for the administrator. Analytics, search and the calendar read every other module, so they
+fill up from the earlier demo steps. The search box in the header takes `/` as a shortcut.
+
 Uploaded documents are stored under `.local/files` (one folder per tenant), configured by
 `Gggs:Storage:FileSystem:RootPath` in both hosts' development settings.
 

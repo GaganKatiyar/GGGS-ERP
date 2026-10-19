@@ -18,7 +18,7 @@ The tenancy, isolation and security design in
 [docs/architecture/architecture.md](docs/architecture/architecture.md) (§3, §6.2–6.3, §8, §9) still
 applies.
 
-**Status: M10 (employee experience: rewards, engagement, helpdesk, assets, expenses, separation) complete.**
+**Status: M11 (insight and reach: analytics, dashboards, global search, HR calendar, imports, integrations) complete.**
 
 - Platform (tenants, plans, subscriptions, settings, audit log) and Identity (users, roles,
   permissions, browser sessions, the OIDC token server) run as modules in a single API host.
@@ -87,12 +87,22 @@ applies.
   clearance (assets and advances raised automatically), exit interview, full and final settlement
   (salary, leave encashment, gratuity, notice and other recoveries), letters, exit on the last day
   and the alumni network.
+- Insight and reach: dashboards for people, workforce, time, projects, resources, payroll, hiring,
+  talent and experience, each assembled from the modules that own the data and limited to the
+  viewer's report access, plus a company-wide executive dashboard and weekly or monthly digests;
+  global search across people, projects, clients, candidates, assets and help articles, each
+  module checking its own permissions; an HR calendar of holidays, leave, birthdays, work
+  anniversaries, joinings, last days, milestones, interviews, review deadlines and survey closings;
+  one import framework (preview every row, commit the valid ones) for holidays, assets and biometric
+  punches; and integrations - bank transfer files and Tally or CSV accounting journals from a
+  finalized payroll, Microsoft Entra ID directory reads and signed webhooks - with secrets encrypted
+  at rest and every run logged.
 - The frontend has the PeopleOS shell, a shared UI kit (KPI cards, charts, drawers, form dialogs,
   filter bar, timeline, tabs, an upgraded data table with column chooser and CSV export), and the
   Core HR and administration screens. Unbuilt modules stay hidden in the navigation.
-- 706 backend tests pass, including architecture rules for module boundaries, a tenant-isolation
+- 737 backend tests pass, including architecture rules for module boundaries, a tenant-isolation
   suite against a real SQL Server, and end-to-end flows that run the worker's event delivery.
-- Reporting, dashboards, global search and the HR calendar are next (M11).
+- The AI tool layer and assistants, MFA and SSO, and the hardening pass are next (M12).
 
 ## Prerequisites
 
