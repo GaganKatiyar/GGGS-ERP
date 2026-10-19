@@ -10,3 +10,4 @@ export * from './lib/delivery.models';
 export * from './lib/resource.models';
 export * from './lib/money.models';
 export * from './lib/hiring.models';
+export * from './lib/talent.models';

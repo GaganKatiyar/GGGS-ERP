@@ -229,6 +229,60 @@ export const appRoutes: Route[] = [
           import('@gggs/features/benefits').then((m) => m.MY_BENEFITS_ROUTES),
       },
       {
+        path: 'me/goals',
+        ...withPermissions(['performance.goal.manage-own']),
+        loadChildren: () =>
+          import('@gggs/features/performance').then((m) => m.MY_GOALS_ROUTES),
+      },
+      {
+        path: 'me/reviews',
+        ...withPermissions(['performance.review.manage-own']),
+        loadChildren: () =>
+          import('@gggs/features/performance').then((m) => m.MY_REVIEWS_ROUTES),
+      },
+      {
+        path: 'me/feedback',
+        ...withPermissions(['self.feedback.give']),
+        loadChildren: () =>
+          import('@gggs/features/performance').then((m) => m.MY_FEEDBACK_ROUTES),
+      },
+      {
+        path: 'me/learning',
+        ...withPermissions(['self.learning.view']),
+        loadChildren: () =>
+          import('@gggs/features/learning').then((m) => m.MY_LEARNING_ROUTES),
+      },
+      {
+        path: 'me/career',
+        ...withPermissions(['self.career.view']),
+        loadChildren: () =>
+          import('@gggs/features/career').then((m) => m.MY_CAREER_ROUTES),
+      },
+      {
+        path: 'performance',
+        ...withPermissions(['performance.cycle.view', 'performance.review.manage-own', 'performance.review.view', 'performance.review.manage-as-manager', 'performance.pip.view', 'performance.pip.manage']),
+        loadChildren: () =>
+          import('@gggs/features/performance').then((m) => m.PERFORMANCE_ROUTES),
+      },
+      {
+        path: 'goals',
+        ...withPermissions(['performance.goal.manage', 'performance.goal.manage-own', 'performance.review.view']),
+        loadChildren: () =>
+          import('@gggs/features/performance').then((m) => m.GOALS_ROUTES),
+      },
+      {
+        path: 'learning',
+        ...withPermissions(['learning.course.view', 'learning.enrollment.view', 'learning.certification.view']),
+        loadChildren: () =>
+          import('@gggs/features/learning').then((m) => m.LEARNING_ROUTES),
+      },
+      {
+        path: 'career',
+        ...withPermissions(['career.path.view', 'career.promotion.view', 'career.promotion.manage', 'career.succession.view', 'career.succession.manage', 'career.talent-review.manage', 'workflow.task.act']),
+        loadChildren: () =>
+          import('@gggs/features/career').then((m) => m.CAREER_ROUTES),
+      },
+      {
         path: 'me/onboarding',
         ...withPermissions(['self.onboarding.view']),
         loadChildren: () =>

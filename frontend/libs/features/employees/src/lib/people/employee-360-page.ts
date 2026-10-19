@@ -8,6 +8,7 @@ import { EmployeeBenefits, EmployeeCompensation, EmployeePayroll } from '@gggs/s
 import { EmployeeDocuments } from '@gggs/shared/documents';
 import { EmployeeDirectoryApi } from '@gggs/shared/employee-reference';
 import { EmployeeOnboarding } from '@gggs/shared/hiring';
+import { EmployeeCareer, EmployeeGoals, EmployeeLearning, EmployeePerformance } from '@gggs/shared/talent';
 import { EmployeeAttendance, EmployeeLeave } from '@gggs/shared/time';
 import type { Employee360, Employee360Section } from '@gggs/shared/models';
 import { EmptyState, KpiCard, PageHeader, Skeleton, StatusBadge, Tabs, type TabItem } from '@gggs/shared/ui';
@@ -24,7 +25,7 @@ import { StatutoryTab } from './tabs/statutory-tab';
  */
 @Component({
   selector: 'gggs-employee-360-page',
-  imports: [DatePipe, RouterLink, PageHeader, KpiCard, StatusBadge, Tabs, Skeleton, EmptyState, EmployeeDocuments, EmployeeAttendance, EmployeeLeave, EmployeeProjects, EmployeeSkills, EmployeeAllocation, EmployeeTimesheets, EmployeePayroll, EmployeeCompensation, EmployeeBenefits, EmployeeOnboarding, EmploymentTab, PersonalTab, FamilyTab, StatutoryTab, HistoryTab],
+  imports: [DatePipe, RouterLink, PageHeader, KpiCard, StatusBadge, Tabs, Skeleton, EmptyState, EmployeeDocuments, EmployeeAttendance, EmployeeLeave, EmployeeProjects, EmployeeSkills, EmployeeAllocation, EmployeeTimesheets, EmployeePayroll, EmployeeCompensation, EmployeeBenefits, EmployeeOnboarding, EmployeePerformance, EmployeeGoals, EmployeeLearning, EmployeeCareer, EmploymentTab, PersonalTab, FamilyTab, StatutoryTab, HistoryTab],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (error()) {
@@ -138,6 +139,18 @@ import { StatutoryTab } from './tabs/statutory-tab';
           @case ('onboarding') {
             <gggs-employee-onboarding [employeeId]="p.id" />
           }
+          @case ('performance') {
+            <gggs-employee-performance [employeeId]="p.id" />
+          }
+          @case ('goals') {
+            <gggs-employee-goals [employeeId]="p.id" />
+          }
+          @case ('learning') {
+            <gggs-employee-learning [employeeId]="p.id" />
+          }
+          @case ('career') {
+            <gggs-employee-career [employeeId]="p.id" />
+          }
           @case ('documents') {
             <gggs-employee-documents [employeeId]="p.id" [canUpload]="canUploadDocuments" [canArchive]="canArchiveDocuments" />
           }
@@ -191,7 +204,11 @@ export class Employee360Page {
         (section.key !== 'payroll' || this.permissions.has('payroll.employee-salary.view')) &&
         (section.key !== 'compensation' || this.permissions.has('compensation.revision.view')) &&
         (section.key !== 'benefits' || this.permissions.has('benefit.enrollment.view')) &&
-        (section.key !== 'onboarding' || this.permissions.has('onboarding.case.view')),
+        (section.key !== 'onboarding' || this.permissions.has('onboarding.case.view')) &&
+        (section.key !== 'performance' || this.permissions.has('performance.review.view')) &&
+        (section.key !== 'goals' || this.permissions.has('performance.goal.manage') || this.permissions.has('performance.review.view')) &&
+        (section.key !== 'learning' || this.permissions.has('learning.enrollment.view')) &&
+        (section.key !== 'career' || this.permissions.has('career.promotion.view')),
     ),
   );
 

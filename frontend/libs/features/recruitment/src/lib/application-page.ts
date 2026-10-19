@@ -8,7 +8,7 @@ import { RecruitmentApi } from '@gggs/shared/hiring';
 import type { ApplicationStage, ApplicationView, BackgroundCheckItem, BackgroundCheckStatus, InterviewItem, InterviewMode, OfferItem, OfferTermsInput } from '@gggs/shared/models';
 import { BACKGROUND_CHECKS, INTERVIEW_MODES, PIPELINE_STAGES, humanize } from '@gggs/shared/models';
 import { MoneyPipe } from '@gggs/shared/money';
-import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Timeline } from '@gggs/shared/ui';
+import { FormDialog, PageHeader, Skeleton, StatusBadge, Timeline } from '@gggs/shared/ui';
 import type { TimelineEntry } from '@gggs/shared/ui';
 import { errorText } from './recruitment-forms';
 
@@ -23,7 +23,7 @@ const localInput = (date: Date) => new Date(date.getTime() - date.getTimezoneOff
  */
 @Component({
   selector: 'gggs-application-page',
-  imports: [DatePipe, FormsModule, RouterLink, MoneyPipe, PageHeader, StatusBadge, EmptyState, Skeleton, FormDialog, Timeline, EmployeeSelect],
+  imports: [DatePipe, FormsModule, RouterLink, MoneyPipe, PageHeader, StatusBadge, Skeleton, FormDialog, Timeline, EmployeeSelect],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (view(); as v) {

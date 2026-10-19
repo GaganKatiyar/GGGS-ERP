@@ -92,6 +92,9 @@ export default [
                 'scope:workforce',
                 'scope:recruitment',
                 'scope:onboarding',
+                'scope:performance',
+                'scope:learning',
+                'scope:career',
                 'scope:time',
               ],
             },
@@ -158,6 +161,18 @@ export default [
             {
               sourceTag: 'scope:time',
               onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:time'],
+            },
+            {
+              sourceTag: 'scope:career',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:career'],
+            },
+            {
+              sourceTag: 'scope:learning',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:learning'],
+            },
+            {
+              sourceTag: 'scope:performance',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:performance'],
             },
             {
               sourceTag: 'scope:onboarding',
