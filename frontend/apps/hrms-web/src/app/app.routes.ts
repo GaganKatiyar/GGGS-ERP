@@ -355,6 +355,24 @@ export const appRoutes: Route[] = [
           import('@gggs/features/separation').then((m) => m.SEPARATION_ROUTES),
       },
       {
+        path: 'analytics',
+        ...withPermissions(['report.report.view', 'report.executive.view']),
+        loadChildren: () =>
+          import('@gggs/features/analytics').then((m) => m.ANALYTICS_ROUTES),
+      },
+      {
+        path: 'calendar',
+        ...withPermissions(['self.profile.view', 'employee.profile.view']),
+        loadChildren: () =>
+          import('@gggs/features/calendar').then((m) => m.CALENDAR_ROUTES),
+      },
+      {
+        path: 'admin/data',
+        ...withPermissions(['datahub.import.run', 'datahub.integration.view']),
+        loadChildren: () =>
+          import('@gggs/features/data-hub').then((m) => m.DATA_HUB_ROUTES),
+      },
+      {
         path: 'me/onboarding',
         ...withPermissions(['self.onboarding.view']),
         loadChildren: () =>

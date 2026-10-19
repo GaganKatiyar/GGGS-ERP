@@ -14,6 +14,7 @@ import { NotificationsApi } from '@gggs/shared/notifications';
 import { WorkflowApi } from '@gggs/shared/workflow';
 import { NAVIGATION, filterNavigation, isBuilt, type NavItem } from './navigation';
 import { ThemeStore } from './theme';
+import { GlobalSearch } from './global-search';
 
 /** How often the header bell's unread count refreshes. There is no push yet (architecture.md
  * §14 puts SignalR in a later phase), so this is the whole story until then. */
@@ -31,7 +32,7 @@ const MOBILE_BREAKPOINT_QUERY = '(max-width: 48rem)';
  */
 @Component({
   selector: 'gggs-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, GlobalSearch],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell.html',
   styleUrl: './shell.scss',
@@ -54,6 +55,7 @@ export class Shell {
   /** Tasks waiting in the approvals inbox, shown on the Approvals entry. */
   protected readonly approvalsCount = signal(0);
 
+  protected readonly canSearch = computed(() => this.permissions.hasAny(['self.profile.view', 'employee.profile.view']));
   protected readonly canSeeNotifications = computed(() => this.permissions.hasAny(['notification.inbox.view']));
   private readonly canSeeApprovals = computed(() => this.permissions.hasAny(['workflow.task.view']));
 

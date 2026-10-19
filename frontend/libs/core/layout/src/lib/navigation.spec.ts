@@ -262,6 +262,8 @@ describe('filterNavigation', () => {
       '/policies',
       '/separation',
       '/separation/clearance',
+      '/analytics',
+      '/calendar',
       '/admin/users',
       '/admin/roles',
       '/admin/audit',
@@ -269,6 +271,8 @@ describe('filterNavigation', () => {
       '/admin/workflows',
       '/admin/notifications',
       '/admin/master-data',
+      '/admin/data/imports',
+      '/admin/data/integrations',
     ]);
   });
 

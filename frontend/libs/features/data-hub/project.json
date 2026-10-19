@@ -1,0 +1,20 @@
+{
+  "name": "feature-data-hub",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/features/data-hub/src",
+  "prefix": "gggs",
+  "projectType": "library",
+  "tags": ["type:feature", "scope:data-hub"],
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "coverage/libs/features/data-hub"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

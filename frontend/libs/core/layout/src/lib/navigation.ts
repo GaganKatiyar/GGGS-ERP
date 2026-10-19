@@ -311,8 +311,13 @@ export const NAVIGATION: readonly NavItem[] = [
     icon: 'pi pi-chart-pie',
     feature: 'Analytics',
     route: '/analytics',
-    permissions: ['report.report.view'],
-    ...planned('M11'),
+    permissions: ['report.report.view', 'report.executive.view'],
+  },
+  {
+    label: 'Calendar',
+    icon: 'pi pi-calendar',
+    route: '/calendar',
+    permissions: ['self.profile.view', 'employee.profile.view'],
   },
   {
     label: 'AI Assistant',
@@ -333,6 +338,8 @@ export const NAVIGATION: readonly NavItem[] = [
       { label: 'Workflows', icon: 'pi pi-share-alt', route: '/admin/workflows', permissions: ['workflow.definition.view'] },
       { label: 'Notifications', icon: 'pi pi-bell', route: '/admin/notifications', permissions: ['notification.template.view'] },
       { label: 'Master data', icon: 'pi pi-database', route: '/admin/master-data', permissions: ['master-data.lookup.manage'] },
+      { label: 'Imports', icon: 'pi pi-upload', route: '/admin/data/imports', permissions: ['datahub.import.run'] },
+      { label: 'Integrations', icon: 'pi pi-link', route: '/admin/data/integrations', permissions: ['datahub.integration.view'] },
     ],
   },
 ];

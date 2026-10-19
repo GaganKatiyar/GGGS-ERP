@@ -1,0 +1,20 @@
+{
+  "name": "feature-analytics",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/features/analytics/src",
+  "prefix": "gggs",
+  "projectType": "library",
+  "tags": ["type:feature", "scope:analytics"],
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "coverage/libs/features/analytics"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

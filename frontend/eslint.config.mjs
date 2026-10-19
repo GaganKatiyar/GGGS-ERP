@@ -101,6 +101,9 @@ export default [
                 'scope:assets',
                 'scope:expenses',
                 'scope:separation',
+                'scope:analytics',
+                'scope:calendar',
+                'scope:data-hub',
                 'scope:time',
               ],
             },
@@ -167,6 +170,18 @@ export default [
             {
               sourceTag: 'scope:time',
               onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:time'],
+            },
+            {
+              sourceTag: 'scope:data-hub',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:data-hub'],
+            },
+            {
+              sourceTag: 'scope:calendar',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:calendar'],
+            },
+            {
+              sourceTag: 'scope:analytics',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:analytics'],
             },
             {
               sourceTag: 'scope:separation',

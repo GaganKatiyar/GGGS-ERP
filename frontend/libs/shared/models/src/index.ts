@@ -12,3 +12,4 @@ export * from './lib/money.models';
 export * from './lib/hiring.models';
 export * from './lib/talent.models';
 export * from './lib/experience.models';
+export * from './lib/insight.models';

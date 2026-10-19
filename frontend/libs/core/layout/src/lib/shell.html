@@ -16,6 +16,10 @@
 
     <div class="shell__spacer"></div>
 
+    @if (canSearch()) {
+    <gggs-global-search class="shell__search" />
+    }
+
     @if (session.user(); as user) { @if (user.isImpersonating) {
     <!-- Support access is never invisible: the person being acted for must be able to see it. -->
     <span class="shell__impersonation" role="status">
