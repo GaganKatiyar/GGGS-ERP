@@ -18,7 +18,7 @@ The tenancy, isolation and security design in
 [docs/architecture/architecture.md](docs/architecture/architecture.md) (§3, §6.2–6.3, §8, §9) still
 applies.
 
-**Status: M9 (talent: goals, performance, learning, career and succession) complete.**
+**Status: M10 (employee experience: rewards, engagement, helpdesk, assets, expenses, separation) complete.**
 
 - Platform (tenants, plans, subscriptions, settings, audit log) and Identity (users, roles,
   permissions, browser sessions, the OIDC token server) run as modules in a single API host.
@@ -76,12 +76,23 @@ applies.
   certificates that lapse and are assigned again; career paths by job or grade showing each person
   the next step and the skills to build; promotions approved through the workflow and applied to the
   employee and payroll on their date; succession plans; and the 9-box talent review.
+- Employee experience: an asset register through its whole life (stock, assignment, repair,
+  retirement) with requests and book value; expense claims checked against category policy,
+  approved through the workflow and reimbursed through payroll, and travel requests with advances
+  settled against the trip's claims; a helpdesk with categories, SLA targets scaled by priority,
+  internal notes, satisfaction and a knowledge base; anonymous surveys with eNPS that report only
+  for groups of three or more; rewards with peer, manager and award recognition, automatic points
+  for anniversaries, strong reviews and completed courses, a wallet whose points lapse and are spent
+  soonest-expiring first, a catalogue and budgets; and separation from resignation through
+  clearance (assets and advances raised automatically), exit interview, full and final settlement
+  (salary, leave encashment, gratuity, notice and other recoveries), letters, exit on the last day
+  and the alumni network.
 - The frontend has the PeopleOS shell, a shared UI kit (KPI cards, charts, drawers, form dialogs,
   filter bar, timeline, tabs, an upgraded data table with column chooser and CSV export), and the
   Core HR and administration screens. Unbuilt modules stay hidden in the navigation.
-- 637 backend tests pass, including architecture rules for module boundaries, a tenant-isolation
+- 706 backend tests pass, including architecture rules for module boundaries, a tenant-isolation
   suite against a real SQL Server, and end-to-end flows that run the worker's event delivery.
-- Employee experience (rewards, engagement, helpdesk, assets, expenses, separation) is next (M10).
+- Reporting, dashboards, global search and the HR calendar are next (M11).
 
 ## Prerequisites
 

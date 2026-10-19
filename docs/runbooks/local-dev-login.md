@@ -163,6 +163,26 @@ learning assigned to everyone with a third completed and a security path; two ca
 succession plans, potential assessments for the 9-box and a promotion nomination waiting to be
 submitted.
 
+Since M10 it also:
+
+- checks helpdesk SLAs every 30 minutes (`helpdesk-sla-sweep`): missed response and resolution
+  targets are flagged and the assignee (or category owner) told; resolved tickets close themselves
+  after seven days.
+- opens scheduled surveys, closes those past their window and reminds people two days before a
+  survey closes, daily at 01:15 (`engagement-survey-sweep`).
+- awards work-anniversary points, lapses expired points and warns 30 days ahead, daily at 00:30
+  (`rewards-sweep`); review and course points are awarded as those events arrive.
+- exits people the day after their last working day and adds them to the alumni network, daily at
+  01:00 (`separation-exit-sweep`).
+
+Every tenant gets default asset, expense, helpdesk categories, five knowledge articles, recognition
+types, reward rules and a catalogue. DevSeed's `experience` step registers twelve assets (eight
+assigned, one in repair, a request waiting); four expense claims (paid, approved, pending, draft)
+and two trips, one with an advance; five helpdesk tickets including a confidential grievance, with IT
+routed to EMP00004; a closed pulse survey with seven anonymous responses and an open one for
+everyone; six recognitions, a company budget and a redemption to fulfil; and EMP00007 serving notice
+with clearance open, plus two alumni. It tops up every template role with the M10 permissions.
+
 Uploaded documents are stored under `.local/files` (one folder per tenant), configured by
 `Gggs:Storage:FileSystem:RootPath` in both hosts' development settings.
 
