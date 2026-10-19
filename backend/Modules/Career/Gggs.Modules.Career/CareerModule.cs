@@ -5,6 +5,7 @@ using Gggs.BuildingBlocks.Web;
 using Gggs.BuildingBlocks.Web.Modules;
 using Gggs.Modules.Career.Application;
 using Gggs.Modules.Career.Domain;
+using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Workflow.Contracts;
 using Hangfire;
 
@@ -17,6 +18,7 @@ public sealed class CareerModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IMetricSource, CareerMetrics>();
         services.AddScoped<CareerService>();
         services.AddWorkflowSubject(CareerService.Subject);
     }

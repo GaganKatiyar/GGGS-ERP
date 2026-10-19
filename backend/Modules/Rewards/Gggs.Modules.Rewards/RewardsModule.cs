@@ -3,6 +3,7 @@ using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Learning.Contracts;
 using Gggs.Modules.Performance.Contracts;
 using Gggs.Modules.Platform.Contracts;
@@ -20,6 +21,7 @@ public sealed class RewardsModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IMetricSource, RewardMetrics>();
         services.AddScoped<RewardService>();
         services.AddScoped<RewardSeeder>();
         services.AddWorkflowSubject(RewardService.Subject);

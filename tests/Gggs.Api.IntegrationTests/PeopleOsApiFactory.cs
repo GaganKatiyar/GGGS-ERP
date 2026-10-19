@@ -557,6 +557,8 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             Permissions.Helpdesk.TicketView, Permissions.Helpdesk.TicketManage, Permissions.Helpdesk.CategoryManage, Permissions.Helpdesk.KnowledgeManage,
             Permissions.Separation.CaseView, Permissions.Separation.CaseManage, Permissions.Separation.ClearanceManage,
             Permissions.Separation.SettlementManage, Permissions.Separation.AlumniView,
+            Permissions.Report.View, Permissions.Report.Export, Permissions.Report.ScheduleManage, Permissions.Report.ExecutiveView,
+            Permissions.DataHub.ImportRun, Permissions.DataHub.IntegrationView, Permissions.DataHub.IntegrationManage,
         })
         {
             role.Grant(permission, DataScope.Tenant);

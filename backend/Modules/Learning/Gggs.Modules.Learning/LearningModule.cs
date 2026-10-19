@@ -4,6 +4,7 @@ using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.BuildingBlocks.Web.Modules;
 using Gggs.Modules.Employee.Contracts;
+using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Learning.Application;
 using Gggs.Modules.Learning.Contracts;
 using Gggs.Modules.Platform.Contracts;
@@ -18,6 +19,7 @@ public sealed class LearningModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IMetricSource, LearningMetrics>();
         services.AddScoped<LearningService>();
         services.AddScoped<LearningSeeder>();
         services.AddScoped<ILearningRecords, LearningRecords>();

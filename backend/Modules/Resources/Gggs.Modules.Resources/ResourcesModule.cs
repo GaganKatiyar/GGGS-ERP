@@ -1,5 +1,6 @@
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Resources.Application;
 using Gggs.Modules.Resources.Endpoints;
 using Gggs.Modules.Workflow.Contracts;
@@ -13,6 +14,7 @@ public sealed class ResourcesModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IMetricSource, ResourceMetrics>();
         services.AddScoped<WorkingCalendar>();
         services.AddScoped<ResourceService>();
         services.AddScoped<RequestService>();

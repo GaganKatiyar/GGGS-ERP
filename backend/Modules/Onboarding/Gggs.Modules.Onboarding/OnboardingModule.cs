@@ -4,6 +4,7 @@ using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.BuildingBlocks.Web.Modules;
 using Gggs.Modules.Employee.Contracts;
+using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Onboarding.Application;
 using Gggs.Modules.Platform.Contracts;
 using Hangfire;
@@ -17,6 +18,7 @@ public sealed class OnboardingModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IMetricSource, OnboardingMetrics>();
         services.AddScoped<OnboardingService>();
         services.AddScoped<OnboardingSeeder>();
     }

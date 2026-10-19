@@ -104,7 +104,7 @@ internal sealed class LeaveCalendarService(AppDbContext dbContext, IEmployeeDire
         return result;
     }
 
-    private static HolidayCalendar? CalendarFor(List<HolidayCalendar> calendars, Guid? locationId)
+    internal static HolidayCalendar? CalendarFor(List<HolidayCalendar> calendars, Guid? locationId)
         => (locationId is { } location ? calendars.FirstOrDefault(calendar => calendar.LocationIds.Contains(location)) : null)
             ?? calendars.FirstOrDefault(calendar => calendar.IsDefault);
 

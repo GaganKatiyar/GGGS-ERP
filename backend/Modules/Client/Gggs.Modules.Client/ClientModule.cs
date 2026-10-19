@@ -3,6 +3,7 @@ using Gggs.Modules.Client.Application;
 using Gggs.Modules.Client.Contracts;
 using Gggs.Modules.Client.Endpoints;
 using Gggs.Modules.Documents.Contracts;
+using Gggs.Modules.Insight.Contracts;
 
 namespace Gggs.Modules.Client;
 
@@ -13,6 +14,7 @@ public sealed class ClientModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<ISearchSource, ClientSearch>();
         services.AddScoped<ClientService>();
         services.AddScoped<IClientDirectory, ClientDirectory>();
         services.AddScoped<IDocumentOwnerAccess, ClientDocumentAccess>();

@@ -3,6 +3,7 @@ using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.BuildingBlocks.Web.Modules;
 using Gggs.Modules.Documents.Contracts;
+using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Recruitment.Application;
 using Gggs.Modules.Recruitment.Domain;
 using Gggs.Modules.Workflow.Contracts;
@@ -17,6 +18,9 @@ public sealed class RecruitmentModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IMetricSource, RecruitmentMetrics>();
+        services.AddScoped<ISearchSource, CandidateSearch>();
+        services.AddScoped<ICalendarSource, InterviewCalendar>();
         services.AddScoped<RecruitmentAccess>();
         services.AddScoped<RecruitmentService>();
         services.AddScoped<PipelineService>();

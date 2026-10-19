@@ -359,6 +359,9 @@ public static class Permissions
         public const string View = "report.report.view";
         public const string Export = "report.report.export";
         public const string ScheduleManage = "report.schedule.manage";
+
+        /// <summary>The executive dashboard: company-wide headline figures across every area.</summary>
+        public const string ExecutiveView = "report.executive.view";
     }
 
     /// <summary>A user's own notification inbox, and administering templates.</summary>
@@ -650,5 +653,17 @@ public static class Permissions
 
         public const string SettlementManage = "separation.settlement.manage";
         public const string AlumniView = "separation.alumni.view";
+    }
+
+    /// <summary>Bulk imports and integrations with outside systems (spec: import and integrations).</summary>
+    public static class DataHub
+    {
+        /// <summary>Run bulk imports; each import also needs the permission of what it creates.</summary>
+        public const string ImportRun = "datahub.import.run";
+
+        public const string IntegrationView = "datahub.integration.view";
+
+        /// <summary>Configure connections (including secrets) and run their operations.</summary>
+        public const string IntegrationManage = "datahub.integration.manage";
     }
 }

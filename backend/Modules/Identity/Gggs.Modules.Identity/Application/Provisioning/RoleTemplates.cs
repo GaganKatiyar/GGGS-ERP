@@ -224,12 +224,18 @@ public static class RoleTemplates
                 new(Permissions.Audit.LogView, DataScope.Tenant),
                 new(Permissions.Report.View, DataScope.Tenant),
                 new(Permissions.Report.ScheduleManage, DataScope.Tenant),
+                new(Permissions.Report.ExecutiveView, DataScope.Tenant),
+                new(Permissions.DataHub.ImportRun, DataScope.Tenant),
+                new(Permissions.DataHub.IntegrationView, DataScope.Tenant),
+                new(Permissions.DataHub.IntegrationManage, DataScope.Tenant),
 
                 .. SelfService(),
             ],
 
             ["HR_ADMIN"] =
             [
+                new(Permissions.Report.ScheduleManage, DataScope.Tenant),
+                new(Permissions.DataHub.ImportRun, DataScope.Tenant),
                 // Creates accounts for new hires, but cannot decide what those accounts may do -
                 // role management stays with the Tenant Administrator.
                 new(Permissions.Admin.UserView, DataScope.Tenant),
@@ -337,6 +343,9 @@ public static class RoleTemplates
             // administrator for one registered company has no reach into another.
             ["PAYROLL_ADMIN"] =
             [
+                new(Permissions.DataHub.ImportRun, DataScope.Tenant),
+                new(Permissions.DataHub.IntegrationView, DataScope.Tenant),
+                new(Permissions.DataHub.IntegrationManage, DataScope.Tenant),
                 new(Permissions.Organization.View, DataScope.Tenant),
                 new(Permissions.Employee.View, DataScope.LegalEntity),
                 new(Permissions.Employee.HistoryView, DataScope.LegalEntity),
@@ -371,6 +380,7 @@ public static class RoleTemplates
 
             ["FINANCE_USER"] =
             [
+                new(Permissions.DataHub.IntegrationView, DataScope.Tenant),
                 new(Permissions.Spend.ClaimView, DataScope.Tenant),
                 new(Permissions.Spend.TravelView, DataScope.Tenant),
                 new(Permissions.Spend.TravelAdvanceManage, DataScope.Tenant),
@@ -672,6 +682,9 @@ public static class RoleTemplates
             // Accounts and equipment: who can sign in, and what they have been issued.
             ["IT_ADMIN"] =
             [
+                new(Permissions.DataHub.ImportRun, DataScope.Tenant),
+                new(Permissions.DataHub.IntegrationView, DataScope.Tenant),
+                new(Permissions.DataHub.IntegrationManage, DataScope.Tenant),
                 new(Permissions.Admin.UserView, DataScope.Tenant),
                 new(Permissions.Admin.UserLock, DataScope.Tenant),
                 new(Permissions.Organization.View, DataScope.Tenant),
@@ -707,6 +720,8 @@ public static class RoleTemplates
             // Leadership: the whole picture, read-only.
             ["EXECUTIVE"] =
             [
+                new(Permissions.Report.ExecutiveView, DataScope.Tenant),
+                new(Permissions.Report.ScheduleManage, DataScope.Tenant),
                 new(Permissions.Organization.View, DataScope.Tenant),
                 new(Permissions.Employee.View, DataScope.Tenant),
                 new(Permissions.Leave.BalanceView, DataScope.Tenant),

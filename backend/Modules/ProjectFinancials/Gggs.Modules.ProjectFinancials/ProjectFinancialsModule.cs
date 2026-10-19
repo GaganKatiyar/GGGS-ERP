@@ -1,6 +1,7 @@
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.ProjectFinancials.Application;
 using Gggs.Modules.ProjectFinancials.Domain;
 
@@ -11,7 +12,11 @@ public sealed class ProjectFinancialsModule : IModule
 {
     public string Name => "project-financials";
 
-    public void AddServices(IServiceCollection services, ModuleContext context) => services.AddScoped<FinanceService>();
+    public void AddServices(IServiceCollection services, ModuleContext context)
+    {
+        services.AddScoped<FinanceService>();
+        services.AddScoped<IMetricSource, FinanceMetrics>();
+    }
 
     public void AddBackgroundServices(IServiceCollection services, ModuleContext context)
     {

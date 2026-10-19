@@ -6,6 +6,7 @@ using Gggs.Modules.Documents.Contracts;
 using Gggs.Modules.Expense.Application;
 using Gggs.Modules.Expense.Contracts;
 using Gggs.Modules.Expense.Domain;
+using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Platform.Contracts;
 using Gggs.Modules.Workflow.Contracts;
 
@@ -18,6 +19,7 @@ public sealed class ExpenseModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IMetricSource, ExpenseMetrics>();
         services.AddScoped<ExpenseService>();
         services.AddScoped<ExpenseSeeder>();
         services.AddScoped<IExpenseLedger, ExpenseLedger>();

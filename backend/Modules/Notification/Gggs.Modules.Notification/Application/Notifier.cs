@@ -152,6 +152,9 @@ internal static class NotificationTemplateCatalog
         new(NotificationTemplates.ClearanceAssigned, "Exit clearance",
             "Clearance for {{employeeName}}: {{item}}",
             "Hi {{recipientName}}, please clear \"{{item}}\" for {{employeeName}}, whose last day is {{lastDay}}.", SendInApp: true, SendEmail: true),
+        new(NotificationTemplates.ReportDigest, "Report digest",
+            "Your {{period}} {{dashboard}} digest",
+            "Hi {{recipientName}}, here are this {{period}}'s {{dashboard}} figures: {{summary}}", SendInApp: true, SendEmail: true),
     ];
 }
 

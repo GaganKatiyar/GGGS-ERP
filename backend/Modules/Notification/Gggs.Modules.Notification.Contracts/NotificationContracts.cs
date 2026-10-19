@@ -74,4 +74,5 @@ public static class NotificationTemplates
     public const string ExpenseDecided = "expense.decided";
     public const string ResignationSubmitted = "separation.resignation-submitted";
     public const string ClearanceAssigned = "separation.clearance-assigned";
+    public const string ReportDigest = "insight.report-digest";
 }

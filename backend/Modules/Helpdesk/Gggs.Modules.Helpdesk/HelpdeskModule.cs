@@ -4,6 +4,7 @@ using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.BuildingBlocks.Web.Modules;
 using Gggs.Modules.Helpdesk.Application;
+using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Platform.Contracts;
 using Hangfire;
 
@@ -16,6 +17,8 @@ public sealed class HelpdeskModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IMetricSource, HelpdeskMetrics>();
+        services.AddScoped<ISearchSource, KnowledgeSearch>();
         services.AddScoped<HelpdeskService>();
         services.AddScoped<HelpdeskSeeder>();
     }

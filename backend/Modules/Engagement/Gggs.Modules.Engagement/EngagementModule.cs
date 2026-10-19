@@ -4,6 +4,7 @@ using Gggs.BuildingBlocks.Web;
 using Gggs.BuildingBlocks.Web.Modules;
 using Gggs.Modules.Engagement.Application;
 using Gggs.Modules.Engagement.Domain;
+using Gggs.Modules.Insight.Contracts;
 using Hangfire;
 
 namespace Gggs.Modules.Engagement;
@@ -13,7 +14,12 @@ public sealed class EngagementModule : IModule
 {
     public string Name => "engagement";
 
-    public void AddServices(IServiceCollection services, ModuleContext context) => services.AddScoped<EngagementService>();
+    public void AddServices(IServiceCollection services, ModuleContext context)
+    {
+        services.AddScoped<EngagementService>();
+        services.AddScoped<IMetricSource, EngagementMetrics>();
+        services.AddScoped<ICalendarSource, SurveyCalendar>();
+    }
 
     public void AddBackgroundServices(IServiceCollection services, ModuleContext context)
     {

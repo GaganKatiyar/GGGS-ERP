@@ -14,6 +14,7 @@ using Gggs.Modules.Engagement;
 using Gggs.Modules.Expense;
 using Gggs.Modules.Helpdesk;
 using Gggs.Modules.Identity;
+using Gggs.Modules.Insight;
 using Gggs.Modules.Learning;
 using Gggs.Modules.Leave;
 using Gggs.Modules.MasterData;
@@ -76,6 +77,7 @@ public static class ModuleCatalog
         new BenefitsModule(),
         new ComplianceModule(),
         new ResourcesModule(),
+        new InsightModule(),
         new SeparationModule(),
         new RewardsModule(),
         new EngagementModule(),

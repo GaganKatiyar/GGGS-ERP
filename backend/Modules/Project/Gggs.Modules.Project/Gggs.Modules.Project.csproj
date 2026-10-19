@@ -13,6 +13,7 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Jobs\Gggs.BuildingBlocks.Jobs.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Web\Gggs.BuildingBlocks.Web.csproj" />
     <ProjectReference Include="..\..\..\Data\Gggs.Data\Gggs.Data.csproj" />
+    <ProjectReference Include="..\..\Insight\Gggs.Modules.Insight.Contracts\Gggs.Modules.Insight.Contracts.csproj" />
     <ProjectReference Include="..\..\Client\Gggs.Modules.Client.Contracts\Gggs.Modules.Client.Contracts.csproj" />
     <ProjectReference Include="..\..\Contract\Gggs.Modules.Contract.Contracts\Gggs.Modules.Contract.Contracts.csproj" />
     <ProjectReference Include="..\..\Documents\Gggs.Modules.Documents.Contracts\Gggs.Modules.Documents.Contracts.csproj" />

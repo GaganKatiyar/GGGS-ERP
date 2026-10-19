@@ -2,6 +2,7 @@ using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Recruitment.Contracts;
 using Gggs.Modules.Workflow.Contracts;
 using Gggs.Modules.Workforce.Application;
@@ -16,6 +17,7 @@ public sealed class WorkforceModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IMetricSource, WorkforceMetrics>();
         services.AddScoped<WorkforceService>();
         services.AddWorkflowSubject(WorkforceService.PlanSubject);
         services.AddWorkflowSubject(WorkforceService.RequestSubject);

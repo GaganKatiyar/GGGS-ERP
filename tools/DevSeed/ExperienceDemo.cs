@@ -313,7 +313,7 @@ internal static class ExperienceDemo
         Console.WriteLine("Separation: EMP00005 serving notice with clearance open; 2 alumni.");
     }
 
-    private static async Task TopUpRolesAsync(IServiceProvider scope)
+    internal static async Task TopUpRolesAsync(IServiceProvider scope)
     {
         AppDbContext db = scope.GetRequiredService<AppDbContext>();
         IReadOnlyDictionary<string, Role> roles = await scope.GetRequiredService<IRoleRepository>().GetTemplateRolesAsync();

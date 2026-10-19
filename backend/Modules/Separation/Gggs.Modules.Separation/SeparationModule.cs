@@ -3,6 +3,7 @@ using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Separation.Application;
 using Gggs.Modules.Separation.Domain;
 using Gggs.Modules.Workflow.Contracts;
@@ -17,6 +18,8 @@ public sealed class SeparationModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IMetricSource, SeparationMetrics>();
+        services.AddScoped<ICalendarSource, SeparationCalendar>();
         services.AddScoped<SeparationService>();
         services.AddWorkflowSubject(SeparationService.Subject);
     }

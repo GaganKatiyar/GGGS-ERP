@@ -1,5 +1,6 @@
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Payroll.Application;
 using Gggs.Modules.Payroll.Contracts;
 using Gggs.Modules.Payroll.Endpoints;
@@ -15,6 +16,10 @@ public sealed class PayrollModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IMetricSource, PayrollMetrics>();
+        services.AddScoped<PayrollRunFinder>();
+        services.AddScoped<IIntegrationAdapter, BankTransferAdapter>();
+        services.AddScoped<IIntegrationAdapter, AccountingJournalAdapter>();
         services.AddScoped<PayrollCatalog>();
         services.AddScoped<PayrollSetupService>();
         services.AddScoped<PayrollSeeder>();

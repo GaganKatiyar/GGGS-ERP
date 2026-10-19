@@ -5,6 +5,7 @@ using Gggs.BuildingBlocks.Web.Modules;
 using Gggs.Modules.Assets.Application;
 using Gggs.Modules.Assets.Contracts;
 using Gggs.Modules.Assets.Domain;
+using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Platform.Contracts;
 
 namespace Gggs.Modules.Assets;
@@ -16,6 +17,9 @@ public sealed class AssetsModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IMetricSource, AssetMetrics>();
+        services.AddScoped<ISearchSource, AssetSearch>();
+        services.AddScoped<IImportHandler, AssetImport>();
         services.AddScoped<AssetService>();
         services.AddScoped<AssetSeeder>();
         services.AddScoped<IAssetLedger, AssetLedger>();

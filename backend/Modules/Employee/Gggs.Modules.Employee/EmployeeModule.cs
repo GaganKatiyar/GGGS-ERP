@@ -3,6 +3,7 @@ using Gggs.Modules.Employee.Application;
 using Gggs.Modules.Employee.Contracts;
 using Gggs.Modules.Employee.Endpoints;
 using Gggs.Modules.Employee.Infrastructure;
+using Gggs.Modules.Insight.Contracts;
 
 namespace Gggs.Modules.Employee;
 
@@ -22,6 +23,9 @@ public sealed class EmployeeModule : IModule
         services.AddScoped<EmployeeService>();
         services.AddScoped<EmployeeQueries>();
         services.AddScoped<EmployeeImportService>();
+        services.AddScoped<IMetricSource, EmployeeMetrics>();
+        services.AddScoped<ISearchSource, EmployeeSearch>();
+        services.AddScoped<ICalendarSource, EmployeeCalendar>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints) => endpoints.MapEmployeeEndpoints();

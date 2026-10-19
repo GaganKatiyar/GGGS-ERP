@@ -2,6 +2,7 @@ using Gggs.BuildingBlocks.Jobs;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Performance.Application;
 using Gggs.Modules.Performance.Contracts;
 using Gggs.Modules.Performance.Domain;
@@ -16,6 +17,8 @@ public sealed class PerformanceModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IMetricSource, PerformanceMetrics>();
+        services.AddScoped<ICalendarSource, ReviewCalendar>();
         services.AddScoped<GoalService>();
         services.AddScoped<ReviewService>();
         services.AddScoped<PipService>();
