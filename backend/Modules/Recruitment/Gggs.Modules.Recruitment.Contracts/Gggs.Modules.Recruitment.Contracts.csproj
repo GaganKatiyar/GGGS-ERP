@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Modules.Recruitment.Contracts</RootNamespace>
+    <Description>The Recruitment module's public surface: the events other modules react to.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Messaging\Gggs.BuildingBlocks.Messaging.csproj" />
+  </ItemGroup>
+
+</Project>

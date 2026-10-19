@@ -128,6 +128,7 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Compliance.Application.ComplianceSeeder>().SeedCurrentTenantAsync();
             await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Payroll.Application.PayrollSeeder>().SeedCurrentTenantAsync();
             await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Benefits.Application.BenefitSeeder>().SeedCurrentTenantAsync();
+            await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Onboarding.Application.OnboardingSeeder>().SeedCurrentTenantAsync();
         }
 
         // The worker seeds the platform roles at start-up; this host is the API alone, so run the
@@ -175,12 +176,13 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
 
     /// <summary>
     /// Delivers every pending integration event to its consumers, as the worker would - repeated
-    /// until nothing is left, so events raised by consumers are delivered too.
+    /// until nothing is left, so events raised by consumers are delivered too. Tests that never
+    /// deliver leave a backlog for the next one, so the cap is a runaway guard, not a batch count.
     /// </summary>
     public async Task DeliverEventsAsync()
     {
         OutboxDispatcher<AppDbContext> dispatcher = Worker.GetRequiredService<OutboxDispatcher<AppDbContext>>();
-        for (int pass = 0; pass < 10 && await dispatcher.DispatchPendingAsync(TestContext.Current.CancellationToken) > 0; pass++)
+        for (int pass = 0; pass < 500 && await dispatcher.DispatchPendingAsync(TestContext.Current.CancellationToken) > 0; pass++)
         {
         }
     }
@@ -530,6 +532,12 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             Permissions.Compensation.VariablePayView, Permissions.Compensation.VariablePayManage, Permissions.Compensation.EquityView, Permissions.Compensation.EquityManage,
             Permissions.Benefit.PlanView, Permissions.Benefit.PlanManage, Permissions.Benefit.EnrollmentView, Permissions.Benefit.EnrollmentManage,
             Permissions.Self.TaxDeclarationManage, Permissions.Self.BenefitManage, Permissions.Self.CompensationView,
+            Permissions.Workforce.PlanView, Permissions.Workforce.PlanManage, Permissions.Workforce.RequestView, Permissions.Workforce.RequestManage,
+            Permissions.Recruitment.RequisitionView, Permissions.Recruitment.RequisitionManage, Permissions.Recruitment.PostingView, Permissions.Recruitment.PostingManage,
+            Permissions.Recruitment.ApplicationView, Permissions.Recruitment.ApplicationManage, Permissions.Recruitment.OfferView, Permissions.Recruitment.OfferManage,
+            Permissions.Recruitment.SettingsManage, Permissions.Recruitment.AnalyticsView,
+            Permissions.Onboarding.TemplateView, Permissions.Onboarding.TemplateManage, Permissions.Onboarding.CaseView, Permissions.Onboarding.CaseManage,
+            Permissions.Onboarding.TaskComplete,
         })
         {
             role.Grant(permission, DataScope.Tenant);

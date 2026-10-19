@@ -28,6 +28,9 @@
     <ProjectReference Include="..\..\Modules\Project\Gggs.Modules.Project\Gggs.Modules.Project.csproj" />
     <ProjectReference Include="..\..\Modules\Skills\Gggs.Modules.Skills\Gggs.Modules.Skills.csproj" />
     <ProjectReference Include="..\..\Modules\Timesheets\Gggs.Modules.Timesheets\Gggs.Modules.Timesheets.csproj" />
+    <ProjectReference Include="..\..\Modules\Onboarding\Gggs.Modules.Onboarding\Gggs.Modules.Onboarding.csproj" />
+    <ProjectReference Include="..\..\Modules\Recruitment\Gggs.Modules.Recruitment\Gggs.Modules.Recruitment.csproj" />
+    <ProjectReference Include="..\..\Modules\Workforce\Gggs.Modules.Workforce\Gggs.Modules.Workforce.csproj" />
     <ProjectReference Include="..\..\Modules\ProjectFinancials\Gggs.Modules.ProjectFinancials\Gggs.Modules.ProjectFinancials.csproj" />
     <ProjectReference Include="..\..\Modules\Compensation\Gggs.Modules.Compensation\Gggs.Modules.Compensation.csproj" />
     <ProjectReference Include="..\..\Modules\Payroll\Gggs.Modules.Payroll\Gggs.Modules.Payroll.csproj" />

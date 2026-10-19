@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Hiring.UnitTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\backend\Modules\Onboarding\Gggs.Modules.Onboarding\Gggs.Modules.Onboarding.csproj" />
+    <ProjectReference Include="..\..\..\backend\Modules\Recruitment\Gggs.Modules.Recruitment\Gggs.Modules.Recruitment.csproj" />
+    <ProjectReference Include="..\..\..\backend\Modules\Workforce\Gggs.Modules.Workforce\Gggs.Modules.Workforce.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Shouldly" />
+  </ItemGroup>
+
+</Project>

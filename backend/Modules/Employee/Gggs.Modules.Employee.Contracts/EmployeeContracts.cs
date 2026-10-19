@@ -100,6 +100,31 @@ public interface IEmployeePayrollDetails
     Task<IReadOnlyList<DependentInfo>> DependentsAsync(IEnumerable<Guid> employeeIds, CancellationToken cancellationToken = default);
 }
 
+/// <summary>A new hire as recruitment hands them over: the person, the date they join and where they sit.</summary>
+public sealed record NewHire(
+    string FirstName,
+    string? MiddleName,
+    string? LastName,
+    string? PersonalEmail,
+    string? MobilePhone,
+    DateOnly JoiningDate,
+    Guid? DepartmentId,
+    Guid? PositionId,
+    Guid? JobId,
+    Guid? GradeId,
+    Guid? LocationId,
+    Guid? ManagerEmployeeId,
+    string EmploymentTypeCode,
+    string WorkModeCode,
+    string? Designation);
+
+/// <summary>Creating an employee from outside Core HR (ADR-12): recruitment hires accepted candidates through it.</summary>
+public interface IEmployeeHiring
+{
+    /// <summary>Hires the person with Core HR's own rules and events. Returns the new employee's id and code.</summary>
+    Task<(Guid EmployeeId, string EmployeeCode)> HireAsync(NewHire hire, CancellationToken cancellationToken = default);
+}
+
 /// <summary>Someone joined. Recruitment, onboarding, payroll and resourcing react to this.</summary>
 [MessageType("gggs.employee.hired")]
 public sealed record EmployeeHiredIntegrationEvent(

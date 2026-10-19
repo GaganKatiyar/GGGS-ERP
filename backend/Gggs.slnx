@@ -65,6 +65,11 @@
     <Project Path="Modules/Skills/Gggs.Modules.Skills.Contracts/Gggs.Modules.Skills.Contracts.csproj" />
     <Project Path="Modules/Timesheets/Gggs.Modules.Timesheets/Gggs.Modules.Timesheets.csproj" />
     <Project Path="Modules/Timesheets/Gggs.Modules.Timesheets.Contracts/Gggs.Modules.Timesheets.Contracts.csproj" />
+    <Project Path="Modules/Onboarding/Gggs.Modules.Onboarding/Gggs.Modules.Onboarding.csproj" />
+    <Project Path="Modules/Recruitment/Gggs.Modules.Recruitment/Gggs.Modules.Recruitment.csproj" />
+    <Project Path="Modules/Recruitment/Gggs.Modules.Recruitment.Contracts/Gggs.Modules.Recruitment.Contracts.csproj" />
+    <Project Path="Modules/Workforce/Gggs.Modules.Workforce/Gggs.Modules.Workforce.csproj" />
+    <Project Path="Modules/Workforce/Gggs.Modules.Workforce.Contracts/Gggs.Modules.Workforce.Contracts.csproj" />
     <Project Path="Modules/ProjectFinancials/Gggs.Modules.ProjectFinancials/Gggs.Modules.ProjectFinancials.csproj" />
     <Project Path="Modules/Compensation/Gggs.Modules.Compensation/Gggs.Modules.Compensation.csproj" />
     <Project Path="Modules/Payroll/Gggs.Modules.Payroll/Gggs.Modules.Payroll.csproj" />
@@ -87,6 +92,7 @@
     <Project Path="../tests/unit/Gggs.Workflow.UnitTests/Gggs.Workflow.UnitTests.csproj" />
     <Project Path="../tests/unit/Gggs.Time.UnitTests/Gggs.Time.UnitTests.csproj" />
     <Project Path="../tests/unit/Gggs.Delivery.UnitTests/Gggs.Delivery.UnitTests.csproj" />
+    <Project Path="../tests/unit/Gggs.Hiring.UnitTests/Gggs.Hiring.UnitTests.csproj" />
     <Project Path="../tests/unit/Gggs.Money.UnitTests/Gggs.Money.UnitTests.csproj" />
     <Project Path="../tests/unit/Gggs.Identity.UnitTests/Gggs.Identity.UnitTests.csproj" />
     <Project Path="../tests/unit/Gggs.Platform.UnitTests/Gggs.Platform.UnitTests.csproj" />

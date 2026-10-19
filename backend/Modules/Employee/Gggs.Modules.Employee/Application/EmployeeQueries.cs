@@ -347,6 +347,7 @@ public sealed class EmployeeQueries(
             Section("family", "Family & emergency", true, null, null),
             Section("statutory", "Statutory & bank", true, null, null),
             Section("history", "History", true, null, null),
+            Section("onboarding", "Onboarding", true, Features.Onboarding, null),
             Section("attendance", "Attendance", true, Features.Time, null),
             Section("leave", "Leave", true, Features.Time, null),
             Section("projects", "Projects", true, Features.Projects, null),

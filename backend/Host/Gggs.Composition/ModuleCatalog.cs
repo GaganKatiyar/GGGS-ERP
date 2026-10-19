@@ -12,17 +12,20 @@ using Gggs.Modules.Identity;
 using Gggs.Modules.Leave;
 using Gggs.Modules.MasterData;
 using Gggs.Modules.Notification;
+using Gggs.Modules.Onboarding;
 using Gggs.Modules.Organization;
 using Gggs.Modules.Payroll;
 using Gggs.Modules.Platform;
 using Gggs.Modules.Policies;
 using Gggs.Modules.Project;
 using Gggs.Modules.ProjectFinancials;
+using Gggs.Modules.Recruitment;
 using Gggs.Modules.Resources;
 using Gggs.Modules.Shift;
 using Gggs.Modules.Skills;
 using Gggs.Modules.Timesheets;
 using Gggs.Modules.Workflow;
+using Gggs.Modules.Workforce;
 
 namespace Gggs.Composition;
 
@@ -55,6 +58,9 @@ public static class ModuleCatalog
         new ProjectModule(),
         new SkillsModule(),
         new TimesheetsModule(),
+        new OnboardingModule(),
+        new RecruitmentModule(),
+        new WorkforceModule(),
         new ProjectFinancialsModule(),
         new CompensationModule(),
         new PayrollModule(),

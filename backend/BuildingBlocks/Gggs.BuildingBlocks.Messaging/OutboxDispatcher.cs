@@ -181,6 +181,14 @@ public sealed class OutboxDispatcher<TDbContext>(
             .OfType<object>()
             .First(candidate => candidate.GetType() == consumerType);
 
+        // Warms the tenant's registry entry outside the transaction. Consumers read it through the
+        // tenant clock, and a cache miss loads it on a path the retrying execution strategy does not
+        // recognise as nested - inside the transaction that load would fail.
+        if (scope.ServiceProvider.GetService<ITenantRegistry>() is { } registry)
+        {
+            await registry.GetAsync(envelope.TenantId, cancellationToken);
+        }
+
         // The consumer's own writes and its inbox row commit together; a consumer that saves part
         // way through is still inside this transaction.
         IExecutionStrategy strategy = dbContext.Database.CreateExecutionStrategy();

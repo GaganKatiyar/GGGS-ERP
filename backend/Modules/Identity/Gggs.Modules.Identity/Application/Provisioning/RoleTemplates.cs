@@ -214,6 +214,7 @@ public static class RoleTemplates
                 .. BenefitManagement(),
                 new(Permissions.Compensation.BandView, DataScope.Tenant),
                 new(Permissions.Compensation.BandManage, DataScope.Tenant),
+                .. HiringManagement(),
 
                 new(Permissions.Notification.TemplateView, DataScope.Tenant),
                 new(Permissions.Notification.TemplateManage, DataScope.Tenant),
@@ -289,6 +290,7 @@ public static class RoleTemplates
                 new(Permissions.Compensation.VariablePayManage, DataScope.Tenant),
                 new(Permissions.Compensation.EquityView, DataScope.Tenant),
                 new(Permissions.Compensation.EquityManage, DataScope.Tenant),
+                .. HiringManagement(),
 
                 new(Permissions.Notification.TemplateView, DataScope.Tenant),
 
@@ -405,6 +407,13 @@ public static class RoleTemplates
                 new(Permissions.Timesheet.View, DataScope.Department),
                 new(Permissions.Skill.EmployeeSkillView, DataScope.Department),
 
+                new(Permissions.Workforce.PlanView, DataScope.Department),
+                new(Permissions.Workforce.RequestView, DataScope.Department),
+                new(Permissions.Workforce.RequestManage, DataScope.Department),
+                new(Permissions.Recruitment.RequisitionView, DataScope.Department),
+                new(Permissions.Recruitment.ApplicationView, DataScope.Department),
+                new(Permissions.Onboarding.CaseView, DataScope.Department),
+
                 new(Permissions.Workflow.TaskView, DataScope.Own),
                 new(Permissions.Workflow.TaskAct, DataScope.Own),
                 new(Permissions.Workflow.DelegationManage, DataScope.Own),
@@ -429,6 +438,9 @@ public static class RoleTemplates
                 new(Permissions.Timesheet.View, DataScope.DirectReports),
                 new(Permissions.Skill.EmployeeSkillView, DataScope.DirectReports),
                 new(Permissions.Skill.EmployeeSkillManage, DataScope.DirectReports),
+                new(Permissions.Workforce.RequestView, DataScope.Own),
+                new(Permissions.Workforce.RequestManage, DataScope.Own),
+                new(Permissions.Onboarding.CaseView, DataScope.DirectReports),
 
                 new(Permissions.Workflow.TaskView, DataScope.Own),
                 new(Permissions.Workflow.TaskAct, DataScope.Own),
@@ -505,6 +517,11 @@ public static class RoleTemplates
                 new(Permissions.Recruitment.ApplicationView, DataScope.Tenant),
                 new(Permissions.Recruitment.ApplicationManage, DataScope.Tenant),
                 new(Permissions.Recruitment.OfferView, DataScope.Tenant),
+                new(Permissions.Recruitment.OfferManage, DataScope.Tenant),
+                new(Permissions.Recruitment.RequisitionManage, DataScope.Tenant),
+                new(Permissions.Recruitment.AnalyticsView, DataScope.Tenant),
+                new(Permissions.Workforce.RequestView, DataScope.Tenant),
+                new(Permissions.Onboarding.CaseView, DataScope.Tenant),
                 new(Permissions.Workflow.TaskView, DataScope.Own),
                 new(Permissions.Workflow.TaskAct, DataScope.Own),
 
@@ -518,6 +535,9 @@ public static class RoleTemplates
                 new(Permissions.Recruitment.RequisitionView, DataScope.Department),
                 new(Permissions.Recruitment.RequisitionManage, DataScope.Department),
                 new(Permissions.Recruitment.ApplicationView, DataScope.Department),
+                new(Permissions.Recruitment.OfferView, DataScope.Department),
+                new(Permissions.Workforce.RequestView, DataScope.Department),
+                new(Permissions.Workforce.RequestManage, DataScope.Department),
                 new(Permissions.Workflow.TaskView, DataScope.Own),
                 new(Permissions.Workflow.TaskAct, DataScope.Own),
 
@@ -622,6 +642,8 @@ public static class RoleTemplates
                 new(Permissions.Employee.View, DataScope.Tenant),
                 new(Permissions.Asset.View, DataScope.Tenant),
                 new(Permissions.Asset.Manage, DataScope.Tenant),
+                new(Permissions.Onboarding.CaseView, DataScope.Tenant),
+                new(Permissions.Onboarding.TaskComplete, DataScope.Tenant),
 
                 .. SelfService(),
             ],
@@ -771,6 +793,33 @@ public static class RoleTemplates
         new(Permissions.Compliance.FilingView, DataScope.Tenant),
         new(Permissions.Benefit.PlanView, DataScope.Tenant),
         new(Permissions.Compensation.BandView, DataScope.Tenant),
+        new(Permissions.Workforce.PlanView, DataScope.Tenant),
+        new(Permissions.Workforce.RequestView, DataScope.Tenant),
+        new(Permissions.Recruitment.AnalyticsView, DataScope.Tenant),
+    ];
+
+    /// <summary>Workforce plans, manpower requests, recruitment end to end, and onboarding.</summary>
+    private static PermissionAssignment[] HiringManagement() =>
+    [
+        new(Permissions.Workforce.PlanView, DataScope.Tenant),
+        new(Permissions.Workforce.PlanManage, DataScope.Tenant),
+        new(Permissions.Workforce.RequestView, DataScope.Tenant),
+        new(Permissions.Workforce.RequestManage, DataScope.Tenant),
+        new(Permissions.Recruitment.RequisitionView, DataScope.Tenant),
+        new(Permissions.Recruitment.RequisitionManage, DataScope.Tenant),
+        new(Permissions.Recruitment.PostingView, DataScope.Tenant),
+        new(Permissions.Recruitment.PostingManage, DataScope.Tenant),
+        new(Permissions.Recruitment.ApplicationView, DataScope.Tenant),
+        new(Permissions.Recruitment.ApplicationManage, DataScope.Tenant),
+        new(Permissions.Recruitment.OfferView, DataScope.Tenant),
+        new(Permissions.Recruitment.OfferManage, DataScope.Tenant),
+        new(Permissions.Recruitment.SettingsManage, DataScope.Tenant),
+        new(Permissions.Recruitment.AnalyticsView, DataScope.Tenant),
+        new(Permissions.Onboarding.TemplateView, DataScope.Tenant),
+        new(Permissions.Onboarding.TemplateManage, DataScope.Tenant),
+        new(Permissions.Onboarding.CaseView, DataScope.Tenant),
+        new(Permissions.Onboarding.CaseManage, DataScope.Tenant),
+        new(Permissions.Onboarding.TaskComplete, DataScope.Tenant),
     ];
 
     /// <summary>
@@ -795,6 +844,9 @@ public static class RoleTemplates
         new(Permissions.Self.TaxDeclarationManage, DataScope.Own),
         new(Permissions.Self.BenefitManage, DataScope.Own),
         new(Permissions.Self.CompensationView, DataScope.Own),
+        new(Permissions.Self.ReferralCreate, DataScope.Own),
+        new(Permissions.Self.InterviewFeedback, DataScope.Own),
+        new(Permissions.Self.OnboardingView, DataScope.Own),
 
         // Everyone receives notifications - approvals, policies to acknowledge, invitations.
         new(Permissions.Notification.InboxView, DataScope.Own),

@@ -74,6 +74,21 @@ internal static class NotificationTemplateCatalog
         new(NotificationTemplates.ProjectBudgetAlert, "Project budget alert",
             "{{projectCode}} has used {{percent}}% of its cost budget",
             "Hi {{recipientName}}, {{projectCode}} {{projectName}} has spent {{actualCost}} of a {{costBudget}} cost budget ({{percent}}%).", SendInApp: true, SendEmail: true),
+        new(NotificationTemplates.InterviewScheduled, "Interview scheduled",
+            "Interview: {{candidateName}} for {{jobTitle}}",
+            "Hi {{recipientName}}, you are on the panel for {{candidateName}} ({{jobTitle}}), {{round}}, on {{when}}. Submit your scorecard afterwards.", SendInApp: true, SendEmail: true),
+        new(NotificationTemplates.ReferralUpdate, "Referral update",
+            "Your referral {{candidateName}}: {{status}}",
+            "Hi {{recipientName}}, your referral {{candidateName}} for {{jobTitle}} is now: {{status}}.", SendInApp: true, SendEmail: false),
+        new(NotificationTemplates.OnboardingTaskAssigned, "Onboarding task",
+            "Onboarding {{employeeName}}: {{taskTitle}}",
+            "Hi {{recipientName}}, please complete \"{{taskTitle}}\" for {{employeeName}}, who joins on {{joiningDate}}. Due {{dueDate}}.", SendInApp: true, SendEmail: true),
+        new(NotificationTemplates.OnboardingTaskOverdue, "Onboarding task overdue",
+            "Overdue: {{taskTitle}} for {{employeeName}}",
+            "Hi {{recipientName}}, \"{{taskTitle}}\" for {{employeeName}} was due on {{dueDate}}.", SendInApp: true, SendEmail: true),
+        new(NotificationTemplates.OnboardingWelcome, "Welcome aboard",
+            "Welcome to the team, {{recipientName}}",
+            "Hi {{recipientName}}, welcome! You join on {{joiningDate}}. Your onboarding checklist is ready under My onboarding.", SendInApp: true, SendEmail: true),
     ];
 }
 

@@ -149,6 +149,15 @@ public static class Permissions
 
         /// <summary>One's own total rewards: salary, band position, revisions, variable pay and equity.</summary>
         public const string CompensationView = "self.compensation.view";
+
+        /// <summary>The internal job board: applying for openings and referring candidates.</summary>
+        public const string ReferralCreate = "self.referral.create";
+
+        /// <summary>Interviews one is on the panel for, and the scorecard for each.</summary>
+        public const string InterviewFeedback = "self.interview.feedback";
+
+        /// <summary>One's own onboarding checklist, and the onboarding tasks assigned to one.</summary>
+        public const string OnboardingView = "self.onboarding.view";
     }
 
     /// <summary>Leave administration and approvals.</summary>
@@ -348,6 +357,23 @@ public static class Permissions
         public const string ApplicationManage = "recruitment.application.manage";
         public const string OfferView = "recruitment.offer.view";
         public const string OfferManage = "recruitment.offer.manage";
+
+        /// <summary>Recruitment agencies, referral bonus and the other recruitment settings.</summary>
+        public const string SettingsManage = "recruitment.settings.manage";
+
+        /// <summary>Time to hire, sources, offer acceptance, recruiter performance and cost per hire.</summary>
+        public const string AnalyticsView = "recruitment.analytics.view";
+    }
+
+    /// <summary>Workforce planning (spec §11): headcount plans and manpower requests.</summary>
+    public static class Workforce
+    {
+        public const string PlanView = "workforce.plan.view";
+        public const string PlanManage = "workforce.plan.manage";
+
+        /// <summary>Manpower requests, scoped by who raised them.</summary>
+        public const string RequestView = "workforce.request.view";
+        public const string RequestManage = "workforce.request.manage";
     }
 
     /// <summary>Onboarding: templates and cases for bringing a new hire on board.</summary>
