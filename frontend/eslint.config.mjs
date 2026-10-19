@@ -95,6 +95,12 @@ export default [
                 'scope:performance',
                 'scope:learning',
                 'scope:career',
+                'scope:rewards',
+                'scope:engagement',
+                'scope:helpdesk',
+                'scope:assets',
+                'scope:expenses',
+                'scope:separation',
                 'scope:time',
               ],
             },
@@ -161,6 +167,30 @@ export default [
             {
               sourceTag: 'scope:time',
               onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:time'],
+            },
+            {
+              sourceTag: 'scope:separation',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:separation'],
+            },
+            {
+              sourceTag: 'scope:expenses',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:expenses'],
+            },
+            {
+              sourceTag: 'scope:assets',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:assets'],
+            },
+            {
+              sourceTag: 'scope:helpdesk',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:helpdesk'],
+            },
+            {
+              sourceTag: 'scope:engagement',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:engagement'],
+            },
+            {
+              sourceTag: 'scope:rewards',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:rewards'],
             },
             {
               sourceTag: 'scope:career',

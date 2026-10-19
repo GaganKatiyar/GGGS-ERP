@@ -83,6 +83,14 @@ export const DEFAULT_STATUS_VARIANTS: Readonly<Record<string, BadgeVariant>> = {
   waived: 'neutral',
   exercised: 'neutral',
   error: 'danger',
+  instock: 'success',
+  assigned: 'primary',
+  inrepair: 'warning',
+  lost: 'danger',
+  settled: 'success',
+  waitingonrequester: 'warning',
+  cleared: 'success',
+  breached: 'danger',
 };
 
 /** A status as a coloured pill, with a readable label ("OnNotice" shows as "On notice"). */

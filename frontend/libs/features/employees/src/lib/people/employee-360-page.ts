@@ -8,6 +8,7 @@ import { EmployeeBenefits, EmployeeCompensation, EmployeePayroll } from '@gggs/s
 import { EmployeeDocuments } from '@gggs/shared/documents';
 import { EmployeeDirectoryApi } from '@gggs/shared/employee-reference';
 import { EmployeeOnboarding } from '@gggs/shared/hiring';
+import { EmployeeAssets, EmployeeExpenses, EmployeeHelpdesk, EmployeeRewards } from '@gggs/shared/experience';
 import { EmployeeCareer, EmployeeGoals, EmployeeLearning, EmployeePerformance } from '@gggs/shared/talent';
 import { EmployeeAttendance, EmployeeLeave } from '@gggs/shared/time';
 import type { Employee360, Employee360Section } from '@gggs/shared/models';
@@ -25,7 +26,7 @@ import { StatutoryTab } from './tabs/statutory-tab';
  */
 @Component({
   selector: 'gggs-employee-360-page',
-  imports: [DatePipe, RouterLink, PageHeader, KpiCard, StatusBadge, Tabs, Skeleton, EmptyState, EmployeeDocuments, EmployeeAttendance, EmployeeLeave, EmployeeProjects, EmployeeSkills, EmployeeAllocation, EmployeeTimesheets, EmployeePayroll, EmployeeCompensation, EmployeeBenefits, EmployeeOnboarding, EmployeePerformance, EmployeeGoals, EmployeeLearning, EmployeeCareer, EmploymentTab, PersonalTab, FamilyTab, StatutoryTab, HistoryTab],
+  imports: [DatePipe, RouterLink, PageHeader, KpiCard, StatusBadge, Tabs, Skeleton, EmptyState, EmployeeDocuments, EmployeeAttendance, EmployeeLeave, EmployeeProjects, EmployeeSkills, EmployeeAllocation, EmployeeTimesheets, EmployeePayroll, EmployeeCompensation, EmployeeBenefits, EmployeeOnboarding, EmployeePerformance, EmployeeGoals, EmployeeLearning, EmployeeCareer, EmployeeRewards, EmployeeAssets, EmployeeExpenses, EmployeeHelpdesk, EmploymentTab, PersonalTab, FamilyTab, StatutoryTab, HistoryTab],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (error()) {
@@ -150,6 +151,18 @@ import { StatutoryTab } from './tabs/statutory-tab';
           }
           @case ('career') {
             <gggs-employee-career [employeeId]="p.id" />
+          }
+          @case ('rewards') {
+            <gggs-employee-rewards [employeeId]="p.id" />
+          }
+          @case ('assets') {
+            <gggs-employee-assets [employeeId]="p.id" />
+          }
+          @case ('expenses') {
+            <gggs-employee-expenses [employeeId]="p.id" />
+          }
+          @case ('helpdesk') {
+            <gggs-employee-helpdesk [employeeId]="p.id" />
           }
           @case ('documents') {
             <gggs-employee-documents [employeeId]="p.id" [canUpload]="canUploadDocuments" [canArchive]="canArchiveDocuments" />

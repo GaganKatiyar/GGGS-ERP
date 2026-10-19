@@ -283,6 +283,78 @@ export const appRoutes: Route[] = [
           import('@gggs/features/career').then((m) => m.CAREER_ROUTES),
       },
       {
+        path: 'me/assets',
+        ...withPermissions(['self.asset.view']),
+        loadChildren: () =>
+          import('@gggs/features/assets').then((m) => m.MY_ASSETS_ROUTES),
+      },
+      {
+        path: 'assets',
+        ...withPermissions(['asset.asset.view']),
+        loadChildren: () =>
+          import('@gggs/features/assets').then((m) => m.ASSETS_ROUTES),
+      },
+      {
+        path: 'me/expenses',
+        ...withPermissions(['self.expense-claim.create', 'self.travel-request.create']),
+        loadChildren: () =>
+          import('@gggs/features/expenses').then((m) => m.MY_EXPENSES_ROUTES),
+      },
+      {
+        path: 'expenses',
+        ...withPermissions(['spend.claim.view', 'spend.travel.view', 'self.expense-claim.create', 'self.travel-request.create', 'workflow.task.act']),
+        loadChildren: () =>
+          import('@gggs/features/expenses').then((m) => m.EXPENSES_ROUTES),
+      },
+      {
+        path: 'me/tickets',
+        ...withPermissions(['self.ticket.create']),
+        loadChildren: () =>
+          import('@gggs/features/helpdesk').then((m) => m.MY_TICKETS_ROUTES),
+      },
+      {
+        path: 'helpdesk',
+        ...withPermissions(['helpdesk.ticket.view', 'helpdesk.knowledge.manage', 'self.ticket.create']),
+        loadChildren: () =>
+          import('@gggs/features/helpdesk').then((m) => m.HELPDESK_ROUTES),
+      },
+      {
+        path: 'me/surveys',
+        ...withPermissions(['self.survey.respond']),
+        loadChildren: () =>
+          import('@gggs/features/engagement').then((m) => m.MY_SURVEYS_ROUTES),
+      },
+      {
+        path: 'engagement',
+        ...withPermissions(['engagement.survey.view']),
+        loadChildren: () =>
+          import('@gggs/features/engagement').then((m) => m.ENGAGEMENT_ROUTES),
+      },
+      {
+        path: 'me/rewards',
+        ...withPermissions(['self.reward.view']),
+        loadChildren: () =>
+          import('@gggs/features/rewards').then((m) => m.MY_REWARDS_ROUTES),
+      },
+      {
+        path: 'rewards',
+        ...withPermissions(['reward.recognition.view', 'reward.program.manage', 'reward.catalog.manage', 'reward.redemption.manage']),
+        loadChildren: () =>
+          import('@gggs/features/rewards').then((m) => m.REWARDS_ROUTES),
+      },
+      {
+        path: 'me/separation',
+        ...withPermissions(['self.resignation.submit']),
+        loadChildren: () =>
+          import('@gggs/features/separation').then((m) => m.MY_SEPARATION_ROUTES),
+      },
+      {
+        path: 'separation',
+        ...withPermissions(['separation.case.view', 'separation.clearance.manage', 'separation.case.manage', 'workflow.task.act', 'self.resignation.submit']),
+        loadChildren: () =>
+          import('@gggs/features/separation').then((m) => m.SEPARATION_ROUTES),
+      },
+      {
         path: 'me/onboarding',
         ...withPermissions(['self.onboarding.view']),
         loadChildren: () =>

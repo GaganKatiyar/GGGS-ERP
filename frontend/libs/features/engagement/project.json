@@ -1,0 +1,20 @@
+{
+  "name": "feature-engagement",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/features/engagement/src",
+  "prefix": "gggs",
+  "projectType": "library",
+  "tags": ["type:feature", "scope:engagement"],
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "coverage/libs/features/engagement"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

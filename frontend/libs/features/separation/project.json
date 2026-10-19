@@ -1,0 +1,20 @@
+{
+  "name": "feature-separation",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/features/separation/src",
+  "prefix": "gggs",
+  "projectType": "library",
+  "tags": ["type:feature", "scope:separation"],
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "coverage/libs/features/separation"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}
