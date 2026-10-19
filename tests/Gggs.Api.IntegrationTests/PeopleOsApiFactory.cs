@@ -130,6 +130,10 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Benefits.Application.BenefitSeeder>().SeedCurrentTenantAsync();
             await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Onboarding.Application.OnboardingSeeder>().SeedCurrentTenantAsync();
             await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Learning.Application.LearningSeeder>().SeedCurrentTenantAsync();
+            await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Assets.Application.AssetSeeder>().SeedCurrentTenantAsync();
+            await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Expense.Application.ExpenseSeeder>().SeedCurrentTenantAsync();
+            await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Helpdesk.Application.HelpdeskSeeder>().SeedCurrentTenantAsync();
+            await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Rewards.Application.RewardSeeder>().SeedCurrentTenantAsync();
         }
 
         // The worker seeds the platform roles at start-up; this host is the API alone, so run the
@@ -545,6 +549,14 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             Permissions.Learning.CertificationView,
             Permissions.Career.PathView, Permissions.Career.PathManage, Permissions.Career.PromotionView, Permissions.Career.PromotionManage,
             Permissions.Career.SuccessionView, Permissions.Career.SuccessionManage, Permissions.Career.TalentReviewManage,
+            Permissions.Asset.View, Permissions.Asset.Manage, Permissions.Asset.CategoryManage,
+            Permissions.Spend.CategoryManage, Permissions.Spend.ClaimView, Permissions.Spend.ClaimPay, Permissions.Spend.TravelView, Permissions.Spend.TravelAdvanceManage,
+            Permissions.Reward.CatalogView, Permissions.Reward.CatalogManage, Permissions.Reward.ProgramManage, Permissions.Reward.RecognitionView,
+            Permissions.Reward.RedemptionManage,
+            Permissions.Engagement.SurveyView, Permissions.Engagement.SurveyManage, Permissions.Engagement.ResultsView,
+            Permissions.Helpdesk.TicketView, Permissions.Helpdesk.TicketManage, Permissions.Helpdesk.CategoryManage, Permissions.Helpdesk.KnowledgeManage,
+            Permissions.Separation.CaseView, Permissions.Separation.CaseManage, Permissions.Separation.ClearanceManage,
+            Permissions.Separation.SettlementManage, Permissions.Separation.AlumniView,
         })
         {
             role.Grant(permission, DataScope.Tenant);

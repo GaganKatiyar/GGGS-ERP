@@ -361,11 +361,11 @@ public sealed class EmployeeQueries(
             Section("goals", "Goals", true, Features.Performance, null),
             Section("learning", "Learning", true, Features.Learning, null),
             Section("career", "Career", true, Features.Career, null),
-            Section("rewards", "Rewards", false, Features.Rewards, "M10"),
+            Section("rewards", "Rewards", true, Features.Rewards, null),
             Section("documents", "Documents", true, Features.Documents, null),
-            Section("assets", "Assets", false, Features.Assets, "M10"),
-            Section("expenses", "Expenses", false, Features.Expenses, "M10"),
-            Section("helpdesk", "Helpdesk", false, Features.Helpdesk, "M10"),
+            Section("assets", "Assets", true, Features.Assets, null),
+            Section("expenses", "Expenses", true, Features.Expenses, null),
+            Section("helpdesk", "Helpdesk", true, Features.Helpdesk, null),
         ]);
     }
 

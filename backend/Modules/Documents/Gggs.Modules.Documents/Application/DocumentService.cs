@@ -254,6 +254,19 @@ internal sealed partial class DocumentService(
 
         DocumentTemplate template = await dbContext.DocumentTemplates.AsNoTracking().FirstOrDefaultAsync(row => row.Id == templateId && row.IsActive, cancellationToken)
             ?? throw new NotFoundException(nameof(DocumentTemplate), templateId);
+        return await DetailAsync(await GenerateFromAsync(template, employeeId, title, signerEmployeeId, new Dictionary<string, string>(), cancellationToken), cancellationToken);
+    }
+
+    /// <summary>Generates a letter by template code for another module; its access was checked there.</summary>
+    internal async Task<Guid> GenerateByCodeAsync(Guid employeeId, string templateCode, IReadOnlyDictionary<string, string> values, CancellationToken cancellationToken)
+    {
+        DocumentTemplate template = await dbContext.DocumentTemplates.AsNoTracking().FirstOrDefaultAsync(row => row.Code == templateCode && row.IsActive, cancellationToken)
+            ?? throw new DomainRuleException("TEMPLATE_MISSING", $"There is no active letter template {templateCode}.");
+        return (await GenerateFromAsync(template, employeeId, null, null, values, cancellationToken)).Id;
+    }
+
+    private async Task<Document> GenerateFromAsync(DocumentTemplate template, Guid employeeId, string? title, Guid? signerEmployeeId, IReadOnlyDictionary<string, string> extra, CancellationToken cancellationToken)
+    {
         DocumentType type = await ActiveTypeAsync(template.DocumentTypeId, cancellationToken);
         EmployeeSummary person = await employees.GetAsync(employeeId, cancellationToken)
             ?? throw new NotFoundException("Employee", employeeId);
@@ -272,6 +285,10 @@ internal sealed partial class DocumentService(
             ["joiningDate"] = person.JoiningDate?.ToString("d MMMM yyyy", CultureInfo.InvariantCulture) ?? string.Empty,
             ["today"] = DateOnly.FromDateTime(Now).ToString("d MMMM yyyy", CultureInfo.InvariantCulture),
         };
+        foreach ((string key, string value) in extra)
+        {
+            values[key] = value;
+        }
 
         string html = FillTemplate(template.Body, values);
         string documentTitle = string.IsNullOrWhiteSpace(title) ? $"{template.Name} - {person.DisplayName}" : title;
@@ -290,7 +307,7 @@ internal sealed partial class DocumentService(
             await dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        return await DetailAsync(document, cancellationToken);
+        return document;
     }
 
     public async Task<SignatureItem> RequestSignatureAsync(Guid documentId, Guid signerEmployeeId, CancellationToken cancellationToken)

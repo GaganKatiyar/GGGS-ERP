@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Modules.Assets</RootNamespace>
+    <Description>The asset register: categories, assets through their lifecycle, assignments, repairs, requests and book value.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Web\Gggs.BuildingBlocks.Web.csproj" />
+    <ProjectReference Include="..\..\..\Data\Gggs.Data\Gggs.Data.csproj" />
+    <ProjectReference Include="..\..\Employee\Gggs.Modules.Employee.Contracts\Gggs.Modules.Employee.Contracts.csproj" />
+    <ProjectReference Include="..\..\Notification\Gggs.Modules.Notification.Contracts\Gggs.Modules.Notification.Contracts.csproj" />
+    <ProjectReference Include="..\..\Organization\Gggs.Modules.Organization.Contracts\Gggs.Modules.Organization.Contracts.csproj" />
+    <ProjectReference Include="..\..\Platform\Gggs.Modules.Platform.Contracts\Gggs.Modules.Platform.Contracts.csproj" />
+    <ProjectReference Include="..\Gggs.Modules.Assets.Contracts\Gggs.Modules.Assets.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Gggs.Experience.UnitTests" />
+    <InternalsVisibleTo Include="Gggs.Api.IntegrationTests" />
+    <InternalsVisibleTo Include="Gggs.DevSeed" />
+  </ItemGroup>
+
+</Project>

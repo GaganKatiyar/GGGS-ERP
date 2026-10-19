@@ -9,6 +9,15 @@ public sealed record LeaveDay(Guid EmployeeId, DateOnly Date, string LeaveTypeCo
 public sealed record HolidayEntry(DateOnly Date, string Name, bool IsOptional);
 
 /// <summary>Leave and holidays by day, for Attendance and Payroll to judge a day by (ADR-12).</summary>
+/// <summary>An employee's balance of one leave type.</summary>
+public sealed record LeaveBalanceInfo(string Code, string Name, bool IsPaid, decimal Available);
+
+/// <summary>Leave balances for other modules - the full-and-final settlement encashes them (ADR-12).</summary>
+public interface ILeaveBalances
+{
+    Task<IReadOnlyList<LeaveBalanceInfo>> BalancesAsync(Guid employeeId, CancellationToken cancellationToken = default);
+}
+
 public interface ILeaveCalendar
 {
     Task<IReadOnlyList<LeaveDay>> GetApprovedLeaveAsync(

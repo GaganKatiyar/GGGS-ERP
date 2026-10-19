@@ -17,6 +17,7 @@ public sealed class LeaveModule : IModule
     {
         services.AddScoped<LeaveCalendarService>();
         services.AddScoped<ILeaveCalendar>(provider => provider.GetRequiredService<LeaveCalendarService>());
+        services.AddScoped<ILeaveBalances, LeaveBalances>();
         services.AddScoped<LeaveService>();
         services.AddScoped<LeaveAccrualService>();
         services.AddScoped<LeaveCatalogSeeder>();

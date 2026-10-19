@@ -134,6 +134,17 @@ public interface IEmployeePromotions
     Task PromoteAsync(Promotion promotion, CancellationToken cancellationToken = default);
 }
 
+/// <summary>Notice and exit decided in Separation (ADR-12), applied through Core HR's own rules and events.</summary>
+public interface IEmployeeSeparations
+{
+    Task StartNoticeAsync(Guid employeeId, DateOnly noticeStartDate, CancellationToken cancellationToken = default);
+
+    Task WithdrawNoticeAsync(Guid employeeId, CancellationToken cancellationToken = default);
+
+    /// <summary>Ends employment on the last working day; Core HR publishes the exit event.</summary>
+    Task ExitAsync(Guid employeeId, DateOnly exitDate, string exitReasonCode, CancellationToken cancellationToken = default);
+}
+
 /// <summary>Someone joined. Recruitment, onboarding, payroll and resourcing react to this.</summary>
 [MessageType("gggs.employee.hired")]
 public sealed record EmployeeHiredIntegrationEvent(

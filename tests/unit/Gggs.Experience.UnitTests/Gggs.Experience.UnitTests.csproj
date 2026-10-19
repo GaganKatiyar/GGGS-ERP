@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Experience.UnitTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\backend\Modules\Assets\Gggs.Modules.Assets\Gggs.Modules.Assets.csproj" />
+    <ProjectReference Include="..\..\..\backend\Modules\Engagement\Gggs.Modules.Engagement\Gggs.Modules.Engagement.csproj" />
+    <ProjectReference Include="..\..\..\backend\Modules\Expense\Gggs.Modules.Expense\Gggs.Modules.Expense.csproj" />
+    <ProjectReference Include="..\..\..\backend\Modules\Helpdesk\Gggs.Modules.Helpdesk\Gggs.Modules.Helpdesk.csproj" />
+    <ProjectReference Include="..\..\..\backend\Modules\Rewards\Gggs.Modules.Rewards\Gggs.Modules.Rewards.csproj" />
+    <ProjectReference Include="..\..\..\backend\Modules\Separation\Gggs.Modules.Separation\Gggs.Modules.Separation.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Shouldly" />
+  </ItemGroup>
+
+</Project>

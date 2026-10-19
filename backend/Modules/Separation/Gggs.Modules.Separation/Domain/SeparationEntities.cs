@@ -1,0 +1,531 @@
+using Gggs.BuildingBlocks.Domain.Abstractions;
+using Gggs.BuildingBlocks.Domain.Exceptions;
+using Gggs.BuildingBlocks.Domain.Primitives;
+
+namespace Gggs.Modules.Separation.Domain;
+
+public enum SeparationType
+{
+    Resignation = 1,
+    Termination = 2,
+    Retirement = 3,
+    ContractEnd = 4,
+    Mutual = 5,
+    Absconding = 6,
+    Death = 7,
+}
+
+public enum CaseStatus
+{
+    PendingApproval = 1,
+    Approved = 2,
+    Rejected = 3,
+    Withdrawn = 4,
+    Completed = 5,
+}
+
+/// <summary>
+/// One person leaving (spec: separation): a resignation approved through the workflow, or an exit
+/// HR starts; notice served to an agreed last working day, clearance, exit interview, full and
+/// final settlement and letters, then the exit itself on the last day.
+/// </summary>
+public sealed class SeparationCase : TenantAggregateRoot
+{
+    private SeparationCase()
+    {
+        Reason = null!;
+    }
+
+    public Guid EmployeeId { get; private set; }
+
+    public SeparationType Type { get; private set; }
+
+    public string Reason { get; private set; }
+
+    /// <summary>The day notice was given.</summary>
+    public DateOnly NoticeDate { get; private set; }
+
+    public int NoticePeriodDays { get; private set; }
+
+    public DateOnly RequestedLastDay { get; private set; }
+
+    public DateOnly LastWorkingDay { get; private set; }
+
+    public CaseStatus Status { get; private set; }
+
+    public Guid? WorkflowInstanceId { get; private set; }
+
+    /// <summary>A notice shortfall is not recovered.</summary>
+    public bool ShortfallWaived { get; private set; }
+
+    public bool EligibleForRehire { get; private set; }
+
+    public Guid? RelievingLetterId { get; private set; }
+
+    public Guid? ExperienceLetterId { get; private set; }
+
+    public DateTime? CompletedAt { get; private set; }
+
+    public string ExitReasonCode => Type switch
+    {
+        SeparationType.Resignation => "RESIGNATION",
+        SeparationType.Termination => "TERMINATION",
+        SeparationType.Retirement => "RETIREMENT",
+        SeparationType.ContractEnd => "CONTRACT_END",
+        SeparationType.Absconding => "ABSCONDING",
+        SeparationType.Death => "DEATH",
+        _ => "MUTUAL",
+    };
+
+    /// <summary>Days of notice not served, against the notice period.</summary>
+    public int ShortfallDays => Math.Max(0, NoticePeriodDays - (LastWorkingDay.DayNumber - NoticeDate.DayNumber));
+
+    public bool InProgress => Status is CaseStatus.PendingApproval or CaseStatus.Approved;
+
+    public static SeparationCase Open(Guid employeeId, SeparationType type, string reason, DateOnly noticeDate, int noticePeriodDays, DateOnly requestedLastDay)
+    {
+        if (!Enum.IsDefined(type))
+        {
+            throw new DomainRuleException("SEPARATION_TYPE", "Choose a separation type.");
+        }
+
+        if (noticePeriodDays is < 0 or > 180)
+        {
+            throw new DomainRuleException("SEPARATION_NOTICE", "The notice period runs 0 to 180 days.");
+        }
+
+        if (requestedLastDay < noticeDate)
+        {
+            throw new DomainRuleException("SEPARATION_LAST_DAY", "The last working day cannot be before notice is given.");
+        }
+
+        return new SeparationCase
+        {
+            EmployeeId = Guard.NotEmpty(employeeId),
+            Type = type,
+            Reason = Guard.MaxLength(Guard.NotNullOrWhiteSpace(reason).Trim(), 1000),
+            NoticeDate = noticeDate,
+            NoticePeriodDays = noticePeriodDays,
+            RequestedLastDay = requestedLastDay,
+            LastWorkingDay = requestedLastDay,
+            Status = CaseStatus.PendingApproval,
+            EligibleForRehire = type is not (SeparationType.Termination or SeparationType.Absconding),
+        };
+    }
+
+    public void AwaitApproval(Guid workflowInstanceId) => WorkflowInstanceId = workflowInstanceId;
+
+    public void Approve(DateOnly? lastWorkingDay)
+    {
+        if (Status != CaseStatus.PendingApproval)
+        {
+            throw new DomainRuleException("SEPARATION_NOT_PENDING", "The separation is not awaiting approval.");
+        }
+
+        Status = CaseStatus.Approved;
+        if (lastWorkingDay is { } day)
+        {
+            SetLastDay(day);
+        }
+    }
+
+    public void Reject()
+    {
+        if (Status != CaseStatus.PendingApproval)
+        {
+            throw new DomainRuleException("SEPARATION_NOT_PENDING", "The separation is not awaiting approval.");
+        }
+
+        Status = CaseStatus.Rejected;
+    }
+
+    public void Withdraw(DateOnly today)
+    {
+        if (!InProgress || today > LastWorkingDay)
+        {
+            throw new DomainRuleException("SEPARATION_WITHDRAW", "Only a separation still in progress, before the last day, can be withdrawn.");
+        }
+
+        Status = CaseStatus.Withdrawn;
+    }
+
+    /// <summary>HR agrees a different last day - an early release or an extension.</summary>
+    public void SetLastDay(DateOnly lastWorkingDay)
+    {
+        if (!InProgress)
+        {
+            throw new DomainRuleException("SEPARATION_CLOSED", "The separation is closed.");
+        }
+
+        if (lastWorkingDay < NoticeDate)
+        {
+            throw new DomainRuleException("SEPARATION_LAST_DAY", "The last working day cannot be before notice is given.");
+        }
+
+        LastWorkingDay = lastWorkingDay;
+    }
+
+    public void SetTerms(bool shortfallWaived, bool eligibleForRehire)
+    {
+        ShortfallWaived = shortfallWaived;
+        EligibleForRehire = eligibleForRehire;
+    }
+
+    public void LettersIssued(Guid relievingLetterId, Guid? experienceLetterId)
+    {
+        RelievingLetterId = relievingLetterId;
+        ExperienceLetterId = experienceLetterId;
+    }
+
+    public void Complete(DateTime now)
+    {
+        if (Status != CaseStatus.Approved)
+        {
+            throw new DomainRuleException("SEPARATION_NOT_APPROVED", "Only an approved separation completes.");
+        }
+
+        Status = CaseStatus.Completed;
+        CompletedAt = now;
+    }
+}
+
+public enum ClearanceArea
+{
+    Manager = 1,
+    It = 2,
+    Admin = 3,
+    Finance = 4,
+    Assets = 5,
+    Hr = 6,
+}
+
+public enum ClearanceStatus
+{
+    Pending = 1,
+    Cleared = 2,
+    Waived = 3,
+}
+
+/// <summary>One sign-off before someone leaves - a handover, an asset back, an advance settled - with anything to recover.</summary>
+public sealed class ClearanceItem : TenantAggregateRoot
+{
+    private ClearanceItem()
+    {
+        Title = null!;
+    }
+
+    public Guid CaseId { get; private set; }
+
+    public ClearanceArea Area { get; private set; }
+
+    public string Title { get; private set; }
+
+    /// <summary>Who signs it off; anyone with clearance rights when empty.</summary>
+    public Guid? OwnerEmployeeId { get; private set; }
+
+    public ClearanceStatus Status { get; private set; }
+
+    /// <summary>Money recovered in the settlement (an unreturned asset, an unsettled advance).</summary>
+    public decimal RecoveryAmount { get; private set; }
+
+    public string? Note { get; private set; }
+
+    public DateOnly? ClearedOn { get; private set; }
+
+    public Guid? ClearedBy { get; private set; }
+
+    public string? SourceType { get; private set; }
+
+    public Guid? SourceId { get; private set; }
+
+    public static ClearanceItem Add(Guid caseId, ClearanceArea area, string title, Guid? ownerEmployeeId, decimal recoveryAmount = 0, string? sourceType = null, Guid? sourceId = null) => new()
+    {
+        CaseId = caseId,
+        Area = area,
+        Title = Guard.MaxLength(Guard.NotNullOrWhiteSpace(title).Trim(), 200),
+        OwnerEmployeeId = ownerEmployeeId,
+        Status = ClearanceStatus.Pending,
+        RecoveryAmount = Math.Max(0, recoveryAmount),
+        SourceType = sourceType,
+        SourceId = sourceId,
+    };
+
+    public void Resolve(ClearanceStatus status, decimal? recoveryAmount, string? note, Guid? by, DateOnly today)
+    {
+        if (status == ClearanceStatus.Pending)
+        {
+            ClearedOn = null;
+            ClearedBy = null;
+        }
+        else
+        {
+            ClearedOn = today;
+            ClearedBy = by;
+        }
+
+        if (recoveryAmount is < 0)
+        {
+            throw new DomainRuleException("CLEARANCE_RECOVERY", "A recovery cannot be negative.");
+        }
+
+        Status = status;
+        RecoveryAmount = status == ClearanceStatus.Waived ? 0 : recoveryAmount ?? RecoveryAmount;
+        Note = string.IsNullOrWhiteSpace(note) ? Note : Guard.MaxLength(note.Trim(), 500);
+    }
+}
+
+/// <summary>The exit interview: why they are leaving and what would have kept them.</summary>
+public sealed class ExitInterview : TenantAggregateRoot
+{
+    private ExitInterview()
+    {
+        PrimaryReason = null!;
+    }
+
+    public Guid CaseId { get; private set; }
+
+    public string PrimaryReason { get; private set; }
+
+    /// <summary>Overall experience, 1-5.</summary>
+    public int OverallRating { get; private set; }
+
+    public bool WouldRecommend { get; private set; }
+
+    public bool WouldReturn { get; private set; }
+
+    public string? WhatWentWell { get; private set; }
+
+    public string? WhatToImprove { get; private set; }
+
+    public Guid? ConductedBy { get; private set; }
+
+    public DateOnly ConductedOn { get; private set; }
+
+    public static ExitInterview Record(Guid caseId, string primaryReason, int overallRating, bool wouldRecommend, bool wouldReturn, string? wentWell, string? improve, Guid? conductedBy, DateOnly on)
+    {
+        var interview = new ExitInterview { CaseId = caseId };
+        interview.Update(primaryReason, overallRating, wouldRecommend, wouldReturn, wentWell, improve, conductedBy, on);
+        return interview;
+    }
+
+    public void Update(string primaryReason, int overallRating, bool wouldRecommend, bool wouldReturn, string? wentWell, string? improve, Guid? conductedBy, DateOnly on)
+    {
+        if (overallRating is < 1 or > 5)
+        {
+            throw new DomainRuleException("EXIT_INTERVIEW_RATING", "Rate the overall experience from 1 to 5.");
+        }
+
+        PrimaryReason = Guard.MaxLength(Guard.NotNullOrWhiteSpace(primaryReason).Trim(), 100);
+        OverallRating = overallRating;
+        WouldRecommend = wouldRecommend;
+        WouldReturn = wouldReturn;
+        WhatWentWell = string.IsNullOrWhiteSpace(wentWell) ? null : Guard.MaxLength(wentWell.Trim(), 2000);
+        WhatToImprove = string.IsNullOrWhiteSpace(improve) ? null : Guard.MaxLength(improve.Trim(), 2000);
+        ConductedBy = conductedBy;
+        ConductedOn = on;
+    }
+}
+
+public enum SettlementStatus
+{
+    Draft = 1,
+    Approved = 2,
+    Paid = 3,
+}
+
+/// <summary>The full and final settlement: what is paid out and recovered when someone leaves.</summary>
+public sealed class Settlement : TenantAggregateRoot
+{
+    public Guid CaseId { get; private set; }
+
+    public SettlementStatus Status { get; private set; }
+
+    public decimal Earnings { get; private set; }
+
+    public decimal Deductions { get; private set; }
+
+    public decimal Net { get; private set; }
+
+    public DateOnly? PaidOn { get; private set; }
+
+    public string? PaymentReference { get; private set; }
+
+    public static Settlement Start(Guid caseId) => new() { CaseId = caseId, Status = SettlementStatus.Draft };
+
+    public void Total(IEnumerable<SettlementLine> lines)
+    {
+        EnsureDraft();
+        List<SettlementLine> list = [.. lines];
+        Earnings = list.Where(line => !line.IsDeduction).Sum(line => line.Amount);
+        Deductions = list.Where(line => line.IsDeduction).Sum(line => line.Amount);
+        Net = Earnings - Deductions;
+    }
+
+    public void Approve()
+    {
+        EnsureDraft();
+        Status = SettlementStatus.Approved;
+    }
+
+    public void Reopen()
+    {
+        if (Status != SettlementStatus.Approved)
+        {
+            throw new DomainRuleException("SETTLEMENT_REOPEN", "Only an approved, unpaid settlement can be reopened.");
+        }
+
+        Status = SettlementStatus.Draft;
+    }
+
+    public void Pay(string? reference, DateOnly paidOn)
+    {
+        if (Status != SettlementStatus.Approved)
+        {
+            throw new DomainRuleException("SETTLEMENT_NOT_APPROVED", "Approve the settlement before paying it.");
+        }
+
+        Status = SettlementStatus.Paid;
+        PaidOn = paidOn;
+        PaymentReference = string.IsNullOrWhiteSpace(reference) ? null : Guard.MaxLength(reference.Trim(), 100);
+    }
+
+    public void EnsureDraft()
+    {
+        if (Status != SettlementStatus.Draft)
+        {
+            throw new DomainRuleException("SETTLEMENT_NOT_DRAFT", "The settlement is approved; reopen it to change it.");
+        }
+    }
+}
+
+/// <summary>One line of a settlement; calculated lines are rebuilt on recalculation, manual lines kept.</summary>
+public sealed class SettlementLine : TenantAggregateRoot
+{
+    private SettlementLine()
+    {
+        Code = null!;
+        Label = null!;
+    }
+
+    public Guid SettlementId { get; private set; }
+
+    public string Code { get; private set; }
+
+    public string Label { get; private set; }
+
+    public bool IsDeduction { get; private set; }
+
+    public decimal Amount { get; private set; }
+
+    public bool IsManual { get; private set; }
+
+    /// <summary>How the figure was reached, for the employee and auditor.</summary>
+    public string? Basis { get; private set; }
+
+    public static SettlementLine Add(Guid settlementId, string code, string label, bool isDeduction, decimal amount, bool manual, string? basis)
+    {
+        if (amount < 0)
+        {
+            throw new DomainRuleException("SETTLEMENT_LINE", "A settlement line amount cannot be negative; mark it a deduction instead.");
+        }
+
+        return new SettlementLine
+        {
+            SettlementId = settlementId,
+            Code = Guard.MaxLength(Guard.NotNullOrWhiteSpace(code).Trim().ToUpperInvariant(), 30),
+            Label = Guard.MaxLength(Guard.NotNullOrWhiteSpace(label).Trim(), 200),
+            IsDeduction = isDeduction,
+            Amount = Math.Round(amount, 2, MidpointRounding.AwayFromZero),
+            IsManual = manual,
+            Basis = basis is null ? null : Guard.MaxLength(basis, 300),
+        };
+    }
+}
+
+/// <summary>A former employee in the alumni network, for rehire and referrals.</summary>
+public sealed class AlumniProfile : TenantAggregateRoot
+{
+    private AlumniProfile()
+    {
+        Name = null!;
+    }
+
+    public Guid EmployeeId { get; private set; }
+
+    public string Name { get; private set; }
+
+    public string? Email { get; private set; }
+
+    public string? LastDesignation { get; private set; }
+
+    public Guid? DepartmentId { get; private set; }
+
+    public DateOnly ExitDate { get; private set; }
+
+    public SeparationType SeparationType { get; private set; }
+
+    public bool EligibleForRehire { get; private set; }
+
+    /// <summary>Agreed to hear about openings and events.</summary>
+    public bool OptedIn { get; private set; }
+
+    public string? Notes { get; private set; }
+
+    public static AlumniProfile Create(Guid employeeId, string name, string? email, string? designation, Guid? departmentId, DateOnly exitDate, SeparationType type, bool eligibleForRehire) => new()
+    {
+        EmployeeId = employeeId,
+        Name = Guard.MaxLength(name, 200),
+        Email = email is null ? null : Guard.MaxLength(email, 256),
+        LastDesignation = designation is null ? null : Guard.MaxLength(designation, 150),
+        DepartmentId = departmentId,
+        ExitDate = exitDate,
+        SeparationType = type,
+        EligibleForRehire = eligibleForRehire,
+        OptedIn = true,
+    };
+
+    public void Update(string? email, bool eligibleForRehire, bool optedIn, string? notes)
+    {
+        Email = string.IsNullOrWhiteSpace(email) ? null : Guard.MaxLength(email.Trim(), 256);
+        EligibleForRehire = eligibleForRehire;
+        OptedIn = optedIn;
+        Notes = string.IsNullOrWhiteSpace(notes) ? null : Guard.MaxLength(notes.Trim(), 1000);
+    }
+}
+
+/// <summary>The settlement arithmetic, kept pure for testing.</summary>
+public static class SettlementMath
+{
+    /// <summary>Salary for the days worked in the last month: gross over calendar days.</summary>
+    public static decimal LastMonthSalary(decimal monthlyGross, DateOnly lastWorkingDay)
+        => Math.Round(monthlyGross * lastWorkingDay.Day / DateTime.DaysInMonth(lastWorkingDay.Year, lastWorkingDay.Month), 2, MidpointRounding.AwayFromZero);
+
+    /// <summary>Leave encashment: basic over 26 working days, per day of leave.</summary>
+    public static decimal LeaveEncashment(decimal monthlyBasic, decimal days)
+        => Math.Round(monthlyBasic / 26m * Math.Max(0, days), 2, MidpointRounding.AwayFromZero);
+
+    /// <summary>Notice shortfall recovered at gross over 30 per day.</summary>
+    public static decimal NoticeRecovery(decimal monthlyGross, int shortfallDays)
+        => Math.Round(monthlyGross / 30m * Math.Max(0, shortfallDays), 2, MidpointRounding.AwayFromZero);
+
+    /// <summary>
+    /// Gratuity under the Payment of Gratuity Act: days-per-year of basic over the divisor for each
+    /// year of service (a final part-year over six months counts as a year), once the minimum service
+    /// is met, capped at the maximum.
+    /// </summary>
+    public static (decimal Years, decimal Amount, bool Eligible) Gratuity(decimal monthlyBasic, DateOnly joined, DateOnly lastDay, decimal daysPerYear, decimal divisorDays, decimal minimumYears, decimal maximumAmount)
+    {
+        if (lastDay < joined || divisorDays <= 0)
+        {
+            return (0, 0, false);
+        }
+
+        int months = ((lastDay.Year - joined.Year) * 12) + lastDay.Month - joined.Month - (lastDay.Day < joined.Day ? 1 : 0);
+        decimal exactYears = months / 12m;
+        int completed = months / 12;
+        int counted = months % 12 > 6 ? completed + 1 : completed;
+        bool eligible = exactYears >= minimumYears;
+        decimal amount = Math.Min(maximumAmount, Math.Round(monthlyBasic * daysPerYear / divisorDays * counted, 0, MidpointRounding.AwayFromZero));
+        return (Math.Round(exactYears, 2), eligible ? amount : 0, eligible);
+    }
+}

@@ -167,6 +167,21 @@ public static class Permissions
 
         /// <summary>One's own career: the path for one's role, the next step and the gaps to it.</summary>
         public const string CareerView = "self.career.view";
+
+        /// <summary>One's points wallet, the recognition feed, and redeeming from the catalogue.</summary>
+        public const string RewardView = "self.reward.view";
+
+        /// <summary>Recognising a colleague from one's monthly allowance.</summary>
+        public const string RecognitionGive = "self.recognition.give";
+
+        /// <summary>Raising one's own helpdesk tickets and reading the knowledge base.</summary>
+        public const string TicketCreate = "self.ticket.create";
+
+        /// <summary>Answering the surveys one is invited to.</summary>
+        public const string SurveyRespond = "self.survey.respond";
+
+        /// <summary>Resigning, following one's own separation, and the exit interview.</summary>
+        public const string ResignationSubmit = "self.resignation.submit";
     }
 
     /// <summary>Leave administration and approvals.</summary>
@@ -580,5 +595,60 @@ public static class Permissions
         /// one permission for the whole post-approval money flow of a trip, since it is always an
         /// admin/finance action, never something the traveling employee does themselves.</summary>
         public const string TravelAdvanceManage = "spend.travel-advance.manage";
+
+        /// <summary>Marking approved claims reimbursed, or sending them to payroll.</summary>
+        public const string ClaimPay = "spend.claim.pay";
+    }
+
+    /// <summary>Rewards and recognition: the catalogue, programme rules and budgets, recognitions and redemptions.</summary>
+    public static class Reward
+    {
+        public const string CatalogView = "reward.catalog.view";
+        public const string CatalogManage = "reward.catalog.manage";
+
+        /// <summary>Recognition types, automatic rules, budgets and the points settings.</summary>
+        public const string ProgramManage = "reward.program.manage";
+
+        /// <summary>Every recognition and wallet, not just one's own - reports and approvals.</summary>
+        public const string RecognitionView = "reward.recognition.view";
+
+        public const string RedemptionManage = "reward.redemption.manage";
+    }
+
+    /// <summary>Engagement surveys and eNPS.</summary>
+    public static class Engagement
+    {
+        public const string SurveyView = "engagement.survey.view";
+        public const string SurveyManage = "engagement.survey.manage";
+
+        /// <summary>Results, always aggregated and never below the minimum group size.</summary>
+        public const string ResultsView = "engagement.results.view";
+    }
+
+    /// <summary>The employee helpdesk: tickets, queues and SLAs, and the knowledge base.</summary>
+    public static class Helpdesk
+    {
+        /// <summary>Seeing the queues an agent works.</summary>
+        public const string TicketView = "helpdesk.ticket.view";
+
+        /// <summary>Assigning, answering and resolving tickets.</summary>
+        public const string TicketManage = "helpdesk.ticket.manage";
+
+        public const string CategoryManage = "helpdesk.category.manage";
+        public const string KnowledgeManage = "helpdesk.knowledge.manage";
+    }
+
+    /// <summary>Separation: resignations and exits, clearance, full and final settlement, exit interviews and alumni.</summary>
+    public static class Separation
+    {
+        /// <summary>Separation cases, scoped by the employee leaving.</summary>
+        public const string CaseView = "separation.case.view";
+        public const string CaseManage = "separation.case.manage";
+
+        /// <summary>Clearing the checklist items that fall to one's function (IT, admin, finance).</summary>
+        public const string ClearanceManage = "separation.clearance.manage";
+
+        public const string SettlementManage = "separation.settlement.manage";
+        public const string AlumniView = "separation.alumni.view";
     }
 }

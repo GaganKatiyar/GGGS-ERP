@@ -78,6 +78,14 @@
     <Project Path="Modules/Benefits/Gggs.Modules.Benefits.Contracts/Gggs.Modules.Benefits.Contracts.csproj" />
     <Project Path="Modules/Compliance/Gggs.Modules.Compliance/Gggs.Modules.Compliance.csproj" />
     <Project Path="Modules/Compliance/Gggs.Modules.Compliance.Contracts/Gggs.Modules.Compliance.Contracts.csproj" />
+    <Project Path="Modules/Separation/Gggs.Modules.Separation/Gggs.Modules.Separation.csproj" />
+    <Project Path="Modules/Rewards/Gggs.Modules.Rewards/Gggs.Modules.Rewards.csproj" />
+    <Project Path="Modules/Engagement/Gggs.Modules.Engagement/Gggs.Modules.Engagement.csproj" />
+    <Project Path="Modules/Helpdesk/Gggs.Modules.Helpdesk/Gggs.Modules.Helpdesk.csproj" />
+    <Project Path="Modules/Expense/Gggs.Modules.Expense/Gggs.Modules.Expense.csproj" />
+    <Project Path="Modules/Expense/Gggs.Modules.Expense.Contracts/Gggs.Modules.Expense.Contracts.csproj" />
+    <Project Path="Modules/Assets/Gggs.Modules.Assets/Gggs.Modules.Assets.csproj" />
+    <Project Path="Modules/Assets/Gggs.Modules.Assets.Contracts/Gggs.Modules.Assets.Contracts.csproj" />
     <Project Path="Modules/Career/Gggs.Modules.Career/Gggs.Modules.Career.csproj" />
     <Project Path="Modules/Learning/Gggs.Modules.Learning/Gggs.Modules.Learning.csproj" />
     <Project Path="Modules/Learning/Gggs.Modules.Learning.Contracts/Gggs.Modules.Learning.Contracts.csproj" />
@@ -100,6 +108,7 @@
     <Project Path="../tests/unit/Gggs.Hiring.UnitTests/Gggs.Hiring.UnitTests.csproj" />
     <Project Path="../tests/unit/Gggs.Money.UnitTests/Gggs.Money.UnitTests.csproj" />
     <Project Path="../tests/unit/Gggs.Talent.UnitTests/Gggs.Talent.UnitTests.csproj" />
+    <Project Path="../tests/unit/Gggs.Experience.UnitTests/Gggs.Experience.UnitTests.csproj" />
     <Project Path="../tests/unit/Gggs.Identity.UnitTests/Gggs.Identity.UnitTests.csproj" />
     <Project Path="../tests/unit/Gggs.Platform.UnitTests/Gggs.Platform.UnitTests.csproj" />
   </Folder>

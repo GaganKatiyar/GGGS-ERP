@@ -235,6 +235,13 @@ public sealed class EmployeeService(
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task WithdrawNoticeAsync(Guid employeeId, CancellationToken cancellationToken = default)
+    {
+        EmployeeEntity employee = await LoadAsync(employeeId, cancellationToken);
+        employee.WithdrawNotice();
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task ExitAsync(Guid employeeId, ExitRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);

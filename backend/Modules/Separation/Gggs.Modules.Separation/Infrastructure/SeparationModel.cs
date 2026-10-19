@@ -1,0 +1,111 @@
+using Gggs.Data;
+using Gggs.Modules.Separation.Domain;
+using Microsoft.EntityFrameworkCore;
+
+namespace Gggs.Modules.Separation.Infrastructure;
+
+/// <summary>The Separation module's tables, in the <c>sep</c> schema.</summary>
+internal sealed class SeparationModel : IModuleModel
+{
+    public const string Schema = "sep";
+
+    public void Configure(ModelBuilder modelBuilder)
+    {
+        ArgumentNullException.ThrowIfNull(modelBuilder);
+
+        modelBuilder.Entity<SeparationCase>(entity =>
+        {
+            entity.ToTable("Case", Schema);
+            entity.Property(row => row.Type).HasConversion<byte>();
+            entity.Property(row => row.Status).HasConversion<byte>();
+            entity.Property(row => row.Reason).HasMaxLength(1000);
+            entity.HasIndex(row => new { row.TenantId, row.EmployeeId }).HasDatabaseName("IX_Case_TenantId_Employee");
+            entity.HasIndex(row => new { row.TenantId, row.Status, row.LastWorkingDay }).HasDatabaseName("IX_Case_TenantId_Status_LastDay");
+            entity.Ignore(row => row.ExitReasonCode);
+            entity.Ignore(row => row.ShortfallDays);
+            entity.Ignore(row => row.InProgress);
+            entity.Ignore(row => row.DomainEvents);
+        });
+
+        modelBuilder.Entity<ClearanceItem>(entity =>
+        {
+            entity.ToTable("ClearanceItem", Schema);
+            entity.Property(row => row.Area).HasConversion<byte>();
+            entity.Property(row => row.Status).HasConversion<byte>();
+            entity.Property(row => row.Title).HasMaxLength(200);
+            entity.Property(row => row.RecoveryAmount).HasPrecision(18, 2);
+            entity.Property(row => row.Note).HasMaxLength(500);
+            entity.Property(row => row.SourceType).HasMaxLength(40);
+            entity.HasOne<SeparationCase>().WithMany().HasForeignKey(row => row.CaseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(row => new { row.TenantId, row.CaseId }).HasDatabaseName("IX_ClearanceItem_TenantId_Case");
+            entity.HasIndex(row => new { row.TenantId, row.OwnerEmployeeId, row.Status }).HasDatabaseName("IX_ClearanceItem_TenantId_Owner_Status");
+            entity.Ignore(row => row.DomainEvents);
+        });
+
+        modelBuilder.Entity<ExitInterview>(entity =>
+        {
+            entity.ToTable("ExitInterview", Schema);
+            entity.Property(row => row.PrimaryReason).HasMaxLength(100);
+            entity.Property(row => row.WhatWentWell).HasMaxLength(2000);
+            entity.Property(row => row.WhatToImprove).HasMaxLength(2000);
+            entity.HasOne<SeparationCase>().WithMany().HasForeignKey(row => row.CaseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(row => new { row.TenantId, row.CaseId }).HasDatabaseName("UX_ExitInterview_TenantId_Case").IsUnique().HasFilter("[IsDeleted] = 0");
+            entity.Ignore(row => row.DomainEvents);
+        });
+
+        modelBuilder.Entity<Settlement>(entity =>
+        {
+            entity.ToTable("Settlement", Schema);
+            entity.Property(row => row.Status).HasConversion<byte>();
+            entity.Property(row => row.Earnings).HasPrecision(18, 2);
+            entity.Property(row => row.Deductions).HasPrecision(18, 2);
+            entity.Property(row => row.Net).HasPrecision(18, 2);
+            entity.Property(row => row.PaymentReference).HasMaxLength(100);
+            entity.HasOne<SeparationCase>().WithMany().HasForeignKey(row => row.CaseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(row => new { row.TenantId, row.CaseId }).HasDatabaseName("UX_Settlement_TenantId_Case").IsUnique().HasFilter("[IsDeleted] = 0");
+            entity.Ignore(row => row.DomainEvents);
+        });
+
+        modelBuilder.Entity<SettlementLine>(entity =>
+        {
+            entity.ToTable("SettlementLine", Schema);
+            entity.Property(row => row.Code).HasMaxLength(30);
+            entity.Property(row => row.Label).HasMaxLength(200);
+            entity.Property(row => row.Amount).HasPrecision(18, 2);
+            entity.Property(row => row.Basis).HasMaxLength(300);
+            entity.HasOne<Settlement>().WithMany().HasForeignKey(row => row.SettlementId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(row => new { row.TenantId, row.SettlementId }).HasDatabaseName("IX_SettlementLine_TenantId_Settlement");
+            entity.Ignore(row => row.DomainEvents);
+        });
+
+        modelBuilder.Entity<AlumniProfile>(entity =>
+        {
+            entity.ToTable("Alumni", Schema);
+            entity.Property(row => row.Name).HasMaxLength(200);
+            entity.Property(row => row.Email).HasMaxLength(256);
+            entity.Property(row => row.LastDesignation).HasMaxLength(150);
+            entity.Property(row => row.SeparationType).HasConversion<byte>();
+            entity.Property(row => row.Notes).HasMaxLength(1000);
+            entity.HasIndex(row => new { row.TenantId, row.EmployeeId }).HasDatabaseName("UX_Alumni_TenantId_Employee").IsUnique().HasFilter("[IsDeleted] = 0");
+            entity.Ignore(row => row.DomainEvents);
+        });
+    }
+}
+
+internal static class SeparationData
+{
+    extension(AppDbContext db)
+    {
+        public DbSet<SeparationCase> SeparationCases => db.Set<SeparationCase>();
+
+        public DbSet<ClearanceItem> ClearanceItems => db.Set<ClearanceItem>();
+
+        public DbSet<ExitInterview> ExitInterviews => db.Set<ExitInterview>();
+
+        public DbSet<Settlement> Settlements => db.Set<Settlement>();
+
+        public DbSet<SettlementLine> SettlementLines => db.Set<SettlementLine>();
+
+        public DbSet<AlumniProfile> Alumni => db.Set<AlumniProfile>();
+    }
+}

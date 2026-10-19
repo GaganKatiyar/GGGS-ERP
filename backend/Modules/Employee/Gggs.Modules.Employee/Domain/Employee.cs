@@ -474,6 +474,15 @@ public sealed class Employee : TenantAggregateRoot
         NoticeStartDate = noticeStartDate;
     }
 
+    /// <summary>A resignation was withdrawn: back to working normally.</summary>
+    public void WithdrawNotice()
+    {
+        EnsureNotExited();
+        Guard.Against(Status != EmployeeStatus.OnNotice, "EMPLOYEE_NOT_ON_NOTICE", "This employee is not serving notice.");
+        Status = EmployeeStatus.Active;
+        NoticeStartDate = null;
+    }
+
     /// <summary>
     /// Ends employment on <paramref name="exitDate"/> (the last working day). The open record closes
     /// on that date. Clearance and full-and-final settlement belong to the Separation module (M10).

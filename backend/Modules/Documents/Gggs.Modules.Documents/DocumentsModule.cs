@@ -21,6 +21,7 @@ public sealed class DocumentsModule : IModule
         services.AddScoped<DocumentService>();
         services.AddScoped<DocumentCatalogSeeder>();
         services.AddScoped<IDocumentDirectory, DocumentDirectory>();
+        services.AddScoped<ILetterGenerator, LetterGenerator>();
         services.AddScoped<ISignatureProvider, BuiltInSignatureProvider>();
     }
 

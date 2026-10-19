@@ -14,6 +14,17 @@ public interface IDocumentDirectory
 /// The owning module registers one per kind of record; Documents asks it rather than guessing,
 /// so project documents follow project access and client documents follow client access.
 /// </summary>
+/// <summary>
+/// Letters generated for an employee from a template on behalf of another module (Separation's
+/// relieving and experience letters). The calling module has already decided the employee may have
+/// one; the letter is filed in the employee's documents.
+/// </summary>
+public interface ILetterGenerator
+{
+    /// <summary>Generates the letter from the template with this code. Returns the new document's id.</summary>
+    Task<Guid> GenerateAsync(Guid employeeId, string templateCode, IReadOnlyDictionary<string, string> values, CancellationToken cancellationToken = default);
+}
+
 public interface IDocumentOwnerAccess
 {
     /// <summary>The kind of owner this answers for: <c>Project</c> or <c>Client</c>.</summary>

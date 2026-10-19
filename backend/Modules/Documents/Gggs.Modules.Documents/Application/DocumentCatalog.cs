@@ -54,6 +54,33 @@ internal static class DocumentCatalog
             <p>This certificate is issued at the employee's request.</p>
             <p>For the company,<br />Human Resources</p>
             """),
+        new(
+            "RELIEVING_LETTER",
+            "Relieving letter",
+            "Confirms that someone has been relieved of their duties on their last working day.",
+            "RELIEVING",
+            """
+            <h1>Relieving letter</h1>
+            <p>{{today}}</p>
+            <p>Dear {{employeeName}},</p>
+            <p>This is to confirm that you have been relieved of your duties as {{designation}} in {{department}} at the close of
+            business on {{lastWorkingDay}}, following your {{separationType}}. Your full and final settlement has been completed.</p>
+            <p>We thank you for your contribution and wish you the very best.</p>
+            <p>For the company,<br />Human Resources</p>
+            """),
+        new(
+            "EXPERIENCE_LETTER",
+            "Experience letter",
+            "States the period someone worked here and the role they held.",
+            "EXPERIENCE",
+            """
+            <h1>Experience letter</h1>
+            <p>{{today}}</p>
+            <p>To whom it may concern,</p>
+            <p>This is to certify that <strong>{{employeeName}}</strong> (employee code {{employeeCode}}) worked with us from
+            {{joiningDate}} to {{lastWorkingDay}}, last as {{designation}} in {{department}}.</p>
+            <p>For the company,<br />Human Resources</p>
+            """),
     ];
 }
 

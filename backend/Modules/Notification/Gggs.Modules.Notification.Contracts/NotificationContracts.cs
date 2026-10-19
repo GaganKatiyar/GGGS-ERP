@@ -63,4 +63,15 @@ public static class NotificationTemplates
     public const string LearningOverdue = "learning.overdue";
     public const string CertificationExpiring = "learning.certification-expiring";
     public const string PromotionDecided = "career.promotion-decided";
+    public const string Recognized = "reward.recognized";
+    public const string RedemptionUpdate = "reward.redemption-update";
+    public const string PointsExpiring = "reward.points-expiring";
+    public const string SurveyOpened = "engagement.survey-opened";
+    public const string TicketUpdate = "helpdesk.ticket-update";
+    public const string TicketAssigned = "helpdesk.ticket-assigned";
+    public const string TicketSlaBreached = "helpdesk.sla-breached";
+    public const string AssetAssigned = "asset.assigned";
+    public const string ExpenseDecided = "expense.decided";
+    public const string ResignationSubmitted = "separation.resignation-submitted";
+    public const string ClearanceAssigned = "separation.clearance-assigned";
 }

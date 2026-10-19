@@ -216,6 +216,7 @@ public static class RoleTemplates
                 new(Permissions.Compensation.BandManage, DataScope.Tenant),
                 .. HiringManagement(),
                 .. TalentManagement(),
+                .. ExperienceManagement(),
 
                 new(Permissions.Notification.TemplateView, DataScope.Tenant),
                 new(Permissions.Notification.TemplateManage, DataScope.Tenant),
@@ -293,6 +294,7 @@ public static class RoleTemplates
                 new(Permissions.Compensation.EquityManage, DataScope.Tenant),
                 .. HiringManagement(),
                 .. TalentManagement(),
+                .. ExperienceManagement(),
 
                 new(Permissions.Notification.TemplateView, DataScope.Tenant),
 
@@ -369,6 +371,14 @@ public static class RoleTemplates
 
             ["FINANCE_USER"] =
             [
+                new(Permissions.Spend.ClaimView, DataScope.Tenant),
+                new(Permissions.Spend.TravelView, DataScope.Tenant),
+                new(Permissions.Spend.TravelAdvanceManage, DataScope.Tenant),
+                new(Permissions.Spend.ClaimPay, DataScope.Tenant),
+                new(Permissions.Spend.CategoryManage, DataScope.Tenant),
+                new(Permissions.Separation.CaseView, DataScope.Tenant),
+                new(Permissions.Separation.ClearanceManage, DataScope.Tenant),
+                new(Permissions.Separation.SettlementManage, DataScope.Tenant),
                 new(Permissions.Organization.View, DataScope.Tenant),
                 new(Permissions.Employee.View, DataScope.LegalEntity),
                 new(Permissions.Client.View, DataScope.Tenant),
@@ -632,6 +642,13 @@ public static class RoleTemplates
             [
                 new(Permissions.Organization.View, DataScope.Tenant),
                 new(Permissions.Employee.View, DataScope.Tenant),
+                new(Permissions.Reward.CatalogView, DataScope.Tenant),
+                new(Permissions.Reward.CatalogManage, DataScope.Tenant),
+                new(Permissions.Reward.ProgramManage, DataScope.Tenant),
+                new(Permissions.Reward.RecognitionView, DataScope.Tenant),
+                new(Permissions.Reward.RedemptionManage, DataScope.Tenant),
+                new(Permissions.Engagement.SurveyView, DataScope.Tenant),
+                new(Permissions.Engagement.ResultsView, DataScope.Tenant),
                 new(Permissions.Report.View, DataScope.Tenant),
 
                 .. SelfService(),
@@ -663,6 +680,11 @@ public static class RoleTemplates
                 new(Permissions.Asset.Manage, DataScope.Tenant),
                 new(Permissions.Onboarding.CaseView, DataScope.Tenant),
                 new(Permissions.Onboarding.TaskComplete, DataScope.Tenant),
+                new(Permissions.Helpdesk.TicketView, DataScope.Tenant),
+                new(Permissions.Helpdesk.TicketManage, DataScope.Tenant),
+                new(Permissions.Helpdesk.KnowledgeManage, DataScope.Tenant),
+                new(Permissions.Separation.CaseView, DataScope.Tenant),
+                new(Permissions.Separation.ClearanceManage, DataScope.Tenant),
 
                 .. SelfService(),
             ],
@@ -674,6 +696,10 @@ public static class RoleTemplates
                 new(Permissions.Asset.CategoryManage, DataScope.Tenant),
                 new(Permissions.Asset.View, DataScope.Tenant),
                 new(Permissions.Asset.Manage, DataScope.Tenant),
+                new(Permissions.Separation.CaseView, DataScope.Tenant),
+                new(Permissions.Separation.ClearanceManage, DataScope.Tenant),
+                new(Permissions.Helpdesk.TicketView, DataScope.Tenant),
+                new(Permissions.Helpdesk.TicketManage, DataScope.Tenant),
 
                 .. SelfService(),
             ],
@@ -818,6 +844,36 @@ public static class RoleTemplates
     ];
 
     /// <summary>Workforce plans, manpower requests, recruitment end to end, and onboarding.</summary>
+    /// <summary>Rewards, engagement, helpdesk, assets, expenses and separation end to end.</summary>
+    private static PermissionAssignment[] ExperienceManagement() =>
+    [
+        new(Permissions.Reward.CatalogView, DataScope.Tenant),
+        new(Permissions.Reward.CatalogManage, DataScope.Tenant),
+        new(Permissions.Reward.ProgramManage, DataScope.Tenant),
+        new(Permissions.Reward.RecognitionView, DataScope.Tenant),
+        new(Permissions.Reward.RedemptionManage, DataScope.Tenant),
+        new(Permissions.Engagement.SurveyView, DataScope.Tenant),
+        new(Permissions.Engagement.SurveyManage, DataScope.Tenant),
+        new(Permissions.Engagement.ResultsView, DataScope.Tenant),
+        new(Permissions.Helpdesk.TicketView, DataScope.Tenant),
+        new(Permissions.Helpdesk.TicketManage, DataScope.Tenant),
+        new(Permissions.Helpdesk.CategoryManage, DataScope.Tenant),
+        new(Permissions.Helpdesk.KnowledgeManage, DataScope.Tenant),
+        new(Permissions.Asset.CategoryManage, DataScope.Tenant),
+        new(Permissions.Asset.View, DataScope.Tenant),
+        new(Permissions.Asset.Manage, DataScope.Tenant),
+        new(Permissions.Spend.CategoryManage, DataScope.Tenant),
+        new(Permissions.Spend.ClaimView, DataScope.Tenant),
+        new(Permissions.Spend.TravelView, DataScope.Tenant),
+        new(Permissions.Spend.TravelAdvanceManage, DataScope.Tenant),
+        new(Permissions.Spend.ClaimPay, DataScope.Tenant),
+        new(Permissions.Separation.CaseView, DataScope.Tenant),
+        new(Permissions.Separation.CaseManage, DataScope.Tenant),
+        new(Permissions.Separation.ClearanceManage, DataScope.Tenant),
+        new(Permissions.Separation.SettlementManage, DataScope.Tenant),
+        new(Permissions.Separation.AlumniView, DataScope.Tenant),
+    ];
+
     /// <summary>Goals, performance, learning and career end to end.</summary>
     private static PermissionAssignment[] TalentManagement() =>
     [
@@ -846,6 +902,10 @@ public static class RoleTemplates
     /// <summary>What a people leader does for their own people: goals, reviews, plans, learning, promotions, potential.</summary>
     private static PermissionAssignment[] TalentLeadership(DataScope scope) =>
     [
+        new(Permissions.Spend.ClaimView, scope),
+        new(Permissions.Spend.TravelView, scope),
+        new(Permissions.Separation.CaseView, scope),
+        new(Permissions.Reward.RecognitionView, scope),
         new(Permissions.Performance.CycleView, DataScope.Tenant),
         new(Permissions.Performance.GoalManage, scope),
         new(Permissions.Performance.ReviewView, scope),
@@ -917,6 +977,14 @@ public static class RoleTemplates
         new(Permissions.Performance.GoalManageOwn, DataScope.Own),
         new(Permissions.Performance.ReviewManageOwn, DataScope.Own),
         new(Permissions.Learning.EnrollmentManageOwn, DataScope.Own),
+        new(Permissions.Self.RewardView, DataScope.Own),
+        new(Permissions.Self.RecognitionGive, DataScope.Own),
+        new(Permissions.Self.TicketCreate, DataScope.Own),
+        new(Permissions.Self.SurveyRespond, DataScope.Own),
+        new(Permissions.Self.ResignationSubmit, DataScope.Own),
+        new(Permissions.Self.AssetView, DataScope.Own),
+        new(Permissions.Self.ExpenseClaimCreate, DataScope.Own),
+        new(Permissions.Self.TravelRequestCreate, DataScope.Own),
 
         // Everyone receives notifications - approvals, policies to acknowledge, invitations.
         new(Permissions.Notification.InboxView, DataScope.Own),

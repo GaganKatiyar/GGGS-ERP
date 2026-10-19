@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Modules.Rewards</RootNamespace>
+    <Description>Rewards and recognition: types, rules, feed, points wallet with expiry, catalogue, redemption and budgets.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Jobs\Gggs.BuildingBlocks.Jobs.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Web\Gggs.BuildingBlocks.Web.csproj" />
+    <ProjectReference Include="..\..\..\Data\Gggs.Data\Gggs.Data.csproj" />
+    <ProjectReference Include="..\..\Employee\Gggs.Modules.Employee.Contracts\Gggs.Modules.Employee.Contracts.csproj" />
+    <ProjectReference Include="..\..\Learning\Gggs.Modules.Learning.Contracts\Gggs.Modules.Learning.Contracts.csproj" />
+    <ProjectReference Include="..\..\Notification\Gggs.Modules.Notification.Contracts\Gggs.Modules.Notification.Contracts.csproj" />
+    <ProjectReference Include="..\..\Organization\Gggs.Modules.Organization.Contracts\Gggs.Modules.Organization.Contracts.csproj" />
+    <ProjectReference Include="..\..\Payroll\Gggs.Modules.Payroll.Contracts\Gggs.Modules.Payroll.Contracts.csproj" />
+    <ProjectReference Include="..\..\Performance\Gggs.Modules.Performance.Contracts\Gggs.Modules.Performance.Contracts.csproj" />
+    <ProjectReference Include="..\..\Platform\Gggs.Modules.Platform.Contracts\Gggs.Modules.Platform.Contracts.csproj" />
+    <ProjectReference Include="..\..\Workflow\Gggs.Modules.Workflow.Contracts\Gggs.Modules.Workflow.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Gggs.Experience.UnitTests" />
+    <InternalsVisibleTo Include="Gggs.Api.IntegrationTests" />
+    <InternalsVisibleTo Include="Gggs.DevSeed" />
+  </ItemGroup>
+
+</Project>

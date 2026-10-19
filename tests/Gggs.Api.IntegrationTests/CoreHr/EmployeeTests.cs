@@ -193,7 +193,8 @@ public sealed class EmployeeTests(PeopleOsApiFactory factory)
         performance.TryGetProperty("milestone", out _).ShouldBeFalse();
         JsonElement rewards = sections.Single(section => section.GetProperty("key").GetString() == "rewards");
         rewards.GetProperty("available").GetBoolean().ShouldBeFalse();
-        rewards.GetProperty("milestone").GetString().ShouldBe("M10");
+        rewards.TryGetProperty("milestone", out _).ShouldBeFalse();
+        sections.Where(section => section.TryGetProperty("milestone", out _)).ShouldBeEmpty();
     }
 
     [Fact]

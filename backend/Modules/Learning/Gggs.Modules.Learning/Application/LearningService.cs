@@ -1,6 +1,7 @@
 using System.Globalization;
 using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Domain.Exceptions;
+using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Security;
 using Gggs.Data;
@@ -112,6 +113,7 @@ internal sealed class LearningService(
     IPermissionProvider permissions,
     ICurrentUser currentUser,
     INotifier notifier,
+    IIntegrationEventPublisher publisher,
     ITenantClock clock)
 {
     // ----- Catalogue ----------------------------------------------------------------------------
@@ -319,6 +321,7 @@ internal sealed class LearningService(
 
                 enrollment.Complete(completedOn, completion?.Score, course.CertificateValidityMonths,
                     $"{course.Code}-{completedOn.Year}-{enrollment.Id.ToString("N")[..8].ToUpperInvariant()}");
+                publisher.Publish(new CourseCompletedIntegrationEvent(enrollment.Id, enrollment.EmployeeId, course.Id, course.Title, completedOn));
                 break;
             case "rate":
                 ArgumentNullException.ThrowIfNull(rating);
