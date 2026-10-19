@@ -7,6 +7,7 @@ import { EmployeeAllocation, EmployeeProjects, EmployeeSkills, EmployeeTimesheet
 import { EmployeeBenefits, EmployeeCompensation, EmployeePayroll } from '@gggs/shared/money';
 import { EmployeeDocuments } from '@gggs/shared/documents';
 import { EmployeeDirectoryApi } from '@gggs/shared/employee-reference';
+import { EmployeeOnboarding } from '@gggs/shared/hiring';
 import { EmployeeAttendance, EmployeeLeave } from '@gggs/shared/time';
 import type { Employee360, Employee360Section } from '@gggs/shared/models';
 import { EmptyState, KpiCard, PageHeader, Skeleton, StatusBadge, Tabs, type TabItem } from '@gggs/shared/ui';
@@ -23,7 +24,7 @@ import { StatutoryTab } from './tabs/statutory-tab';
  */
 @Component({
   selector: 'gggs-employee-360-page',
-  imports: [DatePipe, RouterLink, PageHeader, KpiCard, StatusBadge, Tabs, Skeleton, EmptyState, EmployeeDocuments, EmployeeAttendance, EmployeeLeave, EmployeeProjects, EmployeeSkills, EmployeeAllocation, EmployeeTimesheets, EmployeePayroll, EmployeeCompensation, EmployeeBenefits, EmploymentTab, PersonalTab, FamilyTab, StatutoryTab, HistoryTab],
+  imports: [DatePipe, RouterLink, PageHeader, KpiCard, StatusBadge, Tabs, Skeleton, EmptyState, EmployeeDocuments, EmployeeAttendance, EmployeeLeave, EmployeeProjects, EmployeeSkills, EmployeeAllocation, EmployeeTimesheets, EmployeePayroll, EmployeeCompensation, EmployeeBenefits, EmployeeOnboarding, EmploymentTab, PersonalTab, FamilyTab, StatutoryTab, HistoryTab],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (error()) {
@@ -134,6 +135,9 @@ import { StatutoryTab } from './tabs/statutory-tab';
           @case ('benefits') {
             <gggs-employee-benefits [employeeId]="p.id" />
           }
+          @case ('onboarding') {
+            <gggs-employee-onboarding [employeeId]="p.id" />
+          }
           @case ('documents') {
             <gggs-employee-documents [employeeId]="p.id" [canUpload]="canUploadDocuments" [canArchive]="canArchiveDocuments" />
           }
@@ -186,7 +190,8 @@ export class Employee360Page {
         (section.key !== 'skills' || this.permissions.has('skill.employee-skill.view')) &&
         (section.key !== 'payroll' || this.permissions.has('payroll.employee-salary.view')) &&
         (section.key !== 'compensation' || this.permissions.has('compensation.revision.view')) &&
-        (section.key !== 'benefits' || this.permissions.has('benefit.enrollment.view')),
+        (section.key !== 'benefits' || this.permissions.has('benefit.enrollment.view')) &&
+        (section.key !== 'onboarding' || this.permissions.has('onboarding.case.view')),
     ),
   );
 

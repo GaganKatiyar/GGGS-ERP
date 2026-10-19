@@ -229,6 +229,50 @@ export const appRoutes: Route[] = [
           import('@gggs/features/benefits').then((m) => m.MY_BENEFITS_ROUTES),
       },
       {
+        path: 'me/onboarding',
+        ...withPermissions(['self.onboarding.view']),
+        loadChildren: () =>
+          import('@gggs/features/onboarding').then((m) => m.MY_ONBOARDING_ROUTES),
+      },
+      {
+        path: 'me/jobs',
+        ...withPermissions(['self.referral.create']),
+        loadChildren: () =>
+          import('@gggs/features/recruitment').then((m) => m.JOB_BOARD_ROUTES),
+      },
+      {
+        path: 'me/interviews',
+        ...withPermissions(['self.interview.feedback']),
+        loadChildren: () =>
+          import('@gggs/features/recruitment').then((m) => m.MY_INTERVIEWS_ROUTES),
+      },
+      {
+        path: 'workforce',
+        ...withPermissions(['workforce.plan.view', 'workforce.request.view', 'workforce.request.manage', 'workflow.task.act']),
+        loadChildren: () =>
+          import('@gggs/features/workforce').then((m) => m.WORKFORCE_ROUTES),
+      },
+      {
+        path: 'recruitment',
+        ...withPermissions([
+          'recruitment.requisition.view',
+          'recruitment.posting.view',
+          'recruitment.application.view',
+          'recruitment.offer.view',
+          'recruitment.analytics.view',
+          'recruitment.settings.manage',
+          'workflow.task.act',
+        ]),
+        loadChildren: () =>
+          import('@gggs/features/recruitment').then((m) => m.RECRUITMENT_ROUTES),
+      },
+      {
+        path: 'onboarding',
+        ...withPermissions(['onboarding.case.view', 'onboarding.template.view', 'onboarding.case.manage']),
+        loadChildren: () =>
+          import('@gggs/features/onboarding').then((m) => m.ONBOARDING_ROUTES),
+      },
+      {
         path: 'payroll',
         ...withPermissions(['payroll.run.view', 'payroll.employee-salary.view', 'payroll.structure.manage', 'payroll.component.manage', 'payroll.input.manage', 'payroll.tax-declaration.view', 'payroll.settings.manage']),
         loadChildren: () =>

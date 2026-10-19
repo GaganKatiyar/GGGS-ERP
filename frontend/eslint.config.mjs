@@ -89,6 +89,9 @@ export default [
                 'scope:compliance',
                 'scope:compensation',
                 'scope:benefits',
+                'scope:workforce',
+                'scope:recruitment',
+                'scope:onboarding',
                 'scope:time',
               ],
             },
@@ -155,6 +158,18 @@ export default [
             {
               sourceTag: 'scope:time',
               onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:time'],
+            },
+            {
+              sourceTag: 'scope:onboarding',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:onboarding'],
+            },
+            {
+              sourceTag: 'scope:recruitment',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:recruitment'],
+            },
+            {
+              sourceTag: 'scope:workforce',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:workforce'],
             },
             {
               sourceTag: 'scope:benefits',
