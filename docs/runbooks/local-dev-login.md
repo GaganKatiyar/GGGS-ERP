@@ -180,7 +180,7 @@ types, reward rules and a catalogue. DevSeed's `experience` step registers twelv
 assigned, one in repair, a request waiting); four expense claims (paid, approved, pending, draft)
 and two trips, one with an advance; five helpdesk tickets including a confidential grievance, with IT
 routed to EMP00004; a closed pulse survey with seven anonymous responses and an open one for
-everyone; six recognitions, a company budget and a redemption to fulfil; and EMP00007 serving notice
+everyone; six recognitions, a company budget and a redemption to fulfil; and Sara Khan (EMP00005) serving notice
 with clearance open, plus two alumni. It tops up every template role with the M10 permissions.
 
 Uploaded documents are stored under `.local/files` (one folder per tenant), configured by

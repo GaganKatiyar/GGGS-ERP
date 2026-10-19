@@ -290,7 +290,7 @@ internal static class ExperienceDemo
         }
 
         DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
-        Guid leaver = people["EMP00007"];
+        Guid leaver = people["EMP00005"];
         EmployeeSummary? person = await scope.GetRequiredService<IEmployeeDirectory>().GetAsync(leaver);
         var separation = SeparationCase.Open(leaver, SeparationType.Resignation, "Relocating to Hyderabad for family reasons.", today.AddDays(-20), 60, today.AddDays(25));
         separation.Approve(null);
@@ -310,7 +310,7 @@ internal static class ExperienceDemo
         db.Add(AlumniProfile.Create(Guid.NewGuid(), "Arjun Mehta", "arjun.mehta@example.com", "Senior Developer", null, today.AddMonths(-8), SeparationType.Resignation, true));
         db.Add(AlumniProfile.Create(Guid.NewGuid(), "Kavya Nair", "kavya.nair@example.com", "QA Lead", null, today.AddMonths(-14), SeparationType.Resignation, true));
         await db.SaveChangesAsync();
-        Console.WriteLine("Separation: EMP00007 serving notice with clearance open; 2 alumni.");
+        Console.WriteLine("Separation: EMP00005 serving notice with clearance open; 2 alumni.");
     }
 
     private static async Task TopUpRolesAsync(IServiceProvider scope)
