@@ -18,7 +18,7 @@ The tenancy, isolation and security design in
 [docs/architecture/architecture.md](docs/architecture/architecture.md) (§3, §6.2–6.3, §8, §9) still
 applies.
 
-**Status: M8 (hiring: workforce planning, recruitment, onboarding) complete.**
+**Status: M9 (talent: goals, performance, learning, career and succession) complete.**
 
 - Platform (tenants, plans, subscriptions, settings, audit log) and Identity (users, roles,
   permissions, browser sessions, the OIDC token server) run as modules in a single API host.
@@ -68,12 +68,20 @@ applies.
   to hire, cost per hire, offer acceptance, sources and recruiters. Onboarding starts on hire from the
   best-fitting configurable checklist, with tasks owned by HR, IT, admin, the manager, a buddy or
   the joiner, due relative to joining (pre-boarding included), reminded when overdue.
+- Talent: company, department and individual goals (OKR and KPI) that cascade, with weighted key
+  results and check-ins; review cycles with self and manager reviews that blend goal achievement and
+  competency ratings, show project hours, learning and skills as evidence, collect 360 feedback,
+  and are calibrated against a target distribution before release; improvement plans with check-ins
+  and an outcome; a course catalogue and learning paths, mandatory courses assigned to joiners,
+  certificates that lapse and are assigned again; career paths by job or grade showing each person
+  the next step and the skills to build; promotions approved through the workflow and applied to the
+  employee and payroll on their date; succession plans; and the 9-box talent review.
 - The frontend has the PeopleOS shell, a shared UI kit (KPI cards, charts, drawers, form dialogs,
   filter bar, timeline, tabs, an upgraded data table with column chooser and CSV export), and the
   Core HR and administration screens. Unbuilt modules stay hidden in the navigation.
-- 591 backend tests pass, including architecture rules for module boundaries, a tenant-isolation
+- 637 backend tests pass, including architecture rules for module boundaries, a tenant-isolation
   suite against a real SQL Server, and end-to-end flows that run the worker's event delivery.
-- Talent (goals, performance, learning, career) is next (M9).
+- Employee experience (rewards, engagement, helpdesk, assets, expenses, separation) is next (M10).
 
 ## Prerequisites
 

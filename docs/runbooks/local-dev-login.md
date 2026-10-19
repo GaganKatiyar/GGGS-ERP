@@ -145,6 +145,24 @@ requisition, publishes a posting, adds an agency and six candidates across the p
 interviews, a scorecard and an offer out, and starts onboarding for Rohan Das with Priya Menon
 (the administrator) as HR, IT and admin owner, so My onboarding tasks has work in it. It tops up the tenant's roles with the M8 permissions.
 
+Since M9 it also:
+
+- reminds employees and managers of reviews due within three days, daily at 03:15
+  (`performance-reminders`).
+- runs the learning pass daily at 02:45 (`learning-daily`): weekly reminders for overdue learning, a
+  reminder 30 days before a certificate expires, and on expiry the certificate lapses and a mandatory
+  course is assigned again.
+- applies approved promotions whose date has come, daily at 00:05 (`career-promotions`), and applies
+  approved promotions straight away when they are already effective.
+- assigns joiners the mandatory courses set for joiners.
+
+Every tenant gets four compliance courses. DevSeed's `talent` step adds a company goal, a department
+goal and six aligned individual goals with check-ins; last half-year's review cycle released with
+ratings and this half-year's open (two self-reviews in, and 360 feedback asked of the administrator);
+learning assigned to everyone with a third completed and a security path; two career paths, two
+succession plans, potential assessments for the 9-box and a promotion nomination waiting to be
+submitted.
+
 Uploaded documents are stored under `.local/files` (one folder per tenant), configured by
 `Gggs:Storage:FileSystem:RootPath` in both hosts' development settings.
 
