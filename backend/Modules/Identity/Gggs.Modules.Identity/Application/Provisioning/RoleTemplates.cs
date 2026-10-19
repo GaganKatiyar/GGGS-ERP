@@ -215,6 +215,7 @@ public static class RoleTemplates
                 new(Permissions.Compensation.BandView, DataScope.Tenant),
                 new(Permissions.Compensation.BandManage, DataScope.Tenant),
                 .. HiringManagement(),
+                .. TalentManagement(),
 
                 new(Permissions.Notification.TemplateView, DataScope.Tenant),
                 new(Permissions.Notification.TemplateManage, DataScope.Tenant),
@@ -291,6 +292,7 @@ public static class RoleTemplates
                 new(Permissions.Compensation.EquityView, DataScope.Tenant),
                 new(Permissions.Compensation.EquityManage, DataScope.Tenant),
                 .. HiringManagement(),
+                .. TalentManagement(),
 
                 new(Permissions.Notification.TemplateView, DataScope.Tenant),
 
@@ -413,6 +415,7 @@ public static class RoleTemplates
                 new(Permissions.Recruitment.RequisitionView, DataScope.Department),
                 new(Permissions.Recruitment.ApplicationView, DataScope.Department),
                 new(Permissions.Onboarding.CaseView, DataScope.Department),
+                .. TalentLeadership(DataScope.Department),
 
                 new(Permissions.Workflow.TaskView, DataScope.Own),
                 new(Permissions.Workflow.TaskAct, DataScope.Own),
@@ -441,6 +444,7 @@ public static class RoleTemplates
                 new(Permissions.Workforce.RequestView, DataScope.Own),
                 new(Permissions.Workforce.RequestManage, DataScope.Own),
                 new(Permissions.Onboarding.CaseView, DataScope.DirectReports),
+                .. TalentLeadership(DataScope.DirectReports),
 
                 new(Permissions.Workflow.TaskView, DataScope.Own),
                 new(Permissions.Workflow.TaskAct, DataScope.Own),
@@ -501,6 +505,11 @@ public static class RoleTemplates
                 new(Permissions.Attendance.View, DataScope.LegalEntity),
                 new(Permissions.Performance.CycleView, DataScope.LegalEntity),
                 new(Permissions.Performance.ReviewView, DataScope.LegalEntity),
+                new(Permissions.Performance.PipView, DataScope.LegalEntity),
+                new(Permissions.Learning.EnrollmentView, DataScope.LegalEntity),
+                new(Permissions.Career.PathView, DataScope.Tenant),
+                new(Permissions.Career.PromotionView, DataScope.LegalEntity),
+                new(Permissions.Career.SuccessionView, DataScope.LegalEntity),
                 new(Permissions.Workflow.TaskView, DataScope.Own),
                 new(Permissions.Workflow.TaskAct, DataScope.Own),
                 new(Permissions.Report.View, DataScope.LegalEntity),
@@ -590,6 +599,15 @@ public static class RoleTemplates
                 new(Permissions.Performance.CycleManage, DataScope.Tenant),
                 new(Permissions.Performance.GoalManage, DataScope.Tenant),
                 new(Permissions.Performance.ReviewView, DataScope.Tenant),
+                new(Permissions.Performance.CalibrationManage, DataScope.Tenant),
+                new(Permissions.Performance.PipView, DataScope.Tenant),
+                new(Permissions.Performance.PipManage, DataScope.Tenant),
+                new(Permissions.Career.PathView, DataScope.Tenant),
+                new(Permissions.Career.PathManage, DataScope.Tenant),
+                new(Permissions.Career.PromotionView, DataScope.Tenant),
+                new(Permissions.Career.SuccessionView, DataScope.Tenant),
+                new(Permissions.Career.SuccessionManage, DataScope.Tenant),
+                new(Permissions.Career.TalentReviewManage, DataScope.Tenant),
                 new(Permissions.Report.View, DataScope.Tenant),
 
                 .. SelfService(),
@@ -603,6 +621,7 @@ public static class RoleTemplates
                 new(Permissions.Learning.CourseManage, DataScope.Tenant),
                 new(Permissions.Learning.EnrollmentView, DataScope.Tenant),
                 new(Permissions.Learning.EnrollmentManage, DataScope.Tenant),
+                new(Permissions.Learning.CertificationView, DataScope.Tenant),
                 new(Permissions.Report.View, DataScope.Tenant),
 
                 .. SelfService(),
@@ -799,6 +818,51 @@ public static class RoleTemplates
     ];
 
     /// <summary>Workforce plans, manpower requests, recruitment end to end, and onboarding.</summary>
+    /// <summary>Goals, performance, learning and career end to end.</summary>
+    private static PermissionAssignment[] TalentManagement() =>
+    [
+        new(Permissions.Performance.CycleView, DataScope.Tenant),
+        new(Permissions.Performance.CycleManage, DataScope.Tenant),
+        new(Permissions.Performance.GoalManage, DataScope.Tenant),
+        new(Permissions.Performance.ReviewView, DataScope.Tenant),
+        new(Permissions.Performance.ReviewManageAsManager, DataScope.Tenant),
+        new(Permissions.Performance.CalibrationManage, DataScope.Tenant),
+        new(Permissions.Performance.PipView, DataScope.Tenant),
+        new(Permissions.Performance.PipManage, DataScope.Tenant),
+        new(Permissions.Learning.CourseView, DataScope.Tenant),
+        new(Permissions.Learning.CourseManage, DataScope.Tenant),
+        new(Permissions.Learning.EnrollmentView, DataScope.Tenant),
+        new(Permissions.Learning.EnrollmentManage, DataScope.Tenant),
+        new(Permissions.Learning.CertificationView, DataScope.Tenant),
+        new(Permissions.Career.PathView, DataScope.Tenant),
+        new(Permissions.Career.PathManage, DataScope.Tenant),
+        new(Permissions.Career.PromotionView, DataScope.Tenant),
+        new(Permissions.Career.PromotionManage, DataScope.Tenant),
+        new(Permissions.Career.SuccessionView, DataScope.Tenant),
+        new(Permissions.Career.SuccessionManage, DataScope.Tenant),
+        new(Permissions.Career.TalentReviewManage, DataScope.Tenant),
+    ];
+
+    /// <summary>What a people leader does for their own people: goals, reviews, plans, learning, promotions, potential.</summary>
+    private static PermissionAssignment[] TalentLeadership(DataScope scope) =>
+    [
+        new(Permissions.Performance.CycleView, DataScope.Tenant),
+        new(Permissions.Performance.GoalManage, scope),
+        new(Permissions.Performance.ReviewView, scope),
+        new(Permissions.Performance.ReviewManageAsManager, scope),
+        new(Permissions.Performance.PipView, scope),
+        new(Permissions.Performance.PipManage, scope),
+        new(Permissions.Learning.CourseView, DataScope.Tenant),
+        new(Permissions.Learning.EnrollmentView, scope),
+        new(Permissions.Learning.EnrollmentManage, scope),
+        new(Permissions.Learning.CertificationView, scope),
+        new(Permissions.Career.PathView, DataScope.Tenant),
+        new(Permissions.Career.PromotionView, scope),
+        new(Permissions.Career.PromotionManage, scope),
+        new(Permissions.Career.SuccessionView, scope),
+        new(Permissions.Career.TalentReviewManage, scope),
+    ];
+
     private static PermissionAssignment[] HiringManagement() =>
     [
         new(Permissions.Workforce.PlanView, DataScope.Tenant),
@@ -847,6 +911,12 @@ public static class RoleTemplates
         new(Permissions.Self.ReferralCreate, DataScope.Own),
         new(Permissions.Self.InterviewFeedback, DataScope.Own),
         new(Permissions.Self.OnboardingView, DataScope.Own),
+        new(Permissions.Self.FeedbackGive, DataScope.Own),
+        new(Permissions.Self.LearningView, DataScope.Own),
+        new(Permissions.Self.CareerView, DataScope.Own),
+        new(Permissions.Performance.GoalManageOwn, DataScope.Own),
+        new(Permissions.Performance.ReviewManageOwn, DataScope.Own),
+        new(Permissions.Learning.EnrollmentManageOwn, DataScope.Own),
 
         // Everyone receives notifications - approvals, policies to acknowledge, invitations.
         new(Permissions.Notification.InboxView, DataScope.Own),

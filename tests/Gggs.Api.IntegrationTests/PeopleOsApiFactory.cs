@@ -129,6 +129,7 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Payroll.Application.PayrollSeeder>().SeedCurrentTenantAsync();
             await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Benefits.Application.BenefitSeeder>().SeedCurrentTenantAsync();
             await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Onboarding.Application.OnboardingSeeder>().SeedCurrentTenantAsync();
+            await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Learning.Application.LearningSeeder>().SeedCurrentTenantAsync();
         }
 
         // The worker seeds the platform roles at start-up; this host is the API alone, so run the
@@ -538,6 +539,12 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             Permissions.Recruitment.SettingsManage, Permissions.Recruitment.AnalyticsView,
             Permissions.Onboarding.TemplateView, Permissions.Onboarding.TemplateManage, Permissions.Onboarding.CaseView, Permissions.Onboarding.CaseManage,
             Permissions.Onboarding.TaskComplete,
+            Permissions.Performance.CycleView, Permissions.Performance.CycleManage, Permissions.Performance.GoalManage, Permissions.Performance.ReviewView,
+            Permissions.Performance.ReviewManageAsManager, Permissions.Performance.CalibrationManage, Permissions.Performance.PipView, Permissions.Performance.PipManage,
+            Permissions.Learning.CourseView, Permissions.Learning.CourseManage, Permissions.Learning.EnrollmentView, Permissions.Learning.EnrollmentManage,
+            Permissions.Learning.CertificationView,
+            Permissions.Career.PathView, Permissions.Career.PathManage, Permissions.Career.PromotionView, Permissions.Career.PromotionManage,
+            Permissions.Career.SuccessionView, Permissions.Career.SuccessionManage, Permissions.Career.TalentReviewManage,
         })
         {
             role.Grant(permission, DataScope.Tenant);

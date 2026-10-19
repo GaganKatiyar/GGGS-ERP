@@ -187,9 +187,13 @@ public sealed class EmployeeTests(PeopleOsApiFactory factory)
 
         sections.Single(section => section.GetProperty("key").GetString() == "employment").GetProperty("available").GetBoolean().ShouldBeTrue();
         sections.Single(section => section.GetProperty("key").GetString() == "payroll").GetProperty("available").GetBoolean().ShouldBeTrue();
+        // Performance is built (no milestone) but this tenant's plan does not license it.
         JsonElement performance = sections.Single(section => section.GetProperty("key").GetString() == "performance");
         performance.GetProperty("available").GetBoolean().ShouldBeFalse();
-        performance.GetProperty("milestone").GetString().ShouldBe("M9");
+        performance.TryGetProperty("milestone", out _).ShouldBeFalse();
+        JsonElement rewards = sections.Single(section => section.GetProperty("key").GetString() == "rewards");
+        rewards.GetProperty("available").GetBoolean().ShouldBeFalse();
+        rewards.GetProperty("milestone").GetString().ShouldBe("M10");
     }
 
     [Fact]

@@ -16,6 +16,7 @@ public sealed class EmployeeModule : IModule
         services.AddScoped<IEmployeeDirectory, EmployeeDirectory>();
         services.AddScoped<IEmployeePayrollDetails, EmployeePayrollDetails>();
         services.AddScoped<IEmployeeHiring, EmployeeHiring>();
+        services.AddScoped<IEmployeePromotions, EmployeePromotions>();
         services.AddScoped<EmployeeScope>();
         services.AddScoped<EmployeeService>();
         services.AddScoped<EmployeeQueries>();

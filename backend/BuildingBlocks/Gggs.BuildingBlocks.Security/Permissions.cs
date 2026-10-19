@@ -158,6 +158,15 @@ public static class Permissions
 
         /// <summary>One's own onboarding checklist, and the onboarding tasks assigned to one.</summary>
         public const string OnboardingView = "self.onboarding.view";
+
+        /// <summary>Giving 360 feedback when a colleague asks for it, and asking for it on one's own review.</summary>
+        public const string FeedbackGive = "self.feedback.give";
+
+        /// <summary>One's own learning: the catalogue, enrolling, progress, certificates.</summary>
+        public const string LearningView = "self.learning.view";
+
+        /// <summary>One's own career: the path for one's role, the next step and the gaps to it.</summary>
+        public const string CareerView = "self.career.view";
     }
 
     /// <summary>Leave administration and approvals.</summary>
@@ -412,6 +421,13 @@ public static class Permissions
         /// review's own <c>ManagerEmployeeId</c>, not a blanket grant, the same "own record" shape
         /// self-service permissions elsewhere in this catalog use.</summary>
         public const string ReviewManageAsManager = "performance.review.manage-as-manager";
+
+        /// <summary>Calibrating a cycle's ratings and releasing its reviews.</summary>
+        public const string CalibrationManage = "performance.calibration.manage";
+
+        /// <summary>Performance improvement plans, scoped by the employee on the plan.</summary>
+        public const string PipView = "performance.pip.view";
+        public const string PipManage = "performance.pip.manage";
     }
 
     /// <summary>Courses and enrollments. No session scheduling or certification tracking in this v1
@@ -428,6 +444,26 @@ public static class Permissions
 
         /// <summary>Starting and completing your own enrollment.</summary>
         public const string EnrollmentManageOwn = "learning.enrollment.manage-own";
+
+        /// <summary>Certificates earned from courses and when they expire.</summary>
+        public const string CertificationView = "learning.certification.view";
+    }
+
+    /// <summary>Career paths, promotions, succession plans and talent review (spec: career and succession).</summary>
+    public static class Career
+    {
+        public const string PathView = "career.path.view";
+        public const string PathManage = "career.path.manage";
+
+        /// <summary>Promotion nominations, scoped by the employee nominated.</summary>
+        public const string PromotionView = "career.promotion.view";
+        public const string PromotionManage = "career.promotion.manage";
+
+        public const string SuccessionView = "career.succession.view";
+        public const string SuccessionManage = "career.succession.manage";
+
+        /// <summary>Assessing potential and flight risk for the 9-box talent review.</summary>
+        public const string TalentReviewManage = "career.talent-review.manage";
     }
 
     /// <summary>Salary components, structures, employee salary assignment, payroll runs and the

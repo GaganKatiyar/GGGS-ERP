@@ -215,6 +215,12 @@ await RunAsync(provider, "hiring", async (scope, tenant) =>
     await Gggs.DevSeed.HiringDemo.SeedAsync(scope);
 });
 
+await RunAsync(provider, "talent", async (scope, tenant) =>
+{
+    tenant.SetTenant(tenantId);
+    await Gggs.DevSeed.TalentDemo.SeedAsync(scope);
+});
+
 Console.WriteLine();
 Console.WriteLine("Done. Sign in with:");
 Console.WriteLine($"  Organisation code: {tenantCode}");

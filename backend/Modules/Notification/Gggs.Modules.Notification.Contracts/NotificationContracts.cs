@@ -53,4 +53,14 @@ public static class NotificationTemplates
     public const string OnboardingTaskAssigned = "onboarding.task-assigned";
     public const string OnboardingTaskOverdue = "onboarding.task-overdue";
     public const string OnboardingWelcome = "onboarding.welcome";
+    public const string ReviewCycleLaunched = "performance.cycle-launched";
+    public const string FeedbackRequested = "performance.feedback-requested";
+    public const string ReviewSubmitted = "performance.review-submitted";
+    public const string ReviewDue = "performance.review-due";
+    public const string ReviewReleased = "performance.review-released";
+    public const string PipStarted = "performance.pip-started";
+    public const string LearningAssigned = "learning.assigned";
+    public const string LearningOverdue = "learning.overdue";
+    public const string CertificationExpiring = "learning.certification-expiring";
+    public const string PromotionDecided = "career.promotion-decided";
 }

@@ -2,6 +2,7 @@ using System.Reflection;
 using Gggs.BuildingBlocks.Web.Modules;
 using Gggs.Modules.Attendance;
 using Gggs.Modules.Benefits;
+using Gggs.Modules.Career;
 using Gggs.Modules.Client;
 using Gggs.Modules.Compensation;
 using Gggs.Modules.Compliance;
@@ -9,12 +10,14 @@ using Gggs.Modules.Contract;
 using Gggs.Modules.Documents;
 using Gggs.Modules.Employee;
 using Gggs.Modules.Identity;
+using Gggs.Modules.Learning;
 using Gggs.Modules.Leave;
 using Gggs.Modules.MasterData;
 using Gggs.Modules.Notification;
 using Gggs.Modules.Onboarding;
 using Gggs.Modules.Organization;
 using Gggs.Modules.Payroll;
+using Gggs.Modules.Performance;
 using Gggs.Modules.Platform;
 using Gggs.Modules.Policies;
 using Gggs.Modules.Project;
@@ -67,6 +70,9 @@ public static class ModuleCatalog
         new BenefitsModule(),
         new ComplianceModule(),
         new ResourcesModule(),
+        new CareerModule(),
+        new LearningModule(),
+        new PerformanceModule(),
     ];
 
     /// <summary>The assemblies the shared <c>AppDbContext</c> builds its model from.</summary>

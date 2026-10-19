@@ -125,6 +125,15 @@ public interface IEmployeeHiring
     Task<(Guid EmployeeId, string EmployeeCode)> HireAsync(NewHire hire, CancellationToken cancellationToken = default);
 }
 
+/// <summary>A promotion decided elsewhere (Career): the new job, grade, position or designation from a day. Unset values stay as they are.</summary>
+public sealed record Promotion(Guid EmployeeId, DateOnly EffectiveFrom, Guid? PositionId, Guid? JobId, Guid? GradeId, string? Designation, string Reason);
+
+/// <summary>Applying a promotion from outside Core HR (ADR-12), through Core HR's own assignment rules and events.</summary>
+public interface IEmployeePromotions
+{
+    Task PromoteAsync(Promotion promotion, CancellationToken cancellationToken = default);
+}
+
 /// <summary>Someone joined. Recruitment, onboarding, payroll and resourcing react to this.</summary>
 [MessageType("gggs.employee.hired")]
 public sealed record EmployeeHiredIntegrationEvent(
