@@ -192,6 +192,43 @@ from Administration > Integrations against a month with a finalized payroll) and
 digest for the administrator. Analytics, search and the calendar read every other module, so they
 fill up from the earlier demo steps. The search box in the header takes `/` as a shortcut.
 
+### AI assistants (M12)
+
+The assistants call the Anthropic Messages API. Without a key they are listed but switched off, and
+the page says so. To switch them on for local development, set either:
+
+- `Gggs:Ai:ApiKey` in user secrets for `backend/Host/Gggs.Api`
+  (`dotnet user-secrets set "Gggs:Ai:ApiKey" "sk-ant-..." --project backend/Host/Gggs.Api`), or
+- the `ANTHROPIC_API_KEY` environment variable before starting the API.
+
+The model is `claude-opus-5-5` (`Gggs:Ai:Model`) with adaptive thinking. Server-side fallback is on:
+if the model is overloaded, the API retries the same request on `claude-opus-4-8`
+(`Gggs:Ai:FallbackModel`) without a second round trip. Each turn may run up to eight tool rounds
+(`Gggs:Ai:MaxToolRounds`). Anything that would change data - applying for leave, raising a ticket,
+giving recognition - comes back as a proposal with Approve and Reject buttons, and runs as the
+person only when approved. Conversations are deleted after 30 days by the
+`ai-conversation-retention` job at 02:40 (`Gggs:Ai:RetentionDays`). Assistant turns are limited to 12
+a minute per person (`Gggs:RateLimiting:AssistantPerMinute`).
+
+### Sign-in security (M12)
+
+- **Authenticator app:** My Space > Sign-in security sets one up (any TOTP app) and hands out ten
+  recovery codes once. After that, sign-in asks for a code after the password. The organisation's
+  password policy decides who must have one (administrators only by default): such a person is sent
+  to the set-up page after signing in until they do.
+- **Step-up:** sensitive actions need an authentication in the last 15 minutes in production
+  (`Gggs:Security:EnforceStepUp`, off in development). When it has lapsed, a "Confirm it's you"
+  dialog asks for a code or the password and the action then goes ahead.
+- **Single sign-on:** Administration > Single sign-on adds an OpenID Connect provider (Entra ID, Okta,
+  Google Workspace, Keycloak). Register `https://<your host>/bff/sso/callback` as its redirect URI; set
+  `Gggs:Sso:PublicOrigin` when the API is reached through a proxy under another address. The sign-in
+  page shows a "Sign in with ..." button once the organisation code is entered. People are matched to
+  existing accounts by verified email (invite them first); the provider never creates accounts.
+  DevSeed adds an example Entra ID provider, switched off, with placeholder IDs.
+- **Rate limits:** sign-in, the second step, step-up, the token endpoint, invitation completion and
+  single sign-on allow 20 attempts a minute per address (`Gggs:RateLimiting:SignInPerMinute`), on
+  top of the per-account lockout.
+
 Uploaded documents are stored under `.local/files` (one folder per tenant), configured by
 `Gggs:Storage:FileSystem:RootPath` in both hosts' development settings.
 

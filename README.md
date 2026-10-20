@@ -18,7 +18,7 @@ The tenancy, isolation and security design in
 [docs/architecture/architecture.md](docs/architecture/architecture.md) (§3, §6.2–6.3, §8, §9) still
 applies.
 
-**Status: M11 (insight and reach: analytics, dashboards, global search, HR calendar, imports, integrations) complete.**
+**Status: M12 (AI assistants, MFA and single sign-on, hardening, critical-flow suites) complete - the roadmap is delivered.**
 
 - Platform (tenants, plans, subscriptions, settings, audit log) and Identity (users, roles,
   permissions, browser sessions, the OIDC token server) run as modules in a single API host.
@@ -97,12 +97,20 @@ applies.
   punches; and integrations - bank transfer files and Tally or CSV accounting journals from a
   finalized payroll, Microsoft Entra ID directory reads and signed webhooks - with secrets encrypted
   at rest and every run logged.
+- AI and security: nine assistants (my assistant, HR command centre, workforce planner, resource
+  manager, projects, career, recruitment, performance and rewards) on the Anthropic Messages API,
+  using tools each module provides that run as the signed-in user within their own permissions;
+  anything that would change data is drafted as a proposal and runs only when the person approves it.
+  Sign-in takes an authenticator app with recovery codes (required by policy for administrators by
+  default), sensitive actions ask the person to confirm it is them, organisations can add their own
+  OpenID Connect provider for single sign-on, and credential endpoints and assistant turns are
+  rate-limited.
 - The frontend has the PeopleOS shell, a shared UI kit (KPI cards, charts, drawers, form dialogs,
   filter bar, timeline, tabs, an upgraded data table with column chooser and CSV export), and the
   Core HR and administration screens. Unbuilt modules stay hidden in the navigation.
-- 737 backend tests pass, including architecture rules for module boundaries, a tenant-isolation
-  suite against a real SQL Server, and end-to-end flows that run the worker's event delivery.
-- The AI tool layer and assistants, MFA and SSO, and the hardening pass are next (M12).
+- 779 backend tests pass, including architecture rules for module boundaries, a tenant-isolation
+  suite against a real SQL Server, end-to-end flows that run the worker's event delivery, and
+  critical-flow suites that cross modules (hire to payslip, leave, project to invoice, exit).
 
 ## Prerequisites
 
