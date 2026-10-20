@@ -25,6 +25,16 @@ export interface PasswordSignInResult {
   readonly errorCode?: string;
   readonly mustChangePassword?: boolean;
   readonly lockoutEndDate?: string;
+  /** With `MFA_REQUIRED`: the token for the second step, posted back with the authenticator code. */
+  readonly mfaChallenge?: string;
+  /** Signed in, but the organisation requires an authenticator app that is not set up yet. */
+  readonly mfaEnrollmentRequired?: boolean;
+}
+
+/** A "Sign in with …" button the organisation has configured. */
+export interface SsoOption {
+  readonly key: string;
+  readonly displayName: string;
 }
 
 /**
@@ -74,9 +84,9 @@ export class SessionStore {
    * Sends the user to the sign-in page.
    *
    * An in-app navigation, not a redirect to the API: with local accounts the credentials are
-   * collected by our own page and posted to `/bff/login`. Federation will add a second path that
-   * does redirect - the API starting an OIDC flow at the customer's provider - and both will end
-   * at the same place, a session cookie set by the API.
+   * collected by our own page and posted to `/bff/login`. Single sign-on is the second path, which
+   * does redirect (see {@link startSingleSignOn}); both end at the same place, a session cookie
+   * set by the API.
    */
   signIn(returnUrl: string = window.location.pathname): void {
     const target =
@@ -105,6 +115,40 @@ export class SessionStore {
     }
 
     return result;
+  }
+
+  /** The second step of sign-in: a code from the authenticator app, or a recovery code. */
+  async completeMfa(challenge: string, code: string): Promise<PasswordSignInResult> {
+    const result = await firstValueFrom(
+      this.http.post<PasswordSignInResult>('/bff/login/mfa', { challenge, code }),
+    );
+
+    if (result.succeeded) {
+      await this.load();
+    }
+
+    return result;
+  }
+
+  /** The single sign-on providers an organisation offers; none for an unknown code. */
+  singleSignOnOptions(tenantCode: string): Promise<readonly SsoOption[]> {
+    return firstValueFrom(
+      this.http.get<SsoOption[]>('/bff/sso/providers', { params: { tenant: tenantCode } }),
+    );
+  }
+
+  /**
+   * Leaves for the organisation's identity provider. A full navigation: the API redirects to the
+   * provider, which sends the browser back to the API, which sets the session and returns here.
+   */
+  startSingleSignOn(tenantCode: string, provider: string, returnUrl: string): void {
+    const query = new URLSearchParams({ tenant: tenantCode, provider, returnUrl });
+    window.location.href = `/bff/sso/start?${query.toString()}`;
+  }
+
+  /** Confirms it is still the same person before a sensitive action: an authenticator code or the password. */
+  async stepUp(proof: { readonly code?: string; readonly password?: string }): Promise<void> {
+    await firstValueFrom(this.http.post<void>('/bff/step-up', proof));
   }
 
   /**

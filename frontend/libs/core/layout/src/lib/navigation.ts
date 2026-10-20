@@ -69,9 +69,6 @@ export function filterNavigation(
  */
 export const isBuilt = (item: NavItem): boolean => item.planned !== true;
 
-/** Shorthand for a module that is on the roadmap but not built. */
-const planned = (milestone: string) => ({ planned: true, milestone }) as const;
-
 export const NAVIGATION: readonly NavItem[] = [
   {
     label: 'Dashboard',
@@ -91,6 +88,7 @@ export const NAVIGATION: readonly NavItem[] = [
     icon: 'pi pi-user',
     children: [
       { label: 'My profile', icon: 'pi pi-id-card', route: '/me/profile', permissions: ['self.profile.view'] },
+      { label: 'Sign-in security', icon: 'pi pi-shield', route: '/me/security', permissions: ['self.profile.view'] },
       { label: 'My attendance', icon: 'pi pi-clock', route: '/me/attendance', permissions: ['self.attendance.view'], feature: 'Time' },
       { label: 'My leave', icon: 'pi pi-calendar', route: '/me/leave', permissions: ['self.leave.view'], feature: 'Time' },
       { label: 'My timesheet', icon: 'pi pi-stopwatch', route: '/me/timesheet', permissions: ['self.timesheet.submit'], feature: 'Timesheets' },
@@ -325,7 +323,6 @@ export const NAVIGATION: readonly NavItem[] = [
     feature: 'AI',
     route: '/ai',
     permissions: ['ai.assistant.use'],
-    ...planned('M12'),
   },
   {
     label: 'Administration',
@@ -340,6 +337,7 @@ export const NAVIGATION: readonly NavItem[] = [
       { label: 'Master data', icon: 'pi pi-database', route: '/admin/master-data', permissions: ['master-data.lookup.manage'] },
       { label: 'Imports', icon: 'pi pi-upload', route: '/admin/data/imports', permissions: ['datahub.import.run'] },
       { label: 'Integrations', icon: 'pi pi-link', route: '/admin/data/integrations', permissions: ['datahub.integration.view'] },
+      { label: 'Single sign-on', icon: 'pi pi-key', route: '/admin/identity-providers', permissions: ['admin.identity-provider.manage'] },
     ],
   },
 ];

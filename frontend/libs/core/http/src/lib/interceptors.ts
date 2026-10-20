@@ -90,8 +90,8 @@ export class ApiError extends Error {
 /**
  * Turns API failures into something the UI can act on.
  *
- * Only the cases that need a global response are handled here - session expiry and step-up
- * authentication. Everything else is re-thrown as an {@link ApiError} for the feature to handle,
+ * Only the cases that need a global response are handled here - session expiry and a feature
+ * the plan does not include. Everything else is re-thrown as an {@link ApiError} for the feature to handle,
  * because a toast saying "validation failed" is useless next to the field that is actually wrong.
  */
 export const errorInterceptor: HttpInterceptorFn = (
@@ -122,17 +122,8 @@ export const errorInterceptor: HttpInterceptorFn = (
         void router.navigate(['/feature-unavailable']);
       }
 
-      // The server asks for a fresh MFA challenge before a sensitive action.
-      if (
-        error.status === 401 ||
-        error.headers
-          ?.get('WWW-Authenticate')
-          ?.includes('insufficient_user_authentication')
-      ) {
-        void router.navigate(['/step-up'], {
-          queryParams: { returnUrl: router.url },
-        });
-      }
+      // STEP_UP_REQUIRED (a sensitive action after the re-authentication window) is answered by the
+      // step-up interceptor in @gggs/core/auth, which asks the person to confirm and retries.
 
       return throwError(() => new ApiError(error.status, problem));
     }),

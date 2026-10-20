@@ -104,6 +104,8 @@ export default [
                 'scope:analytics',
                 'scope:calendar',
                 'scope:data-hub',
+                'scope:assistant',
+                'scope:security',
                 'scope:time',
               ],
             },
@@ -170,6 +172,14 @@ export default [
             {
               sourceTag: 'scope:time',
               onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:time'],
+            },
+            {
+              sourceTag: 'scope:security',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:security'],
+            },
+            {
+              sourceTag: 'scope:assistant',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:assistant'],
             },
             {
               sourceTag: 'scope:data-hub',

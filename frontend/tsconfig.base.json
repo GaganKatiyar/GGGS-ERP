@@ -24,6 +24,8 @@
       "@gggs/shared/models": ["./libs/shared/models/src/index.ts"],
       "@gggs/shared/master-data": ["./libs/shared/master-data/src/index.ts"],
       "@gggs/shared/data-table": ["./libs/shared/data-table/src/index.ts"],
+      "@gggs/features/security": ["./libs/features/security/src/index.ts"],
+      "@gggs/features/assistant": ["./libs/features/assistant/src/index.ts"],
       "@gggs/features/data-hub": ["./libs/features/data-hub/src/index.ts"],
       "@gggs/features/calendar": ["./libs/features/calendar/src/index.ts"],
       "@gggs/features/analytics": ["./libs/features/analytics/src/index.ts"],

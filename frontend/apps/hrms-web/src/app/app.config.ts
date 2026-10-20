@@ -15,6 +15,7 @@ import {
   csrfInterceptor,
   errorInterceptor,
 } from '@gggs/core/http';
+import { stepUpInterceptor } from '@gggs/core/auth';
 import { providePrimeNG } from 'primeng/config';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { definePreset } from '@primeuix/themes';
@@ -136,6 +137,7 @@ export const appConfig: ApplicationConfig = {
         credentialsInterceptor,
         csrfInterceptor,
         correlationIdInterceptor,
+        stepUpInterceptor,
         errorInterceptor,
       ]),
     ),

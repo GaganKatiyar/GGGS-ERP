@@ -2,12 +2,15 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  ViewContainerRef,
   computed,
+  effect,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { SessionStore } from '@gggs/core/auth';
+import { SessionStore, StepUpPrompt } from '@gggs/core/auth';
 import { PermissionStore } from '@gggs/core/permissions';
 import { TenantStore } from '@gggs/core/tenant';
 import { NotificationsApi } from '@gggs/shared/notifications';
@@ -42,6 +45,9 @@ export class Shell {
   private readonly notificationsApi = inject(NotificationsApi);
   private readonly workflowApi = inject(WorkflowApi);
   protected readonly session = inject(SessionStore);
+  private readonly stepUpOpen = inject(StepUpPrompt).open;
+  private readonly stepUpHost = viewChild('stepUpHost', { read: ViewContainerRef });
+  private stepUpLoaded = false;
   protected readonly tenant = inject(TenantStore);
   protected readonly theme = inject(ThemeStore);
 
@@ -65,6 +71,15 @@ export class Shell {
   );
 
   constructor() {
+    // The "confirm it's you" dialog is fetched the first time it is needed, not with the shell.
+    effect(() => {
+      const host = this.stepUpHost();
+      if (this.stepUpOpen() && host && !this.stepUpLoaded) {
+        this.stepUpLoaded = true;
+        void import('./step-up-dialog').then(({ StepUpDialog }) => host.createComponent(StepUpDialog));
+      }
+    });
+
     if (this.canSeeNotifications() || this.canSeeApprovals()) {
       void this.refreshCounts();
 

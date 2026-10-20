@@ -142,6 +142,7 @@ describe('filterNavigation', () => {
       '/dashboard',
       '/approvals',
       '/me/profile',
+      '/me/security',
       '/me/attendance',
       '/me/leave',
       '/me/timesheet',
@@ -264,6 +265,7 @@ describe('filterNavigation', () => {
       '/separation/clearance',
       '/analytics',
       '/calendar',
+      '/ai',
       '/admin/users',
       '/admin/roles',
       '/admin/audit',
@@ -273,6 +275,7 @@ describe('filterNavigation', () => {
       '/admin/master-data',
       '/admin/data/imports',
       '/admin/data/integrations',
+      '/admin/identity-providers',
     ]);
   });
 

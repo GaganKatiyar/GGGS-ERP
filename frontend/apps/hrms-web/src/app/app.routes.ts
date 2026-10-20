@@ -367,6 +367,24 @@ export const appRoutes: Route[] = [
           import('@gggs/features/calendar').then((m) => m.CALENDAR_ROUTES),
       },
       {
+        path: 'ai',
+        ...withPermissions(['ai.assistant.use']),
+        loadChildren: () =>
+          import('@gggs/features/assistant').then((m) => m.ASSISTANT_ROUTES),
+      },
+      {
+        path: 'me/security',
+        ...withPermissions(['self.profile.view']),
+        loadChildren: () =>
+          import('@gggs/features/security').then((m) => m.MY_SECURITY_ROUTES),
+      },
+      {
+        path: 'admin/identity-providers',
+        ...withPermissions(['admin.identity-provider.manage']),
+        loadChildren: () =>
+          import('@gggs/features/security').then((m) => m.IDENTITY_PROVIDER_ROUTES),
+      },
+      {
         path: 'admin/data',
         ...withPermissions(['datahub.import.run', 'datahub.integration.view']),
         loadChildren: () =>
