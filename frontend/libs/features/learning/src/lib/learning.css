@@ -65,7 +65,7 @@
 }
 
 .lms__notice {
-  color: var(--gggs-color-success, #0e9f6e);
+  color: var(--gggs-color-success);
 }
 
 .lms__stars {

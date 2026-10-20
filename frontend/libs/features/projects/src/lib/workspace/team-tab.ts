@@ -22,7 +22,7 @@ import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
           <button type="button" class="btn btn--primary btn--sm" (click)="edit(null)">Add member</button>
         }
       </div>
-      <table class="team__table">
+      <table class="table team__table">
         <thead>
           <tr>
             <th scope="col">Person</th>
@@ -71,7 +71,7 @@ import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
         </tbody>
       </table>
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -130,22 +130,12 @@ import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
       font-size: var(--gggs-font-size-sm);
     }
 
-    .team__table {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    .team__table th,
-    .team__table td {
-      padding: var(--gggs-space-2);
-      border-block-end: 1px solid var(--gggs-color-border);
-      text-align: start;
-    }
 
     .team__over {
       display: block;
       font-size: var(--gggs-font-size-xs);
-      color: var(--gggs-color-danger, #dc2626);
+      color: var(--gggs-color-danger);
     }
 
     .team__actions {

@@ -44,7 +44,7 @@ import { financialYearLabel, financialYearOf, message, recentFinancialYears, thi
         <gggs-empty-state icon="pi pi-plus-circle" title="No inputs for this month" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -201,7 +201,7 @@ export class PayrollInputsPage {
         <gggs-empty-state icon="pi pi-file-edit" title="No declarations here" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -213,7 +213,7 @@ export class PayrollInputsPage {
             <span>{{ d.regime }} regime</span>
           </div>
           @if (d.items.length) {
-            <table class="pay__table">
+            <table class="table pay__table">
               <thead><tr><th scope="col">Section</th><th scope="col">Item</th><th scope="col" class="pay__num">Declared</th><th scope="col" class="pay__num">Accepted</th></tr></thead>
               <tbody>
                 @for (item of d.items; track $index; let index = $index) {

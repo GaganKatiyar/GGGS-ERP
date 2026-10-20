@@ -70,7 +70,7 @@ import { message } from './payroll-shared';
       <div class="pay__two">
         <section class="panel stack">
           <h2 class="pay__heading">Statutory</h2>
-          <table class="pay__table">
+          <table class="table pay__table">
             <tbody>
               <tr><td>PF - employee / employer</td><td class="pay__num">{{ d.statutory.pfEmployee | gggsMoney }} / {{ d.statutory.pfEmployer | gggsMoney }}</td></tr>
               <tr><td>ESI - employee / employer</td><td class="pay__num">{{ d.statutory.esiEmployee | gggsMoney }} / {{ d.statutory.esiEmployer | gggsMoney }}</td></tr>
@@ -138,10 +138,10 @@ import { message } from './payroll-shared';
       <gggs-skeleton [lines]="10" />
     }
     @if (notice()) {
-      <p class="pay__notice" role="status">{{ notice() }}</p>
+      <p class="alert alert--success" role="status">{{ notice() }}</p>
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-drawer [(visible)]="drawerOpen" [title]="item() ? item()?.employeeName + ' · ' + item()?.employeeCode : 'Employee'" width="min(44rem, 100vw)">
@@ -154,7 +154,7 @@ import { message } from './payroll-shared';
           @for (issue of i.issues; track issue) {
             <p class="pay__check" [class.pay__danger]="i.status === 'Error'"><i class="pi pi-exclamation-circle" aria-hidden="true"></i> {{ issue }}</p>
           }
-          <table class="pay__table">
+          <table class="table pay__table">
             <thead><tr><th scope="col">Line</th><th scope="col">Kind</th><th scope="col" class="pay__num">Amount</th></tr></thead>
             <tbody>
               @for (line of i.lines; track line.code) {
@@ -172,7 +172,7 @@ import { message } from './payroll-shared';
           @if (i.tax; as tax) {
             <details>
               <summary>How TDS was worked out ({{ tax.regime }} regime)</summary>
-              <table class="pay__table">
+              <table class="table pay__table">
                 <tbody>
                   <tr><td>Projected taxable salary for the year</td><td class="pay__num">{{ tax.grossTaxableYear | gggsMoney }}</td></tr>
                   <tr><td>Standard deduction</td><td class="pay__num">−{{ tax.standardDeduction | gggsMoney }}</td></tr>

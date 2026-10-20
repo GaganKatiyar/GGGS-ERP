@@ -60,7 +60,7 @@ const mondayOf = (iso: string): string => {
         </div>
 
         <div class="ts__scroll">
-          <table class="ts__grid">
+          <table class="table ts__grid">
             <thead>
               <tr>
                 <th scope="col" class="ts__what">Project / task</th>
@@ -174,7 +174,7 @@ const mondayOf = (iso: string): string => {
           <p class="ts__message" role="status">{{ message() }}</p>
         }
         @if (error()) {
-          <p class="field__error" role="alert">{{ error() }}</p>
+          <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
         }
         <p class="muted ts__rules">
           Rules: up to {{ v.rules.maxHoursPerDay }} h a day, {{ v.rules.minWeeklyHours }} h a week expected{{ v.rules.enforceWeeklyMinimum ? ' (required)' : '' }};
@@ -205,13 +205,6 @@ const mondayOf = (iso: string): string => {
       min-width: 60rem;
     }
 
-    .ts__grid th,
-    .ts__grid td {
-      padding: var(--gggs-space-1);
-      border-block-end: 1px solid var(--gggs-color-border);
-      text-align: start;
-      vertical-align: top;
-    }
 
     .ts__what {
       min-width: 18rem;
@@ -250,7 +243,7 @@ const mondayOf = (iso: string): string => {
     }
 
     .ts__over {
-      color: var(--gggs-color-danger, #dc2626);
+      color: var(--gggs-color-danger);
     }
 
     .ts__issues {
@@ -259,11 +252,11 @@ const mondayOf = (iso: string): string => {
     }
 
     .ts__issue--error {
-      color: var(--gggs-color-danger, #dc2626);
+      color: var(--gggs-color-danger);
     }
 
     .ts__issue--warning {
-      color: var(--gggs-color-warning, #b45309);
+      color: var(--gggs-color-warning);
     }
 
     .ts__issue--info {

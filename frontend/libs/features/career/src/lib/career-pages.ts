@@ -72,7 +72,7 @@ const blankStep = (): CareerStepInput => ({ title: '', jobId: null, gradeId: nul
       <gggs-empty-state icon="pi pi-arrow-up-right" title="No career paths yet" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
     <gggs-form-dialog [(visible)]="open" [title]="editing() ? 'Edit path' : 'New career path'" [busy]="busy()" [error]="formError()" [saveDisabled]="!name().trim() || steps().length < 2" (save)="save()" width="min(60rem, 96vw)">
       <div class="car__grid">
@@ -217,7 +217,7 @@ const blankPromotion = (): PromotionDetailsInput => ({
         <gggs-empty-state icon="pi pi-arrow-up-right" title="No promotions here" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
     <gggs-form-dialog [(visible)]="nominateOpen" title="Nominate for promotion" [saveLabel]="submit() ? 'Nominate and submit' : 'Save draft'" [busy]="busy()" [error]="formError()" [saveDisabled]="!employeeId() || !form().proposedDesignation.trim() || !form().justification.trim()" (save)="nominate()" size="lg">
@@ -346,7 +346,7 @@ export class PromotionsPage {
       <gggs-skeleton [lines]="6" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './career.css',
@@ -425,7 +425,7 @@ const blankSuccession = (): SuccessionInput => ({ roleTitle: '', positionId: nul
       <gggs-empty-state icon="pi pi-users" title="No succession plans" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
     <gggs-form-dialog [(visible)]="open" [title]="editing() ? 'Edit succession plan' : 'New succession plan'" [busy]="busy()" [error]="formError()" [saveDisabled]="!form().roleTitle.trim()" (save)="save()" size="lg">
       <div class="car__grid">
@@ -601,7 +601,7 @@ export class SuccessionPage {
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
     <gggs-form-dialog [(visible)]="open" [title]="'Assess · ' + (person()?.employeeName ?? '')" [busy]="busy()" [error]="formError()" (save)="assess()">
       <p class="muted">{{ person()?.rating ? 'Latest rating ' + person()?.rating + '/5.' : 'No released rating yet - they will be placed once one is released.' }}</p>
@@ -768,7 +768,7 @@ export class TalentReviewPage {
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './career.css',

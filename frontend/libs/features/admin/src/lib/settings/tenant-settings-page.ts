@@ -50,7 +50,7 @@ import type { TenantSettingItem } from '@gggs/shared/models';
         </label>
 
         @if (errorMessage()) {
-          <p class="field__error" role="alert">{{ errorMessage() }}</p>
+          <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ errorMessage() }}</span></p>
         }
 
         <button type="submit" class="btn btn--primary" [disabled]="isSaving()">
@@ -67,7 +67,7 @@ import type { TenantSettingItem } from '@gggs/shared/models';
         description="Nothing has been configured for this tenant."
       />
     } @else {
-      <table class="list-table">
+      <table class="table list-table">
         <thead>
           <tr>
             <th scope="col">Module</th>
@@ -95,9 +95,9 @@ import type { TenantSettingItem } from '@gggs/shared/models';
       padding: 1rem;
       margin-block-end: 1rem;
       max-width: 32rem;
-      border: 1px solid var(--gggs-color-border, #e2e5ea);
+      border: 1px solid var(--gggs-color-border);
       border-radius: 0.5rem;
-      background: var(--gggs-color-surface-raised, #ffffff);
+      background: var(--gggs-color-surface-raised);
     }
 
     .panel__grid {
@@ -124,22 +124,11 @@ import type { TenantSettingItem } from '@gggs/shared/models';
 
     .field__error {
       margin: 0;
-      color: var(--gggs-color-danger, #b3261e);
+      color: var(--gggs-color-danger);
       font-size: 0.875rem;
     }
 
-    .list-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    .list-table th,
-    .list-table td {
-      padding: 0.5rem 0.75rem;
-      text-align: left;
-      border-bottom: 1px solid var(--gggs-color-border, #e2e5ea);
-      vertical-align: top;
-    }
 
     .list-table code {
       font-size: 0.8125rem;
@@ -158,8 +147,8 @@ import type { TenantSettingItem } from '@gggs/shared/models';
     }
 
     .btn--primary {
-      background: var(--gggs-color-primary, #1d4ed8);
-      color: #fff;
+      background: var(--gggs-color-primary);
+      color: var(--gggs-color-primary-contrast);
     }
 
     .btn:disabled {

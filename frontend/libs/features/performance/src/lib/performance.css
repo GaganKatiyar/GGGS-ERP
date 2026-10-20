@@ -156,7 +156,7 @@ a.perf__row:hover {
 .perf__star--on {
   background: var(--gggs-color-primary);
   border-color: var(--gggs-color-primary);
-  color: var(--gggs-color-on-primary, #fff);
+  color: var(--gggs-color-primary-contrast);
 }
 
 .perf__star:disabled {

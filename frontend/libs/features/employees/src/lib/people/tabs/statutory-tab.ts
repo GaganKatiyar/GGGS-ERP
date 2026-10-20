@@ -60,7 +60,7 @@ import { FormDialog } from '@gggs/shared/ui';
       </section>
 
       @if (revealError()) {
-        <p class="field__error" role="alert">{{ revealError() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ revealError() }}</span></p>
       }
     </div>
 
@@ -120,7 +120,7 @@ import { FormDialog } from '@gggs/shared/ui';
     }
 
     .statutory__value {
-      font-family: var(--gggs-font-mono, monospace);
+      font-family: var(--gggs-font-family-mono, monospace);
     }
   `,
 })

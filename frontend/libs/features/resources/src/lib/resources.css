@@ -81,18 +81,7 @@ a.res__row:hover {
   overflow-x: auto;
 }
 
-.res__table {
-  width: 100%;
-  border-collapse: collapse;
-}
 
-.res__table th,
-.res__table td {
-  padding: var(--gggs-space-1) var(--gggs-space-2);
-  border-block-end: 1px solid var(--gggs-color-border);
-  text-align: start;
-  vertical-align: middle;
-}
 
 .res__num {
   text-align: end;
@@ -113,23 +102,23 @@ a.res__row:hover {
 }
 
 .res__cell--fullyallocated {
-  background: color-mix(in srgb, var(--gggs-color-success, #0e9f6e) 30%, transparent);
+  background: color-mix(in srgb, var(--gggs-color-success) 30%, transparent);
 }
 
 .res__cell--overallocated {
-  background: color-mix(in srgb, var(--gggs-color-danger, #dc2626) 30%, transparent);
+  background: color-mix(in srgb, var(--gggs-color-danger) 30%, transparent);
 }
 
 .res__cell--leave {
-  background: color-mix(in srgb, var(--gggs-color-warning, #d97706) 25%, transparent);
+  background: color-mix(in srgb, var(--gggs-color-warning) 25%, transparent);
 }
 
 .res__danger {
-  color: var(--gggs-color-danger, #dc2626);
+  color: var(--gggs-color-danger);
 }
 
 .res__good {
-  color: var(--gggs-color-success, #0e9f6e);
+  color: var(--gggs-color-success);
 }
 
 .res__notice {

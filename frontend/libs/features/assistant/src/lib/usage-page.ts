@@ -22,7 +22,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
       <a class="btn" routerLink="..">Back to assistants</a>
     </gggs-page-header>
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
     <div class="usage__kpis">
       <gggs-kpi-card label="Conversations" [value]="total().conversations" icon="pi pi-comments" />
@@ -31,7 +31,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
       <gggs-kpi-card label="Actions approved" [value]="total().actionsExecuted + ' of ' + total().actionsProposed" icon="pi pi-check-circle" />
     </div>
     <div class="panel">
-      <table class="usage__table">
+      <table class="table usage__table">
         <thead>
           <tr>
             <th scope="col">Assistant</th>
@@ -72,16 +72,6 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
     }
     .usage__period {
       width: auto;
-    }
-    .usage__table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    .usage__table th,
-    .usage__table td {
-      text-align: start;
-      padding: var(--gggs-space-2);
-      border-block-end: 1px solid var(--gggs-color-border);
     }
   `,
 })

@@ -117,8 +117,8 @@ const iso = (date: Date) => `${date.getFullYear()}-${`${date.getMonth() + 1}`.pa
       align-content: start;
       gap: 0.5rem;
       padding: 1rem;
-      background: var(--gggs-color-surface-raised, #ffffff);
-      border: 1px solid var(--gggs-color-border, #e2e5ea);
+      background: var(--gggs-color-surface-raised);
+      border: 1px solid var(--gggs-color-border);
       border-radius: 0.5rem;
     }
 
@@ -140,7 +140,7 @@ const iso = (date: Date) => `${date.getFullYear()}-${`${date.getMonth() + 1}`.pa
 
     .card__body {
       margin: 0;
-      color: var(--gggs-color-text-muted, #5b6472);
+      color: var(--gggs-color-text-muted);
     }
 
     .dashboard__entry {
@@ -151,7 +151,7 @@ const iso = (date: Date) => `${date.getFullYear()}-${`${date.getMonth() + 1}`.pa
     }
 
     .dashboard__date {
-      color: var(--gggs-color-text-muted, #5b6472);
+      color: var(--gggs-color-text-muted);
       font-size: 0.85rem;
     }
 

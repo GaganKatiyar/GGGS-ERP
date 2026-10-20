@@ -43,7 +43,7 @@ import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge } fr
           @if (requests().length === 0) {
             <gggs-empty-state icon="pi pi-calendar-plus" title="No requests yet" />
           } @else {
-            <table class="grid">
+            <table class="table grid">
               <thead>
                 <tr>
                   <th scope="col">Type</th>
@@ -78,7 +78,7 @@ import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge } fr
             </table>
           }
           @if (actionError()) {
-            <p class="field__error" role="alert">{{ actionError() }}</p>
+            <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ actionError() }}</span></p>
           }
         </section>
 
@@ -166,17 +166,7 @@ import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge } fr
       opacity: 0.55;
     }
 
-    .grid {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    .grid th,
-    .grid td {
-      padding: var(--gggs-space-2);
-      border-block-end: 1px solid var(--gggs-color-border);
-      text-align: start;
-    }
 
     .grid__hidden {
       position: absolute;
@@ -193,7 +183,7 @@ import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge } fr
     }
 
     .preview--problem {
-      background: var(--gggs-color-danger-subtle, #fdecea);
+      background: var(--gggs-color-danger-subtle);
     }
   `,
 })

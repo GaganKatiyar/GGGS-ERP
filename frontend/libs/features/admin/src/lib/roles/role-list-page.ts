@@ -46,7 +46,7 @@ import { AdminApi } from '@gggs/shared/identity';
           </gggs-form-field>
 
           @if (errorMessage()) {
-            <p class="field__error" role="alert">{{ errorMessage() }}</p>
+            <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ errorMessage() }}</span></p>
           }
 
           <gggs-button type="submit" [loading]="isSaving()">Create</gggs-button>
@@ -59,7 +59,7 @@ import { AdminApi } from '@gggs/shared/identity';
     } @else if (roles().length === 0) {
       <gggs-empty-state title="No roles yet" description="Create the first one." />
     } @else {
-      <table class="list-table">
+      <table class="table list-table">
         <thead>
           <tr>
             <th scope="col">Name</th>
@@ -109,21 +109,11 @@ import { AdminApi } from '@gggs/shared/identity';
 
     .field__error {
       margin: 0;
-      color: var(--gggs-color-danger, #b3261e);
+      color: var(--gggs-color-danger);
       font-size: var(--gggs-font-size-base, 0.875rem);
     }
 
-    .list-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    .list-table th,
-    .list-table td {
-      padding: var(--gggs-space-2, 0.5rem) var(--gggs-space-3, 0.75rem);
-      text-align: left;
-      border-bottom: 1px solid var(--gggs-color-border, #e2e5ea);
-    }
   `,
 })
 export class RoleListPage {

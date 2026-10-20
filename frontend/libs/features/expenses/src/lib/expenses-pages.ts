@@ -109,7 +109,7 @@ const blankLine = (categoryId: string): ClaimLineInput => ({ categoryId, date: t
         }
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -135,7 +135,6 @@ const blankLine = (categoryId: string): ClaimLineInput => ({ categoryId, date: t
       </div>
     </gggs-form-dialog>
   `,
-  styleUrl: './xp.css',
 })
 export class ExpensesPage {
   private readonly api = inject(ExpensesApi);
@@ -245,7 +244,7 @@ export class ExpensesPage {
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="payOpen" title="Pay claim" saveLabel="Pay" [busy]="busy()" [error]="formError()" (save)="pay()">
@@ -264,7 +263,6 @@ export class ExpensesPage {
       </div>
     </gggs-form-dialog>
   `,
-  styleUrl: './xp.css',
 })
 export class ClaimPage {
   private readonly api = inject(ExpensesApi);
@@ -329,13 +327,13 @@ export class ClaimPage {
         <div><span class="muted">Settlement</span><br />{{ t.settledOn ? ((t.settlementAmount ?? 0) | number: '1.0-0') + ' on ' + (t.settledOn | date: 'd MMM y') : '—' }}</div>
       </section>
       @if (notice()) {
-        <p class="xp__notice" role="status">{{ notice() }}</p>
+        <p class="alert alert--success" role="status">{{ notice() }}</p>
       }
     } @else if (!error()) {
       <gggs-skeleton [lines]="6" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="advanceOpen" title="Pay advance" saveLabel="Pay" [busy]="busy()" [error]="formError()" [saveDisabled]="advance() <= 0" (save)="payAdvance()">
@@ -345,7 +343,6 @@ export class ClaimPage {
       </label>
     </gggs-form-dialog>
   `,
-  styleUrl: './xp.css',
 })
 export class TripPage {
   private readonly api = inject(ExpensesApi);
@@ -473,7 +470,7 @@ export class TripPage {
             </div>
           }
           @if (formError()) {
-            <p class="field__error" role="alert">{{ formError() }}</p>
+            <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ formError() }}</span></p>
           }
         </section>
       }
@@ -500,7 +497,7 @@ export class TripPage {
       </section>
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="claimOpen" title="New claim" saveLabel="Create" [busy]="busy()" [error]="formError()" [saveDisabled]="!claimTitle().trim()" (save)="createClaim()">
@@ -562,7 +559,6 @@ export class TripPage {
       </div>
     </gggs-form-dialog>
   `,
-  styleUrl: './xp.css',
 })
 export class MyExpensesPage {
   private readonly api = inject(ExpensesApi);

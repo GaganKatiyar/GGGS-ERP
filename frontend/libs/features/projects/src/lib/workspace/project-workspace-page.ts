@@ -173,7 +173,7 @@ const TABS: readonly TabItem[] = [
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="stageOpen" [title]="'Move to ' + stageLabels[targetStage()]" saveLabel="Move" [busy]="busy()" [error]="dialogError()" (save)="moveStage()">
@@ -245,7 +245,7 @@ const TABS: readonly TabItem[] = [
     .workspace__stage--current button,
     .workspace__stage--current span {
       background: var(--gggs-color-primary);
-      color: var(--gggs-color-on-primary, #fff);
+      color: var(--gggs-color-primary-contrast);
       font-weight: var(--gggs-font-weight-semibold);
     }
 

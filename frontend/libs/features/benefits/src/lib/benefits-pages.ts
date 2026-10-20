@@ -83,7 +83,7 @@ const ICONS: Readonly<Record<BenefitType, string>> = {
       }
     </section>
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="dialogOpen" [title]="editing() ? 'Edit plan' : 'New plan'" [busy]="busy()" [error]="formError()" [saveDisabled]="!form().name.trim() || (!editing() && !code().trim())" (save)="save()" size="lg">
@@ -298,7 +298,7 @@ export class BenefitPlansPage {
         <gggs-empty-state icon="pi pi-users" title="No enrollments here" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -447,10 +447,10 @@ export class BenefitEnrollmentsPage {
       <gggs-skeleton [lines]="8" />
     }
     @if (notice()) {
-      <p class="ben__notice" role="status">{{ notice() }}</p>
+      <p class="alert alert--success" role="status">{{ notice() }}</p>
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="dialogOpen" [title]="(enrollmentId() ? 'Dependents · ' : 'Join · ') + (plan()?.name ?? '')" [saveLabel]="enrollmentId() ? 'Save' : 'Join'" [busy]="busy()" [error]="formError()" (save)="saveDialog()">

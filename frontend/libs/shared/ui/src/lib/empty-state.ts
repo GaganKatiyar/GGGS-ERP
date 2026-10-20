@@ -43,7 +43,7 @@ import {
       gap: 0.5rem;
       padding: 2.5rem 1rem;
       text-align: center;
-      color: var(--gggs-color-text-muted, #5b6472);
+      color: var(--gggs-color-text-muted);
     }
 
     .empty-state__icon {
@@ -53,7 +53,7 @@ import {
     .empty-state__title {
       margin: 0;
       font-weight: 600;
-      color: var(--gggs-color-text, #1f2430);
+      color: var(--gggs-color-text);
     }
 
     .empty-state__description {

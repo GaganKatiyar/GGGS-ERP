@@ -29,7 +29,7 @@ const message = (error: unknown, fallback: string) => (error instanceof Error &&
       } @else if (documents().length === 0) {
         <gggs-empty-state icon="pi pi-folder-open" title="No documents yet" [description]="canUpload() ? emptyHint() : undefined" />
       } @else {
-        <table class="record-docs__table">
+        <table class="table record-docs__table">
           <thead>
             <tr>
               <th scope="col">Document</th>
@@ -58,7 +58,7 @@ const message = (error: unknown, fallback: string) => (error instanceof Error &&
         </table>
       }
       @if (listError()) {
-        <p class="field__error" role="alert">{{ listError() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ listError() }}</span></p>
       }
     </section>
 
@@ -101,17 +101,7 @@ const message = (error: unknown, fallback: string) => (error instanceof Error &&
       font-size: var(--gggs-font-size-md);
     }
 
-    .record-docs__table {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    .record-docs__table th,
-    .record-docs__table td {
-      padding: var(--gggs-space-2);
-      border-block-end: 1px solid var(--gggs-color-border);
-      text-align: start;
-    }
 
     .record-docs__actions {
       white-space: nowrap;

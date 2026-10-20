@@ -68,7 +68,7 @@ const mondayOf = (iso: string): string => {
         <gggs-empty-state icon="pi pi-stopwatch" [title]="approvals() ? 'Nothing waiting for approval' : 'No timesheets match'" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -99,7 +99,7 @@ const mondayOf = (iso: string): string => {
             }
             <span><strong>{{ d.timesheet.totalHours | number: '1.0-2' }}</strong> h · {{ d.timesheet.billableHours | number: '1.0-2' }} billable{{ d.overtimeHours ? ' · ' + d.overtimeHours + ' overtime' : '' }}</span>
           </div>
-          <table class="team-ts__table">
+          <table class="table team-ts__table">
             <thead>
               <tr>
                 <th scope="col">Day</th>
@@ -189,17 +189,7 @@ const mondayOf = (iso: string): string => {
       background: var(--gggs-color-surface-hover, transparent);
     }
 
-    .team-ts__table {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    .team-ts__table th,
-    .team-ts__table td {
-      padding: var(--gggs-space-1);
-      border-block-end: 1px solid var(--gggs-color-border);
-      text-align: start;
-    }
 
     .team-ts__issues {
       margin: 0;

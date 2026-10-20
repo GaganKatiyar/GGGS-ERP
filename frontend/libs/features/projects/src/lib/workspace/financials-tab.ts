@@ -34,7 +34,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
           <gggs-kpi-card label="Gross margin" [value]="f.summary.marginPercent !== undefined ? (f.summary.marginPercent | number: '1.0-1') + '%' : '—'" [hint]="(f.summary.grossMargin | gggsMoney: f.currency) + ' · forecast ' + (f.summary.forecastMarginPercent ?? 0 | number: '1.0-1') + '%'" />
         </div>
         @if (f.summary.unpricedHours) {
-          <p class="fin__warning">{{ f.summary.unpricedHours }} timesheet line(s) have no cost rate - add a rate card line or a team rate so labour cost is complete.</p>
+          <p class="alert alert--warning">{{ f.summary.unpricedHours }} timesheet line(s) have no cost rate - add a rate card line or a team rate so labour cost is complete.</p>
         }
 
         @if (f.summary.months.length) {
@@ -54,7 +54,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
                 <button type="button" class="btn btn--link btn--sm" (click)="openTerms(f)">Commercial terms</button>
               }
             </div>
-            <table class="fin__table">
+            <table class="table fin__table">
               <thead><tr><th scope="col">Category</th><th scope="col" class="fin__num">Budget</th><th scope="col" class="fin__num">Actual</th><th scope="col" class="fin__num">Committed</th></tr></thead>
               <tbody>
                 @for (row of f.summary.categories; track row.category) {
@@ -71,7 +71,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
           </section>
           <section class="panel stack">
             <h3 class="fin__heading">Labour</h3>
-            <table class="fin__table">
+            <table class="table fin__table">
               <thead><tr><th scope="col">Person</th><th scope="col" class="fin__num">Hours</th><th scope="col" class="fin__num">Cost</th><th scope="col" class="fin__num">Revenue</th></tr></thead>
               <tbody>
                 @for (person of f.people; track person.employeeId) {
@@ -174,7 +174,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="open" [title]="dialogTitle()" [busy]="busy()" [error]="formError()" (save)="save()" size="lg">
@@ -342,17 +342,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
       align-items: start;
     }
 
-    .fin__table {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    .fin__table th,
-    .fin__table td {
-      padding: var(--gggs-space-1) var(--gggs-space-2);
-      border-block-end: 1px solid var(--gggs-color-border);
-      text-align: start;
-    }
 
     .fin__num {
       text-align: end !important;
@@ -385,11 +375,11 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
     }
 
     .fin__danger {
-      color: var(--gggs-color-danger, #dc2626);
+      color: var(--gggs-color-danger);
     }
 
     .fin__warning {
-      color: var(--gggs-color-warning, #b45309);
+      color: var(--gggs-color-warning);
     }
 
     @media (max-width: 56rem) {

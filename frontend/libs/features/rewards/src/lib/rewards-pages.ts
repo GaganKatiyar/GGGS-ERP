@@ -50,7 +50,6 @@ const num = (value: string): number | null => (value === '' ? null : +value);
       }
     </div>
   `,
-  styleUrl: './xp.css',
 })
 export class RecognitionFeed {
   private readonly api = inject(RewardsApi);
@@ -216,10 +215,10 @@ export class RecognitionFeed {
         }
       }
       @if (notice()) {
-        <p class="xp__notice" role="status">{{ notice() }}</p>
+        <p class="alert alert--success" role="status">{{ notice() }}</p>
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -296,7 +295,6 @@ export class RecognitionFeed {
       </div>
     </gggs-form-dialog>
   `,
-  styleUrl: './xp.css',
 })
 export class RewardsPage {
   private readonly api = inject(RewardsApi);
@@ -565,10 +563,10 @@ export class RewardsPage {
         }
       }
       @if (notice()) {
-        <p class="xp__notice" role="status">{{ notice() }}</p>
+        <p class="alert alert--success" role="status">{{ notice() }}</p>
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -589,7 +587,6 @@ export class RewardsPage {
       </div>
     </gggs-form-dialog>
   `,
-  styleUrl: './xp.css',
 })
 export class MyRewardsPage {
   private readonly api = inject(RewardsApi);

@@ -252,7 +252,7 @@ export class GoalForm {
         <gggs-empty-state icon="pi pi-bullseye" title="No goals here" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
     <gggs-goal-form [(visible)]="formOpen" level="Company" (saved)="opened($event)" />
@@ -405,7 +405,7 @@ export class GoalsPage {
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './performance.css',
@@ -510,7 +510,7 @@ export class GoalPage {
         <gggs-empty-state icon="pi pi-bullseye" title="No goals yet" description="Set your first goal, aligned to a company or department goal." />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
     <gggs-goal-form [(visible)]="formOpen" level="Individual" [lockLevel]="true" [lockOwner]="true" (saved)="load()" />

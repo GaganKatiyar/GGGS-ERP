@@ -54,7 +54,7 @@ import { errorText } from './goals-pages';
         }
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
   `,
@@ -115,7 +115,7 @@ export class MyReviewsPage {
         <gggs-empty-state icon="pi pi-comments" title="No feedback requests" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
     <gggs-form-dialog [(visible)]="dialogOpen" [title]="'Feedback for ' + (current()?.employeeName ?? '')" saveLabel="Send" [busy]="busy()" [error]="formError()" (save)="submit()">

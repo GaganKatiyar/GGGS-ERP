@@ -25,7 +25,7 @@ const today = () => new Date().toISOString().slice(0, 10);
       }
     </gggs-page-header>
     <section class="panel comp__scroll">
-      <table class="comp__table">
+      <table class="table comp__table">
         <thead>
           <tr>
             <th scope="col">Grade</th><th scope="col" class="comp__num">Minimum</th><th scope="col" class="comp__num">Midpoint</th><th scope="col" class="comp__num">Maximum</th>
@@ -56,7 +56,7 @@ const today = () => new Date().toISOString().slice(0, 10);
         </tbody>
       </table>
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -257,7 +257,7 @@ export class SalaryBandsPage {
         <gggs-empty-state icon="pi pi-arrow-up-right" title="No revisions here" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -528,7 +528,7 @@ export class RevisionsPage {
         <gggs-empty-state icon="pi pi-gift" title="No awards here" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -657,7 +657,7 @@ export class VariablePayPage {
         <gggs-empty-state icon="pi pi-chart-line" title="No grants yet" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -666,7 +666,7 @@ export class VariablePayPage {
         <div class="stack">
           <p>{{ g.employeeName }} · {{ g.units | number: '1.0-2' }} units at {{ g.strikePrice | gggsMoney: g.currency: 2 }}{{ g.fairValuePerUnit ? ', valued at ' + (g.fairValuePerUnit | gggsMoney: g.currency: 2) : '' }}</p>
           <p class="muted">Vests over {{ g.vestingMonths }} months from {{ g.vestingStart | date: 'd MMM y' }}, {{ g.cliffMonths }}-month cliff, every {{ g.vestingFrequencyMonths }} month(s).</p>
-          <table class="comp__table">
+          <table class="table comp__table">
             <thead><tr><th scope="col">Vests on</th><th scope="col" class="comp__num">Units</th><th scope="col" class="comp__num">Total vested</th></tr></thead>
             <tbody>
               @for (vest of g.schedule; track vest.date) {
@@ -848,7 +848,7 @@ export class EquityPage {
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
 })

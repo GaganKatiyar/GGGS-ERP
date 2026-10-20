@@ -66,7 +66,7 @@ import { RequestView } from './request-view';
         </ul>
       }
       @if (listError()) {
-        <p class="field__error" role="alert">{{ listError() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ listError() }}</span></p>
       }
     </div>
 
@@ -82,7 +82,7 @@ import { RequestView } from './request-view';
                 <textarea rows="3" maxlength="1000" [value]="comment()" (input)="comment.set($any($event.target).value)"></textarea>
               </label>
               @if (decisionError()) {
-                <p class="field__error" role="alert">{{ decisionError() }}</p>
+                <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ decisionError() }}</span></p>
               }
               <div class="toolbar">
                 <button type="button" class="btn btn--primary" [disabled]="deciding()" (click)="decide('approve')">Approve</button>

@@ -46,18 +46,7 @@ button.pay__row:hover {
   overflow-x: auto;
 }
 
-.pay__table {
-  width: 100%;
-  border-collapse: collapse;
-}
 
-.pay__table th,
-.pay__table td {
-  padding: var(--gggs-space-1) var(--gggs-space-2);
-  border-block-end: 1px solid var(--gggs-color-border);
-  text-align: start;
-  vertical-align: middle;
-}
 
 .pay__num {
   text-align: end !important;
@@ -81,11 +70,11 @@ button.pay__row:hover {
 }
 
 .pay__danger {
-  color: var(--gggs-color-danger, #dc2626);
+  color: var(--gggs-color-danger);
 }
 
 .pay__warning {
-  color: var(--gggs-color-warning, #b45309);
+  color: var(--gggs-color-warning);
 }
 
 .pay__check {

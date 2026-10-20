@@ -146,7 +146,7 @@ const localInput = (date: Date) => new Date(date.getTime() - date.getTimezoneOff
               <p class="muted">No offer yet.</p>
             }
             @if (v.candidate.employeeId) {
-              <p class="rec__notice" role="status">Hired. <a [routerLink]="['/employees', v.candidate.employeeId]">Employee record</a> · onboarding has started.</p>
+              <p class="alert alert--success" role="status">Hired. <a [routerLink]="['/employees', v.candidate.employeeId]">Employee record</a> · onboarding has started.</p>
             }
           </section>
         </div>
@@ -324,7 +324,7 @@ const localInput = (date: Date) => new Date(date.getTime() - date.getTimezoneOff
       <gggs-skeleton [lines]="12" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './recruitment.css',

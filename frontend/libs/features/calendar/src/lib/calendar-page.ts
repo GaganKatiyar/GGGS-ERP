@@ -16,16 +16,16 @@ interface KindInfo {
 }
 
 const KINDS: readonly KindInfo[] = [
-  { key: 'holiday', label: 'Holidays', colour: '#dc2626' },
-  { key: 'leave', label: 'Leave', colour: '#d97706' },
-  { key: 'birthday', label: 'Birthdays', colour: '#db2777' },
-  { key: 'anniversary', label: 'Work anniversaries', colour: '#7c3aed' },
-  { key: 'joining', label: 'Joinings', colour: '#0e9f6e' },
-  { key: 'exit', label: 'Last days', colour: '#475569' },
-  { key: 'milestone', label: 'Milestones', colour: '#1d4ed8' },
-  { key: 'interview', label: 'Interviews', colour: '#0891b2' },
-  { key: 'review', label: 'Reviews', colour: '#65a30d' },
-  { key: 'survey', label: 'Surveys', colour: '#9333ea' },
+  { key: 'holiday', label: 'Holidays', colour: 'var(--gggs-cat-7)' },
+  { key: 'leave', label: 'Leave', colour: 'var(--gggs-cat-3)' },
+  { key: 'birthday', label: 'Birthdays', colour: 'var(--gggs-cat-5)' },
+  { key: 'anniversary', label: 'Work anniversaries', colour: 'var(--gggs-cat-4)' },
+  { key: 'joining', label: 'Joinings', colour: 'var(--gggs-cat-2)' },
+  { key: 'exit', label: 'Last days', colour: 'var(--gggs-cat-9)' },
+  { key: 'milestone', label: 'Milestones', colour: 'var(--gggs-cat-1)' },
+  { key: 'interview', label: 'Interviews', colour: 'var(--gggs-cat-6)' },
+  { key: 'review', label: 'Reviews', colour: 'var(--gggs-cat-8)' },
+  { key: 'survey', label: 'Surveys', colour: 'var(--gggs-cat-10)' },
 ];
 
 interface Day {
@@ -111,7 +111,7 @@ interface Day {
       </aside>
     </div>
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styles: `
@@ -168,7 +168,7 @@ interface Day {
 
     .cal__day--today .cal__num {
       background: var(--gggs-color-primary);
-      color: #fff;
+      color: var(--gggs-color-primary-contrast);
       border-radius: 999px;
       padding-inline: 0.4rem;
     }
@@ -230,7 +230,6 @@ interface Day {
       }
     }
   `,
-  styleUrl: './xp.css',
 })
 export class CalendarPage {
   private readonly api = inject(InsightApi);
@@ -299,7 +298,7 @@ export class CalendarPage {
   }
 
   protected colour(kind: string): string {
-    return KINDS.find((candidate) => candidate.key === kind)?.colour ?? '#64748b';
+    return KINDS.find((candidate) => candidate.key === kind)?.colour ?? 'var(--gggs-cat-9)';
   }
 
   protected kindLabel(kind: string): string {

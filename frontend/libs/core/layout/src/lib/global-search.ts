@@ -97,7 +97,7 @@ const KIND_ICONS: Record<string, string> = {
       max-height: 26rem;
       overflow-y: auto;
       z-index: 1000;
-      background: var(--gggs-color-surface, #fff);
+      background: var(--gggs-color-surface);
       border: 1px solid var(--gggs-color-border);
       border-radius: var(--gggs-radius-md, 0.5rem);
       box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);

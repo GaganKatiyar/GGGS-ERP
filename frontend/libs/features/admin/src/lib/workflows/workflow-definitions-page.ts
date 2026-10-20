@@ -108,7 +108,7 @@ const blankStage = (): StageDraft => ({
       </div>
     }
     @if (listError()) {
-      <p class="field__error" role="alert">{{ listError() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ listError() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="dialogOpen" [title]="editing() ? 'Edit workflow' : 'New workflow'" width="min(60rem, 96vw)" [busy]="busy()" [error]="error()" (save)="save()">

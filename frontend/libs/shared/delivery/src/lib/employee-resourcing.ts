@@ -42,7 +42,7 @@ const message = (error: unknown, fallback: string) => (error instanceof Error &&
         }
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </div>
   `,
@@ -103,7 +103,7 @@ export class EmployeeSkills {
       </div>
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './employee-resourcing.css',
@@ -144,7 +144,7 @@ export class EmployeeAllocation {
         <gggs-empty-state icon="pi pi-stopwatch" title="No timesheets yet" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </div>
   `,

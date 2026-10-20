@@ -50,7 +50,7 @@ import { financialYearLabel, financialYearOf, message, recentFinancialYears, thi
         @if (d.departments.length) {
           <section class="panel stack">
             <h2 class="pay__heading">Cost by department ({{ d.lastFinalized?.label }})</h2>
-            <table class="pay__table">
+            <table class="table pay__table">
               <thead><tr><th scope="col">Department</th><th scope="col" class="pay__num">People</th><th scope="col" class="pay__num">Gross</th><th scope="col" class="pay__num">Employer cost</th></tr></thead>
               <tbody>
                 @for (row of d.departments; track row.name) {
@@ -63,7 +63,7 @@ import { financialYearLabel, financialYearOf, message, recentFinancialYears, thi
         @if (d.statutory; as s) {
           <section class="panel stack">
             <h2 class="pay__heading">Statutory dues ({{ d.lastFinalized?.label }})</h2>
-            <table class="pay__table">
+            <table class="table pay__table">
               <tbody>
                 <tr><td>Provident fund (employee + employer)</td><td class="pay__num">{{ s.pfEmployee + s.pfEmployer | gggsMoney }}</td></tr>
                 <tr><td>ESI (employee + employer)</td><td class="pay__num">{{ s.esiEmployee + s.esiEmployer | gggsMoney }}</td></tr>
@@ -83,7 +83,7 @@ import { financialYearLabel, financialYearOf, message, recentFinancialYears, thi
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './payroll.css',
@@ -145,7 +145,7 @@ export class PayrollDashboardPage {
         <gggs-empty-state icon="pi pi-play" title="No runs in this year" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 

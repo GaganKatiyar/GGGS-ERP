@@ -47,7 +47,7 @@ import { PageHeader, StatusBadge } from '@gggs/shared/ui';
       <ng-template gggsCell="dueDate" let-row><span [class.my-tasks__late]="row.isOverdue">{{ row.dueDate ? (row.dueDate | date: 'd MMM y') : '' }}</span></ng-template>
     </gggs-data-table>
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styles: `
@@ -63,7 +63,7 @@ import { PageHeader, StatusBadge } from '@gggs/shared/ui';
     }
 
     .my-tasks__late {
-      color: var(--gggs-color-danger, #dc2626);
+      color: var(--gggs-color-danger);
     }
   `,
 })

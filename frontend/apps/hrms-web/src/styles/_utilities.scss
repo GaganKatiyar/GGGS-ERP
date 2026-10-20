@@ -3,6 +3,16 @@
   color: var(--gggs-color-text-muted);
 }
 
+/*
+ * "Name CODE" pairs: Angular drops the whitespace-only text node between </strong> and <span>,
+ * so the gap is restored here once instead of with &nbsp; in a hundred templates.
+ */
+strong + .muted,
+strong + .subtle,
+b + .muted {
+  margin-inline-start: 0.35em;
+}
+
 .subtle {
   color: var(--gggs-color-text-subtle);
 }

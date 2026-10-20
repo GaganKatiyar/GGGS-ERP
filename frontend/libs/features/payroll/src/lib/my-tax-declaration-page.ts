@@ -77,7 +77,7 @@ const SECTION_HINTS: Readonly<Record<string, string>> = {
       @if (regime() === 'Old') {
         <section class="panel stack">
           <h2 class="pay__heading">Deductions</h2>
-          <table class="pay__table">
+          <table class="table pay__table">
             <thead><tr><th scope="col">Section</th><th scope="col">What</th><th scope="col" class="pay__num">Amount</th><th scope="col"><span class="muted">Remove</span></th></tr></thead>
             <tbody>
               @for (item of items(); track $index; let index = $index) {
@@ -155,10 +155,10 @@ const SECTION_HINTS: Readonly<Record<string, string>> = {
       <gggs-skeleton [lines]="8" />
     }
     @if (notice()) {
-      <p class="pay__notice" role="status">{{ notice() }}</p>
+      <p class="alert alert--success" role="status">{{ notice() }}</p>
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './payroll.css',

@@ -29,7 +29,7 @@ import { ProjectsApi } from './delivery-apis';
         <gggs-empty-state icon="pi pi-folder" title="Not on any project yet" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </div>
   `,

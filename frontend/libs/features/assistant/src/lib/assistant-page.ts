@@ -40,14 +40,14 @@ const SUGGESTIONS: Readonly<Record<string, readonly string[]>> = {
 
     @if (status(); as s) {
       @if (!s.configured) {
-        <p class="panel ai__notice" role="status">
+        <p class="alert" role="status">
           <i class="pi pi-info-circle" aria-hidden="true"></i>
-          The assistants are not switched on yet: an administrator needs to configure an Anthropic API key (<code>Gggs:Ai:ApiKey</code>).
+          <span>The assistants are not switched on yet: an administrator needs to configure an Anthropic API key (<code>Gggs:Ai:ApiKey</code>).</span>
         </p>
       }
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <div class="ai">
@@ -143,12 +143,6 @@ const SUGGESTIONS: Readonly<Record<string, readonly string[]>> = {
       margin: 0;
       font-size: var(--gggs-font-size-md);
     }
-    .ai__notice {
-      display: flex;
-      gap: var(--gggs-space-2);
-      align-items: center;
-      margin-block-end: var(--gggs-space-3);
-    }
     .ai__assistants {
       display: grid;
       gap: var(--gggs-space-2);
@@ -223,7 +217,7 @@ const SUGGESTIONS: Readonly<Record<string, readonly string[]>> = {
     }
     .ai__message--user .ai__text {
       background: var(--gggs-color-primary);
-      color: #fff;
+      color: var(--gggs-color-primary-contrast);
     }
     .ai__tools {
       display: flex;

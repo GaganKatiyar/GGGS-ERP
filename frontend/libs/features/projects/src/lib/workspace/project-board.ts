@@ -94,7 +94,7 @@ import { TaskEditor } from './task-editor';
       </div>
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-task-editor [(visible)]="editorOpen" [projectId]="projectId()" [task]="editing()" [defaults]="defaults()" [readOnly]="!canEdit()" (saved)="reload()" />
@@ -129,7 +129,7 @@ import { TaskEditor } from './task-editor';
     }
 
     .board__column--over {
-      border-color: var(--gggs-color-warning, #d97706);
+      border-color: var(--gggs-color-warning);
     }
 
     .board__head {
@@ -157,7 +157,7 @@ import { TaskEditor } from './task-editor';
     }
 
     .board__card--overdue {
-      border-inline-start: 3px solid var(--gggs-color-danger, #dc2626);
+      border-inline-start: 3px solid var(--gggs-color-danger);
     }
 
     .board__open {
@@ -194,7 +194,7 @@ import { TaskEditor } from './task-editor';
 
     .board__late,
     .board__blocked {
-      color: var(--gggs-color-danger, #dc2626);
+      color: var(--gggs-color-danger);
     }
 
     .board__move {

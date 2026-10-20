@@ -40,7 +40,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
         <gggs-empty-state icon="pi pi-flag" title="No milestones in this window" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
   `,
@@ -100,7 +100,7 @@ export class MilestonesPage {
         <gggs-empty-state icon="pi pi-replay" title="No sprints here" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
   `,
@@ -159,7 +159,7 @@ export class SprintsPage {
         <gggs-empty-state icon="pi pi-arrow-right-arrow-left" title="No change requests here" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
   `,
@@ -221,7 +221,7 @@ export class ChangeRequestsPage {
         <gggs-empty-state icon="pi pi-exclamation-triangle" title="Nothing open" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
   `,

@@ -48,7 +48,7 @@ const FIXABLE = new Set(['Absent', 'MissingPunch', 'HalfDay']);
         }
       </section>
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
 
       <gggs-tabs [tabs]="tabs" [(selected)]="tab" />
@@ -67,7 +67,7 @@ const FIXABLE = new Set(['Absent', 'MissingPunch', 'HalfDay']);
             } @else if (days().length === 0) {
               <gggs-empty-state icon="pi pi-calendar" title="Nothing recorded for this month" />
             } @else {
-              <table class="grid">
+              <table class="table grid">
                 <thead>
                   <tr>
                     <th scope="col">Day</th>
@@ -115,7 +115,7 @@ const FIXABLE = new Set(['Absent', 'MissingPunch', 'HalfDay']);
             @if (regularizations().length === 0) {
               <gggs-empty-state icon="pi pi-pencil" title="No corrections requested" description="Use Fix on a day to say when you actually worked." />
             } @else {
-              <table class="grid">
+              <table class="table grid">
                 <thead>
                   <tr>
                     <th scope="col">Day</th>
@@ -165,7 +165,7 @@ const FIXABLE = new Set(['Absent', 'MissingPunch', 'HalfDay']);
             </ul>
             @if (swaps().length > 0) {
               <h3 class="shifts__heading">Swap requests</h3>
-              <table class="grid">
+              <table class="table grid">
                 <tbody>
                   @for (swap of swaps(); track swap.id) {
                     <tr>
@@ -250,18 +250,7 @@ const FIXABLE = new Set(['Absent', 'MissingPunch', 'HalfDay']);
       max-width: 12rem;
     }
 
-    .grid {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    .grid th,
-    .grid td {
-      padding: var(--gggs-space-2);
-      border-block-end: 1px solid var(--gggs-color-border);
-      text-align: start;
-      vertical-align: top;
-    }
 
     .grid__row--today {
       background: var(--gggs-color-primary-subtle);

@@ -53,7 +53,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs
           } @else if (visibleValues().length === 0) {
             <gggs-empty-state title="No values" />
           } @else {
-            <table class="master-data__table">
+            <table class="table master-data__table">
               <thead>
                 <tr>
                   <th scope="col">Code</th>
@@ -93,7 +93,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs
             </table>
           }
           @if (listError()) {
-            <p class="field__error" role="alert">{{ listError() }}</p>
+            <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ listError() }}</span></p>
           }
         } @else {
           <gggs-skeleton [lines]="6" />
@@ -181,17 +181,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs
       max-width: 16rem;
     }
 
-    .master-data__table {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    .master-data__table th,
-    .master-data__table td {
-      padding: var(--gggs-space-2);
-      border-block-end: 1px solid var(--gggs-color-border);
-      text-align: start;
-    }
 
     .master-data__system {
       margin-inline-start: var(--gggs-space-2);

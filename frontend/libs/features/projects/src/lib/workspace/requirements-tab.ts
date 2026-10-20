@@ -32,7 +32,7 @@ import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
         <gggs-empty-state icon="pi pi-list-check" title="No requirements yet" description="Capture what the client needs, then link tasks to trace delivery." />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 

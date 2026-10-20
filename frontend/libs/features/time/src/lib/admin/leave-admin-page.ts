@@ -71,7 +71,7 @@ import { EmptyState, FormDialog, PageHeader, StatusBadge, Tabs, type TabItem } f
           } @else {
             <div class="stack">
               <section class="panel">
-                <table class="grid">
+                <table class="table grid">
                   <thead>
                     <tr>
                       <th scope="col">Type</th>
@@ -98,7 +98,7 @@ import { EmptyState, FormDialog, PageHeader, StatusBadge, Tabs, type TabItem } f
               </section>
               <section class="panel">
                 <h2 class="leave__heading">Ledger</h2>
-                <table class="grid">
+                <table class="table grid">
                   <thead>
                     <tr>
                       <th scope="col">Date</th>
@@ -126,7 +126,7 @@ import { EmptyState, FormDialog, PageHeader, StatusBadge, Tabs, type TabItem } f
         }
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </div>
 
@@ -226,17 +226,7 @@ import { EmptyState, FormDialog, PageHeader, StatusBadge, Tabs, type TabItem } f
       background: var(--gggs-color-primary-subtle);
     }
 
-    .grid {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    .grid th,
-    .grid td {
-      padding: var(--gggs-space-2);
-      border-block-end: 1px solid var(--gggs-color-border);
-      text-align: start;
-    }
   `,
 })
 export class LeaveAdminPage {

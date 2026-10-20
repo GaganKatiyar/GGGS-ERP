@@ -125,9 +125,9 @@ import { AuditApi } from './audit-api';
       gap: 0.75rem;
       padding: 1rem;
       margin-block-end: 1rem;
-      border: 1px solid var(--gggs-color-border, #e2e5ea);
+      border: 1px solid var(--gggs-color-border);
       border-radius: 0.5rem;
-      background: var(--gggs-color-surface-raised, #ffffff);
+      background: var(--gggs-color-surface-raised);
     }
 
     .filters__actions {
@@ -149,9 +149,9 @@ import { AuditApi } from './audit-api';
     .panel {
       margin-block-start: 1rem;
       padding: 1rem;
-      border: 1px solid var(--gggs-color-border, #e2e5ea);
+      border: 1px solid var(--gggs-color-border);
       border-radius: 0.5rem;
-      background: var(--gggs-color-surface-raised, #ffffff);
+      background: var(--gggs-color-surface-raised);
     }
 
     .panel__header {
@@ -180,7 +180,7 @@ import { AuditApi } from './audit-api';
     .facts__row dt {
       width: 8rem;
       font-weight: 600;
-      color: var(--gggs-color-text-muted, #5b6472);
+      color: var(--gggs-color-text-muted);
     }
 
     .facts__row dd {
@@ -204,7 +204,7 @@ import { AuditApi } from './audit-api';
       padding: 0.5rem;
       overflow-x: auto;
       font-size: 0.75rem;
-      background: var(--gggs-color-surface, #f6f7f9);
+      background: var(--gggs-color-surface);
       border-radius: 0.375rem;
     }
 
@@ -216,15 +216,15 @@ import { AuditApi } from './audit-api';
       font-family: inherit;
       font-size: inherit;
       border-radius: 0.375rem;
-      border: 1px solid var(--gggs-color-border, #e2e5ea);
-      background: var(--gggs-color-surface-raised, #ffffff);
+      border: 1px solid var(--gggs-color-border);
+      background: var(--gggs-color-surface-raised);
       cursor: pointer;
     }
 
     .btn--primary {
-      background: var(--gggs-color-primary, #1d4ed8);
+      background: var(--gggs-color-primary);
       border-color: transparent;
-      color: #fff;
+      color: var(--gggs-color-primary-contrast);
     }
   `,
 })

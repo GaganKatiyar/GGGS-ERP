@@ -67,7 +67,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
       </section>
     } @else {
       <section class="panel skills__scroll">
-        <table class="skills__matrix">
+        <table class="table skills__matrix">
           <thead>
             <tr>
               <th scope="col">Skill</th>
@@ -101,7 +101,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
       </section>
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-drawer [(visible)]="peopleOpen" [title]="peopleTitle()">
@@ -165,17 +165,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
       overflow-x: auto;
     }
 
-    .skills__matrix {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    .skills__matrix th,
-    .skills__matrix td {
-      padding: var(--gggs-space-1) var(--gggs-space-2);
-      border-block-end: 1px solid var(--gggs-color-border);
-      text-align: start;
-    }
 
     .skills__category {
       display: block;
@@ -189,7 +179,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
     }
 
     .skills__gap {
-      color: var(--gggs-color-warning, #b45309);
+      color: var(--gggs-color-warning);
       font-weight: var(--gggs-font-weight-semibold);
     }
 

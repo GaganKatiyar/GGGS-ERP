@@ -33,7 +33,7 @@ const today = () => new Date().toISOString().slice(0, 10);
       <gggs-empty-state icon="pi pi-arrow-right-arrow-left" title="No delegations" description="Delegate your approvals before you go on leave." />
     } @else {
       <section class="panel">
-        <table class="delegations__table">
+        <table class="table delegations__table">
           <thead>
             <tr>
               <th scope="col">From</th>
@@ -64,7 +64,7 @@ const today = () => new Date().toISOString().slice(0, 10);
       </section>
     }
     @if (listError()) {
-      <p class="field__error" role="alert">{{ listError() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ listError() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="createOpen" title="Delegate approvals" saveLabel="Delegate" [busy]="busy()" [error]="error()" (save)="create()">
@@ -95,17 +95,7 @@ const today = () => new Date().toISOString().slice(0, 10);
     </gggs-form-dialog>
   `,
   styles: `
-    .delegations__table {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    .delegations__table th,
-    .delegations__table td {
-      padding: var(--gggs-space-2);
-      border-block-end: 1px solid var(--gggs-color-border);
-      text-align: start;
-    }
 
     .delegations__hidden {
       position: absolute;

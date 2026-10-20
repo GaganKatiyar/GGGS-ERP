@@ -41,7 +41,7 @@
 }
 
 .e-res__expired {
-  color: var(--gggs-color-danger, #dc2626);
+  color: var(--gggs-color-danger);
 }
 
 .e-res__months {

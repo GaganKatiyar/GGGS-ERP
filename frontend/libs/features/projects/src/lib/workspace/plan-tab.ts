@@ -85,7 +85,7 @@ import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
       </section>
     </div>
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="phaseOpen" [title]="editingPhase() ? 'Edit phase' : 'Add a phase'" [busy]="busy()" [error]="dialogError()" (save)="savePhase()">
@@ -220,7 +220,7 @@ import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
     }
 
     .plan__late {
-      color: var(--gggs-color-danger, #dc2626);
+      color: var(--gggs-color-danger);
     }
 
     .plan__actions {

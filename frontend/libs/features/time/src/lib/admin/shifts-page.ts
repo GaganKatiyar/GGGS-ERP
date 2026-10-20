@@ -37,7 +37,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
             @if (shifts().length === 0) {
               <gggs-empty-state icon="pi pi-clock" title="No shifts yet" />
             } @else {
-              <table class="grid">
+              <table class="table grid">
                 <thead>
                   <tr>
                     <th scope="col">Shift</th>
@@ -94,7 +94,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
             <gggs-skeleton [lines]="6" />
           } @else {
             <section class="panel roster__scroll">
-              <table class="grid roster">
+              <table class="table grid roster">
                 <thead>
                   <tr>
                     <th scope="col">Employee</th>
@@ -129,7 +129,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
             @if (swaps().length === 0) {
               <gggs-empty-state icon="pi pi-arrow-right-arrow-left" title="No swap requests" />
             } @else {
-              <table class="grid">
+              <table class="table grid">
                 <thead>
                   <tr>
                     <th scope="col">Day</th>
@@ -154,7 +154,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
         }
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
       @if (message()) {
         <p class="shifts__message" role="status">{{ message() }}</p>
@@ -271,17 +271,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
       color: var(--gggs-color-success);
     }
 
-    .grid {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    .grid th,
-    .grid td {
-      padding: var(--gggs-space-2);
-      border-block-end: 1px solid var(--gggs-color-border);
-      text-align: start;
-    }
 
     .grid__actions {
       white-space: nowrap;

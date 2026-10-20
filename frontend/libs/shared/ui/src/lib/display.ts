@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, model } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, model, signal } from '@angular/core';
 import { ChartModule } from 'primeng/chart';
 import { SkeletonModule } from 'primeng/skeleton';
 
@@ -154,26 +154,63 @@ export class Chart {
   readonly series = input.required<readonly ChartSeries[]>();
   readonly height = input('16rem');
 
-  private static readonly palette = ['#1d4ed8', '#0e9f6e', '#d97706', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#475569'];
+  /** Used when the tokens cannot be read (tests, server rendering). */
+  private static readonly fallback = ['#1d4ed8', '#0e9f6e', '#d97706', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#475569'];
+
+  /** Bumped when the theme class on <html> changes, so colours are read again. */
+  private readonly theme = signal(0);
+
+  constructor() {
+    if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
+      const observer = new MutationObserver(() => this.theme.update((tick) => tick + 1));
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+      inject(DestroyRef).onDestroy(() => observer.disconnect());
+    }
+  }
+
+  /** The categorical palette and axis colours, from the design tokens (a canvas cannot read CSS variables). */
+  private readonly colours = computed(() => {
+    this.theme();
+    const style = typeof document === 'undefined' ? null : getComputedStyle(document.documentElement);
+    const token = (name: string, fallback: string) => style?.getPropertyValue(name).trim() || fallback;
+    return {
+      palette: Chart.fallback.map((colour, index) => token(`--gggs-cat-${index + 1}`, colour)),
+      text: token('--gggs-color-text-muted', '#5b6577'),
+      grid: token('--gggs-color-border', '#e3e7ee'),
+      font: token('--gggs-font-family', 'system-ui, sans-serif'),
+    };
+  });
 
   protected readonly data = computed(() => {
     const circular = this.kind() === 'doughnut' || this.kind() === 'pie';
+    const palette = this.colours().palette;
     return {
       labels: [...this.labels()],
       datasets: this.series().map((series, index) => ({
         label: series.label,
         data: [...series.values],
-        backgroundColor: circular ? Chart.palette : Chart.palette[index % Chart.palette.length],
-        borderColor: circular ? undefined : Chart.palette[index % Chart.palette.length],
+        backgroundColor: circular ? palette : palette[index % palette.length],
+        borderColor: circular ? undefined : palette[index % palette.length],
+        borderRadius: this.kind() === 'bar' ? 4 : undefined,
         tension: 0.3,
       })),
     };
   });
 
-  protected readonly options = computed(() => ({
-    maintainAspectRatio: false,
-    plugins: { legend: { display: this.series().length > 1 || this.kind() === 'doughnut' || this.kind() === 'pie' } },
-  }));
+  protected readonly options = computed(() => {
+    const { text, grid, font } = this.colours();
+    const circular = this.kind() === 'doughnut' || this.kind() === 'pie';
+    const axis = { ticks: { color: text, font: { family: font, size: 11 } }, grid: { color: grid }, border: { display: false } };
+    return {
+      maintainAspectRatio: false,
+      font: { family: font },
+      plugins: {
+        legend: { display: this.series().length > 1 || circular, labels: { color: text, font: { family: font }, usePointStyle: true, boxWidth: 8 } },
+        tooltip: { padding: 10, cornerRadius: 6, titleFont: { family: font }, bodyFont: { family: font } },
+      },
+      scales: circular ? undefined : { x: { ...axis, grid: { display: false } }, y: axis },
+    };
+  });
 }
 
 export interface TabItem {

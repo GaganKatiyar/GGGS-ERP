@@ -86,16 +86,16 @@ const today = () => new Date().toISOString().slice(0, 10);
                 <gggs-empty-state title="No version yet" description="Write the first version to publish this policy." />
               }
               @if (actionError()) {
-                <p class="field__error" role="alert">{{ actionError() }}</p>
+                <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ actionError() }}</span></p>
               }
               @if (notice()) {
-                <p class="policy__notice" role="status">{{ notice() }}</p>
+                <p class="alert alert--success" role="status">{{ notice() }}</p>
               }
             </div>
           }
           @case ('history') {
             <section class="panel">
-              <table class="policy__table">
+              <table class="table policy__table">
                 <thead>
                   <tr>
                     <th scope="col">Version</th>
@@ -129,7 +129,7 @@ const today = () => new Date().toISOString().slice(0, 10);
                   <gggs-kpi-card label="Coverage" icon="pi pi-percentage" [value]="coverage()" />
                 </div>
                 <section class="panel">
-                  <table class="policy__table">
+                  <table class="table policy__table">
                     <thead>
                       <tr>
                         <th scope="col">Employee</th>
@@ -213,17 +213,7 @@ const today = () => new Date().toISOString().slice(0, 10);
       color: var(--gggs-color-success);
     }
 
-    .policy__table {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    .policy__table th,
-    .policy__table td {
-      padding: var(--gggs-space-2);
-      border-block-end: 1px solid var(--gggs-color-border);
-      text-align: start;
-    }
   `,
 })
 export class PolicyDetailPage {

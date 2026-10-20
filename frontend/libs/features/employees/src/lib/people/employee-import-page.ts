@@ -127,7 +127,7 @@ export function toImportRows(cells: string[][]): { rows: ImportRow[]; unknown: s
           </p>
         }
         @if (error()) {
-          <p class="field__error" role="alert">{{ error() }}</p>
+          <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
         }
         <div class="toolbar">
           <button type="button" class="btn" [disabled]="!rows().length || busy()" (click)="check()">{{ busy() && !committing() ? 'Checking…' : 'Check rows' }}</button>
@@ -148,7 +148,7 @@ export function toImportRows(cells: string[][]): { rows: ImportRow[]; unknown: s
           <gggs-empty-state icon="pi pi-check-circle" [title]="r.succeeded + ' employees imported'" description="They are in the directory now." actionLabel="Open directory" (action)="done()" />
         } @else {
           <section class="panel">
-            <table class="import__table">
+            <table class="table import__table">
               <caption class="muted">{{ r.failed ? 'Fix these rows in the file and check again.' : 'Every row is valid.' }}</caption>
               <thead>
                 <tr>
@@ -183,23 +183,12 @@ export function toImportRows(cells: string[][]): { rows: ImportRow[]; unknown: s
     </div>
   `,
   styles: `
-    .import__table {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
     .import__table caption {
       padding-block-end: var(--gggs-space-2);
       text-align: start;
     }
 
-    .import__table th,
-    .import__table td {
-      padding: var(--gggs-space-2);
-      border-block-end: 1px solid var(--gggs-color-border);
-      text-align: start;
-      vertical-align: top;
-    }
 
     .import__row--error td {
       background: var(--gggs-color-danger-subtle, transparent);

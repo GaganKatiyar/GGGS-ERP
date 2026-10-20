@@ -57,10 +57,10 @@ import { CandidateFields, blankCandidate, errorText } from './recruitment-forms'
       }
     </section>
     @if (notice()) {
-      <p class="rec__notice" role="status">{{ notice() }}</p>
+      <p class="alert alert--success" role="status">{{ notice() }}</p>
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="open" [title]="job() ? 'Refer for ' + job()?.title : 'Refer someone'" saveLabel="Refer" [busy]="busy()" [error]="formError()" [saveDisabled]="!details().firstName.trim() || !details().email.trim()" (save)="submit()" size="lg">
@@ -141,7 +141,7 @@ export class JobBoardPage {
         <gggs-empty-state icon="pi pi-comments" title="No interviews" description="You are not on any interview panel." />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
   `,
@@ -210,7 +210,7 @@ export class MyInterviewsPage {
             }
           </div>
           @if (notice()) {
-            <p class="rec__notice" role="status">{{ notice() }}</p>
+            <p class="alert alert--success" role="status">{{ notice() }}</p>
           }
         </section>
         <div class="stack">
@@ -230,7 +230,7 @@ export class MyInterviewsPage {
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './recruitment.css',

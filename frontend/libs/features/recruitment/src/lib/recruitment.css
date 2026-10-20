@@ -76,7 +76,7 @@
 }
 
 .rec__column {
-  background: var(--gggs-color-surface-muted, rgba(0, 0, 0, 0.03));
+  background: var(--gggs-color-surface-sunken, rgba(0, 0, 0, 0.03));
   border-radius: var(--gggs-radius-md, 0.5rem);
   padding: var(--gggs-space-2);
   display: flex;
@@ -120,7 +120,7 @@
 }
 
 .rec__match--high {
-  color: var(--gggs-color-success, #0e9f6e);
+  color: var(--gggs-color-success);
 }
 
 .rec__none {
@@ -198,7 +198,7 @@
 }
 
 .rec__notice {
-  color: var(--gggs-color-success, #0e9f6e);
+  color: var(--gggs-color-success);
 }
 
 .rec__charts {
@@ -240,7 +240,7 @@
 .rec__star--on {
   background: var(--gggs-color-primary);
   border-color: var(--gggs-color-primary);
-  color: var(--gggs-color-on-primary, #fff);
+  color: var(--gggs-color-primary-contrast);
 }
 
 .rec__star:focus-within {

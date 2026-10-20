@@ -68,7 +68,7 @@ export class ProgressBar {
         <gggs-empty-state icon="pi pi-bullseye" title="No goals" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </div>
   `,
@@ -110,7 +110,7 @@ export class EmployeeGoals {
         <gggs-empty-state icon="pi pi-chart-line" title="No reviews yet" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </div>
   `,
@@ -156,7 +156,7 @@ export class EmployeePerformance {
         <gggs-empty-state icon="pi pi-book" title="No learning on record" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </div>
   `,
@@ -199,7 +199,7 @@ export class EmployeeLearning {
         <gggs-empty-state icon="pi pi-arrow-up-right" title="No promotions on record" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </div>
   `,

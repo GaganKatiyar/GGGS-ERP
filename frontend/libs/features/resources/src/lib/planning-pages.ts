@@ -52,11 +52,11 @@ const firstOfMonth = (): string => `${isoToday().slice(0, 7)}-01`;
       </label>
     </section>
     @if (notice()) {
-      <p class="res__notice" role="status">{{ notice() }}</p>
+      <p class="alert alert--success" role="status">{{ notice() }}</p>
     }
     @if (rows(); as list) {
       <section class="panel res__scroll">
-        <table class="res__table">
+        <table class="table res__table">
           <thead>
             <tr>
               <th scope="col">Person</th>
@@ -89,7 +89,7 @@ const firstOfMonth = (): string => `${isoToday().slice(0, 7)}-01`;
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
     <gggs-allocate-dialog [(visible)]="allocateOpen" (allocated)="allocated($event)" />
   `,
@@ -168,7 +168,7 @@ export class ResourceCalendarPage {
         <h2 class="res__heading">Capacity (FTE)</h2>
         <gggs-chart kind="bar" title="Allocated against available FTE" [labels]="monthLabels()" [series]="capacitySeries()" />
         <div class="res__scroll">
-          <table class="res__table">
+          <table class="table res__table">
             <thead>
               <tr>
                 <th scope="col">Month</th>
@@ -205,7 +205,7 @@ export class ResourceCalendarPage {
         <p class="muted">Demand: people asked for in open requests. Supply: people with the skill at the level who are at least half free.</p>
         @if (r.skills.length) {
           <div class="res__scroll">
-            <table class="res__table">
+            <table class="table res__table">
               <thead>
                 <tr>
                   <th scope="col">Skill</th>
@@ -236,7 +236,7 @@ export class ResourceCalendarPage {
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './resources.css',
@@ -301,7 +301,7 @@ export class ResourceCapacityPage {
         <gggs-empty-state icon="pi pi-check-circle" title="No one is on the bench" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
   `,
@@ -367,7 +367,7 @@ export class ResourceBenchPage {
         <gggs-chart kind="line" title="Utilization trend (%)" [labels]="trendLabels()" [series]="trendSeries()" height="14rem" />
       </section>
       <section class="panel res__scroll">
-        <table class="res__table">
+        <table class="table res__table">
           <thead>
             <tr>
               <th scope="col">{{ r.groupBy }}</th>
@@ -399,7 +399,7 @@ export class ResourceBenchPage {
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './resources.css',
@@ -471,7 +471,7 @@ export class ResourceUtilizationPage {
         <gggs-empty-state icon="pi pi-arrow-right-arrow-left" title="No transfers" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
   `,

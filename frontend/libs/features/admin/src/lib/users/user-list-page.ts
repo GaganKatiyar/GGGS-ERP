@@ -29,7 +29,7 @@ import { AdminApi } from '@gggs/shared/identity';
     </label>
 
     @if (actionError()) {
-      <p class="field__error" role="alert">{{ actionError() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ actionError() }}</span></p>
     }
 
     <gggs-data-table
@@ -42,7 +42,7 @@ import { AdminApi } from '@gggs/shared/identity';
     />
 
     @if (result(); as result) {
-      <table class="action-table">
+      <table class="table action-table">
         <thead>
           <tr>
             <th scope="col">User</th>
@@ -116,16 +116,16 @@ import { AdminApi } from '@gggs/shared/identity';
 
     .filter select {
       font: inherit;
-      color: var(--gggs-color-text, #1f2430);
-      background: var(--gggs-color-surface-raised, #ffffff);
-      border: 1px solid var(--gggs-color-border, #e2e5ea);
+      color: var(--gggs-color-text);
+      background: var(--gggs-color-surface-raised);
+      border: 1px solid var(--gggs-color-border);
       border-radius: var(--gggs-radius-sm, 0.375rem);
       padding: var(--gggs-space-1, 0.25rem) var(--gggs-space-2, 0.5rem);
     }
 
     .field__error {
       margin: 0 0 var(--gggs-space-4, 1rem);
-      color: var(--gggs-color-danger, #b3261e);
+      color: var(--gggs-color-danger);
       font-size: var(--gggs-font-size-base, 0.875rem);
     }
 
@@ -137,12 +137,6 @@ import { AdminApi } from '@gggs/shared/identity';
       margin-block-start: -1px;
     }
 
-    .action-table th,
-    .action-table td {
-      padding: var(--gggs-space-2, 0.5rem) var(--gggs-space-3, 0.75rem);
-      text-align: left;
-      border-bottom: 1px solid var(--gggs-color-border, #e2e5ea);
-    }
   `,
 })
 export class UserListPage {

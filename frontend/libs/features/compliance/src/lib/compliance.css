@@ -81,11 +81,11 @@ button.cmp__row:hover {
 }
 
 .cmp__danger {
-  color: var(--gggs-color-danger, #dc2626);
+  color: var(--gggs-color-danger);
 }
 
 .cmp__warning {
-  color: var(--gggs-color-warning, #b45309);
+  color: var(--gggs-color-warning);
 }
 
 .cmp__check {

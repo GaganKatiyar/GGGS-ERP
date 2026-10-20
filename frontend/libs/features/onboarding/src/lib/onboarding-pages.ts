@@ -88,7 +88,7 @@ const icon = (category: string) => CATEGORY_ICONS[category] ?? 'pi pi-circle';
       }
     </ul>
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
     <gggs-form-dialog [(visible)]="changeOpen" [title]="'Reassign · ' + (changing()?.title ?? '')" [busy]="busy()" [error]="formError()" (save)="saveChange()">
       <label class="field">
@@ -221,7 +221,7 @@ export class OnboardingTasks {
         <gggs-empty-state icon="pi pi-sign-in" title="No joiners here" description="Onboarding starts automatically when someone is hired." />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
     @if (!dashboard() && !error()) {
@@ -330,7 +330,7 @@ export class OnboardingDashboardPage {
       <gggs-skeleton [lines]="10" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './onboarding.css',
@@ -456,7 +456,7 @@ const blankTask = (): OnboardingTemplateTask => ({ title: '', description: null,
       <gggs-empty-state icon="pi pi-list-check" title="No checklists" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="dialogOpen" [title]="editing() ? 'Edit checklist' : 'New checklist'" [busy]="busy()" [error]="formError()" [saveDisabled]="!form().name.trim() || !form().tasks.length" (save)="save()" width="min(60rem, 96vw)">
@@ -650,7 +650,7 @@ export class OnboardingTemplatesPage {
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './onboarding.css',
@@ -699,7 +699,7 @@ export class MyOnboardingPage {
       <gggs-skeleton [lines]="6" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './onboarding.css',

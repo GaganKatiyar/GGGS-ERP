@@ -24,7 +24,7 @@ import { EmptyState, KpiCard, PageHeader, Skeleton, StatusBadge } from '@gggs/sh
         <gggs-kpi-card label="Watch" [value]="p.overBudget + p.lossMaking" [hint]="p.overBudget + ' over budget · ' + p.lossMaking + ' losing money'" />
       </div>
       <section class="panel fin__scroll">
-        <table class="fin__table">
+        <table class="table fin__table">
           <thead>
             <tr>
               <th scope="col">Project</th><th scope="col">Billing</th><th scope="col" class="fin__num">Contract</th><th scope="col" class="fin__num">Revenue</th>
@@ -54,7 +54,7 @@ import { EmptyState, KpiCard, PageHeader, Skeleton, StatusBadge } from '@gggs/sh
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styles: `
@@ -69,17 +69,7 @@ import { EmptyState, KpiCard, PageHeader, Skeleton, StatusBadge } from '@gggs/sh
       overflow-x: auto;
     }
 
-    .fin__table {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    .fin__table th,
-    .fin__table td {
-      padding: var(--gggs-space-1) var(--gggs-space-2);
-      border-block-end: 1px solid var(--gggs-color-border);
-      text-align: start;
-    }
 
     .fin__num {
       text-align: end !important;
@@ -87,7 +77,7 @@ import { EmptyState, KpiCard, PageHeader, Skeleton, StatusBadge } from '@gggs/sh
     }
 
     .fin__danger {
-      color: var(--gggs-color-danger, #dc2626);
+      color: var(--gggs-color-danger);
     }
   `,
 })

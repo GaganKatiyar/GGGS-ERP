@@ -85,7 +85,6 @@ const blankSurvey = (): SurveyInput => ({ title: '', description: null, isAnonym
       </div>
     </div>
   `,
-  styleUrl: './xp.css',
 })
 export class SurveyBuilder {
   private readonly api = inject(EngagementApi);
@@ -181,7 +180,7 @@ export class SurveyBuilder {
         <gggs-empty-state icon="pi pi-heart" title="No surveys yet" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -189,7 +188,6 @@ export class SurveyBuilder {
       <gggs-survey-builder [form]="form" />
     </gggs-form-dialog>
   `,
-  styleUrl: './xp.css',
 })
 export class EngagementPage {
   private readonly api = inject(EngagementApi);
@@ -318,14 +316,13 @@ export class EngagementPage {
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="builderOpen" title="Edit survey" [busy]="busy()" [error]="formError()" [saveDisabled]="!form().title.trim() || !form().questions.length" (save)="save()" width="min(64rem, 96vw)">
       <gggs-survey-builder [form]="form" />
     </gggs-form-dialog>
   `,
-  styleUrl: './xp.css',
 })
 export class SurveyPage {
   private readonly api = inject(EngagementApi);
@@ -447,10 +444,9 @@ export class SurveyPage {
       <section class="panel"><gggs-empty-state icon="pi pi-heart" title="No surveys right now" /></section>
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
-  styleUrl: './xp.css',
 })
 export class MySurveysPage {
   private readonly api = inject(EngagementApi);

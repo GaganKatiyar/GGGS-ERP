@@ -24,6 +24,11 @@
   }
 }
 
+/* Without an icon an alert is plain text, so inline links and emphasis flow normally. */
+.alert:not(:has(> .pi)) {
+  display: block;
+}
+
 .alert--success {
   --alert-colour: var(--gggs-color-success);
   --alert-background: var(--gggs-color-success-subtle);

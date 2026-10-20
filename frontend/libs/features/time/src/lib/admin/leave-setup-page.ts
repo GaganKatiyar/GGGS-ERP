@@ -47,7 +47,7 @@ const blankPolicy = (typeId: string): PolicyDraft => ({
           <h2 class="setup__heading">Leave types</h2>
           <button type="button" class="btn btn--primary btn--sm" *gggsHasPermission="'leave.type.manage'" (click)="openType(null)">Add type</button>
         </div>
-        <table class="grid">
+        <table class="table grid">
           <thead>
             <tr>
               <th scope="col">Type</th>
@@ -80,7 +80,7 @@ const blankPolicy = (typeId: string): PolicyDraft => ({
           <button type="button" class="btn btn--primary btn--sm" (click)="openPolicy(null)">Add policy</button>
         </div>
         <p class="muted setup__hint">The most specific active policy applies: an employment type's own, else the one for everyone.</p>
-        <table class="grid">
+        <table class="table grid">
           <thead>
             <tr>
               <th scope="col">Type</th>
@@ -116,7 +116,7 @@ const blankPolicy = (typeId: string): PolicyDraft => ({
         <p class="setup__message" role="status">{{ message() }}</p>
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </div>
 
@@ -231,17 +231,7 @@ const blankPolicy = (typeId: string): PolicyDraft => ({
       color: var(--gggs-color-success);
     }
 
-    .grid {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    .grid th,
-    .grid td {
-      padding: var(--gggs-space-2);
-      border-block-end: 1px solid var(--gggs-color-border);
-      text-align: start;
-    }
 
     .grid__actions {
       white-space: nowrap;

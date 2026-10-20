@@ -26,7 +26,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs
       <gggs-empty-state title="No document types" />
     } @else {
       <section class="panel">
-        <table class="types__table">
+        <table class="table types__table">
           <thead>
             <tr>
               <th scope="col">Code</th>
@@ -58,7 +58,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs
       </section>
     }
     @if (listError()) {
-      <p class="field__error" role="alert">{{ listError() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ listError() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="dialogOpen" [title]="editing() ? 'Edit document type' : 'Add document type'" [busy]="busy()" [error]="error()" (save)="save()">
@@ -89,17 +89,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs
     </gggs-form-dialog>
   `,
   styles: `
-    .types__table {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    .types__table th,
-    .types__table td {
-      padding: var(--gggs-space-2);
-      border-block-end: 1px solid var(--gggs-color-border);
-      text-align: start;
-    }
 
     .types__actions {
       white-space: nowrap;

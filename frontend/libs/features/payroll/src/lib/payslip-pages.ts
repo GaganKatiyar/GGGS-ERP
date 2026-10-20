@@ -37,7 +37,7 @@ import { financialYearLabel, financialYearOf, message, recentFinancialYears, thi
         <gggs-empty-state icon="pi pi-file" title="No payslips for this month" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
   `,
@@ -94,7 +94,7 @@ export class PayslipsPage {
       <gggs-skeleton [lines]="12" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './payroll.css',
@@ -134,7 +134,7 @@ export class PayslipPage {
     @if (statement(); as s) {
       <div class="stack">
         <p class="muted">{{ s.employerName }}{{ s.employerTan ? ' · TAN ' + s.employerTan : '' }} · {{ s.employeeName }}{{ s.pan ? ' · PAN ' + s.pan : '' }} · {{ s.regime }} regime</p>
-        <table class="pay__table">
+        <table class="table pay__table">
           <tbody>
             <tr><td>Gross salary paid</td><td class="pay__num">{{ s.grossSalary | gggsMoney }}</td></tr>
             <tr><td>Exemptions (HRA)</td><td class="pay__num">−{{ s.exemptions | gggsMoney }}</td></tr>
@@ -147,7 +147,7 @@ export class PayslipPage {
             <tr><td><strong>TDS deducted so far</strong></td><td class="pay__num"><strong>{{ s.tdsDeducted | gggsMoney }}</strong></td></tr>
           </tbody>
         </table>
-        <table class="pay__table">
+        <table class="table pay__table">
           <thead><tr><th scope="col">Month</th><th scope="col" class="pay__num">Gross</th><th scope="col" class="pay__num">Taxable</th><th scope="col" class="pay__num">TDS</th></tr></thead>
           <tbody>
             @for (month of s.months; track month.period) {
@@ -204,7 +204,7 @@ export class TaxStatementView {
         <gggs-tax-statement [statement]="statement()" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
   `,

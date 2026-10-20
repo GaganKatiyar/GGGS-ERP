@@ -68,7 +68,7 @@ const iso = (date: Date) => date.toISOString().slice(0, 10);
         <gggs-empty-state icon="pi pi-file-edit" title="No requisitions here" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
     <gggs-requisition-form [(visible)]="formOpen" (saved)="opened($event)" />
@@ -247,7 +247,7 @@ export class RequisitionsPage {
       <gggs-skeleton [lines]="10" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './recruitment.css',
@@ -397,7 +397,7 @@ export class RequisitionPage {
         <gggs-empty-state icon="pi pi-megaphone" title="No postings yet" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
   `,
@@ -460,7 +460,7 @@ export class PostingsPage {
         <gggs-empty-state icon="pi pi-id-card" title="No candidates found" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
     <gggs-candidate-form [(visible)]="formOpen" (saved)="added($event)" />
@@ -576,7 +576,7 @@ export class CandidatesPage {
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './recruitment.css',
@@ -662,7 +662,7 @@ export class CandidatePage {
         <gggs-empty-state icon="pi pi-comments" title="No interviews in this range" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
   `,
@@ -721,7 +721,7 @@ export class InterviewsPage {
         <gggs-empty-state icon="pi pi-envelope" title="No offers here" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
   `,
@@ -776,7 +776,7 @@ export class OffersPage {
       <gggs-skeleton [lines]="6" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './recruitment.css',
@@ -884,7 +884,7 @@ const blankAgency = (): AgencyInput => ({ name: '', contactName: null, email: nu
       }
     </section>
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="agencyOpen" [title]="agencyId() ? 'Edit agency' : 'Add agency'" [busy]="busy()" [error]="formError()" [saveDisabled]="!agency().name.trim()" (save)="saveAgency()">
@@ -1043,7 +1043,7 @@ export class RecruitmentSettingsPage {
       <gggs-skeleton [lines]="10" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './recruitment.css',

@@ -42,7 +42,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
             <h2 class="xp__heading">{{ handler.title }}</h2>
             <button type="button" class="btn btn--sm" (click)="template(handler)"><i class="pi pi-download" aria-hidden="true"></i> Template</button>
           </div>
-          <table class="hub__columns">
+          <table class="table hub__columns">
             <thead><tr><th>Column</th><th>Required</th><th>Example</th><th>Meaning</th></tr></thead>
             <tbody>
               @for (column of handler.columns; track column.name) {
@@ -83,7 +83,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
           <p class="muted">Choose what to import.</p>
         }
         @if (error()) {
-          <p class="field__error" role="alert">{{ error() }}</p>
+          <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
         }
       </section>
     </div>
@@ -121,21 +121,10 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
       outline: 1px solid var(--gggs-color-primary);
     }
 
-    .hub__columns {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: var(--gggs-font-size-sm);
-    }
 
-    .hub__columns th,
-    .hub__columns td {
-      text-align: start;
-      padding: var(--gggs-space-1) var(--gggs-space-2);
-      border-block-end: 1px solid var(--gggs-color-border);
-    }
 
     textarea {
-      font-family: var(--gggs-font-mono, monospace);
+      font-family: var(--gggs-font-family-mono, monospace);
     }
 
     @media (max-width: 64rem) {
@@ -144,7 +133,6 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
       }
     }
   `,
-  styleUrl: './xp.css',
 })
 export class ImportsPage {
   private readonly api = inject(DataHubApi);
@@ -281,10 +269,10 @@ export class ImportsPage {
         <p class="muted">Nothing has run yet.</p>
       }
       @if (notice()) {
-        <p class="xp__notice" role="status">{{ notice() }}</p>
+        <p class="alert alert--success" role="status">{{ notice() }}</p>
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -327,7 +315,6 @@ export class ImportsPage {
       </div>
     </gggs-form-dialog>
   `,
-  styleUrl: './xp.css',
 })
 export class IntegrationsPage {
   private readonly api = inject(DataHubApi);

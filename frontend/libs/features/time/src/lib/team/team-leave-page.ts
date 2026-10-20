@@ -56,7 +56,7 @@ interface CalendarDay {
         </section>
 
         <section class="panel">
-          <table class="grid">
+          <table class="table grid">
             <thead>
               <tr>
                 <th scope="col">Employee</th>
@@ -140,17 +140,7 @@ interface CalendarDay {
       font-style: italic;
     }
 
-    .grid {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    .grid th,
-    .grid td {
-      padding: var(--gggs-space-2);
-      border-block-end: 1px solid var(--gggs-color-border);
-      text-align: start;
-    }
   `,
 })
 export class TeamLeavePage {

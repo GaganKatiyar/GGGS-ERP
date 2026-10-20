@@ -132,7 +132,7 @@ const blankAsset = (): AssetDetailsInput => ({
         }
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -221,7 +221,6 @@ const blankAsset = (): AssetDetailsInput => ({
       </div>
     </gggs-form-dialog>
   `,
-  styleUrl: './xp.css',
 })
 export class AssetsPage {
   private readonly api = inject(AssetsApi);
@@ -408,7 +407,7 @@ export class AssetsPage {
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="dialogOpen" [title]="dialogTitle()" [busy]="busy()" [error]="formError()" [saveDisabled]="action() === 'assign' && !employeeId()" (save)="act()">
@@ -444,7 +443,6 @@ export class AssetsPage {
       </div>
     </gggs-form-dialog>
   `,
-  styleUrl: './xp.css',
 })
 export class AssetPage {
   private readonly api = inject(AssetsApi);
@@ -549,7 +547,7 @@ export class AssetPage {
         <p class="muted">No requests.</p>
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -571,7 +569,6 @@ export class AssetPage {
       </div>
     </gggs-form-dialog>
   `,
-  styleUrl: './xp.css',
 })
 export class MyAssetsPage {
   private readonly api = inject(AssetsApi);

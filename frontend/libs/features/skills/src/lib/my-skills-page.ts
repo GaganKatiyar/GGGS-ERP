@@ -84,7 +84,7 @@ interface CertificationForm {
       <gggs-skeleton [lines]="6" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="skillOpen" [title]="skillForm().skillId && editingSkill() ? 'Edit skill' : 'Add skill'" [busy]="busy()" [error]="formError()" [saveDisabled]="!skillForm().skillId" (save)="saveSkill()">
@@ -198,7 +198,7 @@ interface CertificationForm {
     }
 
     .my-skills__expired {
-      color: var(--gggs-color-danger, #dc2626);
+      color: var(--gggs-color-danger);
     }
 
     .my-skills__flag {

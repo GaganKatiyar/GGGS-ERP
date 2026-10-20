@@ -48,7 +48,7 @@ import { ApiError } from '@gggs/core/http';
       width: min(24rem, 100%);
       padding: 1.5rem;
       border-radius: var(--gggs-radius-lg, 0.75rem);
-      background: var(--gggs-color-surface-raised, #fff);
+      background: var(--gggs-color-surface-raised);
       box-shadow: var(--gggs-shadow-md, none);
     }
     .step-up__title {
@@ -60,7 +60,7 @@ import { ApiError } from '@gggs/core/http';
       margin: 0;
     }
     .step-up__error {
-      color: var(--gggs-color-danger, #b3261e);
+      color: var(--gggs-color-danger);
     }
     .step-up__switch {
       justify-self: start;

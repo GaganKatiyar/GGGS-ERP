@@ -72,7 +72,7 @@ const blankCourse = (): CourseInput => ({
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './learning.css',
@@ -144,10 +144,10 @@ export class LearningDashboardPage {
         }
       }
       @if (notice()) {
-        <p class="lms__notice" role="status">{{ notice() }}</p>
+        <p class="alert alert--success" role="status">{{ notice() }}</p>
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -403,7 +403,7 @@ export class CoursesPage {
         <gggs-empty-state icon="pi pi-list" title="No enrollments here" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
   `,
@@ -455,7 +455,7 @@ export class EnrollmentsPage {
         <gggs-empty-state icon="pi pi-verified" title="No certificates" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
   `,
@@ -577,7 +577,7 @@ export class CertificatesPage {
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
     <gggs-form-dialog [(visible)]="completeOpen" [title]="'Complete · ' + (completing()?.courseTitle ?? '')" saveLabel="Mark complete" [busy]="busy()" [error]="formError()" (save)="complete()">
       <label class="field">

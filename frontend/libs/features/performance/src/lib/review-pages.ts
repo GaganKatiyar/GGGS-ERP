@@ -69,7 +69,7 @@ const blankCycle = (): ReviewCycleInput => ({
         <gggs-empty-state icon="pi pi-chart-line" title="No review cycles yet" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
     <gggs-form-dialog [(visible)]="dialogOpen" title="New review cycle" saveLabel="Create" [busy]="busy()" [error]="formError()" [saveDisabled]="!form().name.trim()" (save)="create()" size="lg">
@@ -232,7 +232,7 @@ export class CyclesPage {
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './performance.css',
@@ -535,7 +535,7 @@ export class ReviewForm {
       <gggs-skeleton [lines]="12" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './performance.css',
@@ -722,7 +722,7 @@ export class PipFields {
         <gggs-empty-state icon="pi pi-flag" title="No improvement plans" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
     <gggs-form-dialog [(visible)]="dialogOpen" title="New improvement plan" saveLabel="Create draft" [busy]="busy()" [error]="formError()" [saveDisabled]="!employeeId() || !form().reason.trim()" (save)="create()" size="lg">
@@ -859,7 +859,7 @@ export class PipsPage {
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './performance.css',

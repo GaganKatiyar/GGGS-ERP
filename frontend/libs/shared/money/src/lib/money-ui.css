@@ -24,17 +24,7 @@ a.money-row:hover {
   background: var(--gggs-color-surface-hover, transparent);
 }
 
-.money-table {
-  width: 100%;
-  border-collapse: collapse;
-}
 
-.money-table th,
-.money-table td {
-  padding: var(--gggs-space-1) var(--gggs-space-2);
-  border-block-end: 1px solid var(--gggs-color-border);
-  text-align: start;
-}
 
 .money-num {
   text-align: end;
@@ -64,7 +54,7 @@ a.money-row:hover {
   height: 1.4rem;
   margin-left: -0.7rem;
   border-radius: 50%;
-  border: 3px solid var(--gggs-color-surface, #fff);
+  border: 3px solid var(--gggs-color-surface);
   background: var(--gggs-color-primary);
   box-shadow: 0 0 0 1px var(--gggs-color-primary);
 }
@@ -85,7 +75,7 @@ a.money-row:hover {
   padding: var(--gggs-space-4);
   border: 1px solid var(--gggs-color-border);
   border-radius: var(--gggs-radius-md);
-  background: var(--gggs-color-surface, #fff);
+  background: var(--gggs-color-surface);
 }
 
 .slip__head {
@@ -138,17 +128,7 @@ a.money-row:hover {
   gap: var(--gggs-space-4);
 }
 
-.slip__table {
-  width: 100%;
-  border-collapse: collapse;
-}
 
-.slip__table th,
-.slip__table td {
-  padding: var(--gggs-space-1) 0;
-  border-block-end: 1px solid var(--gggs-color-border);
-  text-align: start;
-}
 
 .slip__table tfoot th,
 .slip__table tfoot td {

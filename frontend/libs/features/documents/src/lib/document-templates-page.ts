@@ -45,7 +45,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs
       </div>
     }
     @if (listError()) {
-      <p class="field__error" role="alert">{{ listError() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ listError() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="editOpen" [title]="editing() ? 'Edit template' : 'Add template'" size="lg" [busy]="busy()" [error]="error()" (save)="save()">
@@ -112,7 +112,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs
     }
 
     .templates__body {
-      font-family: var(--gggs-font-mono, monospace);
+      font-family: var(--gggs-font-family-mono, monospace);
     }
   `,
 })

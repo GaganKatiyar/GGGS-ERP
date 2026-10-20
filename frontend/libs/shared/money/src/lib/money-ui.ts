@@ -67,7 +67,7 @@ const message = (error: unknown, fallback: string) => (error instanceof Error &&
         </dl>
 
         <div class="slip__columns">
-          <table class="slip__table">
+          <table class="table slip__table">
             <thead>
               <tr><th scope="col">Earnings</th><th scope="col" class="slip__num">Amount</th></tr>
             </thead>
@@ -83,7 +83,7 @@ const message = (error: unknown, fallback: string) => (error instanceof Error &&
               <tr><th scope="row">Gross</th><td class="slip__num">{{ d.gross | gggsMoney: d.currency }}</td></tr>
             </tfoot>
           </table>
-          <table class="slip__table">
+          <table class="table slip__table">
             <thead>
               <tr><th scope="col">Deductions</th><th scope="col" class="slip__num">Amount</th></tr>
             </thead>
@@ -156,7 +156,7 @@ export class PayslipDocumentView {
               <gggs-kpi-card label="Gratuity earned" [value]="gratuity.amount | gggsMoney" [hint]="(gratuity.yearsOfService | number: '1.0-1') + ' yrs' + (gratuity.eligible ? '' : ' · from 5 yrs')" />
             }
           </div>
-          <table class="money-table">
+          <table class="table money-table">
             <thead><tr><th scope="col">Component</th><th scope="col" class="money-num">Monthly</th><th scope="col" class="money-num">Annual</th></tr></thead>
             <tbody>
               @for (line of s.breakdown?.lines ?? []; track line.code) {
@@ -190,7 +190,7 @@ export class PayslipDocumentView {
       }
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './money-ui.css',
@@ -256,7 +256,7 @@ export class EmployeePayroll {
         }
 
         @if (r.salaryLines.length) {
-          <table class="money-table">
+          <table class="table money-table">
             <thead><tr><th scope="col">Salary component</th><th scope="col" class="money-num">Monthly</th><th scope="col" class="money-num">Annual</th></tr></thead>
             <tbody>
               @for (line of r.salaryLines; track line.code) {
@@ -336,7 +336,7 @@ export class TotalRewardsView {
   template: `
     <gggs-total-rewards [rewards]="rewards()" />
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
 })
@@ -376,7 +376,7 @@ export class EmployeeCompensation {
         <gggs-empty-state icon="pi pi-heart" title="Not enrolled in any plan" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </div>
   `,

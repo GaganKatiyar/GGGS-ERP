@@ -64,7 +64,7 @@ type FlagRule = 'enforceWeeklyMinimum' | 'allowWeekendEntries' | 'allowHolidayEn
       <p class="ts-set__saved" role="status">{{ saved() }}</p>
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styles: `

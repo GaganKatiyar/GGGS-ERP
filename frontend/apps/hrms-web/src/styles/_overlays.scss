@@ -74,3 +74,25 @@
 .p-component {
   font-family: var(--gggs-font-family);
 }
+
+/* PrimeNG buttons (gggs-button) sized like the native .btn, so the two never sit side by side mismatched. */
+.p-button {
+  gap: var(--gggs-space-2);
+  min-height: var(--gggs-control-height-md);
+  padding-block: 0;
+  padding-inline: var(--gggs-space-4);
+  border-radius: var(--gggs-radius-sm);
+  font-size: var(--gggs-font-size-base);
+  font-weight: var(--gggs-font-weight-medium);
+
+  &.p-button-sm {
+    min-height: var(--gggs-control-height-sm);
+    padding-inline: var(--gggs-space-3);
+    font-size: var(--gggs-font-size-sm);
+  }
+
+  &.p-button-icon-only {
+    width: var(--gggs-control-height-md);
+    padding: 0;
+  }
+}

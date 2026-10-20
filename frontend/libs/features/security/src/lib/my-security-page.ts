@@ -17,7 +17,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
   template: `
     <gggs-page-header title="Sign-in security" subtitle="Protect your account with an authenticator app" />
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     @if (status(); as s) {
@@ -99,7 +99,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
     .sec__warn {
       display: flex;
       gap: var(--gggs-space-2);
-      color: var(--gggs-color-danger, #b91c1c);
+      color: var(--gggs-color-danger);
     }
     .sec__steps {
       padding-inline-start: 1.25rem;

@@ -115,11 +115,11 @@ a.car__row:hover {
 .car__box--9,
 .car__box--8,
 .car__box--6 {
-  background: color-mix(in srgb, var(--gggs-color-success, #0e9f6e) 12%, transparent);
+  background: color-mix(in srgb, var(--gggs-color-success) 12%, transparent);
 }
 
 .car__box--1 {
-  background: color-mix(in srgb, var(--gggs-color-danger, #b91c1c) 10%, transparent);
+  background: color-mix(in srgb, var(--gggs-color-danger) 10%, transparent);
 }
 
 .car__box-title {

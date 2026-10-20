@@ -109,7 +109,7 @@ const blankCategory = (): HelpdeskCategoryInput => ({ code: '', name: '', descri
         }
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -144,7 +144,6 @@ const blankCategory = (): HelpdeskCategoryInput => ({ code: '', name: '', descri
       </div>
     </gggs-form-dialog>
   `,
-  styleUrl: './xp.css',
 })
 export class HelpdeskPage {
   private readonly api = inject(HelpdeskApi);
@@ -288,7 +287,7 @@ export class HelpdeskPage {
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="assignOpen" title="Assign ticket" saveLabel="Assign" [busy]="busy()" [error]="formError()" (save)="assign()">
@@ -312,7 +311,6 @@ export class HelpdeskPage {
       </label>
     </gggs-form-dialog>
   `,
-  styleUrl: './xp.css',
 })
 export class TicketPage {
   private readonly api = inject(HelpdeskApi);
@@ -444,7 +442,7 @@ export class TicketPage {
         <gggs-empty-state icon="pi pi-book" title="No articles found" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -492,7 +490,6 @@ export class TicketPage {
       </div>
     </gggs-form-dialog>
   `,
-  styleUrl: './xp.css',
 })
 export class KnowledgePage {
   private readonly api = inject(HelpdeskApi);
@@ -593,7 +590,7 @@ export class KnowledgePage {
         <gggs-empty-state icon="pi pi-question-circle" title="No tickets" description="Raise one when you need help." />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -635,7 +632,6 @@ export class KnowledgePage {
       </div>
     </gggs-form-dialog>
   `,
-  styleUrl: './xp.css',
 })
 export class MyTicketsPage {
   private readonly api = inject(HelpdeskApi);

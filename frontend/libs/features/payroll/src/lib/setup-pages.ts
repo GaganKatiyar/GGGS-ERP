@@ -100,7 +100,7 @@ const blankComponent = (): ComponentInput => ({
             </label>
           </div>
           @if (previewed(); as p) {
-            <table class="pay__table">
+            <table class="table pay__table">
               <thead><tr><th scope="col">Component</th><th scope="col" class="pay__num">Monthly</th><th scope="col" class="pay__num">Annual</th></tr></thead>
               <tbody>
                 @for (line of p.lines; track line.code) {
@@ -112,7 +112,7 @@ const blankComponent = (): ComponentInput => ({
               </tfoot>
             </table>
             @for (issue of p.issues; track issue) {
-              <p class="pay__warning">{{ issue }}</p>
+              <p class="alert alert--warning">{{ issue }}</p>
             }
           } @else {
             <p class="muted">Choose a structure and a CTC to see the monthly breakdown, statutory deductions and take-home.</p>
@@ -121,7 +121,7 @@ const blankComponent = (): ComponentInput => ({
       </div>
     } @else {
       <section class="panel pay__scroll">
-        <table class="pay__table">
+        <table class="table pay__table">
           <thead>
             <tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Kind</th><th scope="col">Calculation</th><th scope="col">Counts towards</th><th scope="col">Status</th><th scope="col"><span class="muted">Actions</span></th></tr>
           </thead>
@@ -149,7 +149,7 @@ const blankComponent = (): ComponentInput => ({
       </section>
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="structureOpen" [title]="editingStructure() ? 'Edit structure' : 'New structure'" [busy]="busy()" [error]="formError()" [saveDisabled]="!structureName().trim() || !lines().length" (save)="saveStructure()" size="lg">
@@ -169,7 +169,7 @@ const blankComponent = (): ComponentInput => ({
         <span class="field__label">Description</span>
         <input type="text" maxlength="500" [value]="structureDescription()" (input)="structureDescription.set($any($event.target).value)" />
       </label>
-      <table class="pay__table">
+      <table class="table pay__table">
         <thead><tr><th scope="col">Component</th><th scope="col">Calculated</th><th scope="col"><span class="muted">Remove</span></th></tr></thead>
         <tbody>
           @for (line of lines(); track line.componentId; let index = $index) {
@@ -613,10 +613,10 @@ export class SalaryStructuresPage {
       <gggs-skeleton [lines]="6" />
     }
     @if (saved()) {
-      <p class="pay__notice" role="status">Settings saved.</p>
+      <p class="alert alert--success" role="status">Settings saved.</p>
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './payroll.css',

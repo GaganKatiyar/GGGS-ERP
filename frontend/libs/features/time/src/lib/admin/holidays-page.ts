@@ -75,7 +75,7 @@ import { EmptyState, FormDialog, PageHeader } from '@gggs/shared/ui';
           <gggs-empty-state title="No calendar yet" />
         }
         @if (error()) {
-          <p class="field__error" role="alert">{{ error() }}</p>
+          <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
         }
       </section>
     </div>

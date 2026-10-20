@@ -49,7 +49,7 @@ const iso = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-$
         }
       </div>
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
   `,
@@ -129,28 +129,28 @@ const iso = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-$
     }
 
     [data-kind='Milestone'] {
-      background: #fde68a;
-      color: #78350f;
+      background: var(--gggs-color-warning-subtle);
+      color: var(--gggs-color-warning-strong);
     }
 
     [data-kind='Sprint'] {
-      background: #ddd6fe;
-      color: #4c1d95;
+      background: var(--gggs-color-accent-subtle);
+      color: var(--gggs-color-accent);
     }
 
     [data-kind='Meeting'] {
-      background: #bfdbfe;
-      color: #1e3a8a;
+      background: var(--gggs-color-info-subtle);
+      color: var(--gggs-color-info);
     }
 
     [data-kind='Phase'] {
-      background: #d1fae5;
-      color: #065f46;
+      background: var(--gggs-color-success-subtle);
+      color: var(--gggs-color-success);
     }
 
     [data-kind='Task'] {
-      background: #f1f5f9;
-      color: #334155;
+      background: var(--gggs-color-surface-sunken);
+      color: var(--gggs-color-text-muted);
     }
 
     .cal__more {

@@ -57,7 +57,7 @@ const blank = (text: string | null | undefined) => (text?.trim() ? text.trim() :
         }
       </section>
       @if (listError()) {
-        <p class="field__error" role="alert">{{ listError() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ listError() }}</span></p>
       }
     </div>
 

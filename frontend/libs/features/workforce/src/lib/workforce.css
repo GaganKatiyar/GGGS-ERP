@@ -63,7 +63,7 @@
 }
 
 .wfp__short {
-  color: var(--gggs-color-danger, #b91c1c);
+  color: var(--gggs-color-danger);
   font-weight: var(--gggs-font-weight-semibold);
 }
 
@@ -72,11 +72,11 @@
   gap: var(--gggs-space-2);
   align-items: center;
   margin-block: var(--gggs-space-3);
-  border-inline-start: 4px solid var(--gggs-color-success, #0e9f6e);
+  border-inline-start: 4px solid var(--gggs-color-success);
 }
 
 .wfp__fit--over {
-  border-inline-start-color: var(--gggs-color-warning, #d97706);
+  border-inline-start-color: var(--gggs-color-warning);
 }
 
 .wfp__facts {

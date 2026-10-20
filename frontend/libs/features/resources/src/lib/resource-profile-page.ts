@@ -124,10 +124,10 @@ interface RatesForm {
       <gggs-skeleton [lines]="8" />
     }
     @if (notice()) {
-      <p class="res__notice" role="status">{{ notice() }}</p>
+      <p class="alert alert--success" role="status">{{ notice() }}</p>
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-allocate-dialog [(visible)]="allocateOpen" [employeeId]="employeeId()" (allocated)="allocated($event)" />

@@ -31,7 +31,7 @@ import { AdminApi } from '@gggs/shared/identity';
         @if (role.permissions.length === 0) {
           <gggs-empty-state title="No permissions granted yet" />
         } @else {
-          <table class="list-table">
+          <table class="table list-table">
             <thead>
               <tr>
                 <th scope="col">Permission</th>
@@ -92,7 +92,7 @@ import { AdminApi } from '@gggs/shared/identity';
           </label>
 
           @if (errorMessage()) {
-            <p class="field__error" role="alert">{{ errorMessage() }}</p>
+            <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ errorMessage() }}</span></p>
           }
 
           <button type="submit" class="btn btn--primary" [disabled]="isActing()">
@@ -108,9 +108,9 @@ import { AdminApi } from '@gggs/shared/identity';
     .panel {
       padding: 1rem;
       margin-block-end: 1rem;
-      border: 1px solid var(--gggs-color-border, #e2e5ea);
+      border: 1px solid var(--gggs-color-border);
       border-radius: 0.5rem;
-      background: var(--gggs-color-surface-raised, #ffffff);
+      background: var(--gggs-color-surface-raised);
     }
 
     .panel__heading {
@@ -118,17 +118,7 @@ import { AdminApi } from '@gggs/shared/identity';
       font-size: 1rem;
     }
 
-    .list-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    .list-table th,
-    .list-table td {
-      padding: 0.5rem 0.75rem;
-      text-align: left;
-      border-bottom: 1px solid var(--gggs-color-border, #e2e5ea);
-    }
 
     .grant-form {
       display: flex;
@@ -152,7 +142,7 @@ import { AdminApi } from '@gggs/shared/identity';
     .field__error {
       flex-basis: 100%;
       margin: 0;
-      color: var(--gggs-color-danger, #b3261e);
+      color: var(--gggs-color-danger);
       font-size: 0.875rem;
     }
 
@@ -164,22 +154,22 @@ import { AdminApi } from '@gggs/shared/identity';
       font-family: inherit;
       font-size: inherit;
       border-radius: 0.375rem;
-      border: 1px solid var(--gggs-color-border, #e2e5ea);
-      background: var(--gggs-color-surface-raised, #ffffff);
+      border: 1px solid var(--gggs-color-border);
+      background: var(--gggs-color-surface-raised);
       text-decoration: none;
       color: inherit;
       cursor: pointer;
     }
 
     .btn--primary {
-      background: var(--gggs-color-primary, #1d4ed8);
+      background: var(--gggs-color-primary);
       border-color: transparent;
-      color: #fff;
+      color: var(--gggs-color-primary-contrast);
     }
 
     .btn--danger {
-      border-color: var(--gggs-color-danger, #b3261e);
-      color: var(--gggs-color-danger, #b3261e);
+      border-color: var(--gggs-color-danger);
+      color: var(--gggs-color-danger);
       font-size: 0.8125rem;
       padding: 0.375rem 0.75rem;
     }

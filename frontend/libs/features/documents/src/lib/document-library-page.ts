@@ -44,7 +44,7 @@ import { EmptyState, PageHeader, StatusBadge } from '@gggs/shared/ui';
           @if (expiring().length === 0) {
             <p class="muted">Nothing is about to expire.</p>
           } @else {
-            <table class="library__table">
+            <table class="table library__table">
               <thead>
                 <tr>
                   <th scope="col">Document</th>
@@ -91,17 +91,7 @@ import { EmptyState, PageHeader, StatusBadge } from '@gggs/shared/ui';
       font-size: var(--gggs-font-size-md);
     }
 
-    .library__table {
-      width: 100%;
-      border-collapse: collapse;
-    }
 
-    .library__table th,
-    .library__table td {
-      padding: var(--gggs-space-2);
-      border-block-end: 1px solid var(--gggs-color-border);
-      text-align: start;
-    }
 
     .library__hidden {
       position: absolute;

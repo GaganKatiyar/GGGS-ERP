@@ -26,8 +26,8 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   styles: `
     .card {
       display: block;
-      background: var(--gggs-color-surface-raised, #ffffff);
-      border: 1px solid var(--gggs-color-border, #e2e5ea);
+      background: var(--gggs-color-surface-raised);
+      border: 1px solid var(--gggs-color-border);
       border-radius: var(--gggs-radius-lg, 0.75rem);
       box-shadow: var(--gggs-shadow-sm, none);
     }

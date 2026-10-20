@@ -55,17 +55,17 @@ import {
     .form-field__label {
       font-weight: var(--gggs-font-weight-semibold, 600);
       font-size: var(--gggs-font-size-base, 0.875rem);
-      color: var(--gggs-color-text, #1f2430);
+      color: var(--gggs-color-text);
     }
 
     .form-field__hint {
       font-size: var(--gggs-font-size-xs, 0.75rem);
-      color: var(--gggs-color-text-muted, #5b6472);
+      color: var(--gggs-color-text-muted);
     }
 
     .form-field__error {
       font-size: var(--gggs-font-size-xs, 0.75rem);
-      color: var(--gggs-color-danger, #b3261e);
+      color: var(--gggs-color-danger);
     }
 
     /*
@@ -77,9 +77,9 @@ import {
     .form-field ::ng-deep > select,
     .form-field ::ng-deep > textarea {
       font: inherit;
-      color: var(--gggs-color-text, #1f2430);
-      background: var(--gggs-color-surface-raised, #ffffff);
-      border: 1px solid var(--gggs-color-border, #e2e5ea);
+      color: var(--gggs-color-text);
+      background: var(--gggs-color-surface-raised);
+      border: 1px solid var(--gggs-color-border);
       border-radius: var(--gggs-radius-sm, 0.375rem);
       padding: var(--gggs-space-2, 0.5rem) var(--gggs-space-3, 0.75rem);
     }
@@ -87,7 +87,7 @@ import {
     .form-field ::ng-deep > input:focus-visible,
     .form-field ::ng-deep > select:focus-visible,
     .form-field ::ng-deep > textarea:focus-visible {
-      outline: 2px solid var(--gggs-color-primary, #1d4ed8);
+      outline: 2px solid var(--gggs-color-primary);
       outline-offset: 1px;
     }
   `,

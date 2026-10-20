@@ -81,11 +81,11 @@ button.ben__row:hover {
 }
 
 .ben__danger {
-  color: var(--gggs-color-danger, #dc2626);
+  color: var(--gggs-color-danger);
 }
 
 .ben__warning {
-  color: var(--gggs-color-warning, #b45309);
+  color: var(--gggs-color-warning);
 }
 
 .ben__check {

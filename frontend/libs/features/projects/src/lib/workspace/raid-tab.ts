@@ -42,7 +42,7 @@ import { EmptyState, FormDialog, StatusBadge, Tabs, type TabItem } from '@gggs/s
         <gggs-empty-state icon="pi pi-exclamation-triangle" [title]="'No ' + kindLabel(kind()).toLowerCase() + 's logged'" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -165,12 +165,12 @@ import { EmptyState, FormDialog, StatusBadge, Tabs, type TabItem } from '@gggs/s
     }
 
     .raid__score--mid {
-      color: var(--gggs-color-warning, #d97706);
+      color: var(--gggs-color-warning);
     }
 
     .raid__score--high,
     .raid__late {
-      color: var(--gggs-color-danger, #dc2626);
+      color: var(--gggs-color-danger);
     }
   `,
 })

@@ -60,7 +60,7 @@ const ICONS: Record<string, string> = {
       </section>
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styles: `
@@ -74,7 +74,6 @@ const ICONS: Record<string, string> = {
       color: var(--gggs-color-primary);
     }
   `,
-  styleUrl: './xp.css',
 })
 export class AnalyticsHomePage {
   private readonly api = inject(AnalyticsApi);
@@ -146,7 +145,7 @@ export class AnalyticsHomePage {
       <gggs-skeleton [lines]="10" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styles: `
@@ -175,7 +174,6 @@ export class AnalyticsHomePage {
       }
     }
   `,
-  styleUrl: './xp.css',
 })
 export class DashboardViewPage {
   private readonly api = inject(AnalyticsApi);

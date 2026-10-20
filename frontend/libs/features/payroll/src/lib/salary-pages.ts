@@ -40,7 +40,7 @@ import { message } from './payroll-shared';
         <button type="button" class="btn" (click)="more()">Show more</button>
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
   `,
@@ -102,10 +102,10 @@ export class SalariesPage {
       <gggs-skeleton [lines]="8" />
     }
     @if (notice()) {
-      <p class="pay__notice" role="status">{{ notice() }}</p>
+      <p class="alert alert--success" role="status">{{ notice() }}</p>
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="assignOpen" title="Salary" saveLabel="Save salary" [busy]="busy()" [error]="formError()" [saveDisabled]="!structureId() || ctc() <= 0 || !effectiveFrom()" (save)="assign()" size="lg">
@@ -147,7 +147,7 @@ export class SalariesPage {
         <input type="text" maxlength="500" [value]="notes()" (input)="notes.set($any($event.target).value)" />
       </label>
       @if (previewed(); as p) {
-        <table class="pay__table">
+        <table class="table pay__table">
           <thead><tr><th scope="col">Component</th><th scope="col" class="pay__num">Monthly</th><th scope="col" class="pay__num">Annual</th></tr></thead>
           <tbody>
             @for (line of p.lines; track line.code) {
@@ -159,7 +159,7 @@ export class SalariesPage {
           </tfoot>
         </table>
         @for (issue of p.issues; track issue) {
-          <p class="pay__warning">{{ issue }}</p>
+          <p class="alert alert--warning">{{ issue }}</p>
         }
         @if (p.tax; as tax) {
           <p class="muted">TDS estimate: {{ tax.annualTax | gggsMoney }} a year on taxable income of {{ tax.taxableIncome | gggsMoney }} ({{ tax.regime }} regime, {{ tax.monthsRemaining | number }} months left).</p>

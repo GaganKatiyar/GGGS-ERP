@@ -30,7 +30,7 @@ import { AttendanceApi, LeaveApi, addDays, todayIso } from './time-apis';
         <gggs-empty-state icon="pi pi-clock" title="No attendance in the last thirty days" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </div>
   `,
@@ -112,7 +112,7 @@ export class EmployeeAttendance {
         <gggs-empty-state icon="pi pi-calendar" title="No leave requested this year" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </div>
   `,

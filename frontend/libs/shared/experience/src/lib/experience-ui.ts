@@ -43,7 +43,7 @@ const ROW = `
         <gggs-empty-state icon="pi pi-star" title="No recognition yet" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </div>
   `,
@@ -85,7 +85,7 @@ export class EmployeeRewards {
         <gggs-empty-state icon="pi pi-desktop" title="No assets held" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </div>
   `,
@@ -127,7 +127,7 @@ export class EmployeeAssets {
         <gggs-empty-state icon="pi pi-receipt" title="No expense claims" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </div>
   `,
@@ -169,7 +169,7 @@ export class EmployeeExpenses {
         <gggs-empty-state icon="pi pi-question-circle" title="No tickets" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </div>
   `,

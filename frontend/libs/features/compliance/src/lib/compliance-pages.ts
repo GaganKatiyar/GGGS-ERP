@@ -90,7 +90,7 @@ const TEMPLATES: Readonly<Record<StatutoryRuleType, unknown>> = {
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
   styleUrl: './compliance.css',
@@ -159,7 +159,7 @@ export class ComplianceDashboardPage {
         <gggs-empty-state icon="pi pi-shield" title="No rules" />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -503,7 +503,7 @@ export class StatutoryRulesPage {
       </section>
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="fileOpen" [title]="'Record filing · ' + (target()?.name ?? '')" saveLabel="Record" [busy]="busy()" [error]="formError()" [saveDisabled]="!filedOn()" (save)="file()">
@@ -810,7 +810,7 @@ const blankRegistration = (): RegistrationInput => ({
         <gggs-empty-state icon="pi pi-verified" title="Nothing recorded yet" description="Add your shops and establishments registration, PF and ESI codes, licences and certificates." />
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 

@@ -57,7 +57,6 @@ const blankInterview = (): ExitInterviewInput => ({ primaryReason: EXIT_REASONS[
       </label>
     </div>
   `,
-  styleUrl: './xp.css',
 })
 export class ExitInterviewForm {
   /** Edited in place; the parent sends it when saving. */
@@ -157,7 +156,7 @@ export class ExitInterviewForm {
         }
       }
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
@@ -178,7 +177,6 @@ export class ExitInterviewForm {
       </div>
     </gggs-form-dialog>
   `,
-  styleUrl: './xp.css',
 })
 export class SeparationPage {
   private readonly api = inject(SeparationApi);
@@ -366,7 +364,7 @@ export class SeparationPage {
       <gggs-skeleton [lines]="8" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
     <gggs-form-dialog [(visible)]="termsOpen" title="Separation terms" [busy]="busy()" [error]="formError()" (save)="saveTerms()">
@@ -410,7 +408,6 @@ export class SeparationPage {
       <label class="field"><span class="field__label">Payment reference</span><input type="text" maxlength="100" [value]="payReference()" (input)="payReference.set($any($event.target).value)" /></label>
     </gggs-form-dialog>
   `,
-  styleUrl: './xp.css',
 })
 export class SeparationCasePage {
   private readonly api = inject(SeparationApi);
@@ -572,11 +569,10 @@ export class SeparationCasePage {
       }
       <a routerLink="/separation" class="btn btn--link">All separations</a>
       @if (error()) {
-        <p class="field__error" role="alert">{{ error() }}</p>
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
   `,
-  styleUrl: './xp.css',
 })
 export class ClearancePage {
   private readonly api = inject(SeparationApi);
@@ -673,10 +669,9 @@ export class ClearancePage {
       <gggs-skeleton [lines]="6" />
     }
     @if (error()) {
-      <p class="field__error" role="alert">{{ error() }}</p>
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
-  styleUrl: './xp.css',
 })
 export class MySeparationPage {
   private readonly api = inject(SeparationApi);
