@@ -47,7 +47,8 @@ public static class UserPrincipalFactory
         Guid sessionId,
         DateTimeOffset authenticatedAt,
         bool mfaSatisfied,
-        string authenticationScheme)
+        string authenticationScheme,
+        string authenticationMethod = AuthenticationMethods.Password)
     {
         ArgumentNullException.ThrowIfNull(user);
 
@@ -87,7 +88,7 @@ public static class UserPrincipalFactory
             claims.Add(new Claim(GggsClaims.EmployeeId, user.EmployeeId.Value.ToString()));
         }
 
-        claims.Add(new Claim("amr", AuthenticationMethods.Password));
+        claims.Add(new Claim("amr", authenticationMethod));
 
         if (mfaSatisfied)
         {

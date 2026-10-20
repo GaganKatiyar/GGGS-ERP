@@ -44,6 +44,9 @@ public sealed class IdentityModule : IModule
 
         services.AddScoped<SignInService>();
         services.AddScoped<PasswordSignInService>();
+        services.AddScoped<MfaService>();
+        services.AddScoped<SsoService>();
+        services.AddHttpClient(SsoService.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(15));
         services.AddScoped<PrincipalRevalidator>();
         services.AddScoped<TenantDiscoveryService>();
         services.AddScoped<ITenantDomainResolver, PlatformTenantDomainResolver>();
@@ -113,6 +116,8 @@ public sealed class IdentityModule : IModule
         endpoints.MapBrowserSessionEndpoints();
         endpoints.MapTokenEndpoints();
         endpoints.MapMeEndpoints();
+        endpoints.MapMfaEndpoints();
+        endpoints.MapSsoEndpoints();
         endpoints.MapUserEndpoints();
         endpoints.MapRoleEndpoints();
         endpoints.MapTenantBootstrapEndpoints();

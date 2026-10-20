@@ -12,6 +12,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Web\Gggs.BuildingBlocks.Web.csproj" />
     <ProjectReference Include="..\..\..\Data\Gggs.Data\Gggs.Data.csproj" />
+    <ProjectReference Include="..\..\Ai\Gggs.Modules.Ai.Contracts\Gggs.Modules.Ai.Contracts.csproj" />
     <ProjectReference Include="..\..\Insight\Gggs.Modules.Insight.Contracts\Gggs.Modules.Insight.Contracts.csproj" />
     <ProjectReference Include="..\..\MasterData\Gggs.Modules.MasterData.Contracts\Gggs.Modules.MasterData.Contracts.csproj" />
     <ProjectReference Include="..\..\Organization\Gggs.Modules.Organization.Contracts\Gggs.Modules.Organization.Contracts.csproj" />

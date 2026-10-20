@@ -88,7 +88,8 @@ public static class UserEndpoints
         endpoints.MapPost("/api/v1/auth/complete-invitation", CompleteInvitationAsync)
             .WithName("CompleteInvitation")
             .WithTags("Authentication")
-            .AllowAnonymous();
+            .AllowAnonymous()
+            .RequireRateLimiting(RateLimitPolicies.SignIn);
 
         return endpoints;
     }

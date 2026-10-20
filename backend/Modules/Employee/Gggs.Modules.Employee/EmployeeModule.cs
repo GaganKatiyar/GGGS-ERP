@@ -1,4 +1,5 @@
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Ai.Contracts;
 using Gggs.Modules.Employee.Application;
 using Gggs.Modules.Employee.Contracts;
 using Gggs.Modules.Employee.Endpoints;
@@ -14,6 +15,7 @@ public sealed class EmployeeModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IAiTool, GetEmployeeTool>();
         services.AddScoped<IEmployeeDirectory, EmployeeDirectory>();
         services.AddScoped<IEmployeePayrollDetails, EmployeePayrollDetails>();
         services.AddScoped<IEmployeeHiring, EmployeeHiring>();

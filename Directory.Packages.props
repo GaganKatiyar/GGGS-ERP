@@ -78,6 +78,7 @@
       advisory (GHSA-5crp-9r3c-p9vr). Central transitive pinning forces it forward for every project.
     -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageVersion Include="Anthropic" Version="12.53.0" />
   </ItemGroup>
 
   <ItemGroup Label="Testing">

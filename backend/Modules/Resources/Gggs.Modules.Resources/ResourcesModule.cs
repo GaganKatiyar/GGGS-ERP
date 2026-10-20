@@ -1,5 +1,6 @@
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Ai.Contracts;
 using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Resources.Application;
 using Gggs.Modules.Resources.Endpoints;
@@ -14,6 +15,7 @@ public sealed class ResourcesModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IAiTool, AvailablePeopleTool>();
         services.AddScoped<IMetricSource, ResourceMetrics>();
         services.AddScoped<WorkingCalendar>();
         services.AddScoped<ResourceService>();

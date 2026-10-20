@@ -14,6 +14,7 @@ using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web.Modules;
 using Gggs.Composition;
 using Gggs.Data;
+using Gggs.Modules.Ai.Application;
 using Gggs.Modules.Documents.Application;
 using Gggs.Modules.Identity.Application.Authentication;
 using Gggs.Modules.Identity.Domain.Roles;
@@ -184,6 +185,12 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
     /// until nothing is left, so events raised by consumers are delivered too. Tests that never
     /// deliver leave a backlog for the next one, so the cap is a runaway guard, not a batch count.
     /// </summary>
+    /// <summary>The model behind the assistants in this test run.</summary>
+    public ScriptedLlmClient Llm { get; } = new();
+
+    /// <summary>The organisation's identity provider, for single sign-on tests.</summary>
+    public FakeOidcProvider Oidc { get; } = new();
+
     public async Task DeliverEventsAsync()
     {
         OutboxDispatcher<AppDbContext> dispatcher = Worker.GetRequiredService<OutboxDispatcher<AppDbContext>>();
@@ -415,6 +422,10 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
                 ["Gggs:Identity:Tokens:Issuer"] = "https://localhost/",
                 ["Gggs:Storage:FileSystem:RootPath"] = FileRoot,
                 ["Gggs:Notifications:EmailProvider"] = "Log",
+
+                // Every test signs in from the same address; the assistant limit stays low enough to test.
+                ["Gggs:RateLimiting:SignInPerMinute"] = "100000",
+                ["Gggs:RateLimiting:AssistantPerMinute"] = "6",
             });
         });
 
@@ -422,6 +433,14 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
         {
             // A workflow subject only the tests start, so approval tests never collide with a module's own.
             services.AddWorkflowSubject(PlatformServicesApi.TestSubjectDefinition);
+
+            // The assistants talk to a scripted model: tests queue its replies and read what it was sent.
+            services.AddSingleton<ILlmClient>(Llm);
+
+            // Single sign-on talks to a fake provider instead of the network.
+            services.AddHttpClient(SsoService.HttpClientName)
+                .ConfigurePrimaryHttpMessageHandler(() => Oidc)
+                .SetHandlerLifetime(Timeout.InfiniteTimeSpan);
 
             services.AddAuthentication()
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
@@ -559,6 +578,7 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             Permissions.Separation.SettlementManage, Permissions.Separation.AlumniView,
             Permissions.Report.View, Permissions.Report.Export, Permissions.Report.ScheduleManage, Permissions.Report.ExecutiveView,
             Permissions.DataHub.ImportRun, Permissions.DataHub.IntegrationView, Permissions.DataHub.IntegrationManage,
+            Permissions.Ai.AssistantUse, Permissions.Ai.UsageView, Permissions.Admin.IdentityProviderManage,
         })
         {
             role.Grant(permission, DataScope.Tenant);

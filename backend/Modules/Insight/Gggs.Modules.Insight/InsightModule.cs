@@ -3,6 +3,7 @@ using Gggs.BuildingBlocks.Jobs;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Ai.Contracts;
 using Gggs.Modules.Insight.Application;
 using Gggs.Modules.Insight.Contracts;
 using Hangfire;
@@ -16,6 +17,9 @@ public sealed class InsightModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IAiTool, GetMetricsTool>();
+        services.AddScoped<IAiTool, SearchDirectoryTool>();
+        services.AddScoped<IAiTool, UpcomingCalendarTool>();
         services.AddScoped<AnalyticsService>();
         services.AddScoped<SearchService>();
         services.AddScoped<CalendarService>();

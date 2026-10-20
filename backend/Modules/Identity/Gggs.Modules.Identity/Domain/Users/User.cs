@@ -111,6 +111,22 @@ public sealed class User : TenantAggregateRoot
 
     public bool MfaEnabled { get; private set; }
 
+    /// <summary>The authenticator secret, encrypted; null until enrolment is confirmed.</summary>
+    public string? MfaSecret { get; private set; }
+
+    /// <summary>A secret being enrolled, encrypted, until the first code confirms it.</summary>
+    public string? MfaPendingSecret { get; private set; }
+
+    /// <summary>Hashes of the unused one-time recovery codes, comma-separated.</summary>
+    public string? MfaRecoveryCodes { get; private set; }
+
+    /// <summary>The last time step a code was accepted for, so a code is never accepted twice.</summary>
+    public long MfaLastStep { get; private set; }
+
+    public DateTime? MfaEnrolledDate { get; private set; }
+
+    public int MfaRecoveryCodesLeft => string.IsNullOrEmpty(MfaRecoveryCodes) ? 0 : MfaRecoveryCodes.Split(',').Length;
+
     /// <summary>
     /// Bumped whenever roles change. Tokens carry it and the permission cache is keyed by it, so a
     /// revoked role takes effect on the next request instead of when the token expires.
@@ -345,9 +361,70 @@ public sealed class User : TenantAggregateRoot
 
     public void SetMfaEnabled(bool enabled)
     {
-        MfaEnabled = enabled;
+        if (!enabled)
+        {
+            DisableMfa();
+            return;
+        }
+
+        Guard.Against(MfaSecret is null, "USER_MFA_NOT_ENROLLED", "Multi-factor sign-in is switched on by enrolling an authenticator app.");
+        MfaEnabled = true;
         RotateSecurityStamp();
     }
+
+    /// <summary>Starts enrolling an authenticator app; the secret is not used until a code confirms it.</summary>
+    public void BeginMfaEnrollment(string encryptedSecret) => MfaPendingSecret = Guard.NotNullOrWhiteSpace(encryptedSecret);
+
+    /// <summary>Confirms enrolment once a code from the app checks out, with fresh recovery codes.</summary>
+    public void ConfirmMfa(long step, IReadOnlyCollection<string> recoveryCodeHashes, DateTime now)
+    {
+        Guard.Against(MfaPendingSecret is null, "USER_MFA_NO_ENROLMENT", "Start enrolment first.");
+        MfaSecret = MfaPendingSecret;
+        MfaPendingSecret = null;
+        MfaLastStep = step;
+        MfaRecoveryCodes = string.Join(',', recoveryCodeHashes);
+        MfaEnrolledDate = now;
+        MfaEnabled = true;
+        RotateSecurityStamp();
+    }
+
+    public void DisableMfa()
+    {
+        MfaEnabled = false;
+        MfaSecret = null;
+        MfaPendingSecret = null;
+        MfaRecoveryCodes = null;
+        MfaEnrolledDate = null;
+        MfaLastStep = 0;
+        RotateSecurityStamp();
+    }
+
+    /// <summary>Records an accepted code's time step; false when that step (or a later one) was already used.</summary>
+    public bool AcceptMfaStep(long step)
+    {
+        if (step <= MfaLastStep)
+        {
+            return false;
+        }
+
+        MfaLastStep = step;
+        return true;
+    }
+
+    /// <summary>Spends a recovery code; false when it is not one of the unused codes.</summary>
+    public bool UseRecoveryCode(string codeHash)
+    {
+        List<string> codes = string.IsNullOrEmpty(MfaRecoveryCodes) ? [] : [.. MfaRecoveryCodes.Split(',')];
+        if (!codes.Remove(codeHash))
+        {
+            return false;
+        }
+
+        MfaRecoveryCodes = string.Join(',', codes);
+        return true;
+    }
+
+    public void ReplaceRecoveryCodes(IReadOnlyCollection<string> recoveryCodeHashes) => MfaRecoveryCodes = string.Join(',', recoveryCodeHashes);
 
     public void LinkToEmployee(Guid employeeId) => EmployeeId = Guard.NotEmpty(employeeId);
 
@@ -367,9 +444,8 @@ public sealed class User : TenantAggregateRoot
     /// <summary>
     /// Links a federated identity.
     /// <para>
-    /// Present now, unused until Entra ID federation ships. It exists so a user can gain a
-    /// federated identity later without losing their account, their roles or their history - which
-    /// is what would happen if federated users had to be created as separate accounts.
+    /// Linking keeps the one account - its roles and its history - rather than creating a separate
+    /// federated user.
     /// </para>
     /// </summary>
     public void LinkExternalLogin(string provider, string providerKey, string? displayName, DateTime now)
@@ -387,6 +463,22 @@ public sealed class User : TenantAggregateRoot
         }
 
         _externalLogins.Add(new ExternalLogin(provider, providerKey, displayName, now));
+    }
+
+    /// <summary>
+    /// An invited person who signs in through their organisation's identity provider: the account
+    /// becomes active without a password of its own, since the provider is the credential.
+    /// </summary>
+    public void ActivateThroughFederation()
+    {
+        if (Status != UserStatus.Invited)
+        {
+            return;
+        }
+
+        Status = UserStatus.Active;
+        RotateSecurityStamp();
+        ClearInvitationToken();
     }
 
     public void UnlinkExternalLogin(string provider, string providerKey)

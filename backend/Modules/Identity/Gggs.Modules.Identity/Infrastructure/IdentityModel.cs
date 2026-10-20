@@ -1,6 +1,7 @@
 using Gggs.Data;
 using Gggs.Modules.Identity.Domain.PlatformStaff;
 using Gggs.Modules.Identity.Domain.Roles;
+using Gggs.Modules.Identity.Domain.Sso;
 using Gggs.Modules.Identity.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -44,6 +45,10 @@ internal sealed class IdentityModel : IModuleModel
             entity.Property(user => user.Status).HasConversion<byte>();
             entity.Property(user => user.PreferredLocale).HasMaxLength(10);
             entity.Property(user => user.TimeZone).HasMaxLength(64);
+            entity.Property(user => user.MfaSecret).HasMaxLength(1000);
+            entity.Property(user => user.MfaPendingSecret).HasMaxLength(1000);
+            entity.Property(user => user.MfaRecoveryCodes).HasMaxLength(1000);
+            entity.Ignore(user => user.MfaRecoveryCodesLeft);
 
             // Unique per tenant, not globally: the same person may work for two customers.
             entity.HasIndex(user => new { user.TenantId, user.NormalizedEmail })
@@ -123,6 +128,24 @@ internal sealed class IdentityModel : IModuleModel
             // One policy per tenant.
             entity.HasIndex(policy => policy.TenantId)
                 .HasDatabaseName("UX_PasswordPolicy_TenantId")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+        });
+
+        modelBuilder.Entity<SsoProvider>(entity =>
+        {
+            entity.ToTable("SsoProvider", Schema);
+            entity.Property(provider => provider.Key).HasMaxLength(40).IsRequired();
+            entity.Property(provider => provider.DisplayName).HasMaxLength(100).IsRequired();
+            entity.Property(provider => provider.Authority).HasMaxLength(300).IsRequired();
+            entity.Property(provider => provider.ClientId).HasMaxLength(200).IsRequired();
+            entity.Property(provider => provider.ClientSecret).HasMaxLength(2000);
+            entity.Property(provider => provider.Scopes).HasMaxLength(300).IsRequired();
+            entity.Property(provider => provider.AllowedDomains).HasMaxLength(500);
+            entity.Ignore(provider => provider.LoginProvider);
+            entity.Ignore(provider => provider.DomainEvents);
+            entity.HasIndex(provider => new { provider.TenantId, provider.Key })
+                .HasDatabaseName("UX_SsoProvider_Key")
                 .IsUnique()
                 .HasFilter("[IsDeleted] = 0");
         });
@@ -220,6 +243,8 @@ internal static class IdentityData
         public DbSet<UserRole> UserRoles => db.Set<UserRole>();
 
         public DbSet<PasswordPolicy> PasswordPolicies => db.Set<PasswordPolicy>();
+
+        public DbSet<SsoProvider> SsoProviders => db.Set<SsoProvider>();
 
         /// <summary>
         /// Our own staff. Deliberately not tenant-owned; see <see cref="PlatformStaffMember"/> for why

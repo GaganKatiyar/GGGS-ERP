@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Gggs.BuildingBlocks.MultiTenancy;
+using Gggs.BuildingBlocks.Web;
 using Gggs.Modules.Identity.Application.Authentication;
 using Gggs.Modules.Identity.Application.PlatformStaff;
 using Gggs.Modules.Identity.Domain.PlatformStaff;
@@ -61,7 +62,8 @@ public static class TokenEndpoints
         endpoints.MapPost("/connect/token", ExchangeAsync)
             .WithName("Token")
             .WithTags("Authentication")
-            .AllowAnonymous();
+            .AllowAnonymous()
+            .RequireRateLimiting(RateLimitPolicies.SignIn);
 
         return endpoints;
     }

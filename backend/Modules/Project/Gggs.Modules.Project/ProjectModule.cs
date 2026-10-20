@@ -1,5 +1,6 @@
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Ai.Contracts;
 using Gggs.Modules.Documents.Contracts;
 using Gggs.Modules.Employee.Contracts;
 using Gggs.Modules.Insight.Contracts;
@@ -19,6 +20,7 @@ public sealed class ProjectModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IAiTool, ProjectStatusTool>();
         services.AddScoped<IMetricSource, ProjectMetrics>();
         services.AddScoped<ISearchSource, ProjectSearch>();
         services.AddScoped<ICalendarSource, ProjectCalendar>();

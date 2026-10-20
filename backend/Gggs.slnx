@@ -78,6 +78,8 @@
     <Project Path="Modules/Benefits/Gggs.Modules.Benefits.Contracts/Gggs.Modules.Benefits.Contracts.csproj" />
     <Project Path="Modules/Compliance/Gggs.Modules.Compliance/Gggs.Modules.Compliance.csproj" />
     <Project Path="Modules/Compliance/Gggs.Modules.Compliance.Contracts/Gggs.Modules.Compliance.Contracts.csproj" />
+    <Project Path="Modules/Ai/Gggs.Modules.Ai/Gggs.Modules.Ai.csproj" />
+    <Project Path="Modules/Ai/Gggs.Modules.Ai.Contracts/Gggs.Modules.Ai.Contracts.csproj" />
     <Project Path="Modules/Insight/Gggs.Modules.Insight/Gggs.Modules.Insight.csproj" />
     <Project Path="Modules/Insight/Gggs.Modules.Insight.Contracts/Gggs.Modules.Insight.Contracts.csproj" />
     <Project Path="Modules/Separation/Gggs.Modules.Separation/Gggs.Modules.Separation.csproj" />

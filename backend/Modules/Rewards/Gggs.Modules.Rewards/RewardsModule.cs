@@ -3,6 +3,7 @@ using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Ai.Contracts;
 using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Learning.Contracts;
 using Gggs.Modules.Performance.Contracts;
@@ -21,6 +22,8 @@ public sealed class RewardsModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IAiTool, MyRewardsTool>();
+        services.AddScoped<IAiTool, GiveRecognitionTool>();
         services.AddScoped<IMetricSource, RewardMetrics>();
         services.AddScoped<RewardService>();
         services.AddScoped<RewardSeeder>();

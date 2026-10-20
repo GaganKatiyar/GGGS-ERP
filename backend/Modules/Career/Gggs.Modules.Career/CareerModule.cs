@@ -3,6 +3,7 @@ using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Ai.Contracts;
 using Gggs.Modules.Career.Application;
 using Gggs.Modules.Career.Domain;
 using Gggs.Modules.Insight.Contracts;
@@ -18,6 +19,7 @@ public sealed class CareerModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IAiTool, MyCareerTool>();
         services.AddScoped<IMetricSource, CareerMetrics>();
         services.AddScoped<CareerService>();
         services.AddWorkflowSubject(CareerService.Subject);

@@ -1,5 +1,6 @@
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Ai.Contracts;
 using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Leave.Application;
 using Gggs.Modules.Leave.Contracts;
@@ -16,6 +17,9 @@ public sealed class LeaveModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IAiTool, MyLeaveBalancesTool>();
+        services.AddScoped<IAiTool, WhoIsOnLeaveTool>();
+        services.AddScoped<IAiTool, ApplyLeaveTool>();
         services.AddScoped<IMetricSource, LeaveMetrics>();
         services.AddScoped<ICalendarSource, LeaveCalendarEntries>();
         services.AddScoped<IImportHandler, HolidayImport>();

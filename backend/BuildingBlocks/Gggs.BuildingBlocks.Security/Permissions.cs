@@ -666,4 +666,14 @@ public static class Permissions
         /// <summary>Configure connections (including secrets) and run their operations.</summary>
         public const string IntegrationManage = "datahub.integration.manage";
     }
+
+    /// <summary>The AI assistants (spec §89).</summary>
+    public static class Ai
+    {
+        /// <summary>Use the assistants; each tool still needs its own permission.</summary>
+        public const string AssistantUse = "ai.assistant.use";
+
+        /// <summary>See assistant usage and token spend across the organisation.</summary>
+        public const string UsageView = "ai.usage.view";
+    }
 }

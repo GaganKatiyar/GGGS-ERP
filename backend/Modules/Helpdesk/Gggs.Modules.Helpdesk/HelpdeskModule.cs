@@ -3,6 +3,7 @@ using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Ai.Contracts;
 using Gggs.Modules.Helpdesk.Application;
 using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Platform.Contracts;
@@ -17,6 +18,8 @@ public sealed class HelpdeskModule : IModule
 
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<IAiTool, SearchHelpArticlesTool>();
+        services.AddScoped<IAiTool, RaiseTicketTool>();
         services.AddScoped<IMetricSource, HelpdeskMetrics>();
         services.AddScoped<ISearchSource, KnowledgeSearch>();
         services.AddScoped<HelpdeskService>();

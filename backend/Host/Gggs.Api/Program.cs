@@ -67,6 +67,7 @@ builder.Services.AddOptions<SecurityHeaderOptions>()
     .Bind(builder.Configuration.GetSection(SecurityHeaderOptions.SectionName))
     .ValidateOnStart();
 
+builder.Services.AddGggsRateLimiting(builder.Configuration);
 builder.Services.AddGggsJson();
 builder.Services.AddGggsProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -97,6 +98,9 @@ app.UseMiddleware<BrowserRequestGuard>();
 app.UseAuthentication();
 app.UseGggsTenantContext();
 app.UseAuthorization();
+
+// After authentication, so the assistant limit can count per user rather than per address.
+app.UseRateLimiter();
 
 // Probes answer without a credential: a load balancer has none. Status only, never component detail.
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = check => check.Tags.Contains("live") })

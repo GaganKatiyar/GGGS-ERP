@@ -228,6 +228,7 @@ public static class RoleTemplates
                 new(Permissions.DataHub.ImportRun, DataScope.Tenant),
                 new(Permissions.DataHub.IntegrationView, DataScope.Tenant),
                 new(Permissions.DataHub.IntegrationManage, DataScope.Tenant),
+                new(Permissions.Ai.UsageView, DataScope.Tenant),
 
                 .. SelfService(),
             ],
@@ -1000,6 +1001,7 @@ public static class RoleTemplates
         new(Permissions.Self.AssetView, DataScope.Own),
         new(Permissions.Self.ExpenseClaimCreate, DataScope.Own),
         new(Permissions.Self.TravelRequestCreate, DataScope.Own),
+        new(Permissions.Ai.AssistantUse, DataScope.Own),
 
         // Everyone receives notifications - approvals, policies to acknowledge, invitations.
         new(Permissions.Notification.InboxView, DataScope.Own),

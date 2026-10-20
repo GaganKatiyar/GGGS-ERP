@@ -30,6 +30,7 @@
     <ProjectReference Include="..\..\Modules\Timesheets\Gggs.Modules.Timesheets\Gggs.Modules.Timesheets.csproj" />
     <ProjectReference Include="..\..\Modules\Onboarding\Gggs.Modules.Onboarding\Gggs.Modules.Onboarding.csproj" />
     <ProjectReference Include="..\..\Modules\Recruitment\Gggs.Modules.Recruitment\Gggs.Modules.Recruitment.csproj" />
+    <ProjectReference Include="..\..\Modules\Ai\Gggs.Modules.Ai\Gggs.Modules.Ai.csproj" />
     <ProjectReference Include="..\..\Modules\Insight\Gggs.Modules.Insight\Gggs.Modules.Insight.csproj" />
     <ProjectReference Include="..\..\Modules\Separation\Gggs.Modules.Separation\Gggs.Modules.Separation.csproj" />
     <ProjectReference Include="..\..\Modules\Rewards\Gggs.Modules.Rewards\Gggs.Modules.Rewards.csproj" />

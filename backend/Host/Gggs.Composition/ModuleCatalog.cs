@@ -1,5 +1,6 @@
 using System.Reflection;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Ai;
 using Gggs.Modules.Assets;
 using Gggs.Modules.Attendance;
 using Gggs.Modules.Benefits;
@@ -77,6 +78,7 @@ public static class ModuleCatalog
         new BenefitsModule(),
         new ComplianceModule(),
         new ResourcesModule(),
+        new AiModule(),
         new InsightModule(),
         new SeparationModule(),
         new RewardsModule(),
