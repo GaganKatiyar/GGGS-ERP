@@ -1,0 +1,77 @@
+/* Small single-purpose helpers. */
+.muted {
+  color: var(--gggs-color-text-muted);
+}
+
+.subtle {
+  color: var(--gggs-color-text-subtle);
+}
+
+.text-sm {
+  font-size: var(--gggs-font-size-sm);
+}
+
+.text-xs {
+  font-size: var(--gggs-font-size-xs);
+}
+
+.num,
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.text-end {
+  text-align: end;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-success {
+  color: var(--gggs-color-success);
+}
+
+.text-warning {
+  color: var(--gggs-color-warning);
+}
+
+.text-danger {
+  color: var(--gggs-color-danger);
+}
+
+/* Hidden visually, still read by screen readers. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The skip link: invisible until focused from the keyboard. */
+.skip-link {
+  position: fixed;
+  inset-block-start: var(--gggs-space-2);
+  inset-inline-start: var(--gggs-space-2);
+  z-index: var(--gggs-z-toast);
+  padding: var(--gggs-space-2) var(--gggs-space-4);
+  border-radius: var(--gggs-radius-sm);
+  background: var(--gggs-color-primary);
+  color: var(--gggs-color-primary-contrast);
+  transform: translateY(-200%);
+
+  &:focus {
+    transform: none;
+  }
+}

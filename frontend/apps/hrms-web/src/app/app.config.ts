@@ -44,6 +44,35 @@ const GggsPreset = definePreset(Aura, {
       900: '{blue.900}',
       950: '{blue.950}',
     },
+    // Shape and focus follow the design tokens (styles/_tokens.scss), so a PrimeNG dialog, table
+    // or tag sits next to hand-rolled markup without looking like it came from another product.
+    borderRadius: {
+      none: '0',
+      xs: 'var(--gggs-radius-xs)',
+      sm: 'var(--gggs-radius-sm)',
+      md: 'var(--gggs-radius-md)',
+      lg: 'var(--gggs-radius-lg)',
+      xl: 'var(--gggs-radius-lg)',
+    },
+    focusRing: {
+      width: '2px',
+      style: 'solid',
+      color: 'var(--gggs-color-primary)',
+      offset: '2px',
+      shadow: 'none',
+    },
+    formField: {
+      paddingX: 'var(--gggs-space-3)',
+      paddingY: '0.4375rem',
+      borderRadius: 'var(--gggs-radius-sm)',
+      focusRing: {
+        width: '0',
+        style: 'none',
+        color: 'transparent',
+        offset: '0',
+        shadow: 'var(--gggs-focus-ring)',
+      },
+    },
     colorScheme: {
       light: {
         primary: {
@@ -71,11 +100,27 @@ const GggsPreset = definePreset(Aura, {
         },
         formField: {
           background: 'var(--gggs-color-surface-raised)',
-          borderColor: 'var(--gggs-color-border)',
-          hoverBorderColor: 'var(--gggs-color-text-muted)',
+          borderColor: 'var(--gggs-color-border-strong)',
+          hoverBorderColor: 'var(--gggs-color-text-subtle)',
           focusBorderColor: 'var(--gggs-color-primary)',
           color: 'var(--gggs-color-text)',
-          placeholderColor: 'var(--gggs-color-text-muted)',
+          placeholderColor: 'var(--gggs-color-text-subtle)',
+        },
+        mask: {
+          background: 'var(--gggs-color-overlay)',
+          color: 'var(--gggs-color-text)',
+        },
+        overlay: {
+          modal: {
+            background: 'var(--gggs-color-surface-raised)',
+            borderColor: 'var(--gggs-color-border)',
+            color: 'var(--gggs-color-text)',
+          },
+          popover: {
+            background: 'var(--gggs-color-surface-raised)',
+            borderColor: 'var(--gggs-color-border)',
+            color: 'var(--gggs-color-text)',
+          },
         },
       },
       dark: {
@@ -104,11 +149,27 @@ const GggsPreset = definePreset(Aura, {
         },
         formField: {
           background: 'var(--gggs-color-surface-raised)',
-          borderColor: 'var(--gggs-color-border)',
-          hoverBorderColor: 'var(--gggs-color-text-muted)',
+          borderColor: 'var(--gggs-color-border-strong)',
+          hoverBorderColor: 'var(--gggs-color-text-subtle)',
           focusBorderColor: 'var(--gggs-color-primary)',
           color: 'var(--gggs-color-text)',
-          placeholderColor: 'var(--gggs-color-text-muted)',
+          placeholderColor: 'var(--gggs-color-text-subtle)',
+        },
+        mask: {
+          background: 'var(--gggs-color-overlay)',
+          color: 'var(--gggs-color-text)',
+        },
+        overlay: {
+          modal: {
+            background: 'var(--gggs-color-surface-raised)',
+            borderColor: 'var(--gggs-color-border)',
+            color: 'var(--gggs-color-text)',
+          },
+          popover: {
+            background: 'var(--gggs-color-surface-raised)',
+            borderColor: 'var(--gggs-color-border)',
+            color: 'var(--gggs-color-text)',
+          },
         },
       },
     },

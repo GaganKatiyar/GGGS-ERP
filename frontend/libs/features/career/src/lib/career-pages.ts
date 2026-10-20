@@ -220,7 +220,7 @@ const blankPromotion = (): PromotionDetailsInput => ({
         <p class="field__error" role="alert">{{ error() }}</p>
       }
     </section>
-    <gggs-form-dialog [(visible)]="nominateOpen" title="Nominate for promotion" [saveLabel]="submit() ? 'Nominate and submit' : 'Save draft'" [busy]="busy()" [error]="formError()" [saveDisabled]="!employeeId() || !form().proposedDesignation.trim() || !form().justification.trim()" (save)="nominate()" width="min(48rem, 96vw)">
+    <gggs-form-dialog [(visible)]="nominateOpen" title="Nominate for promotion" [saveLabel]="submit() ? 'Nominate and submit' : 'Save draft'" [busy]="busy()" [error]="formError()" [saveDisabled]="!employeeId() || !form().proposedDesignation.trim() || !form().justification.trim()" (save)="nominate()" size="lg">
       <label class="field">
         <span class="field__label">Employee</span>
         <gggs-employee-select ariaLabel="Employee" [ngModel]="employeeId()" (ngModelChange)="employeeId.set($event)" />
@@ -427,7 +427,7 @@ const blankSuccession = (): SuccessionInput => ({ roleTitle: '', positionId: nul
     @if (error()) {
       <p class="field__error" role="alert">{{ error() }}</p>
     }
-    <gggs-form-dialog [(visible)]="open" [title]="editing() ? 'Edit succession plan' : 'New succession plan'" [busy]="busy()" [error]="formError()" [saveDisabled]="!form().roleTitle.trim()" (save)="save()" width="min(52rem, 96vw)">
+    <gggs-form-dialog [(visible)]="open" [title]="editing() ? 'Edit succession plan' : 'New succession plan'" [busy]="busy()" [error]="formError()" [saveDisabled]="!form().roleTitle.trim()" (save)="save()" size="lg">
       <div class="car__grid">
         <label class="field">
           <span class="field__label">Role</span>

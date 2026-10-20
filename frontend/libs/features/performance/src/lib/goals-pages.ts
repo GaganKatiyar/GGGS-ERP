@@ -37,7 +37,7 @@ const blankResult = (): KeyResultInput => ({ title: '', metricType: 'Number', st
   imports: [FormsModule, FormDialog, EmployeeSelect, OrgSelect],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <gggs-form-dialog [(visible)]="visible" [title]="goal() ? 'Edit goal' : 'New goal'" [busy]="busy()" [error]="error()" [saveDisabled]="!form().title.trim()" (save)="save()" width="min(56rem, 96vw)">
+    <gggs-form-dialog [(visible)]="visible" [title]="goal() ? 'Edit goal' : 'New goal'" [busy]="busy()" [error]="error()" [saveDisabled]="!form().title.trim()" (save)="save()" size="lg">
       <div class="perf__grid">
         <label class="field perf__wide">
           <span class="field__label">Goal</span>

@@ -165,11 +165,11 @@ const today = () => new Date().toISOString().slice(0, 10);
       </div>
     }
 
-    <gggs-form-dialog [(visible)]="editOpen" title="Edit policy details" width="min(52rem, 96vw)" [busy]="busy()" [error]="formError()" (save)="saveDetails()">
+    <gggs-form-dialog [(visible)]="editOpen" title="Edit policy details" size="lg" [busy]="busy()" [error]="formError()" (save)="saveDetails()">
       <gggs-policy-fields [form]="form" />
     </gggs-form-dialog>
 
-    <gggs-form-dialog [(visible)]="draftOpen" [title]="editingDraft() ? 'Edit version ' + editingDraft()!.number : 'New version'" width="min(52rem, 96vw)" [busy]="busy()" [error]="formError()" (save)="saveDraft()">
+    <gggs-form-dialog [(visible)]="draftOpen" [title]="editingDraft() ? 'Edit version ' + editingDraft()!.number : 'New version'" size="lg" [busy]="busy()" [error]="formError()" (save)="saveDraft()">
       <div class="stack">
         <label class="field">
           <span class="field__label">Text (Markdown) *</span>

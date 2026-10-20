@@ -143,7 +143,7 @@ const blankPolicy = (typeId: string): PolicyDraft => ({
       </div>
     </gggs-form-dialog>
 
-    <gggs-form-dialog [(visible)]="policyOpen" [title]="editingPolicy() ? 'Edit policy' : 'Add policy'" width="min(48rem, 96vw)" [busy]="busy()" [error]="dialogError()" (save)="savePolicy()">
+    <gggs-form-dialog [(visible)]="policyOpen" [title]="editingPolicy() ? 'Edit policy' : 'Add policy'" size="lg" [busy]="busy()" [error]="dialogError()" (save)="savePolicy()">
       <div class="form-grid">
         <label class="field">
           <span class="field__label">Leave type *</span>

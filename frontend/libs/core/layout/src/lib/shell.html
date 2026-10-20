@@ -1,137 +1,197 @@
-<div class="shell" [class.shell--collapsed]="isSidebarCollapsed()">
-  <header class="shell__header">
-    <button
-      type="button"
-      class="shell__menu-toggle"
-      (click)="toggleSidebar()"
-      [attr.aria-expanded]="!isSidebarCollapsed()"
-      aria-controls="shell-sidebar"
-      aria-label="Toggle navigation"
-    >
-      <i class="pi pi-bars" aria-hidden="true"></i>
-    </button>
+<a class="skip-link" href="#main-content" (click)="focusContent($event)">Skip to content</a>
 
-    <span class="shell__product">PeopleOS</span>
-    <span class="shell__tenant">{{ tenant.name() }}</span>
-
-    <div class="shell__spacer"></div>
-
-    @if (canSearch()) {
-    <gggs-global-search class="shell__search" />
-    }
-
-    @if (session.user(); as user) { @if (user.isImpersonating) {
-    <!-- Support access is never invisible: the person being acted for must be able to see it. -->
-    <span class="shell__impersonation" role="status">
-      <i class="pi pi-eye" aria-hidden="true"></i>
-      Support session
-    </span>
-    }
-
-    @if (canSeeNotifications()) {
-    <a
-      class="shell__bell"
-      routerLink="/notifications"
-      routerLinkActive="shell__bell--active"
-      aria-label="Notifications"
-    >
-      <i class="pi pi-bell" aria-hidden="true"></i>
-      @if (unreadCount() > 0) {
-      <span class="shell__bell-badge">{{ unreadCount() }}</span>
-      }
-    </a>
-    }
-
-    <span class="shell__user">{{ user.displayName }}</span>
-    }
-
-    <button
-      type="button"
-      class="shell__theme-toggle"
-      (click)="theme.toggle()"
-      [attr.aria-label]="theme.isDark() ? 'Switch to light theme' : 'Switch to dark theme'"
-      [attr.aria-pressed]="theme.isDark()"
-    >
-      <i
-        class="pi"
-        [class.pi-moon]="!theme.isDark()"
-        [class.pi-sun]="theme.isDark()"
-        aria-hidden="true"
-      ></i>
-    </button>
-
-    @if (session.user()) {
-    <button type="button" class="shell__sign-out" (click)="signOut()">
-      Sign out
-    </button>
-    }
-  </header>
-
-  <nav
-    id="shell-sidebar"
-    class="shell__sidebar"
-    aria-label="Main"
-    tabindex="-1"
-    (keydown.escape)="closeSidebarOnMobile()"
-  >
-    <ul class="nav">
-      @for (item of navigation(); track item.label) {
-      <li class="nav__item">
-        @if (item.route) {
-        <a
-          class="nav__link"
-          [routerLink]="item.route"
-          routerLinkActive="nav__link--active"
-          [routerLinkActiveOptions]="{ exact: false }"
-          (click)="closeSidebarOnMobile()"
-        >
-          <i class="nav__icon {{ item.icon }}" aria-hidden="true"></i>
-          <span class="nav__label">{{ item.label }}</span>
-          @if (badgeFor(item) > 0) {
-          <span class="nav__badge" [attr.aria-label]="badgeFor(item) + ' waiting'">{{ badgeFor(item) }}</span>
+<div
+  class="shell"
+  [class.shell--with-panel]="showPanel()"
+  [class.shell--drawer-open]="isDrawerOpen()"
+>
+  <!-- One navigation landmark: the rail of modules and the active module's pages. On a small
+       screen both slide in together as a drawer. -->
+  <nav id="shell-navigation" class="shell__nav" aria-label="Main" [attr.aria-modal]="isDrawerOpen() ? 'true' : null">
+    <div class="rail">
+      <a class="rail__brand" routerLink="/dashboard" aria-label="PeopleOS home">
+        <span class="rail__logo" aria-hidden="true">P</span>
+      </a>
+      <ul class="rail__list">
+        @for (item of navigation(); track item.label) {
+        <li>
+          @if (item.children?.length) {
+          <button
+            type="button"
+            class="rail__item"
+            [class.rail__item--active]="isActiveGroup(item)"
+            [attr.aria-current]="activeGroup() === item ? 'page' : null"
+            [attr.aria-expanded]="showPanel() && panelGroup() === item"
+            aria-controls="shell-panel"
+            [title]="item.label"
+            (click)="openGroup(item)"
+          >
+            <i class="rail__icon {{ item.icon }}" aria-hidden="true"></i>
+            <span class="rail__label">{{ item.label }}</span>
+          </button>
+          } @else {
+          <a
+            class="rail__item"
+            [routerLink]="item.route"
+            routerLinkActive="rail__item--active"
+            ariaCurrentWhenActive="page"
+            [title]="item.label"
+          >
+            <i class="rail__icon {{ item.icon }}" aria-hidden="true"></i>
+            <span class="rail__label">{{ item.label }}</span>
+            @if (badgeFor(item) > 0) {
+            <span class="rail__badge" [attr.aria-label]="badgeFor(item) + ' waiting'">{{ badgeFor(item) }}</span>
+            }
+          </a>
           }
-        </a>
-        } @else {
-        <span class="nav__group">
-          <i class="nav__icon {{ item.icon }}" aria-hidden="true"></i>
-          <span class="nav__label">{{ item.label }}</span>
-        </span>
-        } @if (item.children?.length) {
-        <ul class="nav nav--nested">
-          @for (child of item.children; track child.label) {
-          <li class="nav__item">
-            <a
-              class="nav__link"
-              [routerLink]="child.route"
-              routerLinkActive="nav__link--active"
-              (click)="closeSidebarOnMobile()"
-            >
-              <i class="nav__icon {{ child.icon }}" aria-hidden="true"></i>
-              <span class="nav__label">{{ child.label }}</span>
-            </a>
-          </li>
-          }
-        </ul>
+        </li>
         }
-      </li>
-      }
-    </ul>
+      </ul>
+    </div>
+
+    @if (panelGroup(); as group) {
+    <div id="shell-panel" class="panel-nav" [hidden]="!showPanel()">
+      <div class="panel-nav__header">
+        <i class="{{ group.icon }}" aria-hidden="true"></i>
+        <span class="panel-nav__title">{{ group.label }}</span>
+      </div>
+      <ul class="panel-nav__list">
+        @for (child of group.children; track child.label) {
+        <li>
+          <a
+            class="panel-nav__link"
+            [routerLink]="child.route"
+            [class.panel-nav__link--active]="activeEntry() === child"
+            [attr.aria-current]="activeEntry() === child ? 'page' : null"
+          >
+            <i class="panel-nav__icon {{ child.icon }}" aria-hidden="true"></i>
+            <span>{{ child.label }}</span>
+            @if (badgeFor(child) > 0) {
+            <span class="panel-nav__badge">{{ badgeFor(child) }}</span>
+            }
+          </a>
+        </li>
+        }
+      </ul>
+    </div>
+    }
   </nav>
 
-  <!-- Hidden above the mobile breakpoint by CSS (shell.scss) regardless of this class - "open" only
-       means something for the mobile drawer, not the desktop rail. -->
   <button
     type="button"
     class="shell__backdrop"
-    [class.shell__backdrop--visible]="!isSidebarCollapsed()"
-    [attr.aria-hidden]="isSidebarCollapsed()"
-    [attr.tabindex]="isSidebarCollapsed() ? -1 : 0"
+    [class.shell__backdrop--visible]="isDrawerOpen()"
+    [attr.aria-hidden]="!isDrawerOpen()"
+    [attr.tabindex]="isDrawerOpen() ? 0 : -1"
     aria-label="Close navigation"
-    (click)="closeSidebarOnMobile()"
+    (click)="closeDrawer()"
   ></button>
 
-  <main class="shell__content" tabindex="-1">
-    <router-outlet />
-  </main>
+  <div class="shell__main">
+    <header class="topbar">
+      <button
+        type="button"
+        class="topbar__icon-button"
+        (click)="toggleNavigation()"
+        [attr.aria-expanded]="isDrawerOpen() || showPanel()"
+        aria-controls="shell-navigation"
+        aria-label="Toggle navigation"
+      >
+        <i class="pi pi-bars" aria-hidden="true"></i>
+      </button>
+
+      <div class="topbar__context">
+        <span class="topbar__tenant">{{ tenant.name() }}</span>
+        @if (breadcrumbs().length) {
+        <nav class="crumbs" aria-label="Breadcrumb">
+          <ol>
+            @for (crumb of breadcrumbs(); track $index; let last = $last) {
+            <li>
+              @if (crumb.route && !last) {
+              <a [routerLink]="crumb.route">{{ crumb.label }}</a>
+              } @else {
+              <span [attr.aria-current]="last ? 'page' : null">{{ crumb.label }}</span>
+              }
+            </li>
+            }
+          </ol>
+        </nav>
+        }
+      </div>
+
+      <div class="topbar__spacer"></div>
+
+      @if (canSearch()) {
+      <gggs-global-search class="topbar__search" />
+      }
+
+      @if (session.user(); as user) {
+      @if (user.isImpersonating) {
+      <!-- Support access is never invisible: the person being acted for must be able to see it. -->
+      <span class="topbar__impersonation" role="status">
+        <i class="pi pi-eye" aria-hidden="true"></i>
+        Support session
+      </span>
+      }
+
+      @if (canSeeNotifications()) {
+      <a class="topbar__icon-button" routerLink="/notifications" routerLinkActive="topbar__icon-button--active" aria-label="Notifications">
+        <i class="pi pi-bell" aria-hidden="true"></i>
+        @if (unreadCount() > 0) {
+        <span class="topbar__count">{{ unreadCount() }}</span>
+        }
+      </a>
+      }
+
+      <button
+        type="button"
+        class="topbar__icon-button"
+        (click)="theme.toggle()"
+        [attr.aria-label]="theme.isDark() ? 'Switch to light theme' : 'Switch to dark theme'"
+        [attr.aria-pressed]="theme.isDark()"
+      >
+        <i class="pi" [class.pi-moon]="!theme.isDark()" [class.pi-sun]="theme.isDark()" aria-hidden="true"></i>
+      </button>
+
+      <div class="user-menu" #userMenu>
+        <button
+          type="button"
+          class="user-menu__trigger"
+          [attr.aria-expanded]="isUserMenuOpen()"
+          aria-haspopup="menu"
+          aria-controls="user-menu"
+          (click)="toggleUserMenu()"
+        >
+          <span class="user-menu__avatar" aria-hidden="true">{{ initials() }}</span>
+          <span class="user-menu__name">{{ user.displayName }}</span>
+          <i class="pi pi-chevron-down user-menu__chevron" aria-hidden="true"></i>
+        </button>
+        @if (isUserMenuOpen()) {
+        <div id="user-menu" class="user-menu__popup" role="menu">
+          <div class="user-menu__who">
+            <strong>{{ user.displayName }}</strong>
+            <span class="muted">{{ tenant.name() }}</span>
+          </div>
+          <a class="user-menu__item" role="menuitem" routerLink="/me/profile"><i class="pi pi-id-card" aria-hidden="true"></i> My profile</a>
+          <a class="user-menu__item" role="menuitem" routerLink="/me/security"><i class="pi pi-shield" aria-hidden="true"></i> Sign-in security</a>
+          <button type="button" class="user-menu__item" role="menuitem" (click)="signOut()"><i class="pi pi-sign-out" aria-hidden="true"></i> Sign out</button>
+        </div>
+        }
+      </div>
+      }
+    </header>
+
+    @if (tabs().length) {
+    <nav class="module-tabs" [attr.aria-label]="activeGroup()?.label + ' pages'">
+      @for (tab of tabs(); track tab.label) {
+      <a class="module-tabs__tab" [routerLink]="tab.route" [class.module-tabs__tab--active]="activeEntry() === tab" [attr.aria-current]="activeEntry() === tab ? 'page' : null">{{ tab.label }}</a>
+      }
+    </nav>
+    }
+
+    <main id="main-content" class="shell__content" tabindex="-1">
+      <router-outlet />
+    </main>
+  </div>
   <ng-container #stepUpHost />
 </div>

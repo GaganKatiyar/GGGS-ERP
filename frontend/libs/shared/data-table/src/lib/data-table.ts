@@ -98,6 +98,7 @@ export class DataTableCell {
       </button>
     </div>
 
+    <div class="data-table__frame">
     <p-table
       [value]="rows()"
       [columns]="visibleColumns()"
@@ -120,7 +121,7 @@ export class DataTableCell {
           @for (column of columns; track column.field) {
             <th
               [style.width]="column.width"
-              [style.text-align]="column.align ?? 'left'"
+              [style.text-align]="alignOf(column)"
               [pSortableColumn]="column.sortable ? column.field : undefined"
               [attr.scope]="'col'"
             >
@@ -136,7 +137,7 @@ export class DataTableCell {
       <ng-template #body let-row let-columns="columns">
         <tr (click)="rowClick.emit(row)">
           @for (column of columns; track column.field) {
-            <td [style.text-align]="column.align ?? 'left'">
+            <td [style.text-align]="alignOf(column)">
               @if (cellTemplates().get(column.field); as template) {
                 <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
               } @else if (column.format === 'status' && row[column.field]) {
@@ -157,6 +158,7 @@ export class DataTableCell {
         </tr>
       </ng-template>
     </p-table>
+    </div>
   `,
   styles: `
     .data-table__tools {
@@ -188,9 +190,39 @@ export class DataTableCell {
       font-size: var(--gggs-font-size-sm);
     }
 
+    .data-table__frame {
+      border: 1px solid var(--gggs-color-border);
+      border-radius: var(--gggs-radius-lg);
+      background: var(--gggs-color-surface-raised);
+      box-shadow: var(--gggs-shadow-xs);
+      overflow: hidden;
+    }
+
+    :host ::ng-deep .p-datatable-thead > tr > th {
+      background: var(--gggs-color-surface-sunken);
+      color: var(--gggs-color-text-muted);
+      font-size: var(--gggs-font-size-xs);
+      font-weight: var(--gggs-font-weight-semibold);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    :host ::ng-deep .p-datatable-tbody > tr > td {
+      font-variant-numeric: tabular-nums;
+    }
+
     /* Harmless when nobody listens to (rowClick) - just an inert hover on an inert row. */
     :host ::ng-deep .p-datatable-tbody > tr {
       cursor: pointer;
+    }
+
+    :host ::ng-deep .p-datatable-tbody > tr:hover {
+      background: var(--gggs-color-surface-hover);
+    }
+
+    :host ::ng-deep .p-paginator {
+      border-block-start: 1px solid var(--gggs-color-border);
     }
   `,
 })
@@ -255,6 +287,11 @@ export class DataTable<T extends { id: string }> {
       next.add(field);
     }
     this.userHidden.set(next);
+  }
+
+  /** Numbers line up on the right unless the column says otherwise. */
+  protected alignOf(column: DataTableColumn<T>): string {
+    return column.align ?? (column.format === 'number' ? 'right' : 'left');
   }
 
   protected display(row: T, column: DataTableColumn<T>): string {

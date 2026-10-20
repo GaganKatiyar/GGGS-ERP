@@ -136,7 +136,7 @@ const blankAsset = (): AssetDetailsInput => ({
       }
     </section>
 
-    <gggs-form-dialog [(visible)]="registerOpen" title="Register asset" [busy]="busy()" [error]="formError()" [saveDisabled]="!form().categoryId || !form().name.trim()" (save)="register()" width="min(48rem, 96vw)">
+    <gggs-form-dialog [(visible)]="registerOpen" title="Register asset" [busy]="busy()" [error]="formError()" [saveDisabled]="!form().categoryId || !form().name.trim()" (save)="register()" size="lg">
       <div class="xp__grid">
         <label class="field">
           <span class="field__label">Category</span>

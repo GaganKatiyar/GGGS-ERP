@@ -1,0 +1,95 @@
+/* Element defaults. Kept small: components style themselves from the tokens. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--gggs-font-family);
+  font-size: var(--gggs-font-size-base);
+  line-height: var(--gggs-line-height-normal);
+  color: var(--gggs-color-text);
+  background: var(--gggs-color-surface);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Element typography, layered so component styles always win. */
+@layer gggs-elements {
+  h1,
+  h2,
+  h3,
+  h4 {
+    margin: 0;
+    font-weight: var(--gggs-font-weight-semibold);
+    line-height: var(--gggs-line-height-tight);
+    letter-spacing: -0.01em;
+  }
+
+  p {
+    margin-block: 0 var(--gggs-space-2);
+  }
+
+  a {
+    color: var(--gggs-color-primary);
+    text-decoration: none;
+    text-underline-offset: 0.15em;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  code,
+  kbd {
+    font-family: var(--gggs-font-family-mono);
+    font-size: 0.92em;
+  }
+
+  code {
+    padding: 0.05em 0.35em;
+    border-radius: var(--gggs-radius-xs);
+    background: var(--gggs-color-surface-sunken);
+  }
+
+  hr {
+    border: 0;
+    border-block-start: 1px solid var(--gggs-color-border);
+    margin-block: var(--gggs-space-4);
+  }
+}
+
+::selection {
+  background: color-mix(in srgb, var(--gggs-color-primary) 22%, transparent);
+}
+
+/* One focus treatment everywhere, keyboard only. */
+:focus-visible {
+  outline: var(--gggs-focus-outline);
+  outline-offset: 2px;
+}
+
+/* Thin, quiet scrollbars in the panels that scroll. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gggs-color-border-strong) transparent;
+}
+
+/* Users who ask for less motion get less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

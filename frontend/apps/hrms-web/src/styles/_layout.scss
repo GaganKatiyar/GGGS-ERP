@@ -1,0 +1,172 @@
+/*
+ * Page building blocks. Panels, toolbars, grids and definition lists look the same on every
+ * screen, so they are defined once here instead of each page re-declaring its own copy.
+ */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gggs-space-4);
+  padding: var(--gggs-space-5);
+  border: 1px solid var(--gggs-color-border);
+  border-radius: var(--gggs-radius-lg);
+  background: var(--gggs-color-surface-raised);
+  box-shadow: var(--gggs-shadow-xs);
+}
+
+/* Flush panel: for tables and lists that run edge to edge. */
+.panel--flush {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.panel__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gggs-space-3);
+}
+
+.panel--flush > .panel__header {
+  padding: var(--gggs-space-4) var(--gggs-space-5);
+  border-block-end: 1px solid var(--gggs-color-border);
+}
+
+.panel__title {
+  margin: 0;
+  font-size: var(--gggs-font-size-md);
+  font-weight: var(--gggs-font-weight-semibold);
+}
+
+.panel__subtitle {
+  margin: 0;
+  color: var(--gggs-color-text-muted);
+  font-size: var(--gggs-font-size-sm);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gggs-space-2);
+
+  > input:not([type='checkbox'], [type='radio']),
+  > select {
+    width: auto;
+    min-width: 10rem;
+  }
+}
+
+/* The search and filter row above a list. */
+.filter-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--gggs-space-3);
+  margin-block-end: var(--gggs-space-4);
+  padding: var(--gggs-space-3) var(--gggs-space-4);
+  border: 1px solid var(--gggs-color-border);
+  border-radius: var(--gggs-radius-md);
+  background: var(--gggs-color-surface-raised);
+}
+
+/* A panel used as a toolbar (filters in a frame) lays out in a row, not the panel's column. */
+.panel.toolbar {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--gggs-space-3) var(--gggs-space-4);
+  padding: var(--gggs-space-4);
+
+  > .field {
+    flex: 0 1 12rem;
+  }
+}
+
+.toolbar__spacer {
+  flex: 1;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gggs-space-4);
+}
+
+.stack--sm {
+  gap: var(--gggs-space-2);
+}
+
+.stack--lg {
+  gap: var(--gggs-space-6);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gggs-space-3);
+}
+
+.grid-2,
+.grid-3 {
+  display: grid;
+  gap: var(--gggs-space-4);
+}
+
+.grid-2 {
+  grid-template-columns: repeat(auto-fit, minmax(min(26rem, 100%), 1fr));
+}
+
+.grid-3 {
+  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+}
+
+.kpi-row {
+  display: grid;
+  gap: var(--gggs-space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(10rem, 45%), 1fr));
+  margin-block-end: var(--gggs-space-4);
+}
+
+.definition-list {
+  display: grid;
+  gap: var(--gggs-space-4) var(--gggs-space-6);
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  margin: 0;
+
+  dt {
+    color: var(--gggs-color-text-muted);
+    font-size: var(--gggs-font-size-xs);
+    font-weight: var(--gggs-font-weight-medium);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  dd {
+    margin: var(--gggs-space-1) 0 0;
+    font-weight: var(--gggs-font-weight-medium);
+  }
+}
+
+/* A divided list of rows inside a panel. */
+.list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  > li,
+  > .list__item {
+    display: flex;
+    align-items: center;
+    gap: var(--gggs-space-3);
+    padding-block: var(--gggs-space-3);
+    border-block-end: 1px solid var(--gggs-color-border);
+
+    &:last-child {
+      border-block-end: 0;
+    }
+  }
+}

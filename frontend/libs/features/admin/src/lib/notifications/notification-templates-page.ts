@@ -55,7 +55,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs
       <p class="field__error" role="alert">{{ listError() }}</p>
     }
 
-    <gggs-form-dialog [(visible)]="dialogOpen" [title]="editing()?.name ?? 'Edit notification'" width="min(48rem, 96vw)" [busy]="busy()" [error]="error()" (save)="save()">
+    <gggs-form-dialog [(visible)]="dialogOpen" [title]="editing()?.name ?? 'Edit notification'" size="lg" [busy]="busy()" [error]="error()" (save)="save()">
       <div class="form-grid" [formGroup]="form">
         <label class="field form-grid__full">
           <span class="field__label">Subject *</span>

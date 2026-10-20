@@ -393,7 +393,7 @@ export class SeparationPage {
       </div>
     </gggs-form-dialog>
 
-    <gggs-form-dialog [(visible)]="interviewOpen" title="Exit interview" [busy]="busy()" [error]="formError()" (save)="saveInterview()" width="min(44rem, 96vw)">
+    <gggs-form-dialog [(visible)]="interviewOpen" title="Exit interview" [busy]="busy()" [error]="formError()" (save)="saveInterview()" size="lg">
       <gggs-exit-interview-form [value]="interview" />
     </gggs-form-dialog>
 

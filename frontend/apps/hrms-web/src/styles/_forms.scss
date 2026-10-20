@@ -1,0 +1,214 @@
+/*
+ * Forms. Native controls inside `.field` (and the bare controls pages place in toolbars) share one
+ * height, border, focus ring and set of states, so a form reads the same in every module.
+ */
+@mixin control {
+  min-height: var(--gggs-control-height-md);
+  padding: var(--gggs-space-1) var(--gggs-space-3);
+  border: 1px solid var(--gggs-color-border-strong);
+  border-radius: var(--gggs-radius-sm);
+  background: var(--gggs-color-surface-raised);
+  color: var(--gggs-color-text);
+  font: inherit;
+  font-size: var(--gggs-font-size-base);
+  transition:
+    border-color var(--gggs-transition-fast),
+    box-shadow var(--gggs-transition-fast);
+
+  &::placeholder {
+    color: var(--gggs-color-text-subtle);
+  }
+
+  &:hover:not(:disabled, [readonly]) {
+    border-color: color-mix(in srgb, var(--gggs-color-primary) 40%, var(--gggs-color-border-strong));
+  }
+
+  &:focus-visible,
+  &:focus {
+    outline: none;
+    border-color: var(--gggs-color-primary);
+    box-shadow: var(--gggs-focus-ring);
+  }
+
+  &:disabled {
+    background: var(--gggs-color-surface-sunken);
+    color: var(--gggs-color-text-muted);
+    cursor: not-allowed;
+  }
+
+  &[readonly] {
+    background: var(--gggs-color-surface-sunken);
+  }
+
+  &[aria-invalid='true'],
+  &.ng-invalid.ng-touched {
+    border-color: var(--gggs-color-danger);
+
+    &:focus {
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--gggs-color-danger) 25%, transparent);
+    }
+  }
+}
+
+/*
+ * Element defaults live in a cascade layer: any unlayered rule - a component's own styles, PrimeNG's
+ * themed inputs - wins over them without needing extra specificity.
+ */
+@layer gggs-elements {
+  input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='color']),
+  select,
+  textarea {
+    @include control;
+  }
+
+  textarea {
+    min-height: 5rem;
+    padding-block: var(--gggs-space-2);
+    line-height: var(--gggs-line-height-normal);
+    resize: vertical;
+  }
+
+  select {
+    appearance: none;
+    padding-inline-end: var(--gggs-space-8);
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--gggs-color-text-muted) 50%),
+      linear-gradient(135deg, var(--gggs-color-text-muted) 50%, transparent 50%);
+    background-position:
+      calc(100% - 1rem) 52%,
+      calc(100% - 0.7rem) 52%;
+    background-size:
+      0.3rem 0.3rem,
+      0.3rem 0.3rem;
+    background-repeat: no-repeat;
+    cursor: pointer;
+  }
+
+  input[type='checkbox'],
+  input[type='radio'] {
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    accent-color: var(--gggs-color-primary);
+    cursor: pointer;
+  }
+
+  input[type='file'] {
+    font: inherit;
+    font-size: var(--gggs-font-size-sm);
+  }
+
+  label:has(> input[type='checkbox']),
+  label:has(> input[type='radio']) {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--gggs-space-2);
+    cursor: pointer;
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gggs-space-1);
+  min-width: 0;
+  font-size: var(--gggs-font-size-base);
+
+  input:not([type='checkbox'], [type='radio']),
+  select,
+  textarea {
+    width: 100%;
+  }
+}
+
+.field__label {
+  color: var(--gggs-color-text);
+  font-size: var(--gggs-font-size-sm);
+  font-weight: var(--gggs-font-weight-medium);
+}
+
+.field__label--required::after {
+  content: ' *';
+  color: var(--gggs-color-danger);
+}
+
+.field__hint {
+  color: var(--gggs-color-text-muted);
+  font-size: var(--gggs-font-size-xs);
+}
+
+.field__error {
+  margin: 0;
+  color: var(--gggs-color-danger);
+  font-size: var(--gggs-font-size-sm);
+}
+
+.form-grid {
+  display: grid;
+  gap: var(--gggs-space-4) var(--gggs-space-5);
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.form-grid__full {
+  grid-column: 1 / -1;
+}
+
+/* A titled group of fields within a longer form. */
+.form-section {
+  display: grid;
+  gap: var(--gggs-space-4);
+  padding-block-end: var(--gggs-space-5);
+  border-block-end: 1px solid var(--gggs-color-border);
+
+  &:last-of-type {
+    border-block-end: 0;
+  }
+}
+
+.form-section__title {
+  font-size: var(--gggs-font-size-md);
+  font-weight: var(--gggs-font-weight-semibold);
+}
+
+.form-section__description {
+  margin: calc(-1 * var(--gggs-space-3)) 0 0;
+  color: var(--gggs-color-text-muted);
+  font-size: var(--gggs-font-size-sm);
+}
+
+/* Save / cancel row: primary action last, aligned to the end. Sticky inside long forms. */
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--gggs-space-2);
+  padding-block-start: var(--gggs-space-4);
+  border-block-start: 1px solid var(--gggs-color-border);
+}
+
+.form-actions--sticky {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: var(--gggs-z-sticky);
+  margin-inline: calc(-1 * var(--gggs-space-5));
+  padding: var(--gggs-space-3) var(--gggs-space-5);
+  background: var(--gggs-color-surface-raised);
+}
+
+/* A search input with a leading icon. */
+.search-input {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+
+  > .pi {
+    position: absolute;
+    inset-inline-start: var(--gggs-space-3);
+    color: var(--gggs-color-text-subtle);
+    pointer-events: none;
+  }
+
+  > input {
+    padding-inline-start: var(--gggs-space-8);
+  }
+}

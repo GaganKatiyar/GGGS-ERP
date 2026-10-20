@@ -26,7 +26,7 @@ import { FormDialog } from '@gggs/shared/ui';
   imports: [ReactiveFormsModule, FormDialog, LookupSelect, EmployeeSelect, OrgSelect],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <gggs-form-dialog [(visible)]="visible" [title]="project() ? 'Edit ' + project()?.code : 'New project'" width="min(56rem, 96vw)" [busy]="busy()" [error]="error()" (save)="save()">
+    <gggs-form-dialog [(visible)]="visible" [title]="project() ? 'Edit ' + project()?.code : 'New project'" size="lg" [busy]="busy()" [error]="error()" (save)="save()">
       <div class="form-grid" [formGroup]="form">
         <label class="field">
           <span class="field__label">Code * <span class="muted">(prefixes task codes)</span></span>

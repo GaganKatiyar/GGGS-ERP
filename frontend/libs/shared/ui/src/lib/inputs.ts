@@ -27,37 +27,32 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, input, model, o
   `,
   styles: `
     .filter-bar {
-      margin-block-end: var(--gggs-space-3);
+      margin-block-end: var(--gggs-space-4);
     }
 
     .filter-bar__search {
+      position: relative;
       display: inline-flex;
       align-items: center;
-      gap: var(--gggs-space-2);
       flex: 1 1 16rem;
-      max-width: 24rem;
-      padding: var(--gggs-space-2) var(--gggs-space-3);
-      border: 1px solid var(--gggs-color-border);
-      border-radius: var(--gggs-radius-sm);
-      background: var(--gggs-color-surface-raised);
+      max-width: 26rem;
+    }
+
+    .filter-bar__search .pi {
+      position: absolute;
+      inset-inline-start: var(--gggs-space-3);
+      color: var(--gggs-color-text-subtle);
+      pointer-events: none;
     }
 
     .filter-bar__search input {
-      flex: 1;
-      border: 0;
-      outline: 0;
-      background: transparent;
-      color: inherit;
-      font: inherit;
+      width: 100%;
+      padding-inline-start: var(--gggs-space-8);
     }
 
     :host ::ng-deep select {
-      padding: var(--gggs-space-2);
-      border: 1px solid var(--gggs-color-border);
-      border-radius: var(--gggs-radius-sm);
-      background: var(--gggs-color-surface-raised);
-      color: inherit;
-      font: inherit;
+      width: auto;
+      min-width: 10rem;
     }
   `,
 })

@@ -108,7 +108,7 @@ export class SalariesPage {
       <p class="field__error" role="alert">{{ error() }}</p>
     }
 
-    <gggs-form-dialog [(visible)]="assignOpen" title="Salary" saveLabel="Save salary" [busy]="busy()" [error]="formError()" [saveDisabled]="!structureId() || ctc() <= 0 || !effectiveFrom()" (save)="assign()" width="min(52rem, 96vw)">
+    <gggs-form-dialog [(visible)]="assignOpen" title="Salary" saveLabel="Save salary" [busy]="busy()" [error]="formError()" [saveDisabled]="!structureId() || ctc() <= 0 || !effectiveFrom()" (save)="assign()" size="lg">
       <div class="pay__grid">
         <label class="field">
           <span class="field__label">Structure</span>

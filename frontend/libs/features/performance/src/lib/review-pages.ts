@@ -72,7 +72,7 @@ const blankCycle = (): ReviewCycleInput => ({
         <p class="field__error" role="alert">{{ error() }}</p>
       }
     </section>
-    <gggs-form-dialog [(visible)]="dialogOpen" title="New review cycle" saveLabel="Create" [busy]="busy()" [error]="formError()" [saveDisabled]="!form().name.trim()" (save)="create()" width="min(52rem, 96vw)">
+    <gggs-form-dialog [(visible)]="dialogOpen" title="New review cycle" saveLabel="Create" [busy]="busy()" [error]="formError()" [saveDisabled]="!form().name.trim()" (save)="create()" size="lg">
       <div class="perf__grid">
         <label class="field perf__wide">
           <span class="field__label">Name</span>
@@ -725,7 +725,7 @@ export class PipFields {
         <p class="field__error" role="alert">{{ error() }}</p>
       }
     </section>
-    <gggs-form-dialog [(visible)]="dialogOpen" title="New improvement plan" saveLabel="Create draft" [busy]="busy()" [error]="formError()" [saveDisabled]="!employeeId() || !form().reason.trim()" (save)="create()" width="min(48rem, 96vw)">
+    <gggs-form-dialog [(visible)]="dialogOpen" title="New improvement plan" saveLabel="Create draft" [busy]="busy()" [error]="formError()" [saveDisabled]="!employeeId() || !form().reason.trim()" (save)="create()" size="lg">
       <label class="field">
         <span class="field__label">Employee</span>
         <gggs-employee-select ariaLabel="Employee" [ngModel]="employeeId()" (ngModelChange)="employeeId.set($event)" />

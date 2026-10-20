@@ -59,6 +59,50 @@ export function filterNavigation(
   return visible;
 }
 
+/** Where the current URL sits in the navigation: its rail group and the entry it belongs to. */
+export interface NavLocation {
+  /** The top-level entry shown as active in the rail. */
+  readonly group: NavItem;
+  /** The deepest entry whose route the URL is on or under; the group itself for a top-level page. */
+  readonly entry: NavItem;
+}
+
+/** True when `url` is `route` itself or a page beneath it (`/payroll/runs/123` is under `/payroll/runs`). */
+export function isUnder(url: string, route: string): boolean {
+  const path = url.split(/[?#]/)[0].replace(/\/+$/, '') || '/';
+  return path === route || path.startsWith(route === '/' ? '/' : `${route}/`);
+}
+
+/**
+ * Finds where a URL belongs in the (already filtered) navigation. The longest matching route wins,
+ * so `/payroll/runs/42` lands on "Payroll runs" rather than the "Payroll" overview, and a group
+ * that shares a prefix with another (`/me/leave` and `/me`) never steals its sibling's pages.
+ */
+export function locate(items: readonly NavItem[], url: string): NavLocation | null {
+  let best: NavLocation | null = null;
+  let bestLength = -1;
+
+  for (const group of items) {
+    for (const entry of [group, ...(group.children ?? [])]) {
+      if (entry.route && entry.route.length > bestLength && isUnder(url, entry.route)) {
+        best = { group, entry };
+        bestLength = entry.route.length;
+      }
+    }
+  }
+
+  return best;
+}
+
+/** Most pages a module can have before tabs stop being a sensible way to move between them. */
+export const MAX_MODULE_TABS = 8;
+
+/** The pages a group offers as tabs above the content, or none when it has too few or too many. */
+export function moduleTabs(group: NavItem | null | undefined): readonly NavItem[] {
+  const children = group?.children ?? [];
+  return children.length >= 2 && children.length <= MAX_MODULE_TABS ? children : [];
+}
+
 /**
  * Whether an entry's module has been built yet.
  *

@@ -86,7 +86,7 @@ const ICONS: Readonly<Record<BenefitType, string>> = {
       <p class="field__error" role="alert">{{ error() }}</p>
     }
 
-    <gggs-form-dialog [(visible)]="dialogOpen" [title]="editing() ? 'Edit plan' : 'New plan'" [busy]="busy()" [error]="formError()" [saveDisabled]="!form().name.trim() || (!editing() && !code().trim())" (save)="save()" width="min(48rem, 96vw)">
+    <gggs-form-dialog [(visible)]="dialogOpen" [title]="editing() ? 'Edit plan' : 'New plan'" [busy]="busy()" [error]="formError()" [saveDisabled]="!form().name.trim() || (!editing() && !code().trim())" (save)="save()" size="lg">
       <div class="ben__grid">
         @if (!editing()) {
           <label class="field">

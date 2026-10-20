@@ -46,7 +46,7 @@ import { EmptyState, FormDialog, StatusBadge, Tabs, type TabItem } from '@gggs/s
       }
     </section>
 
-    <gggs-form-dialog [(visible)]="formOpen" [title]="editing() ? editing()?.code + ' · ' + editing()?.title : 'Log a ' + kindLabel(kind()).toLowerCase()" width="min(48rem, 96vw)" [busy]="busy()" [error]="dialogError()" [saveDisabled]="!canEdit()" (save)="save()">
+    <gggs-form-dialog [(visible)]="formOpen" [title]="editing() ? editing()?.code + ' · ' + editing()?.title : 'Log a ' + kindLabel(kind()).toLowerCase()" size="lg" [busy]="busy()" [error]="dialogError()" [saveDisabled]="!canEdit()" (save)="save()">
       <div class="form-grid">
         <label class="field form-grid__full">
           <span class="field__label">Title *</span>

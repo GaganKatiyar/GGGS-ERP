@@ -448,7 +448,7 @@ export class TicketPage {
       }
     </section>
 
-    <gggs-form-dialog [(visible)]="readOpen" [title]="readingTitle()" saveLabel="Close" (save)="readOpen.set(false)" width="min(48rem, 96vw)">
+    <gggs-form-dialog [(visible)]="readOpen" [title]="readingTitle()" saveLabel="Close" (save)="readOpen.set(false)" size="lg">
       @if (reading(); as r) {
         <div class="stack">
           <p class="xp__article">{{ r.body }}</p>
@@ -465,7 +465,7 @@ export class TicketPage {
       }
     </gggs-form-dialog>
 
-    <gggs-form-dialog [(visible)]="editOpen" [title]="editing() ? 'Edit article' : 'New article'" [busy]="busy()" [error]="formError()" [saveDisabled]="!form().title.trim() || !form().body.trim()" (save)="save()" width="min(52rem, 96vw)">
+    <gggs-form-dialog [(visible)]="editOpen" [title]="editing() ? 'Edit article' : 'New article'" [busy]="busy()" [error]="formError()" [saveDisabled]="!form().title.trim() || !form().body.trim()" (save)="save()" size="lg">
       <div class="xp__grid">
         <label class="field xp__wide">
           <span class="field__label">Title</span>
@@ -597,7 +597,7 @@ export class KnowledgePage {
       }
     </section>
 
-    <gggs-form-dialog [(visible)]="dialogOpen" title="Raise a ticket" saveLabel="Raise" [busy]="busy()" [error]="formError()" [saveDisabled]="!categoryId() || !subject().trim() || !description().trim()" (save)="raise()" width="min(44rem, 96vw)">
+    <gggs-form-dialog [(visible)]="dialogOpen" title="Raise a ticket" saveLabel="Raise" [busy]="busy()" [error]="formError()" [saveDisabled]="!categoryId() || !subject().trim() || !description().trim()" (save)="raise()" size="lg">
       <div class="stack">
         <label class="field">
           <span class="field__label">Category</span>

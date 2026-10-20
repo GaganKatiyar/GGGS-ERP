@@ -109,7 +109,7 @@ const candidateInput = (candidate: CandidateProfile): CandidateDetailsInput => (
       [error]="error()"
       [saveDisabled]="!form().title.trim() || !form().departmentId"
       (save)="save()"
-      width="min(52rem, 96vw)"
+      size="lg"
     >
       <div class="rec__grid">
         <label class="field rec__wide">
@@ -327,7 +327,7 @@ export class CandidateFields {
       [error]="error()"
       [saveDisabled]="!details().firstName.trim() || !details().email.trim() || (source() === 'Agency' && !agencyId()) || (source() === 'Referral' && !referrerId())"
       (save)="save()"
-      width="min(52rem, 96vw)"
+      size="lg"
     >
       <gggs-candidate-fields [(value)]="details" />
       @if (!candidate()) {

@@ -44,7 +44,7 @@ const blankForm = (): RequestForm => ({
   imports: [FormDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <gggs-form-dialog [(visible)]="visible" [title]="request() ? 'Edit request' : 'New resource request'" [busy]="busy()" [error]="error()" [saveDisabled]="!form().projectId || !form().title.trim()" (save)="save()" width="min(46rem, 96vw)">
+    <gggs-form-dialog [(visible)]="visible" [title]="request() ? 'Edit request' : 'New resource request'" [busy]="busy()" [error]="error()" [saveDisabled]="!form().projectId || !form().title.trim()" (save)="save()" size="lg">
       <label class="field">
         <span class="field__label">Project</span>
         <select [value]="form().projectId" [disabled]="!!request()" (change)="patch({ projectId: $any($event.target).value })">

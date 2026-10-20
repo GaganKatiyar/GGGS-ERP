@@ -26,30 +26,42 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   styles: `
     .page-header {
       display: flex;
-      align-items: flex-start;
-      gap: 1rem;
-      margin-block-end: 1rem;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: var(--gggs-space-3) var(--gggs-space-4);
+      margin-block-end: var(--gggs-space-5);
     }
 
     .page-header__text {
-      flex: 1;
+      flex: 1 1 18rem;
       min-width: 0;
     }
 
     .page-header__title {
       margin: 0;
-      font-size: 1.375rem;
+      color: var(--gggs-color-text);
+      font-size: var(--gggs-font-size-xl);
+      font-weight: var(--gggs-font-weight-semibold);
+      letter-spacing: -0.015em;
+      line-height: var(--gggs-line-height-tight);
     }
 
     .page-header__subtitle {
-      margin: 0.25rem 0 0;
-      color: var(--gggs-color-text-muted, #5b6472);
+      margin: var(--gggs-space-1) 0 0;
+      color: var(--gggs-color-text-muted);
+      font-size: var(--gggs-font-size-base);
     }
 
     .page-header__actions {
       display: flex;
-      gap: 0.5rem;
-      flex-shrink: 0;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--gggs-space-2);
+    }
+
+    .page-header__actions:empty {
+      display: none;
     }
   `,
 })

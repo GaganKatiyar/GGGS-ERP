@@ -196,7 +196,7 @@ export class ComplianceDashboardPage {
       </div>
     </gggs-drawer>
 
-    <gggs-form-dialog [(visible)]="editorOpen" [title]="editorTitle()" [saveLabel]="mode() === 'version' ? 'Create draft' : 'Save draft'" [busy]="busy()" [error]="formError()" [saveDisabled]="!effectiveFrom() || !json().trim() || (mode() === 'new' && (!code().trim() || !name().trim()))" (save)="saveEditor()" width="min(52rem, 96vw)">
+    <gggs-form-dialog [(visible)]="editorOpen" [title]="editorTitle()" [saveLabel]="mode() === 'version' ? 'Create draft' : 'Save draft'" [busy]="busy()" [error]="formError()" [saveDisabled]="!effectiveFrom() || !json().trim() || (mode() === 'new' && (!code().trim() || !name().trim()))" (save)="saveEditor()" size="lg">
       @if (mode() === 'new') {
         <div class="cmp__grid">
           <label class="field">

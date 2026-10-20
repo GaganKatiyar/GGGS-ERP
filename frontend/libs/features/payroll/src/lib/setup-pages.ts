@@ -152,7 +152,7 @@ const blankComponent = (): ComponentInput => ({
       <p class="field__error" role="alert">{{ error() }}</p>
     }
 
-    <gggs-form-dialog [(visible)]="structureOpen" [title]="editingStructure() ? 'Edit structure' : 'New structure'" [busy]="busy()" [error]="formError()" [saveDisabled]="!structureName().trim() || !lines().length" (save)="saveStructure()" width="min(56rem, 96vw)">
+    <gggs-form-dialog [(visible)]="structureOpen" [title]="editingStructure() ? 'Edit structure' : 'New structure'" [busy]="busy()" [error]="formError()" [saveDisabled]="!structureName().trim() || !lines().length" (save)="saveStructure()" size="lg">
       <div class="pay__grid">
         @if (!editingStructure()) {
           <label class="field">
@@ -216,7 +216,7 @@ const blankComponent = (): ComponentInput => ({
       <p class="muted">Employer PF, ESI and gratuity sit inside the CTC when the structure lists them. Deductions and inputs are worked out each month and never belong to a structure.</p>
     </gggs-form-dialog>
 
-    <gggs-form-dialog [(visible)]="componentOpen" [title]="editingComponent() ? 'Edit component' : 'New component'" [busy]="busy()" [error]="formError()" [saveDisabled]="!form().name.trim() || (!editingComponent() && !(form().code ?? '').trim())" (save)="saveComponent()" width="min(48rem, 96vw)">
+    <gggs-form-dialog [(visible)]="componentOpen" [title]="editingComponent() ? 'Edit component' : 'New component'" [busy]="busy()" [error]="formError()" [saveDisabled]="!form().name.trim() || (!editingComponent() && !(form().code ?? '').trim())" (save)="saveComponent()" size="lg">
       <div class="pay__grid">
         @if (!editingComponent()) {
           <label class="field">

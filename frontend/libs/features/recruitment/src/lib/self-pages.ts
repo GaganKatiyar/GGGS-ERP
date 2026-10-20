@@ -63,7 +63,7 @@ import { CandidateFields, blankCandidate, errorText } from './recruitment-forms'
       <p class="field__error" role="alert">{{ error() }}</p>
     }
 
-    <gggs-form-dialog [(visible)]="open" [title]="job() ? 'Refer for ' + job()?.title : 'Refer someone'" saveLabel="Refer" [busy]="busy()" [error]="formError()" [saveDisabled]="!details().firstName.trim() || !details().email.trim()" (save)="submit()" width="min(52rem, 96vw)">
+    <gggs-form-dialog [(visible)]="open" [title]="job() ? 'Refer for ' + job()?.title : 'Refer someone'" saveLabel="Refer" [busy]="busy()" [error]="formError()" [saveDisabled]="!details().firstName.trim() || !details().email.trim()" (save)="submit()" size="lg">
       <gggs-candidate-fields [(value)]="details" [showCtc]="false" />
       <label class="field">
         <span class="field__label">Why are they a good fit?</span>

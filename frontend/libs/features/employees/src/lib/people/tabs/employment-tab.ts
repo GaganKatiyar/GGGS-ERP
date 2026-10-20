@@ -60,7 +60,7 @@ const today = () => new Date().toISOString().slice(0, 10);
       </dl>
     </section>
 
-    <gggs-form-dialog [(visible)]="changeOpen" title="Change assignment" saveLabel="Apply change" width="min(52rem, 96vw)" [busy]="busy()" [error]="error()" (save)="saveChange()">
+    <gggs-form-dialog [(visible)]="changeOpen" title="Change assignment" saveLabel="Apply change" size="lg" [busy]="busy()" [error]="error()" (save)="saveChange()">
       <div class="stack" [formGroup]="change">
         <div class="form-grid">
           <label class="field">

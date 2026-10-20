@@ -36,7 +36,7 @@ import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
       }
     </section>
 
-    <gggs-form-dialog [(visible)]="formOpen" [title]="editing() ? editing()?.code + ' · ' + editing()?.title : 'New requirement'" width="min(48rem, 96vw)" [busy]="busy()" [error]="dialogError()" [saveDisabled]="!canEdit()" (save)="save()">
+    <gggs-form-dialog [(visible)]="formOpen" [title]="editing() ? editing()?.code + ' · ' + editing()?.title : 'New requirement'" size="lg" [busy]="busy()" [error]="dialogError()" [saveDisabled]="!canEdit()" (save)="save()">
       <div class="form-grid">
         <label class="field form-grid__full">
           <span class="field__label">Title *</span>

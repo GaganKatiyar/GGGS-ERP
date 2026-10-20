@@ -64,7 +64,7 @@ import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
       }
     </section>
 
-    <gggs-form-dialog [(visible)]="formOpen" [title]="editing() ? 'Edit meeting' : 'Schedule a meeting'" width="min(48rem, 96vw)" [busy]="busy()" [error]="dialogError()" (save)="save()">
+    <gggs-form-dialog [(visible)]="formOpen" [title]="editing() ? 'Edit meeting' : 'Schedule a meeting'" size="lg" [busy]="busy()" [error]="dialogError()" (save)="save()">
       <div class="form-grid">
         <label class="field form-grid__full">
           <span class="field__label">Title *</span>

@@ -1,0 +1,127 @@
+/*
+ * Tables. `.table` styles a plain HTML table the way the shared data table looks: sticky header,
+ * quiet separators, hover and selected rows, and alignment helpers for numbers and dates. Wrap it
+ * in `.table-wrap` so a wide table scrolls inside its panel instead of the page.
+ */
+.table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--gggs-color-border);
+  border-radius: var(--gggs-radius-md);
+  background: var(--gggs-color-surface-raised);
+
+  /* Inside a panel the panel already draws the frame. */
+  .panel > &,
+  .panel > & > .table {
+    border: 0;
+    border-radius: 0;
+  }
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--gggs-font-size-base);
+  font-variant-numeric: tabular-nums;
+
+  th,
+  td {
+    height: var(--gggs-row-height-comfortable);
+    padding: var(--gggs-space-2) var(--gggs-space-3);
+    border-block-end: 1px solid var(--gggs-color-border);
+    text-align: start;
+    vertical-align: middle;
+  }
+
+  thead th {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 1;
+    height: var(--gggs-row-height-compact);
+    background: var(--gggs-color-surface-sunken);
+    color: var(--gggs-color-text-muted);
+    font-size: var(--gggs-font-size-xs);
+    font-weight: var(--gggs-font-weight-semibold);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  tbody tr {
+    transition: background-color var(--gggs-transition-fast);
+  }
+
+  tbody tr:hover {
+    background: var(--gggs-color-surface-hover);
+  }
+
+  tbody tr:last-child td {
+    border-block-end: 0;
+  }
+
+  tbody tr.is-selected,
+  tbody tr[aria-selected='true'] {
+    background: var(--gggs-color-surface-selected);
+    box-shadow: inset 3px 0 0 var(--gggs-color-primary);
+  }
+
+  tfoot td {
+    border-block-start: 1px solid var(--gggs-color-border-strong);
+    border-block-end: 0;
+    font-weight: var(--gggs-font-weight-semibold);
+  }
+
+  /* Numbers, amounts and percentages line up on the right. */
+  .num,
+  th.num {
+    text-align: end;
+    white-space: nowrap;
+  }
+
+  .date {
+    white-space: nowrap;
+  }
+
+  /* Row actions stay together at the end. */
+  .actions {
+    width: 1%;
+    text-align: end;
+    white-space: nowrap;
+
+    > * + * {
+      margin-inline-start: var(--gggs-space-1);
+    }
+  }
+
+  .muted-cell {
+    color: var(--gggs-color-text-muted);
+  }
+}
+
+.table--compact {
+  th,
+  td {
+    height: var(--gggs-row-height-compact);
+    padding-block: var(--gggs-space-1);
+  }
+}
+
+/* For tables that sit directly on the page rather than in a wrapper. */
+.table--bordered {
+  border: 1px solid var(--gggs-color-border);
+  border-radius: var(--gggs-radius-md);
+  overflow: hidden;
+}
+
+/* Pagination row under a table. */
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gggs-space-3);
+  padding: var(--gggs-space-2) var(--gggs-space-3);
+  color: var(--gggs-color-text-muted);
+  font-size: var(--gggs-font-size-sm);
+}

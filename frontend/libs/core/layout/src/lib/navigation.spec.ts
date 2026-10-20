@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NAVIGATION, filterNavigation, isBuilt, type NavItem } from './navigation';
+import { NAVIGATION, filterNavigation, isBuilt, isUnder, locate, moduleTabs, type NavItem } from './navigation';
 
 /** Everything visible, for tests about structure rather than permissions. */
 const showAll = () => true;
@@ -287,5 +287,49 @@ describe('filterNavigation', () => {
       ]);
 
     expect(plannedWithoutMilestone(NAVIGATION)).toEqual([]);
+  });
+});
+
+describe('locate', () => {
+  const nav = filterNavigation(NAVIGATION, isBuilt);
+
+  it('puts a top-level page in its own group', () => {
+    const location = locate(nav, '/dashboard');
+    expect(location?.group.label).toBe('Dashboard');
+    expect(location?.entry).toBe(location?.group);
+  });
+
+  it('prefers the longest matching route', () => {
+    const location = locate(nav, '/payroll/runs/123?tab=items');
+    expect(location?.group.label).toBe('Payroll');
+    expect(location?.entry.route).toBe('/payroll/runs');
+  });
+
+  it('does not let a shorter sibling route steal a page', () => {
+    expect(locate(nav, '/me/leave')?.entry.route).toBe('/me/leave');
+    expect(locate(nav, '/me/leavers')).toBeNull();
+  });
+
+  it('finds nothing for a page outside the navigation', () => {
+    expect(locate(nav, '/feature-unavailable')).toBeNull();
+  });
+});
+
+describe('isUnder', () => {
+  it('matches the route itself and pages beneath it only', () => {
+    expect(isUnder('/projects', '/projects')).toBe(true);
+    expect(isUnder('/projects/', '/projects')).toBe(true);
+    expect(isUnder('/projects/42#risks', '/projects')).toBe(true);
+    expect(isUnder('/projects-archive', '/projects')).toBe(false);
+  });
+});
+
+describe('moduleTabs', () => {
+  it('offers tabs only for modules with a handful of pages', () => {
+    const page = (label: string): NavItem => ({ label, icon: 'pi', route: `/${label}` });
+    expect(moduleTabs({ label: 'One', icon: 'pi', children: [page('a')] })).toEqual([]);
+    expect(moduleTabs({ label: 'Few', icon: 'pi', children: [page('a'), page('b')] })).toHaveLength(2);
+    expect(moduleTabs({ label: 'Many', icon: 'pi', children: Array.from({ length: 9 }, (_, i) => page(`p${i}`)) })).toEqual([]);
+    expect(moduleTabs(null)).toEqual([]);
   });
 });

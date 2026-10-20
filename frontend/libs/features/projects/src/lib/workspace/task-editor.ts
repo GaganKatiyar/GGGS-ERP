@@ -49,7 +49,7 @@ const blank = (type: TaskType): Draft => ({
   imports: [FormDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <gggs-form-dialog [(visible)]="visible" [title]="task() ? task()?.code + ' · ' + task()?.title : 'New ' + describe(draft().type)" width="min(52rem, 96vw)" [busy]="busy()" [error]="error()" [saveDisabled]="readOnly()" (save)="save()">
+    <gggs-form-dialog [(visible)]="visible" [title]="task() ? task()?.code + ' · ' + task()?.title : 'New ' + describe(draft().type)" size="lg" [busy]="busy()" [error]="error()" [saveDisabled]="readOnly()" (save)="save()">
       <div class="form-grid">
         <label class="field">
           <span class="field__label">Type</span>

@@ -151,7 +151,7 @@ export class LearningDashboardPage {
       }
     </section>
 
-    <gggs-form-dialog [(visible)]="courseOpen" [title]="editing() ? 'Edit course' : 'New course'" [busy]="busy()" [error]="formError()" [saveDisabled]="!form().code.trim() || !form().title.trim()" (save)="saveCourse()" width="min(52rem, 96vw)">
+    <gggs-form-dialog [(visible)]="courseOpen" [title]="editing() ? 'Edit course' : 'New course'" [busy]="busy()" [error]="formError()" [saveDisabled]="!form().code.trim() || !form().title.trim()" (save)="saveCourse()" size="lg">
       <div class="lms__grid">
         <label class="field">
           <span class="field__label">Code</span>

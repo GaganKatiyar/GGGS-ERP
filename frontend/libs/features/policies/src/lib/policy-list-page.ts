@@ -54,7 +54,7 @@ const today = () => new Date().toISOString().slice(0, 10);
       </gggs-data-table>
     }
 
-    <gggs-form-dialog [(visible)]="createOpen" title="New policy" width="min(52rem, 96vw)" saveLabel="Create draft" [busy]="busy()" [error]="formError()" (save)="create()">
+    <gggs-form-dialog [(visible)]="createOpen" title="New policy" size="lg" saveLabel="Create draft" [busy]="busy()" [error]="formError()" (save)="create()">
       <div class="stack">
         <gggs-policy-fields [form]="form" />
         <label class="field">

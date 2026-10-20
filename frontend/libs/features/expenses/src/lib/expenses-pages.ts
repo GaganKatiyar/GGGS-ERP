@@ -521,7 +521,7 @@ export class TripPage {
       </div>
     </gggs-form-dialog>
 
-    <gggs-form-dialog [(visible)]="tripOpen" title="Request travel" saveLabel="Submit" [busy]="busy()" [error]="formError()" [saveDisabled]="!tripForm().purpose.trim() || !tripForm().fromCity.trim() || !tripForm().toCity.trim()" (save)="requestTrip()" width="min(44rem, 96vw)">
+    <gggs-form-dialog [(visible)]="tripOpen" title="Request travel" saveLabel="Submit" [busy]="busy()" [error]="formError()" [saveDisabled]="!tripForm().purpose.trim() || !tripForm().fromCity.trim() || !tripForm().toCity.trim()" (save)="requestTrip()" size="lg">
       <div class="xp__grid">
         <label class="field xp__wide">
           <span class="field__label">Purpose</span>

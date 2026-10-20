@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  ElementRef,
   ViewContainerRef,
   computed,
   effect,
@@ -9,13 +10,15 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { type ActivatedRouteSnapshot, NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { SessionStore, StepUpPrompt } from '@gggs/core/auth';
 import { PermissionStore } from '@gggs/core/permissions';
 import { TenantStore } from '@gggs/core/tenant';
 import { NotificationsApi } from '@gggs/shared/notifications';
 import { WorkflowApi } from '@gggs/shared/workflow';
-import { NAVIGATION, filterNavigation, isBuilt, type NavItem } from './navigation';
+import { filter } from 'rxjs';
+import { NAVIGATION, filterNavigation, isBuilt, locate, moduleTabs, type NavItem } from './navigation';
 import { ThemeStore } from './theme';
 import { GlobalSearch } from './global-search';
 
@@ -23,40 +26,55 @@ import { GlobalSearch } from './global-search';
  * §14 puts SignalR in a later phase), so this is the whole story until then. */
 const UNREAD_COUNT_REFRESH_MS = 60_000;
 
-/** Below this, the sidebar stops being a column and becomes an overlay drawer (shell.scss). */
+/** Below this, the rail and panel stop being columns and become one drawer (shell.scss). */
 const MOBILE_BREAKPOINT_QUERY = '(max-width: 48rem)';
 
+const PANEL_COLLAPSED_KEY = 'gggs.shell.panel-collapsed';
+
+interface Crumb {
+  readonly label: string;
+  readonly route?: string;
+}
+
 /**
- * The application shell: sidebar, header and the routed outlet.
+ * The application shell: a navy rail of modules, a panel listing the active module's pages,
+ * a header with breadcrumbs, search, notifications and the user menu, and the routed outlet.
  *
- * The sidebar is built from the navigation manifest filtered by what the user can actually do, so
- * nobody is shown a menu of pages that will refuse them. Groups whose children are all hidden
- * disappear rather than sitting there empty.
+ * Everything is built from the navigation manifest filtered by what the user can actually do, so
+ * nobody is shown a menu of pages that will refuse them, and the active module, panel, breadcrumbs
+ * and tabs all follow the URL - deep links and the back button included.
  */
 @Component({
   selector: 'gggs-shell',
   imports: [RouterOutlet, RouterLink, RouterLinkActive, GlobalSearch],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell.html',
-  styleUrl: './shell.scss',
+  // Styled by apps/hrms-web/src/styles/_shell.scss.
+  host: {
+    '(document:keydown.escape)': 'onEscape()',
+    '(document:click)': 'onDocumentClick($event)',
+  },
 })
 export class Shell {
   private readonly permissions = inject(PermissionStore);
   private readonly notificationsApi = inject(NotificationsApi);
   private readonly workflowApi = inject(WorkflowApi);
+  private readonly router = inject(Router);
   protected readonly session = inject(SessionStore);
   private readonly stepUpOpen = inject(StepUpPrompt).open;
   private readonly stepUpHost = viewChild('stepUpHost', { read: ViewContainerRef });
+  private readonly userMenu = viewChild<ElementRef<HTMLElement>>('userMenu');
   private stepUpLoaded = false;
   protected readonly tenant = inject(TenantStore);
   protected readonly theme = inject(ThemeStore);
 
-  // "Collapsed" means minimal sidebar presence either way: a narrow icon rail on desktop, or fully
-  // hidden off-screen on mobile - so the drawer starts closed on a small screen rather than
-  // covering the page on first paint, and the same signal/toggle drives both behaviors.
-  protected readonly isSidebarCollapsed = signal(
-    typeof window !== 'undefined' && window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches,
-  );
+  private readonly isMobile = signal(typeof window !== 'undefined' && window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches);
+  /** On a small screen: whether the navigation drawer is open. */
+  protected readonly isDrawerOpen = signal(false);
+  /** On a large screen: whether the module panel is folded away, leaving the rail and the content. */
+  protected readonly isPanelCollapsed = signal(readFlag(PANEL_COLLAPSED_KEY));
+  protected readonly isUserMenuOpen = signal(false);
+
   protected readonly unreadCount = signal(0);
   /** Tasks waiting in the approvals inbox, shown on the Approvals entry. */
   protected readonly approvalsCount = signal(0);
@@ -66,8 +84,53 @@ export class Shell {
   private readonly canSeeApprovals = computed(() => this.permissions.hasAny(['workflow.task.view']));
 
   /** Navigation the signed-in user can actually reach. */
-  protected readonly navigation = computed(() =>
-    filterNavigation(NAVIGATION, (item) => this.isVisible(item)),
+  protected readonly navigation = computed(() => filterNavigation(NAVIGATION, (item) => this.isVisible(item)));
+
+  private readonly url = signal(this.router.url);
+  private readonly pageTitle = signal<string | null>(null);
+  /** A module opened from the rail without navigating yet; cleared by the next navigation. */
+  private readonly browsedGroup = signal<NavItem | null>(null);
+
+  private readonly location = computed(() => locate(this.navigation(), this.url()));
+  protected readonly activeGroup = computed(() => this.location()?.group ?? null);
+  /** The page the URL is on, by longest match - so an overview is not lit up beside its sub-pages. */
+  protected readonly activeEntry = computed(() => this.location()?.entry ?? null);
+  /** The module whose pages the panel lists: the one being browsed, else the current page's. */
+  protected readonly panelGroup = computed(() => {
+    const group = this.browsedGroup() ?? this.activeGroup();
+    return group?.children?.length ? group : null;
+  });
+  protected readonly showPanel = computed(() => !!this.panelGroup() && (this.isMobile() || !this.isPanelCollapsed()));
+  /** Tabs above the content when the panel is not there to switch pages. */
+  protected readonly tabs = computed(() => (this.showPanel() && !this.isMobile() ? [] : moduleTabs(this.activeGroup())));
+
+  protected readonly breadcrumbs = computed<readonly Crumb[]>(() => {
+    const location = this.location();
+    if (!location) {
+      return this.pageTitle() ? [{ label: this.pageTitle()! }] : [];
+    }
+
+    const crumbs: Crumb[] = [];
+    if (location.entry !== location.group) {
+      crumbs.push({ label: location.group.label, route: location.group.route ?? location.group.children?.[0]?.route });
+    }
+
+    crumbs.push({ label: location.entry.label, route: location.entry.route });
+    const title = this.pageTitle();
+    if (title && title !== location.entry.label && !this.url().split(/[?#]/)[0].endsWith(location.entry.route ?? '')) {
+      crumbs.push({ label: title });
+    }
+
+    return crumbs;
+  });
+
+  protected readonly initials = computed(() =>
+    (this.session.user()?.displayName ?? '')
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]!.toUpperCase())
+      .join(''),
   );
 
   constructor() {
@@ -80,13 +143,34 @@ export class Shell {
       }
     });
 
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe((event) => {
+        this.url.set(event.urlAfterRedirects);
+        this.pageTitle.set(deepestTitle(this.router.routerState.snapshot.root));
+        this.browsedGroup.set(null);
+        this.isDrawerOpen.set(false);
+        this.isUserMenuOpen.set(false);
+      });
+    this.pageTitle.set(deepestTitle(this.router.routerState.snapshot.root));
+
+    if (typeof window !== 'undefined') {
+      const query = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
+      const listener = (event: MediaQueryListEvent) => {
+        this.isMobile.set(event.matches);
+        this.isDrawerOpen.set(false);
+      };
+      query.addEventListener('change', listener);
+      inject(DestroyRef).onDestroy(() => query.removeEventListener('change', listener));
+    }
+
     if (this.canSeeNotifications() || this.canSeeApprovals()) {
       void this.refreshCounts();
 
-      const interval = setInterval(
-        () => void this.refreshCounts(),
-        UNREAD_COUNT_REFRESH_MS,
-      );
+      const interval = setInterval(() => void this.refreshCounts(), UNREAD_COUNT_REFRESH_MS);
       inject(DestroyRef).onDestroy(() => clearInterval(interval));
     }
   }
@@ -96,15 +180,61 @@ export class Shell {
     return item.badge === 'approvals' ? this.approvalsCount() : item.badge === 'notifications' ? this.unreadCount() : 0;
   }
 
-  protected toggleSidebar(): void {
-    this.isSidebarCollapsed.update((collapsed) => !collapsed);
+  protected isActiveGroup(item: NavItem): boolean {
+    return (this.browsedGroup() ?? this.activeGroup()) === item;
   }
 
-  /** Navigating (or dismissing the backdrop) closes the drawer on mobile; harmless on desktop,
-   * where it just re-collapses to the icon rail. */
-  protected closeSidebarOnMobile(): void {
-    if (window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches) {
-      this.isSidebarCollapsed.set(true);
+  /** A rail click on a module with pages opens its panel; the page itself is one more click. */
+  protected openGroup(item: NavItem): void {
+    this.browsedGroup.set(item === this.activeGroup() ? null : item);
+    if (!this.isMobile() && this.isPanelCollapsed()) {
+      this.setPanelCollapsed(false);
+    }
+  }
+
+  protected toggleNavigation(): void {
+    if (this.isMobile()) {
+      this.isDrawerOpen.update((open) => !open);
+    } else {
+      this.setPanelCollapsed(!this.isPanelCollapsed());
+    }
+  }
+
+  protected closeDrawer(): void {
+    this.isDrawerOpen.set(false);
+  }
+
+  protected toggleUserMenu(): void {
+    this.isUserMenuOpen.update((open) => !open);
+  }
+
+  protected onEscape(): void {
+    this.isUserMenuOpen.set(false);
+    this.isDrawerOpen.set(false);
+  }
+
+  protected onDocumentClick(event: MouseEvent): void {
+    const menu = this.userMenu()?.nativeElement;
+    if (this.isUserMenuOpen() && menu && !menu.contains(event.target as Node)) {
+      this.isUserMenuOpen.set(false);
+    }
+  }
+
+  protected focusContent(event: Event): void {
+    event.preventDefault();
+    document.getElementById('main-content')?.focus();
+  }
+
+  protected signOut(): void {
+    void this.session.signOut();
+  }
+
+  private setPanelCollapsed(collapsed: boolean): void {
+    this.isPanelCollapsed.set(collapsed);
+    try {
+      localStorage.setItem(PANEL_COLLAPSED_KEY, collapsed ? '1' : '0');
+    } catch {
+      // Storage blocked: the choice lasts for this page only.
     }
   }
 
@@ -128,25 +258,37 @@ export class Shell {
     }
   }
 
-  protected signOut(): void {
-    void this.session.signOut();
-  }
-
   private isVisible(item: NavItem): boolean {
     if (!isBuilt(item)) {
       return false;
     }
 
-    if (
-      item.feature !== undefined &&
-      !this.permissions.hasFeature(item.feature)
-    ) {
+    if (item.feature !== undefined && !this.permissions.hasFeature(item.feature)) {
       return false;
     }
 
-    return (
-      item.permissions === undefined ||
-      this.permissions.hasAny(item.permissions)
-    );
+    return item.permissions === undefined || this.permissions.hasAny(item.permissions);
+  }
+}
+
+/** The title of the innermost routed page, as declared on its route. */
+function deepestTitle(root: ActivatedRouteSnapshot): string | null {
+  let node: ActivatedRouteSnapshot | null = root;
+  let title: string | null = null;
+  while (node) {
+    if (typeof node.title === 'string') {
+      title = node.title;
+    }
+    node = node.firstChild;
+  }
+
+  return title;
+}
+
+function readFlag(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === '1';
+  } catch {
+    return false;
   }
 }

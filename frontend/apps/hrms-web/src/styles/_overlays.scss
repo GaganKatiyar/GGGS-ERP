@@ -1,0 +1,76 @@
+/*
+ * PrimeNG overlays, aligned with the design system: dialogs and drawers get a divided header and
+ * footer with a scrolling body that never runs past the viewport; toasts and tags match the tokens.
+ */
+.p-dialog {
+  max-height: calc(100vh - 2 * var(--gggs-space-6));
+  border: 1px solid var(--gggs-color-border);
+  border-radius: var(--gggs-radius-lg);
+  box-shadow: var(--gggs-shadow-lg);
+  overflow: hidden;
+
+  .p-dialog-header {
+    padding: var(--gggs-space-4) var(--gggs-space-5);
+    border-block-end: 1px solid var(--gggs-color-border);
+  }
+
+  .p-dialog-title {
+    font-size: var(--gggs-font-size-lg);
+    font-weight: var(--gggs-font-weight-semibold);
+  }
+
+  .p-dialog-content {
+    padding: var(--gggs-space-5);
+    overflow-y: auto;
+  }
+
+  .p-dialog-footer {
+    padding: var(--gggs-space-3) var(--gggs-space-5);
+    border-block-start: 1px solid var(--gggs-color-border);
+    background: var(--gggs-color-surface-sunken);
+  }
+}
+
+.p-drawer {
+  border-color: var(--gggs-color-border);
+  box-shadow: var(--gggs-shadow-lg);
+
+  .p-drawer-header {
+    padding: var(--gggs-space-4) var(--gggs-space-5);
+    border-block-end: 1px solid var(--gggs-color-border);
+  }
+
+  .p-drawer-title {
+    font-size: var(--gggs-font-size-lg);
+    font-weight: var(--gggs-font-weight-semibold);
+  }
+
+  .p-drawer-content {
+    padding: var(--gggs-space-5);
+  }
+}
+
+.p-confirmdialog .p-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--gggs-space-2);
+}
+
+.p-toast {
+  font-family: var(--gggs-font-family);
+
+  .p-toast-message {
+    border-radius: var(--gggs-radius-md);
+    box-shadow: var(--gggs-shadow-lg);
+  }
+}
+
+.p-tag {
+  border-radius: var(--gggs-radius-pill);
+  font-size: var(--gggs-font-size-xs);
+  font-weight: var(--gggs-font-weight-semibold);
+}
+
+.p-component {
+  font-family: var(--gggs-font-family);
+}

@@ -67,7 +67,7 @@ const fromItem = (request: ManpowerRequestItem): ManpowerRequestInput => ({
       [error]="error()"
       [saveDisabled]="!form().title.trim() || !form().departmentId"
       (save)="save()"
-      width="min(52rem, 96vw)"
+      size="lg"
     >
       <div class="wfp__grid">
         <label class="field wfp__wide">

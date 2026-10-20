@@ -177,7 +177,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
       <p class="field__error" role="alert">{{ error() }}</p>
     }
 
-    <gggs-form-dialog [(visible)]="open" [title]="dialogTitle()" [busy]="busy()" [error]="formError()" (save)="save()" width="min(44rem, 96vw)">
+    <gggs-form-dialog [(visible)]="open" [title]="dialogTitle()" [busy]="busy()" [error]="formError()" (save)="save()" size="lg">
       @switch (dialog()) {
         @case ('budget') {
           @for (category of categories; track category) {

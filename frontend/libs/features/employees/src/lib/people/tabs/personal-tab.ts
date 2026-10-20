@@ -118,7 +118,7 @@ function addressInput(form: AddressForm) {
       </div>
     </gggs-form-dialog>
 
-    <gggs-form-dialog [(visible)]="contactOpen" title="Edit contact details" width="min(48rem, 96vw)" [busy]="busy()" [error]="error()" (save)="saveContact()">
+    <gggs-form-dialog [(visible)]="contactOpen" title="Edit contact details" size="lg" [busy]="busy()" [error]="error()" (save)="saveContact()">
       <div class="stack" [formGroup]="contact">
         <div class="form-grid">
           <label class="field">
