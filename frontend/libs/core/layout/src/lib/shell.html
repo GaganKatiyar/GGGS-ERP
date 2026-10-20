@@ -7,7 +7,16 @@
 >
   <!-- One navigation landmark: the rail of modules and the active module's pages. On a small
        screen both slide in together as a drawer. -->
-  <nav id="shell-navigation" class="shell__nav" aria-label="Main" [attr.aria-modal]="isDrawerOpen() ? 'true' : null">
+  <nav
+    #navElement
+    id="shell-navigation"
+    class="shell__nav"
+    aria-label="Main"
+    tabindex="-1"
+    [attr.role]="isDrawerOpen() ? 'dialog' : null"
+    [attr.aria-modal]="isDrawerOpen() ? 'true' : null"
+    (keydown)="onNavigationKeydown($event)"
+  >
     <div class="rail">
       <a class="rail__brand" routerLink="/dashboard" aria-label="PeopleOS home">
         <span class="rail__logo" aria-hidden="true">P</span>

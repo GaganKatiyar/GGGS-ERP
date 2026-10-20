@@ -64,6 +64,7 @@ export class Shell {
   private readonly stepUpOpen = inject(StepUpPrompt).open;
   private readonly stepUpHost = viewChild('stepUpHost', { read: ViewContainerRef });
   private readonly userMenu = viewChild<ElementRef<HTMLElement>>('userMenu');
+  private readonly navigationElement = viewChild<ElementRef<HTMLElement>>('navElement');
   private stepUpLoaded = false;
   protected readonly tenant = inject(TenantStore);
   protected readonly theme = inject(ThemeStore);
@@ -195,6 +196,10 @@ export class Shell {
   protected toggleNavigation(): void {
     if (this.isMobile()) {
       this.isDrawerOpen.update((open) => !open);
+      // Focus moves into the drawer, so a keyboard user lands on the menu they just opened.
+      if (this.isDrawerOpen()) {
+        queueMicrotask(() => this.navigationElement()?.nativeElement.querySelector<HTMLElement>('.rail__item')?.focus());
+      }
     } else {
       this.setPanelCollapsed(!this.isPanelCollapsed());
     }
@@ -206,6 +211,37 @@ export class Shell {
 
   protected toggleUserMenu(): void {
     this.isUserMenuOpen.update((open) => !open);
+  }
+
+  /**
+   * Arrow keys move between entries of the rail or the panel (Home/End to the ends), and while the
+   * mobile drawer is open Tab cycles inside it rather than escaping to the page underneath.
+   */
+  protected onNavigationKeydown(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement;
+    const list = target.closest('.rail__list, .panel-nav__list');
+    if (list && ['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+      const items = Array.from(list.querySelectorAll<HTMLElement>('.rail__item, .panel-nav__link'));
+      const index = items.indexOf(target);
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : index + (event.key === 'ArrowDown' ? 1 : -1);
+      items[(next + items.length) % items.length]?.focus();
+      event.preventDefault();
+      return;
+    }
+
+    if (event.key === 'Tab' && this.isDrawerOpen()) {
+      const nav = this.navigationElement()?.nativeElement;
+      const focusable = (nav ? Array.from(nav.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')) : []).filter((element) => element.offsetParent !== null);
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        last?.focus();
+        event.preventDefault();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        first?.focus();
+        event.preventDefault();
+      }
+    }
   }
 
   protected onEscape(): void {
