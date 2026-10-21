@@ -211,7 +211,35 @@ gggs-shell {
   }
 }
 
+.panel-nav__header .panel-nav__close {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  margin-inline-start: auto;
+  border: 0;
+  border-radius: var(--gggs-radius-md);
+  background: transparent;
+  color: var(--gggs-color-text-muted);
+  cursor: pointer;
+  transition:
+    background-color var(--gggs-transition-fast),
+    color var(--gggs-transition-fast);
+
+  &:hover {
+    background: var(--gggs-color-surface-hover);
+    color: var(--gggs-color-text);
+  }
+
+  .pi {
+    color: inherit;
+    font-size: 0.85rem;
+  }
+}
+
 .panel-nav__title {
+  min-width: 0;
   font-size: var(--gggs-font-size-md);
   font-weight: var(--gggs-font-weight-semibold);
   letter-spacing: -0.01em;

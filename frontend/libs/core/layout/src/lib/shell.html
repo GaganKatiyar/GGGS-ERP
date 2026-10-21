@@ -63,6 +63,9 @@
       <div class="panel-nav__header">
         <i class="{{ group.icon }}" aria-hidden="true"></i>
         <span class="panel-nav__title">{{ group.label }}</span>
+        <button type="button" class="panel-nav__close" aria-label="Close menu" title="Close" (click)="closeSubmenu()">
+          <i class="pi pi-times" aria-hidden="true"></i>
+        </button>
       </div>
       <ul class="panel-nav__list">
         @for (child of group.children; track child.label) {
