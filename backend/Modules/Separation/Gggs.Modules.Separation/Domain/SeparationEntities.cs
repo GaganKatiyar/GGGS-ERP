@@ -66,6 +66,26 @@ public sealed class SeparationCase : TenantAggregateRoot
 
     public DateTime? CompletedAt { get; private set; }
 
+    /// <summary>Primary reason from <see cref="SeparationReasons"/>.</summary>
+    public string? ReasonCode { get; private set; }
+
+    public string? SecondaryReasonCode { get; private set; }
+
+    /// <summary>Whether the organisation regrets losing this person - set by the manager or HR.</summary>
+    public bool? Regretted { get; private set; }
+
+    /// <summary>What was tried to keep them (a conversation, a counter-offer) and how it went.</summary>
+    public string? RetentionNote { get; private set; }
+
+    /// <summary>An earlier last day the employee asked for, pending a decision.</summary>
+    public DateOnly? RequestedReleaseDay { get; private set; }
+
+    /// <summary>With the early release, the employee pays for the notice not served.</summary>
+    public bool ReleaseWithBuyout { get; private set; }
+
+    /// <summary>Paid to the last day but not working it.</summary>
+    public bool GardenLeave { get; private set; }
+
     public string ExitReasonCode => Type switch
     {
         SeparationType.Resignation => "RESIGNATION",
@@ -82,8 +102,13 @@ public sealed class SeparationCase : TenantAggregateRoot
 
     public bool InProgress => Status is CaseStatus.PendingApproval or CaseStatus.Approved;
 
-    public static SeparationCase Open(Guid employeeId, SeparationType type, string reason, DateOnly noticeDate, int noticePeriodDays, DateOnly requestedLastDay)
+    public static SeparationCase Open(Guid employeeId, SeparationType type, string reason, DateOnly noticeDate, int noticePeriodDays, DateOnly requestedLastDay, string? reasonCode = null)
     {
+        if (!SeparationReasons.IsKnown(reasonCode))
+        {
+            throw new DomainRuleException("SEPARATION_REASON", "Choose a reason from the list.");
+        }
+
         if (!Enum.IsDefined(type))
         {
             throw new DomainRuleException("SEPARATION_TYPE", "Choose a separation type.");
@@ -110,6 +135,14 @@ public sealed class SeparationCase : TenantAggregateRoot
             LastWorkingDay = requestedLastDay,
             Status = CaseStatus.PendingApproval,
             EligibleForRehire = type is not (SeparationType.Termination or SeparationType.Absconding),
+            ReasonCode = reasonCode ?? type switch
+            {
+                SeparationType.Retirement => "RETIREMENT",
+                SeparationType.ContractEnd => "CONTRACT_END",
+                SeparationType.Death => "DEATH",
+                SeparationType.Absconding => "ABSCONDING",
+                _ => null,
+            },
         };
     }
 
@@ -169,6 +202,67 @@ public sealed class SeparationCase : TenantAggregateRoot
     {
         ShortfallWaived = shortfallWaived;
         EligibleForRehire = eligibleForRehire;
+    }
+
+    /// <summary>The manager's or HR's reading of the exit: why, whether it is a loss, what was tried.</summary>
+    public void Classify(string? reasonCode, string? secondaryReasonCode, bool? regretted, string? retentionNote)
+    {
+        if (!SeparationReasons.IsKnown(reasonCode) || !SeparationReasons.IsKnown(secondaryReasonCode))
+        {
+            throw new DomainRuleException("SEPARATION_REASON", "Choose a reason from the list.");
+        }
+
+        ReasonCode = reasonCode;
+        SecondaryReasonCode = secondaryReasonCode == reasonCode ? null : secondaryReasonCode;
+        Regretted = regretted;
+        RetentionNote = string.IsNullOrWhiteSpace(retentionNote) ? null : Guard.MaxLength(retentionNote.Trim(), 1000);
+    }
+
+    /// <summary>The employee asks to leave before the notice ends - optionally paying for the days not served.</summary>
+    public void RequestEarlyRelease(DateOnly releaseDay, bool withBuyout)
+    {
+        if (!InProgress)
+        {
+            throw new DomainRuleException("SEPARATION_CLOSED", "The separation is closed.");
+        }
+
+        if (releaseDay < NoticeDate || releaseDay >= LastWorkingDay)
+        {
+            throw new DomainRuleException("SEPARATION_RELEASE_DAY", "An early release day falls between the notice date and the current last day.");
+        }
+
+        RequestedReleaseDay = releaseDay;
+        ReleaseWithBuyout = withBuyout;
+    }
+
+    /// <summary>
+    /// HR decides an early release. Granted with a buyout, the shortfall is recovered in the
+    /// settlement; granted without, the shortfall is waived.
+    /// </summary>
+    public void DecideEarlyRelease(bool granted)
+    {
+        if (RequestedReleaseDay is not { } day)
+        {
+            throw new DomainRuleException("SEPARATION_RELEASE_NONE", "No early release was asked for.");
+        }
+
+        if (granted)
+        {
+            SetLastDay(day);
+            ShortfallWaived = !ReleaseWithBuyout;
+        }
+
+        RequestedReleaseDay = null;
+    }
+
+    public void SetGardenLeave(bool gardenLeave)
+    {
+        if (!InProgress)
+        {
+            throw new DomainRuleException("SEPARATION_CLOSED", "The separation is closed.");
+        }
+
+        GardenLeave = gardenLeave;
     }
 
     public void LettersIssued(Guid relievingLetterId, Guid? experienceLetterId)

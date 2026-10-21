@@ -19,6 +19,9 @@ internal sealed class SeparationModel : IModuleModel
             entity.Property(row => row.Type).HasConversion<byte>();
             entity.Property(row => row.Status).HasConversion<byte>();
             entity.Property(row => row.Reason).HasMaxLength(1000);
+            entity.Property(row => row.ReasonCode).HasMaxLength(40);
+            entity.Property(row => row.SecondaryReasonCode).HasMaxLength(40);
+            entity.Property(row => row.RetentionNote).HasMaxLength(1000);
             entity.HasIndex(row => new { row.TenantId, row.EmployeeId }).HasDatabaseName("IX_Case_TenantId_Employee");
             entity.HasIndex(row => new { row.TenantId, row.Status, row.LastWorkingDay }).HasDatabaseName("IX_Case_TenantId_Status_LastDay");
             entity.Ignore(row => row.ExitReasonCode);
@@ -78,6 +81,37 @@ internal sealed class SeparationModel : IModuleModel
             entity.Ignore(row => row.DomainEvents);
         });
 
+        modelBuilder.Entity<SeparationPolicy>(entity =>
+        {
+            entity.ToTable("Policy", Schema);
+            entity.Property(row => row.BlockedLeaveTypeCodes).HasMaxLength(400);
+            entity.Property(row => row.EncashableLeaveTypeCodes).HasMaxLength(400);
+            entity.HasIndex(row => row.TenantId).HasDatabaseName("UX_Policy_TenantId").IsUnique().HasFilter("[IsDeleted] = 0");
+            entity.Ignore(row => row.BlockedLeaveTypes);
+            entity.Ignore(row => row.EncashableLeaveTypes);
+            entity.Ignore(row => row.DomainEvents);
+        });
+
+        modelBuilder.Entity<NoticeRule>(entity =>
+        {
+            entity.ToTable("NoticeRule", Schema);
+            entity.Property(row => row.EmploymentTypeCode).HasMaxLength(40);
+            entity.HasIndex(row => row.TenantId).HasDatabaseName("IX_NoticeRule_TenantId");
+            entity.Ignore(row => row.Specificity);
+            entity.Ignore(row => row.DomainEvents);
+        });
+
+        modelBuilder.Entity<CaseEvent>(entity =>
+        {
+            entity.ToTable("CaseEvent", Schema);
+            entity.Property(row => row.Kind).HasMaxLength(60);
+            entity.Property(row => row.Title).HasMaxLength(200);
+            entity.Property(row => row.Note).HasMaxLength(1000);
+            entity.HasOne<SeparationCase>().WithMany().HasForeignKey(row => row.CaseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(row => new { row.TenantId, row.CaseId, row.OccurredAt }).HasDatabaseName("IX_CaseEvent_TenantId_Case");
+            entity.Ignore(row => row.DomainEvents);
+        });
+
         modelBuilder.Entity<AlumniProfile>(entity =>
         {
             entity.ToTable("Alumni", Schema);
@@ -107,5 +141,11 @@ internal static class SeparationData
         public DbSet<SettlementLine> SettlementLines => db.Set<SettlementLine>();
 
         public DbSet<AlumniProfile> Alumni => db.Set<AlumniProfile>();
+
+        public DbSet<SeparationPolicy> SeparationPolicies => db.Set<SeparationPolicy>();
+
+        public DbSet<NoticeRule> NoticeRules => db.Set<NoticeRule>();
+
+        public DbSet<CaseEvent> CaseEvents => db.Set<CaseEvent>();
     }
 }

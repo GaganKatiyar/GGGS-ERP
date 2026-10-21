@@ -888,6 +888,7 @@ public static class RoleTemplates
         new(Permissions.Separation.ClearanceManage, DataScope.Tenant),
         new(Permissions.Separation.SettlementManage, DataScope.Tenant),
         new(Permissions.Separation.AlumniView, DataScope.Tenant),
+        new(Permissions.Separation.PolicyManage, DataScope.Tenant),
     ];
 
     /// <summary>Goals, performance, learning and career end to end.</summary>

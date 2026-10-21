@@ -91,7 +91,8 @@ internal sealed class LeaveService(
     IIntegrationEventPublisher publisher,
     ICurrentUser currentUser,
     ITenantClock clock,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IEnumerable<ILeaveApplicationRule> applicationRules)
 {
     public const string SubjectType = "leave.request";
 
@@ -400,6 +401,15 @@ internal sealed class LeaveService(
         if (!type.AllowHalfDay && (application.StartsSecondHalf || application.EndsFirstHalf))
         {
             throw new DomainRuleException("LEAVE_NO_HALF_DAYS", $"{type.Name} is taken in whole days.");
+        }
+
+        // Rules other modules add (notice period restrictions and the like).
+        foreach (ILeaveApplicationRule rule in applicationRules)
+        {
+            if (await rule.CheckAsync(employeeId, type.Code, application.StartDate, application.EndDate, cancellationToken) is { } problem)
+            {
+                problems.Add(problem);
+            }
         }
 
         EmployeeSummary person = await employees.GetAsync(employeeId, cancellationToken) ?? throw new NotFoundException("Employee", employeeId);

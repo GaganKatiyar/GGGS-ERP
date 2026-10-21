@@ -4,6 +4,7 @@ using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.BuildingBlocks.Web.Modules;
 using Gggs.Modules.Insight.Contracts;
+using Gggs.Modules.Leave.Contracts;
 using Gggs.Modules.Separation.Application;
 using Gggs.Modules.Separation.Domain;
 using Gggs.Modules.Workflow.Contracts;
@@ -21,6 +22,8 @@ public sealed class SeparationModule : IModule
         services.AddScoped<IMetricSource, SeparationMetrics>();
         services.AddScoped<ICalendarSource, SeparationCalendar>();
         services.AddScoped<SeparationService>();
+        services.AddScoped<SeparationPolicyService>();
+        services.AddScoped<ILeaveApplicationRule, SeparationLeaveRule>();
         services.AddWorkflowSubject(SeparationService.Subject);
     }
 
@@ -71,6 +74,28 @@ public sealed class SeparationModule : IModule
         group.MapPost("/clearance/{itemId:guid}", async (Guid itemId, ResolveBody body, SeparationService service, CancellationToken ct) => TypedResults.Ok(await service.ResolveAsync(itemId, body, ct)))
             .WithName("ResolveClearanceItem").RequirePermission(Permissions.Separation.ClearanceManage, Permissions.Separation.CaseView, Permissions.Workflow.TaskAct);
 
+        group.MapPut("/cases/{id:guid}/classification", async (Guid id, ClassificationBody body, SeparationService service, CancellationToken ct) => TypedResults.Ok(await service.ClassifyAsync(id, body, ct)))
+            .WithName("ClassifySeparation").RequirePermission(Permissions.Separation.CaseManage);
+        group.MapPost("/cases/{id:guid}/early-release/{decision:regex(^(grant|decline)$)}", async (Guid id, string decision, SeparationService service, CancellationToken ct) => TypedResults.Ok(await service.DecideEarlyReleaseAsync(id, decision == "grant", ct)))
+            .WithName("DecideEarlyRelease").RequirePermission(Permissions.Separation.CaseManage);
+
+        group.MapGet("/reasons", () => TypedResults.Ok(SeparationPolicyService.Reasons))
+            .WithName("SeparationReasons").RequirePermission(Permissions.Separation.CaseView, Permissions.Self.ResignationSubmit);
+        group.MapGet("/policy", async (SeparationPolicyService policy, CancellationToken ct) => TypedResults.Ok(await policy.GetAsync(ct)))
+            .WithName("SeparationPolicy").RequirePermission(Permissions.Separation.CaseView, Permissions.Separation.PolicyManage, Permissions.Self.ResignationSubmit);
+        group.MapPut("/policy", async (PolicyBody body, SeparationPolicyService policy, CancellationToken ct) => TypedResults.Ok(await policy.UpdateAsync(body, ct)))
+            .WithName("UpdateSeparationPolicy").RequirePermission(Permissions.Separation.PolicyManage);
+        group.MapGet("/policy/notice-rules", async (SeparationPolicyService policy, CancellationToken ct) => TypedResults.Ok(await policy.RulesAsync(ct)))
+            .WithName("NoticeRules").RequirePermission(Permissions.Separation.CaseView, Permissions.Separation.PolicyManage);
+        group.MapPost("/policy/notice-rules", async (NoticeRuleBody body, SeparationPolicyService policy, CancellationToken ct) => TypedResults.Ok(await policy.AddRuleAsync(body, ct)))
+            .WithName("AddNoticeRule").RequirePermission(Permissions.Separation.PolicyManage);
+        group.MapDelete("/policy/notice-rules/{id:guid}", async (Guid id, SeparationPolicyService policy, CancellationToken ct) =>
+            {
+                await policy.RemoveRuleAsync(id, ct);
+                return TypedResults.NoContent();
+            })
+            .WithName("RemoveNoticeRule").RequirePermission(Permissions.Separation.PolicyManage);
+
         group.MapGet("/alumni", async (string? search, SeparationService service, CancellationToken ct) => TypedResults.Ok(await service.AlumniAsync(search, ct)))
             .WithName("ListAlumni").RequirePermission(Permissions.Separation.AlumniView);
         group.MapPut("/alumni/{id:guid}", async (Guid id, AlumniBody body, SeparationService service, CancellationToken ct) => TypedResults.Ok(await service.UpdateAlumniAsync(id, body, ct)))
@@ -85,6 +110,8 @@ public sealed class SeparationModule : IModule
             .WithName("WithdrawResignation").RequirePermission(Permissions.Self.ResignationSubmit);
         me.MapPut("/interview", async (InterviewBody body, SeparationService service, CancellationToken ct) => TypedResults.Ok(await service.RecordInterviewAsync(null, body, ct)))
             .WithName("SubmitExitInterview").RequirePermission(Permissions.Self.ResignationSubmit);
+        me.MapPost("/early-release", async (EarlyReleaseBody body, SeparationService service, CancellationToken ct) => TypedResults.Ok(await service.RequestEarlyReleaseAsync(body, ct)))
+            .WithName("RequestEarlyRelease").RequirePermission(Permissions.Self.ResignationSubmit);
     }
 }
 

@@ -653,6 +653,9 @@ public static class Permissions
 
         public const string SettlementManage = "separation.settlement.manage";
         public const string AlumniView = "separation.alumni.view";
+
+        /// <summary>Notice periods and the rest of the separation policy.</summary>
+        public const string PolicyManage = "separation.policy.manage";
     }
 
     /// <summary>Bulk imports and integrations with outside systems (spec: import and integrations).</summary>

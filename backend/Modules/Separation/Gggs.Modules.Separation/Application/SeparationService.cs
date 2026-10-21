@@ -42,7 +42,15 @@ public sealed record CaseItem(
     SettlementStatus? SettlementStatus,
     decimal? SettlementNet,
     Guid? RelievingLetterId,
-    Guid? ExperienceLetterId);
+    Guid? ExperienceLetterId,
+    string? ReasonCode = null,
+    string? ReasonLabel = null,
+    string? SecondaryReasonCode = null,
+    bool? Regretted = null,
+    string? RetentionNote = null,
+    DateOnly? RequestedReleaseDay = null,
+    bool ReleaseWithBuyout = false,
+    bool GardenLeave = false);
 
 public sealed record ClearanceView(Guid Id, ClearanceArea Area, string Title, Guid? OwnerEmployeeId, string? OwnerName, ClearanceStatus Status, decimal RecoveryAmount, string? Note, DateOnly? ClearedOn, bool CanResolve);
 
@@ -52,13 +60,19 @@ public sealed record SettlementLineView(Guid Id, string Code, string Label, bool
 
 public sealed record SettlementView(Guid Id, SettlementStatus Status, decimal Earnings, decimal Deductions, decimal Net, DateOnly? PaidOn, string? PaymentReference, IReadOnlyList<SettlementLineView> Lines);
 
-public sealed record CaseView(CaseItem Case, IReadOnlyList<ClearanceView> Clearance, InterviewView? Interview, SettlementView? Settlement);
+public sealed record CaseEventView(string Kind, string Title, string? Note, string? ActorName, DateTime OccurredAt);
 
-public sealed record ResignBody(string Reason, DateOnly? RequestedLastDay);
+public sealed record CaseView(CaseItem Case, IReadOnlyList<ClearanceView> Clearance, InterviewView? Interview, SettlementView? Settlement, IReadOnlyList<CaseEventView>? Events = null);
 
-public sealed record InitiateBody(Guid EmployeeId, SeparationType Type, string Reason, DateOnly NoticeDate, DateOnly LastWorkingDay, int? NoticePeriodDays);
+public sealed record ResignBody(string Reason, DateOnly? RequestedLastDay, string? ReasonCode = null);
 
-public sealed record TermsBody(DateOnly LastWorkingDay, bool ShortfallWaived, bool EligibleForRehire);
+public sealed record InitiateBody(Guid EmployeeId, SeparationType Type, string Reason, DateOnly NoticeDate, DateOnly LastWorkingDay, int? NoticePeriodDays, string? ReasonCode = null);
+
+public sealed record TermsBody(DateOnly LastWorkingDay, bool ShortfallWaived, bool EligibleForRehire, bool? GardenLeave = null);
+
+public sealed record ClassificationBody(string? ReasonCode, string? SecondaryReasonCode, bool? Regretted, string? RetentionNote);
+
+public sealed record EarlyReleaseBody(DateOnly ReleaseDay, bool WithBuyout);
 
 public sealed record ResolveBody(ClearanceStatus Status, decimal? RecoveryAmount, string? Note);
 
@@ -105,12 +119,10 @@ internal sealed class SeparationService(
     IPermissionProvider permissions,
     ICurrentUser currentUser,
     ITenantClock clock,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    SeparationPolicyService policy)
 {
     public const string SubjectType = "separation.resignation";
-
-    /// <summary>The notice period when none is given.</summary>
-    public const int DefaultNoticeDays = 60;
 
     public static WorkflowSubject Subject { get; } = new(
         SubjectType,
@@ -163,8 +175,10 @@ internal sealed class SeparationService(
         Guid me = Me();
         DateOnly today = await clock.TodayAsync(cancellationToken);
         await EnsureNoOpenCaseAsync(me, cancellationToken);
-        var separation = SeparationCase.Open(me, SeparationType.Resignation, body.Reason, today, DefaultNoticeDays, body.RequestedLastDay ?? today.AddDays(DefaultNoticeDays));
+        int noticeDays = await policy.NoticeDaysForAsync(me, cancellationToken);
+        var separation = SeparationCase.Open(me, SeparationType.Resignation, body.Reason, today, noticeDays, body.RequestedLastDay ?? today.AddDays(noticeDays), body.ReasonCode);
         dbContext.SeparationCases.Add(separation);
+        Note(separation, "submitted", "Resignation submitted", $"Notice {noticeDays} days; last day asked for {Format(separation.RequestedLastDay)}.");
         await dbContext.SaveChangesAsync(cancellationToken);
 
         EmployeeSummary? person = await employees.GetAsync(me, cancellationToken);
@@ -218,8 +232,9 @@ internal sealed class SeparationService(
         }
 
         await EnsureNoOpenCaseAsync(body.EmployeeId, cancellationToken);
-        var separation = SeparationCase.Open(body.EmployeeId, body.Type, body.Reason, body.NoticeDate, body.NoticePeriodDays ?? (body.LastWorkingDay.DayNumber - body.NoticeDate.DayNumber), body.LastWorkingDay);
+        var separation = SeparationCase.Open(body.EmployeeId, body.Type, body.Reason, body.NoticeDate, body.NoticePeriodDays ?? (body.LastWorkingDay.DayNumber - body.NoticeDate.DayNumber), body.LastWorkingDay, body.ReasonCode);
         dbContext.SeparationCases.Add(separation);
+        Note(separation, "initiated", $"{TypeLabel(body.Type)} started by HR", $"Last working day {Format(separation.LastWorkingDay)}.");
         await dbContext.SaveChangesAsync(cancellationToken);
         await ApproveAsync(separation, null, cancellationToken);
         return await ViewAsync(separation, includeSettlement: true, cancellationToken);
@@ -241,6 +256,7 @@ internal sealed class SeparationService(
         {
             // A resignation sent back or rejected is closed; the employee can resign again.
             separation.Reject();
+            Note(separation, "rejected", "Resignation not accepted", null);
             await dbContext.SaveChangesAsync(cancellationToken);
         }
     }
@@ -253,6 +269,7 @@ internal sealed class SeparationService(
                 ?? throw new DomainRuleException("SEPARATION_NONE", "You have no separation in progress.");
         CaseStatus before = separation.Status;
         separation.Withdraw(await clock.TodayAsync(cancellationToken));
+        Note(separation, "withdrawn", "Separation withdrawn", null);
         if (before == CaseStatus.PendingApproval)
         {
             await workflow.WithdrawAsync(SubjectType, separation.Id, cancellationToken);
@@ -270,8 +287,65 @@ internal sealed class SeparationService(
     {
         ArgumentNullException.ThrowIfNull(body);
         SeparationCase separation = await ManagedAsync(id, cancellationToken);
+        DateOnly before = separation.LastWorkingDay;
         separation.SetLastDay(body.LastWorkingDay);
         separation.SetTerms(body.ShortfallWaived, body.EligibleForRehire);
+        if (body.GardenLeave is { } gardenLeave && gardenLeave != separation.GardenLeave)
+        {
+            if (gardenLeave && !(await policy.PolicyAsync(cancellationToken)).GardenLeaveAllowed)
+            {
+                throw new DomainRuleException("SEPARATION_GARDEN_LEAVE", "The separation policy does not allow garden leave.");
+            }
+
+            separation.SetGardenLeave(gardenLeave);
+            Note(separation, "garden-leave", gardenLeave ? "Placed on garden leave" : "Garden leave ended", null);
+        }
+
+        Note(separation, "terms", "Terms updated", before == separation.LastWorkingDay
+            ? $"Shortfall {(body.ShortfallWaived ? "waived" : "recovered")}; {(body.EligibleForRehire ? "eligible" : "not eligible")} for rehire."
+            : $"Last day moved from {Format(before)} to {Format(separation.LastWorkingDay)}.");
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await ViewAsync(separation, includeSettlement: true, cancellationToken);
+    }
+
+    /// <summary>The manager's or HR's reading of the exit: reasons, regretted or not, retention attempted.</summary>
+    public async Task<CaseView> ClassifyAsync(Guid id, ClassificationBody body, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        SeparationCase separation = await ManagedAsync(id, allowCompleted: true, cancellationToken);
+        separation.Classify(body.ReasonCode, body.SecondaryReasonCode, body.Regretted, body.RetentionNote);
+        string regret = body.Regretted switch { true => " (regretted)", false => " (not regretted)", _ => string.Empty };
+        Note(separation, "classified", "Exit reason recorded", $"{SeparationReasons.LabelOf(body.ReasonCode) ?? "No reason"}{regret}");
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await ViewAsync(separation, includeSettlement: true, cancellationToken);
+    }
+
+    /// <summary>The employee asks to leave before the notice ends, optionally buying out the remaining days.</summary>
+    public async Task<CaseView> RequestEarlyReleaseAsync(EarlyReleaseBody body, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        Guid me = Me();
+        SeparationCase separation = await dbContext.SeparationCases.FirstOrDefaultAsync(row => row.EmployeeId == me && (row.Status == CaseStatus.PendingApproval || row.Status == CaseStatus.Approved), cancellationToken)
+            ?? throw new DomainRuleException("SEPARATION_NONE", "You have no separation in progress.");
+        if (body.WithBuyout && !(await policy.PolicyAsync(cancellationToken)).BuyoutAllowed)
+        {
+            throw new DomainRuleException("SEPARATION_BUYOUT", "The separation policy does not allow buying out the notice period.");
+        }
+
+        separation.RequestEarlyRelease(body.ReleaseDay, body.WithBuyout);
+        Note(separation, "early-release-requested", "Early release asked for", $"Last day {Format(body.ReleaseDay)}{(body.WithBuyout ? ", buying out the remaining notice" : string.Empty)}.");
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await ViewAsync(separation, includeSettlement: false, cancellationToken);
+    }
+
+    public async Task<CaseView> DecideEarlyReleaseAsync(Guid id, bool granted, CancellationToken cancellationToken)
+    {
+        SeparationCase separation = await ManagedAsync(id, cancellationToken);
+        DateOnly? asked = separation.RequestedReleaseDay;
+        bool buyout = separation.ReleaseWithBuyout;
+        separation.DecideEarlyRelease(granted);
+        Note(separation, granted ? "early-release-granted" : "early-release-declined", granted ? "Early release granted" : "Early release declined",
+            granted && asked is { } day ? $"Last day {Format(day)}; shortfall {(buyout ? "recovered as a buyout" : "waived")}." : null);
         await dbContext.SaveChangesAsync(cancellationToken);
         return await ViewAsync(separation, includeSettlement: true, cancellationToken);
     }
@@ -559,6 +633,16 @@ internal sealed class SeparationService(
     private static AlumniItem Alumni(AlumniProfile row)
         => new(row.Id, row.EmployeeId, row.Name, row.Email, row.LastDesignation, row.ExitDate, row.SeparationType, row.EligibleForRehire, row.OptedIn, row.Notes);
 
+    /// <summary>Adds a step to the case's timeline; saved with the change it describes.</summary>
+    private void Note(SeparationCase separation, string kind, string title, string? note)
+        => dbContext.CaseEvents.Add(CaseEvent.Record(separation.Id, kind, title, note, currentUser.EmployeeId, timeProvider.GetUtcNow().UtcDateTime));
+
+    private static string TypeLabel(SeparationType type) => type switch
+    {
+        SeparationType.ContractEnd => "Contract end",
+        _ => type.ToString(),
+    };
+
     private Guid Me() => currentUser.EmployeeId ?? throw new DomainRuleException("SEPARATION_NO_EMPLOYEE", "Your account is not linked to an employee record.");
 
     private async Task<bool> HasAsync(string permission, CancellationToken cancellationToken) => (await permissions.GetCurrentAsync(cancellationToken)).Has(permission);
@@ -575,6 +659,7 @@ internal sealed class SeparationService(
     private async Task ApproveAsync(SeparationCase separation, DateOnly? lastWorkingDay, CancellationToken cancellationToken)
     {
         separation.Approve(lastWorkingDay);
+        Note(separation, "approved", "Separation approved", $"Serving notice to {Format(separation.LastWorkingDay)}.");
         await separations.StartNoticeAsync(separation.EmployeeId, separation.NoticeDate, cancellationToken);
         EmployeeSummary? person = await employees.GetAsync(separation.EmployeeId, cancellationToken);
         List<ClearanceItem> items =
@@ -613,6 +698,7 @@ internal sealed class SeparationService(
     {
         await separations.ExitAsync(separation.EmployeeId, separation.LastWorkingDay, separation.ExitReasonCode, cancellationToken);
         separation.Complete(timeProvider.GetUtcNow().UtcDateTime);
+        Note(separation, "completed", "Exit completed", $"Last working day {Format(separation.LastWorkingDay)}.");
         if (!await dbContext.Alumni.AnyAsync(row => row.EmployeeId == separation.EmployeeId, cancellationToken) && separation.Type != SeparationType.Death)
         {
             EmployeeSummary? person = await employees.GetAsync(separation.EmployeeId, cancellationToken);
@@ -703,11 +789,15 @@ internal sealed class SeparationService(
                 [.. lines.OrderBy(line => line.IsDeduction).ThenBy(line => line.Code, StringComparer.Ordinal).Select(line => new SettlementLineView(line.Id, line.Code, line.Label, line.IsDeduction, line.Amount, line.IsManual, line.Basis))]);
         }
 
+        List<CaseEvent> events = await dbContext.CaseEvents.AsNoTracking().Where(row => row.CaseId == separation.Id).OrderBy(row => row.OccurredAt).ToListAsync(cancellationToken);
+        Dictionary<Guid, string> actors = (await employees.GetManyAsync(events.Where(row => row.ActorEmployeeId != null).Select(row => row.ActorEmployeeId!.Value).Distinct(), cancellationToken))
+            .ToDictionary(person => person.Id, person => person.DisplayName);
         return new CaseView(
             (await ItemsAsync([separation], cancellationToken))[0],
             await ClearanceViewsAsync(items, cancellationToken),
             interview is null ? null : new InterviewView(interview.PrimaryReason, interview.OverallRating, interview.WouldRecommend, interview.WouldReturn, interview.WhatWentWell, interview.WhatToImprove, interview.ConductedOn),
-            settlement);
+            settlement,
+            [.. events.Select(row => new CaseEventView(row.Kind, row.Title, row.Note, row.ActorEmployeeId is { } actor ? actors.GetValueOrDefault(actor) : null, row.OccurredAt))]);
     }
 
     private async Task<List<CaseItem>> ItemsAsync(IReadOnlyList<SeparationCase> cases, CancellationToken cancellationToken)
@@ -727,7 +817,9 @@ internal sealed class SeparationService(
                 row.Id, row.EmployeeId, person?.DisplayName, person?.EmployeeCode, person?.Designation, row.Type, row.Reason, row.NoticeDate, row.NoticePeriodDays, row.RequestedLastDay,
                 row.LastWorkingDay, row.ShortfallDays, row.ShortfallWaived, row.EligibleForRehire, row.Status, row.WorkflowInstanceId,
                 clearance.TryGetValue(row.Id, out var counts) ? counts.Pending : 0, counts?.Total ?? 0, interviewed.Contains(row.Id),
-                settlement?.Status, settlement?.Net, row.RelievingLetterId, row.ExperienceLetterId);
+                settlement?.Status, settlement?.Net, row.RelievingLetterId, row.ExperienceLetterId,
+                row.ReasonCode, SeparationReasons.LabelOf(row.ReasonCode), row.SecondaryReasonCode, row.Regretted, row.RetentionNote,
+                row.RequestedReleaseDay, row.ReleaseWithBuyout, row.GardenLeave);
         })];
     }
 }

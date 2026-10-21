@@ -41,3 +41,12 @@ public sealed record LeaveApprovedIntegrationEvent(Guid RequestId, Guid Employee
 /// <summary>Approved leave was cancelled: the days are working days again.</summary>
 [MessageType("gggs.leave.request-cancelled")]
 public sealed record LeaveCancelledIntegrationEvent(Guid RequestId, Guid EmployeeId, DateOnly StartDate, DateOnly EndDate) : IntegrationEvent;
+
+/// <summary>
+/// A rule another module adds to leave applications - for example, Separation blocking earned
+/// leave during notice. Returns why the leave is not allowed, or null when it is.
+/// </summary>
+public interface ILeaveApplicationRule
+{
+    Task<string?> CheckAsync(Guid employeeId, string leaveTypeCode, DateOnly startDate, DateOnly endDate, CancellationToken cancellationToken = default);
+}
