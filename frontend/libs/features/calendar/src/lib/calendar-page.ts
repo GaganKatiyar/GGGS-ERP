@@ -154,7 +154,7 @@ interface Day {
     }
 
     .cal__day--out {
-      color: var(--gggs-color-text-subtle);
+      color: var(--gggs-color-text-muted);
       background: var(--gggs-color-surface-sunken);
     }
 

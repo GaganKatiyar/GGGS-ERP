@@ -125,3 +125,15 @@
   color: var(--gggs-color-text-muted);
   font-size: var(--gggs-font-size-sm);
 }
+
+/*
+ * On a phone a table that is wider than the screen scrolls sideways inside itself, rather than
+ * widening the whole page. (PrimeNG tables manage their own scrolling.)
+ */
+@media (max-width: 48rem) {
+  table:not(.p-datatable-table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}

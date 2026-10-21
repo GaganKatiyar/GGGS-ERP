@@ -110,3 +110,8 @@
     background: var(--gggs-color-danger-hover);
   }
 }
+
+/* In dark mode the danger red is light, so its label is dark. */
+.gggs-dark .p-button.p-button-danger:not(.p-button-text, .p-button-outlined) {
+  color: var(--gggs-color-primary-contrast);
+}

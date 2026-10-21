@@ -23,7 +23,7 @@ import { EmptyState, FormDialog, PageHeader, StatusBadge, Tabs, type TabItem } f
   template: `
     <gggs-page-header title="Attendance" subtitle="Days, corrections and devices.">
       <div class="toolbar">
-        <a class="btn" routerLink="shifts" *gggsHasPermission="['attendance.shift.manage', 'attendance.roster.manage']"><i class="pi pi-calendar-clock" aria-hidden="true"></i> Shifts &amp; rosters</a>
+        <a class="btn" routerLink="/attendance/shifts" *gggsHasPermission="['attendance.shift.manage', 'attendance.roster.manage']"><i class="pi pi-calendar-clock" aria-hidden="true"></i> Shifts &amp; rosters</a>
         <button type="button" class="btn" *gggsHasPermission="'attendance.record.manage'" [disabled]="busy()" (click)="recompute()">Recalculate</button>
       </div>
     </gggs-page-header>

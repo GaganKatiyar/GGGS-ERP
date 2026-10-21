@@ -100,7 +100,7 @@ const iso = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-$
 
     .cal__day--out {
       background: var(--gggs-color-surface-sunken);
-      color: var(--gggs-color-text-subtle);
+      color: var(--gggs-color-text-muted);
     }
 
     .cal__day--today .cal__date {

@@ -572,9 +572,9 @@ export class SuccessionPage {
         <gggs-kpi-card label="Not yet assessed" [value]="v.unassessed" />
         <gggs-kpi-card label="No released rating" [value]="v.unrated" />
       </div>
-      <div class="car__ninebox" role="grid" aria-label="9-box">
+      <div class="car__ninebox" role="list" aria-label="9-box: potential by performance">
         @for (box of order; track box) {
-          <div class="car__box" [class]="'car__box car__box--' + box" role="gridcell">
+          <div class="car__box" [class]="'car__box car__box--' + box" role="listitem" [attr.aria-label]="labelOf(box) + ', ' + inBox(v, box).length + ' people'">
             <span class="car__box-title">{{ labelOf(box) }} <span class="muted">{{ inBox(v, box).length }}</span></span>
             @for (person of inBox(v, box); track person.employeeId) {
               <button type="button" class="car__chip" (click)="openAssess(person)">{{ person.employeeName ?? '—' }}</button>

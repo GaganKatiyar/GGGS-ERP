@@ -100,6 +100,10 @@
   background: var(--gggs-color-danger);
   color: #ffffff;
 
+  .gggs-dark & {
+    color: var(--gggs-color-primary-contrast);
+  }
+
   &:hover:not(:disabled) {
     border-color: var(--gggs-color-danger-hover);
     background: var(--gggs-color-danger-hover);

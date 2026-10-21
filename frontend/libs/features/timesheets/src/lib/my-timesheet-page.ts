@@ -59,7 +59,7 @@ const mondayOf = (iso: string): string => {
           <span><strong>{{ total() | number: '1.0-2' }}</strong> h · {{ billable() | number: '1.0-2' }} billable{{ v.overtimeHours ? ' · ' + v.overtimeHours + ' overtime' : '' }}</span>
         </div>
 
-        <div class="ts__scroll">
+        <div class="ts__scroll" tabindex="0" role="region" aria-label="Timesheet grid">
           <table class="table ts__grid">
             <thead>
               <tr>

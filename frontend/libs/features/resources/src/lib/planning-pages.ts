@@ -167,7 +167,7 @@ export class ResourceCalendarPage {
       <section class="panel stack">
         <h2 class="res__heading">Capacity (FTE)</h2>
         <gggs-chart kind="bar" title="Allocated against available FTE" [labels]="monthLabels()" [series]="capacitySeries()" />
-        <div class="res__scroll">
+        <div class="res__scroll" tabindex="0" role="region" aria-label="Scrollable table">
           <table class="table res__table">
             <thead>
               <tr>
@@ -204,7 +204,7 @@ export class ResourceCalendarPage {
         <h2 class="res__heading">Skill demand against supply</h2>
         <p class="muted">Demand: people asked for in open requests. Supply: people with the skill at the level who are at least half free.</p>
         @if (r.skills.length) {
-          <div class="res__scroll">
+          <div class="res__scroll" tabindex="0" role="region" aria-label="Scrollable table">
             <table class="table res__table">
               <thead>
                 <tr>
