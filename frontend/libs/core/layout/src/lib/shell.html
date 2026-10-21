@@ -2,7 +2,6 @@
 
 <div
   class="shell"
-  [class.shell--with-panel]="showPanel()"
   [class.shell--drawer-open]="isDrawerOpen()"
 >
   <!-- One navigation landmark: the rail of modules and the active module's pages. On a small
@@ -43,6 +42,7 @@
             class="rail__item"
             [routerLink]="item.route"
             routerLinkActive="rail__item--active"
+            (click)="closeSubmenu()"
             ariaCurrentWhenActive="page"
             [title]="item.label"
           >
@@ -70,6 +70,7 @@
           <a
             class="panel-nav__link"
             [routerLink]="child.route"
+            (click)="closeSubmenu()"
             [class.panel-nav__link--active]="activeEntry() === child"
             [attr.aria-current]="activeEntry() === child ? 'page' : null"
           >
@@ -98,11 +99,12 @@
 
   <div class="shell__main">
     <header class="topbar">
+      <!-- Phones only: opens the navigation drawer. On a desktop the rail and panel are always there. -->
       <button
         type="button"
-        class="topbar__icon-button"
+        class="topbar__icon-button topbar__menu"
         (click)="toggleNavigation()"
-        [attr.aria-expanded]="isDrawerOpen() || showPanel()"
+        [attr.aria-expanded]="isDrawerOpen()"
         aria-controls="shell-navigation"
         aria-label="Toggle navigation"
       >

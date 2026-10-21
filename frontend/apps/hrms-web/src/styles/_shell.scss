@@ -15,25 +15,16 @@ gggs-shell {
   height: 100%;
   background: var(--gggs-color-surface);
 
-  &--with-panel {
-    grid-template-columns: calc(var(--gggs-rail-width) + var(--gggs-panel-width)) minmax(0, 1fr);
-  }
-
   @media (max-width: 48rem) {
-    &,
-    &--with-panel {
-      grid-template-columns: minmax(0, 1fr);
-    }
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 .shell__nav {
+  position: relative;
   display: flex;
   min-width: 0;
   min-height: 0;
-  // Never wider than its grid column: anything that does not fit wraps or scrolls inside it, so the
-  // navigation can never slide over the page's padding.
-  overflow: hidden;
   z-index: var(--gggs-z-nav);
 
   @media (max-width: 48rem) {
@@ -55,6 +46,7 @@ gggs-shell {
 
 .rail {
   display: flex;
+  overflow: hidden;
   flex-direction: column;
   flex: 0 0 var(--gggs-rail-width);
   width: var(--gggs-rail-width);
@@ -177,15 +169,28 @@ gggs-shell {
 
 // ----- Module panel ---------------------------------------------------------------------------------
 
+// The sub-menu: on a desktop a flyout over the page beside the rail, opened from the rail and
+// closed by choosing a page or clicking away; in the phone drawer it sits beside the rail.
 .panel-nav {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: var(--gggs-rail-width);
   display: flex;
   flex-direction: column;
-  flex: 0 0 var(--gggs-panel-width);
   width: var(--gggs-panel-width);
   min-width: 0;
   min-height: 0;
   background: var(--gggs-color-surface-raised);
   border-inline-end: 1px solid var(--gggs-color-border);
+  box-shadow: var(--gggs-shadow-lg);
+  animation: gggs-flyout-in var(--gggs-transition) ease-out;
+
+  @media (max-width: 48rem) {
+    position: static;
+    flex: 0 0 var(--gggs-panel-width);
+    box-shadow: none;
+    animation: none;
+  }
 
   &[hidden] {
     display: none;
@@ -411,6 +416,13 @@ gggs-shell {
   }
 }
 
+// The menu button only opens the phone drawer; a desktop always shows the rail.
+.topbar__icon-button.topbar__menu {
+  @media (min-width: 48.0625rem) {
+    display: none;
+  }
+}
+
 .topbar__count {
   position: absolute;
   inset-block-start: 0.15rem;
@@ -574,5 +586,12 @@ gggs-shell {
 
   @media (max-width: 48rem) {
     padding: var(--gggs-space-4);
+  }
+}
+
+@keyframes gggs-flyout-in {
+  from {
+    opacity: 0;
+    transform: translateX(-0.5rem);
   }
 }

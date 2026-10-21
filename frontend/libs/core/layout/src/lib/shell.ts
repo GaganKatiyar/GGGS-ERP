@@ -30,8 +30,6 @@ const UNREAD_COUNT_REFRESH_MS = 60_000;
 /** Below this, the rail and panel stop being columns and become one drawer (shell.scss). */
 const MOBILE_BREAKPOINT_QUERY = '(max-width: 48rem)';
 
-const PANEL_COLLAPSED_KEY = 'gggs.shell.panel-collapsed';
-
 interface Crumb {
   readonly label: string;
   readonly route?: string;
@@ -73,8 +71,6 @@ export class Shell {
   private readonly isMobile = signal(typeof window !== 'undefined' && window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches);
   /** On a small screen: whether the navigation drawer is open. */
   protected readonly isDrawerOpen = signal(false);
-  /** On a large screen: whether the module panel is folded away, leaving the rail and the content. */
-  protected readonly isPanelCollapsed = signal(readFlag(PANEL_COLLAPSED_KEY));
   protected readonly isUserMenuOpen = signal(false);
 
   protected readonly unreadCount = signal(0);
@@ -90,21 +86,27 @@ export class Shell {
 
   private readonly url = signal(this.router.url);
   private readonly pageTitle = signal<string | null>(null);
-  /** A module opened from the rail without navigating yet; cleared by the next navigation. */
+  /**
+   * The module whose sub-menu is open as a flyout beside the rail (desktop). Opened by a rail click;
+   * closed by choosing a page, clicking the page body, Escape, or clicking the same module again.
+   */
   private readonly browsedGroup = signal<NavItem | null>(null);
 
   private readonly location = computed(() => locate(this.navigation(), this.url()));
   protected readonly activeGroup = computed(() => this.location()?.group ?? null);
   /** The page the URL is on, by longest match - so an overview is not lit up beside its sub-pages. */
   protected readonly activeEntry = computed(() => this.location()?.entry ?? null);
-  /** The module whose pages the panel lists: the one being browsed, else the current page's. */
+  /**
+   * The module whose pages the sub-menu lists: the one opened from the rail; in the phone drawer,
+   * otherwise the current page's module so the drawer opens on where the person is.
+   */
   protected readonly panelGroup = computed(() => {
-    const group = this.browsedGroup() ?? this.activeGroup();
+    const group = this.browsedGroup() ?? (this.isMobile() ? this.activeGroup() : null);
     return group?.children?.length ? group : null;
   });
-  protected readonly showPanel = computed(() => !!this.panelGroup() && (this.isMobile() || !this.isPanelCollapsed()));
-  /** Tabs above the content when the panel is not there to switch pages. */
-  protected readonly tabs = computed(() => (this.showPanel() && !this.isMobile() ? [] : moduleTabs(this.activeGroup())));
+  protected readonly showPanel = computed(() => !!this.panelGroup());
+  /** The current module's pages as tabs above the content, for moving within a module in one click. */
+  protected readonly tabs = computed(() => moduleTabs(this.activeGroup()));
 
   protected readonly breadcrumbs = computed<readonly Crumb[]>(() => {
     const location = this.location();
@@ -214,21 +216,16 @@ export class Shell {
 
   /** A rail click on a module with pages opens its panel; the page itself is one more click. */
   protected openGroup(item: NavItem): void {
-    this.browsedGroup.set(item === this.activeGroup() ? null : item);
-    if (!this.isMobile() && this.isPanelCollapsed()) {
-      this.setPanelCollapsed(false);
-    }
+    // Clicking the open module again folds its sub-menu away.
+    this.browsedGroup.set(this.browsedGroup() === item ? null : item);
   }
 
+  /** The phone menu button: opens or closes the navigation drawer. */
   protected toggleNavigation(): void {
-    if (this.isMobile()) {
-      this.isDrawerOpen.update((open) => !open);
-      // Focus moves into the drawer, so a keyboard user lands on the menu they just opened.
-      if (this.isDrawerOpen()) {
-        queueMicrotask(() => this.navigationElement()?.nativeElement.querySelector<HTMLElement>('.rail__item')?.focus());
-      }
-    } else {
-      this.setPanelCollapsed(!this.isPanelCollapsed());
+    this.isDrawerOpen.update((open) => !open);
+    // Focus moves into the drawer, so a keyboard user lands on the menu they just opened.
+    if (this.isDrawerOpen()) {
+      queueMicrotask(() => this.navigationElement()?.nativeElement.querySelector<HTMLElement>('.rail__item')?.focus());
     }
   }
 
@@ -274,13 +271,27 @@ export class Shell {
   protected onEscape(): void {
     this.isUserMenuOpen.set(false);
     this.isDrawerOpen.set(false);
+    this.browsedGroup.set(null);
   }
 
   protected onDocumentClick(event: MouseEvent): void {
+    const target = event.target as Node;
     const menu = this.userMenu()?.nativeElement;
-    if (this.isUserMenuOpen() && menu && !menu.contains(event.target as Node)) {
+    if (this.isUserMenuOpen() && menu && !menu.contains(target)) {
       this.isUserMenuOpen.set(false);
     }
+
+    // A click anywhere outside the navigation (the page body, the header) closes the sub-menu.
+    const nav = this.navigationElement()?.nativeElement;
+    if (this.browsedGroup() && !this.isMobile() && nav && !nav.contains(target)) {
+      this.browsedGroup.set(null);
+    }
+  }
+
+  /** Choosing a page in the sub-menu closes it, even when that page is already the current one. */
+  protected closeSubmenu(): void {
+    this.browsedGroup.set(null);
+    this.isDrawerOpen.set(false);
   }
 
   protected focusContent(event: Event): void {
@@ -290,15 +301,6 @@ export class Shell {
 
   protected signOut(): void {
     void this.session.signOut();
-  }
-
-  private setPanelCollapsed(collapsed: boolean): void {
-    this.isPanelCollapsed.set(collapsed);
-    try {
-      localStorage.setItem(PANEL_COLLAPSED_KEY, collapsed ? '1' : '0');
-    } catch {
-      // Storage blocked: the choice lasts for this page only.
-    }
   }
 
   private async refreshCounts(): Promise<void> {
@@ -346,12 +348,4 @@ function deepestTitle(root: ActivatedRouteSnapshot): string | null {
   }
 
   return title;
-}
-
-function readFlag(key: string): boolean {
-  try {
-    return localStorage.getItem(key) === '1';
-  } catch {
-    return false;
-  }
 }
