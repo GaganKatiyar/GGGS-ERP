@@ -263,6 +263,8 @@ describe('filterNavigation', () => {
       '/policies',
       '/separation',
       '/separation/clearance',
+      '/separation/offboarding',
+      '/separation/offboarding-checklists',
       '/separation/policy',
       '/analytics',
       '/calendar',

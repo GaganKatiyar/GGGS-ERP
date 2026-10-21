@@ -24,6 +24,7 @@ import type {
 import { CLEARANCE_AREAS, EXIT_REASONS, SEPARATION_TYPES, humanize } from '@gggs/shared/models';
 import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge, Tabs, Timeline } from '@gggs/shared/ui';
 import type { TabItem, TimelineEntry } from '@gggs/shared/ui';
+import { OffboardingPanel } from './offboarding-pages';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
 const today = () => new Date().toISOString().slice(0, 10);
@@ -264,7 +265,7 @@ export class SeparationPage {
 /** One separation: terms, clearance, exit interview, the full and final settlement and letters. */
 @Component({
   selector: 'gggs-separation-case-page',
-  imports: [FormsModule, DatePipe, DecimalPipe, RouterLink, PageHeader, StatusBadge, FormDialog, Skeleton, EmployeeSelect, ExitInterviewForm, Timeline],
+  imports: [FormsModule, DatePipe, DecimalPipe, RouterLink, PageHeader, StatusBadge, FormDialog, Skeleton, EmployeeSelect, ExitInterviewForm, Timeline, OffboardingPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (view(); as v) {
@@ -310,6 +311,8 @@ export class SeparationPage {
           </span>
         </div>
       }
+
+      <gggs-offboarding-panel [view]="v" [canManage]="canOffboard" (changed)="view.set($event)" />
 
       <section class="panel stack">
         <div class="toolbar">
@@ -496,6 +499,7 @@ export class SeparationCasePage {
 
   protected readonly canManage = this.permissions.has('separation.case.manage');
   protected readonly canSettle = this.permissions.has('separation.settlement.manage');
+  protected readonly canOffboard = this.permissions.has('separation.offboarding.manage');
   protected readonly areas = CLEARANCE_AREAS;
   protected readonly view = signal<SeparationCaseView | null>(null);
   protected readonly termsOpen = signal(false);
@@ -721,7 +725,7 @@ export class ClearancePage {
 /** My resignation: submit it, follow notice and clearance, give an exit interview and see the settlement. */
 @Component({
   selector: 'gggs-my-separation-page',
-  imports: [DatePipe, DecimalPipe, PageHeader, StatusBadge, Skeleton, ExitInterviewForm, Timeline],
+  imports: [DatePipe, DecimalPipe, PageHeader, StatusBadge, Skeleton, ExitInterviewForm, Timeline, OffboardingPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <gggs-page-header title="My resignation" subtitle="Resign, follow your notice and clearance, and see your full and final settlement." />
@@ -754,6 +758,7 @@ export class ClearancePage {
             }
           </section>
         }
+        <gggs-offboarding-panel [view]="v" mode="self" (changed)="view.set($event)" />
         @if (v.clearance.length) {
           <section class="panel stack">
             <h2 class="xp__heading">Clearance</h2>

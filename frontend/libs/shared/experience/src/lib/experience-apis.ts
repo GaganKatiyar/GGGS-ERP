@@ -53,6 +53,9 @@ import type {
   SeparationCaseView,
   SeparationDashboard,
   NoticeRule,
+  OffboardingTask,
+  OffboardingTemplate,
+  OffboardingTemplateInput,
   SeparationPolicy,
   SeparationReason,
   SeparationStatus,
@@ -588,6 +591,44 @@ export class SeparationApi {
 
   removeNoticeRule(id: string): Promise<void> {
     return firstValueFrom(this.http.delete<void>(`${this.base}/policy/notice-rules/${id}`));
+  }
+
+  offboardingTasks(): Promise<readonly OffboardingTask[]> {
+    return firstValueFrom(this.http.get<readonly OffboardingTask[]>(`${this.base}/offboarding/tasks`));
+  }
+
+  finishOffboardingTask(taskId: string, skipped: boolean, notes: string | null): Promise<SeparationCaseView> {
+    return firstValueFrom(this.http.post<SeparationCaseView>(`${this.base}/offboarding/tasks/${taskId}`, { skipped, notes }));
+  }
+
+  setHandover(id: string, successorEmployeeId: string | null, note: string | null): Promise<SeparationCaseView> {
+    return firstValueFrom(this.http.put<SeparationCaseView>(`${this.base}/cases/${id}/handover`, { successorEmployeeId, note }));
+  }
+
+  refreshHandover(id: string): Promise<SeparationCaseView> {
+    return firstValueFrom(this.http.post<SeparationCaseView>(`${this.base}/cases/${id}/handover/refresh`, {}));
+  }
+
+  actOnHandover(itemId: string, body: { toEmployeeId: string | null; skip: boolean; note: string | null }): Promise<SeparationCaseView> {
+    return firstValueFrom(this.http.post<SeparationCaseView>(`${this.base}/handover/${itemId}`, body));
+  }
+
+  disableAccess(id: string): Promise<SeparationCaseView> {
+    return firstValueFrom(this.http.post<SeparationCaseView>(`${this.base}/cases/${id}/access/disable`, {}));
+  }
+
+  offboardingTemplates(): Promise<readonly OffboardingTemplate[]> {
+    return firstValueFrom(this.http.get<readonly OffboardingTemplate[]>(`${this.base}/offboarding/templates`));
+  }
+
+  saveOffboardingTemplate(id: string | null, body: OffboardingTemplateInput): Promise<OffboardingTemplate> {
+    return firstValueFrom(
+      id ? this.http.put<OffboardingTemplate>(`${this.base}/offboarding/templates/${id}`, body) : this.http.post<OffboardingTemplate>(`${this.base}/offboarding/templates`, body),
+    );
+  }
+
+  removeOffboardingTemplate(id: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`${this.base}/offboarding/templates/${id}`));
   }
 
   withdrawMine(): Promise<SeparationCaseView> {

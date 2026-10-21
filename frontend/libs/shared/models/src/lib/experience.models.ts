@@ -699,6 +699,85 @@ export interface NoticeRule {
   readonly noticeDays: number;
 }
 
+export type OffboardingOwner = 'Manager' | 'It' | 'Admin' | 'Finance' | 'Hr' | 'Employee' | 'Successor';
+export const OFFBOARDING_OWNERS: readonly OffboardingOwner[] = ['Manager', 'Employee', 'Successor', 'Hr', 'It', 'Admin', 'Finance'];
+export type OffboardingTaskStatus = 'Pending' | 'Done' | 'Skipped';
+export type HandoverKind = 'DirectReport' | 'ProjectAllocation' | 'ProjectTasks' | 'Approvals';
+export type HandoverStatus = 'Open' | 'Done' | 'Skipped';
+
+export interface OffboardingTask {
+  readonly id: string;
+  readonly caseId: string;
+  readonly title: string;
+  readonly description?: string;
+  readonly owner: OffboardingOwner;
+  readonly assigneeEmployeeId?: string;
+  readonly assigneeName?: string;
+  readonly dueDate: string;
+  readonly required: boolean;
+  readonly status: OffboardingTaskStatus;
+  readonly completedAt?: string;
+  readonly completedByName?: string;
+  readonly notes?: string;
+  readonly overdue: boolean;
+  readonly canAct: boolean;
+  readonly employeeName?: string;
+}
+
+export interface HandoverItem {
+  readonly id: string;
+  readonly kind: HandoverKind;
+  readonly title: string;
+  readonly detail?: string;
+  readonly toEmployeeId?: string;
+  readonly toName?: string;
+  readonly status: HandoverStatus;
+  readonly doneAt?: string;
+  readonly outcome?: string;
+  readonly needsRecipient: boolean;
+}
+
+export interface OffboardingView {
+  readonly successorEmployeeId?: string;
+  readonly successorName?: string;
+  readonly handoverNote?: string;
+  readonly accessDisabledAt?: string;
+  readonly accountStatus?: string;
+  readonly tasks: readonly OffboardingTask[];
+  readonly handover: readonly HandoverItem[];
+}
+
+export interface OffboardingStep {
+  readonly title: string;
+  readonly description?: string | null;
+  readonly owner: OffboardingOwner;
+  readonly dueOffsetDays: number;
+  readonly required: boolean;
+}
+
+export interface OffboardingTemplate {
+  readonly id: string;
+  readonly name: string;
+  readonly description?: string;
+  readonly departmentId?: string;
+  readonly locationId?: string;
+  readonly employmentTypeCode?: string;
+  readonly isDefault: boolean;
+  readonly isActive: boolean;
+  readonly steps: readonly OffboardingStep[];
+}
+
+export interface OffboardingTemplateInput {
+  readonly name: string;
+  readonly description: string | null;
+  readonly departmentId: string | null;
+  readonly locationId: string | null;
+  readonly employmentTypeCode: string | null;
+  readonly isDefault: boolean;
+  readonly isActive: boolean;
+  readonly steps: readonly OffboardingStep[];
+}
+
 export interface ClearanceItem {
   readonly id: string;
   readonly area: ClearanceArea;
@@ -758,6 +837,7 @@ export interface SeparationCaseView {
   readonly interview?: ExitInterviewView;
   readonly settlement?: SettlementView;
   readonly events?: readonly SeparationEvent[];
+  readonly offboarding?: OffboardingView;
 }
 
 export interface AlumniItem {

@@ -346,6 +346,8 @@ export const NAVIGATION: readonly NavItem[] = [
       { label: 'Policies', icon: 'pi pi-book', route: '/policies', permissions: ['policy.policy.view'] },
       { label: 'Separation', icon: 'pi pi-sign-out', route: '/separation', permissions: ['separation.case.view'], feature: 'Separation' },
       { label: 'Exit clearance', icon: 'pi pi-check-square', route: '/separation/clearance', permissions: ['separation.clearance.manage'], feature: 'Separation' },
+      { label: 'Offboarding tasks', icon: 'pi pi-list-check', route: '/separation/offboarding', permissions: ['separation.offboarding.manage', 'separation.clearance.manage', 'separation.case.view'], feature: 'Separation' },
+      { label: 'Offboarding checklists', icon: 'pi pi-clipboard', route: '/separation/offboarding-checklists', permissions: ['separation.offboarding.manage'], feature: 'Separation' },
       { label: 'Separation policy', icon: 'pi pi-sliders-h', route: '/separation/policy', permissions: ['separation.policy.manage'], feature: 'Separation' },
     ],
   },
