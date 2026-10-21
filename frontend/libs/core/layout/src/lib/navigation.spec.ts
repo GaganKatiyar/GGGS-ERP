@@ -325,11 +325,11 @@ describe('isUnder', () => {
 });
 
 describe('moduleTabs', () => {
-  it('offers tabs only for modules with a handful of pages', () => {
+  it('offers tabs for every module with more than one page, however many it has', () => {
     const page = (label: string): NavItem => ({ label, icon: 'pi', route: `/${label}` });
     expect(moduleTabs({ label: 'One', icon: 'pi', children: [page('a')] })).toEqual([]);
     expect(moduleTabs({ label: 'Few', icon: 'pi', children: [page('a'), page('b')] })).toHaveLength(2);
-    expect(moduleTabs({ label: 'Many', icon: 'pi', children: Array.from({ length: 9 }, (_, i) => page(`p${i}`)) })).toEqual([]);
+    expect(moduleTabs({ label: 'Many', icon: 'pi', children: Array.from({ length: 20 }, (_, i) => page(`p${i}`)) })).toHaveLength(20);
     expect(moduleTabs(null)).toEqual([]);
   });
 });

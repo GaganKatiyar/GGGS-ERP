@@ -545,14 +545,23 @@ gggs-shell {
 
 // ----- Module tabs and content ------------------------------------------------------------------------
 
+// The current module's pages, pinned under the header; a long list scrolls sideways.
 .module-tabs {
+  position: sticky;
+  inset-block-start: var(--gggs-header-height);
+  z-index: calc(var(--gggs-z-header) - 1);
   display: flex;
+  flex: 0 0 auto;
   gap: var(--gggs-space-1);
   padding-inline: var(--gggs-space-6);
   overflow-x: auto;
   background: var(--gggs-color-surface-raised);
   border-block-end: 1px solid var(--gggs-color-border);
-  scrollbar-width: none;
+  scrollbar-width: thin;
+
+  @media (max-width: 48rem) {
+    padding-inline: var(--gggs-space-3);
+  }
 }
 
 .module-tabs__tab {

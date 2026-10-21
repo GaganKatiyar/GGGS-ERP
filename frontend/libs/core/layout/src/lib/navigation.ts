@@ -96,13 +96,10 @@ export function locate(items: readonly NavItem[], url: string): NavLocation | nu
   return best;
 }
 
-/** Most pages a module can have before tabs stop being a sensible way to move between them. */
-export const MAX_MODULE_TABS = 8;
-
-/** The pages a group offers as tabs above the content, or none when it has too few or too many. */
+/** The pages a module offers as tabs above the content: every module with more than one page. */
 export function moduleTabs(group: NavItem | null | undefined): readonly NavItem[] {
   const children = group?.children ?? [];
-  return children.length >= 2 && children.length <= MAX_MODULE_TABS ? children : [];
+  return children.length >= 2 ? children : [];
 }
 
 /**
