@@ -177,6 +177,12 @@ Since M10 it also:
   sessions.
 - reminds owners of overdue offboarding tasks every three days, daily at 03:30
   (`separation-offboarding-reminders`).
+- looks for unexplained absence (the separation policy's number of working days in a row, after a
+  day worked) and raises absconding alerts for HR and the manager, daily at 02:00
+  (`separation-absence-detection`).
+- proposes a separation for retirements (the last day of the month the retirement age is reached)
+  and fixed-term contract ends within the policy's lead time, for HR to confirm, daily at 02:30
+  (`separation-exit-proposals`). A declined proposal is not raised again for the same date.
 
 Every tenant gets default asset, expense, helpdesk categories, five knowledge articles, recognition
 types, reward rules and a catalogue. DevSeed's `experience` step registers twelve assets (eight
@@ -190,6 +196,11 @@ checklist and the handover found across modules. The separation policy (Services
 policy) starts with Indian defaults: 60 days' notice (15 on probation), settlement within two
 working days and gratuity within 30 days. Offboarding checklists are under Services > Offboarding
 checklists and the steps waiting on you under Services > Offboarding tasks.
+For involuntary exits it adds a show-cause notice waiting for Meera Iyer's (EMP00003) reply under
+Services > Disciplinary, an absence alert for Arjun Nair (EMP00004) under Services > Absconding,
+and Rohan Das's (EMP00006) fixed-term contract ending in 45 days, proposed on the Separation page
+for HR to confirm. Retrenchment is under Services > Retrenchment; a contract end date is set from
+an employee's Employment tab.
 
 Since M11 it also sends report digests daily at 06:00 (`insight-report-digests`): weekly
 subscriptions go out on Mondays and monthly ones on the 1st, only to people whose report access is

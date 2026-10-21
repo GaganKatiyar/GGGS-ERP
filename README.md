@@ -90,7 +90,13 @@ applies.
   probation; buyout, early release and garden leave; leave types blocked during notice), exit
   reasons with regretted or not, a case timeline, an offboarding checklist from templates, handover
   of reports, project seats and tasks and pending approvals to a successor, and the leaver's
-  sign-in switched off on exit (or at once by HR).
+  sign-in switched off on exit (or at once by HR). Exits the company starts follow due process:
+  termination only after a show-cause has been answered (or its date has passed) and any domestic
+  enquiry has reported, with pay in lieu of notice; batch retrenchment with a month's notice or pay
+  in lieu and fifteen days' pay per year of service as compensation (Industrial Relations Code);
+  absconding found nightly from attendance and handled through first, second and final notices; a
+  death recorded with the nominee and gratuity paid without the five-year minimum; and
+  retirements and fixed-term contract ends proposed ahead of their date for HR to confirm.
 - Insight and reach: dashboards for people, workforce, time, projects, resources, payroll, hiring,
   talent and experience, each assembled from the modules that own the data and limited to the
   viewer's report access, plus a company-wide executive dashboard and weekly or monthly digests;
