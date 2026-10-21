@@ -16,7 +16,9 @@ import type { PagedResult } from '@gggs/shared/models';
 import { TableModule, type TableLazyLoadEvent } from 'primeng/table';
 
 /** How a cell's value is shown when no custom template is given. */
-export type DataTableFormat = 'text' | 'date' | 'number' | 'status' | 'boolean';
+export type DataTableFormat = 'text' | 'date' | 'datetime' | 'number' | 'status' | 'boolean';
+
+const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 
 /** How one column is rendered and whether it can be sorted, hidden or exported. */
 export interface DataTableColumn<T> {
@@ -340,6 +342,8 @@ export class DataTable<T extends { id: string }> {
     switch (format) {
       case 'date':
         return new Date(String(value)).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+      case 'datetime':
+        return DataTable.dateTime(String(value));
       case 'number':
         return Number(value).toLocaleString();
       case 'boolean':
@@ -347,8 +351,15 @@ export class DataTable<T extends { id: string }> {
       case 'status':
         return String(value).replace(/([a-z])([A-Z])/g, '$1 $2');
       default:
-        return String(value);
+        // An untyped column holding a timestamp still reads as a date and time, never as ISO text.
+        return typeof value === 'string' && ISO_DATE_TIME.test(value) ? DataTable.dateTime(value) : String(value);
     }
+  }
+
+  /** Server timestamps are UTC; one without an offset is read as UTC and shown in local time. */
+  private static dateTime(value: string): string {
+    const utc = /[zZ]|[+-]\d{2}:\d{2}$/.test(value) ? value : `${value}Z`;
+    return new Date(utc).toLocaleString(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
   /** PrimeNG's field plus direction becomes the API's `-field` convention. */

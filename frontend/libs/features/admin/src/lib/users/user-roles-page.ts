@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, type OnInit, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import { PageHeader } from '@gggs/shared/ui';
@@ -107,7 +107,7 @@ import { AdminApi } from '@gggs/shared/identity';
     }
   `,
 })
-export class UserRolesPage {
+export class UserRolesPage implements OnInit {
   private readonly api = inject(AdminApi);
   private readonly router = inject(Router);
 
@@ -119,7 +119,8 @@ export class UserRolesPage {
   protected readonly roles = signal<readonly Role[]>([]);
   private readonly selectedRoleIds = signal<ReadonlySet<string>>(new Set());
 
-  constructor() {
+  // Not the constructor: the route's :id input is only set once the component is initialised.
+  ngOnInit(): void {
     void this.load();
   }
 

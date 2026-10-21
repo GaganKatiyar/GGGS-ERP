@@ -154,7 +154,7 @@ export class UserListPage {
     { field: 'email', header: 'Email' },
     { field: 'status', header: 'Status', width: '8rem' },
     { field: 'userType', header: 'Type', width: '8rem' },
-    { field: 'lastLoginDate', header: 'Last sign-in', width: '10rem' },
+    { field: 'lastLoginDate', header: 'Last sign-in', width: '11rem', format: 'datetime' },
   ];
 
   constructor() {

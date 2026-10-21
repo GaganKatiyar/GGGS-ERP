@@ -66,6 +66,8 @@
 }
 
 .p-tag {
+  flex-shrink: 0;
+  white-space: nowrap;
   border-radius: var(--gggs-radius-pill);
   font-size: var(--gggs-font-size-xs);
   font-weight: var(--gggs-font-weight-semibold);
@@ -94,5 +96,17 @@
   &.p-button-icon-only {
     width: var(--gggs-control-height-md);
     padding: 0;
+  }
+}
+
+/* PrimeNG's danger severity uses its own lighter red, which fails contrast with white text. */
+.p-button.p-button-danger:not(.p-button-text, .p-button-outlined) {
+  border-color: var(--gggs-color-danger);
+  background: var(--gggs-color-danger);
+  color: #ffffff;
+
+  &:not(:disabled):hover {
+    border-color: var(--gggs-color-danger-hover);
+    background: var(--gggs-color-danger-hover);
   }
 }

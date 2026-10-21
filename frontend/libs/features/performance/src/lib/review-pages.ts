@@ -307,6 +307,8 @@ export class CyclePage {
 @Component({
   selector: 'gggs-review-form',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // The ratings and comment fields stack with the same rhythm as any other form.
+  host: { style: 'display: grid; gap: var(--gggs-space-3)' },
   template: `
     @for (competency of competencies(); track competency) {
       <div class="perf__rate">

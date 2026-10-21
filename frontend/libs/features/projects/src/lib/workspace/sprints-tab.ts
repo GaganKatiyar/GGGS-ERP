@@ -168,8 +168,8 @@ import { Chart, EmptyState, FormDialog, StatusBadge, type ChartSeries } from '@g
     }
 
     .sprints__heading {
-      flex: 1;
-      margin: 0;
+      margin-inline-end: auto;
+      margin-block: 0;
       font-size: var(--gggs-font-size-md);
     }
 

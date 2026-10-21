@@ -78,6 +78,9 @@ import { ORG_KINDS, type OrgField, type OrgKindConfig } from './org-kinds';
       [saveDisabled]="!canManage()"
       (save)="save()"
     >
+      <!-- Rendered only while open: the form gains its controls when the dialog opens, and binding
+           fields to a form without them throws and stops the page rendering. -->
+      @if (dialogOpen()) {
       <div class="form-grid" [formGroup]="form()">
         @for (field of visibleFields(); track field.key) {
           <!-- eslint-disable-next-line @angular-eslint/template/label-has-associated-control -- every @switch branch below renders exactly one control -->
@@ -125,6 +128,7 @@ import { ORG_KINDS, type OrgField, type OrgKindConfig } from './org-kinds';
           </label>
         }
       </div>
+      }
 
       @if (editing(); as unit) {
         <div class="toolbar" *gggsHasPermission="cfg.managePermission">

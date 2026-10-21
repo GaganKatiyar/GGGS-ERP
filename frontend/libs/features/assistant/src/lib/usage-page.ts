@@ -66,7 +66,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
   styles: `
     .usage__kpis {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(9rem, 45%), 1fr));
       gap: var(--gggs-space-3);
       margin-block-end: var(--gggs-space-3);
     }

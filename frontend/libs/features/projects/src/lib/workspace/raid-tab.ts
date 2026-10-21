@@ -136,8 +136,8 @@ import { EmptyState, FormDialog, StatusBadge, Tabs, type TabItem } from '@gggs/s
   `,
   styles: `
     .raid__heading {
-      flex: 1;
-      margin: 0;
+      margin-inline-end: auto;
+      margin-block: 0;
       font-size: var(--gggs-font-size-md);
     }
 

@@ -121,6 +121,19 @@
   }
 }
 
+/*
+ * A checkbox field (label text then the box, as generated forms write it): box first, label beside
+ * it, sitting on the same line as the inputs next to it in a form grid.
+ */
+.field:has(> input[type='checkbox']) {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  align-items: center;
+  align-self: end;
+  gap: var(--gggs-space-2);
+  min-height: var(--gggs-control-height-md);
+}
+
 .field__label {
   color: var(--gggs-color-text);
   font-size: var(--gggs-font-size-sm);

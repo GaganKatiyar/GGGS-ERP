@@ -172,8 +172,8 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs
     }
 
     .master-data__heading {
-      flex: 1;
-      margin: 0;
+      margin-inline-end: auto;
+      margin-block: 0;
       font-size: var(--gggs-font-size-md);
     }
 

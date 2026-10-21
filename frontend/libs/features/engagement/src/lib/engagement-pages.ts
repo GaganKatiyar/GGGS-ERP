@@ -430,7 +430,7 @@ export class SurveyPage {
                   </div>
                 }
                 @default {
-                  <textarea rows="3" maxlength="2000" [value]="answer(survey.id, question.key)" (input)="setAnswer(survey.id, question.key, $any($event.target).value)"></textarea>
+                  <textarea rows="3" maxlength="2000" [attr.aria-label]="question.text" [value]="answer(survey.id, question.key)" (input)="setAnswer(survey.id, question.key, $any($event.target).value)"></textarea>
                 }
               }
             </div>

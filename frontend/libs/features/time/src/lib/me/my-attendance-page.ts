@@ -2,7 +2,7 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ApiError } from '@gggs/core/http';
-import { HasPermissionDirective } from '@gggs/core/permissions';
+import { HasPermissionDirective, PermissionStore } from '@gggs/core/permissions';
 import { EmployeeSelect } from '@gggs/shared/employee-reference';
 import type { AttendanceDay, Regularization, ScheduledDay, ShiftSwap, TodayAttendance } from '@gggs/shared/models';
 import { formatMinutes, shortTime } from '@gggs/shared/models';
@@ -270,8 +270,8 @@ const FIXABLE = new Set(['Absent', 'MissingPunch', 'HalfDay']);
     }
 
     .shifts__heading {
-      flex: 1;
-      margin: 0;
+      margin-inline-end: auto;
+      margin-block: 0;
       font-size: var(--gggs-font-size-md);
     }
 
@@ -300,6 +300,8 @@ const FIXABLE = new Set(['Absent', 'MissingPunch', 'HalfDay']);
 export class MyAttendancePage {
   private readonly attendance = inject(AttendanceApi);
   private readonly shifts = inject(ShiftsApi);
+  /** Corrections are only asked for (and listed) by people allowed to request them. */
+  private readonly canRegularize = inject(PermissionStore).has('attendance.regularization.create');
 
   protected readonly formatMinutes = formatMinutes;
   protected readonly shortTime = shortTime;
@@ -441,7 +443,7 @@ export class MyAttendancePage {
     try {
       const [today, regularizations, upcoming, swaps] = await Promise.all([
         this.attendance.today(),
-        this.attendance.myRegularizations().catch(() => []),
+        this.canRegularize ? this.attendance.myRegularizations().catch(() => []) : Promise.resolve([]),
         this.shifts.myShifts(this.todayIso, addDays(this.todayIso, 13)),
         this.shifts.mySwaps().catch(() => []),
       ]);

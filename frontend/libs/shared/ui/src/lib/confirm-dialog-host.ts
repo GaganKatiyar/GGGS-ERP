@@ -11,6 +11,6 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
   selector: 'gggs-confirm-dialog-host',
   imports: [ConfirmDialogModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<p-confirmdialog />`,
+  template: `<p-confirmdialog closeAriaLabel="Close" />`,
 })
 export class ConfirmDialogHost {}

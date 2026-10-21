@@ -30,12 +30,12 @@ const iso = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-$
           <span class="cal__legend"><span class="cal__dot" [attr.data-kind]="kind"></span>{{ kind }}</span>
         }
       </div>
-      <div class="cal" role="grid" [attr.aria-label]="monthLabel()">
+      <div class="cal" role="group" [attr.aria-label]="monthLabel()">
         @for (name of weekdays; track name) {
-          <div class="cal__weekday" role="columnheader">{{ name }}</div>
+          <div class="cal__weekday" aria-hidden="true">{{ name }}</div>
         }
         @for (day of days(); track day.iso) {
-          <div class="cal__day" role="gridcell" [class.cal__day--out]="!day.inMonth" [class.cal__day--today]="day.isToday">
+          <div class="cal__day" [class.cal__day--out]="!day.inMonth" [class.cal__day--today]="day.isToday">
             <span class="cal__date">{{ day.day }}</span>
             @for (event of day.events.slice(0, 4); track event.kind + event.id) {
               <span class="cal__event" [attr.data-kind]="event.kind" [title]="event.kind + ': ' + event.title + (event.detail ? ' (' + event.detail + ')' : '')">
@@ -99,7 +99,8 @@ const iso = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-$
     }
 
     .cal__day--out {
-      opacity: 0.45;
+      background: var(--gggs-color-surface-sunken);
+      color: var(--gggs-color-text-subtle);
     }
 
     .cal__day--today .cal__date {

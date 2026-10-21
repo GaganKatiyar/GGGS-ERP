@@ -137,8 +137,8 @@ const NEXT: Partial<Record<ChangeRequestStatus, readonly ChangeRequestStatus[]>>
   `,
   styles: `
     .cr__heading {
-      flex: 1;
-      margin: 0;
+      margin-inline-end: auto;
+      margin-block: 0;
       font-size: var(--gggs-font-size-md);
     }
 
@@ -154,8 +154,7 @@ const NEXT: Partial<Record<ChangeRequestStatus, readonly ChangeRequestStatus[]>>
     }
 
     .cr__title {
-      flex: 1;
-    }
+      margin-inline-end: auto;}
 
     .cr__meta {
       margin: var(--gggs-space-1) 0;

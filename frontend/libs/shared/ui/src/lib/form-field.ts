@@ -28,7 +28,7 @@ import {
       <span class="form-field__label">
         {{ label() }}
         @if (required()) {
-          <span aria-hidden="true">*</span>
+          <span class="form-field__required" aria-hidden="true">*</span>
         }
       </span>
 
@@ -53,9 +53,13 @@ import {
     }
 
     .form-field__label {
-      font-weight: var(--gggs-font-weight-semibold, 600);
-      font-size: var(--gggs-font-size-base, 0.875rem);
+      font-weight: var(--gggs-font-weight-medium);
+      font-size: var(--gggs-font-size-sm);
       color: var(--gggs-color-text);
+    }
+
+    .form-field__required {
+      color: var(--gggs-color-danger);
     }
 
     .form-field__hint {

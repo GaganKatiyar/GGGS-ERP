@@ -154,7 +154,7 @@ const localInput = (date: Date) => new Date(date.getTime() - date.getTimezoneOff
         <div class="stack">
           <section class="panel stack">
             <h2 class="rec__heading">Match {{ v.match.score }}%</h2>
-            <div class="rec__meter" role="meter" [attr.aria-valuenow]="v.match.score" aria-valuemin="0" aria-valuemax="100"><span [style.width.%]="v.match.score"></span></div>
+            <div class="rec__meter" role="meter" aria-label="Match score" [attr.aria-valuenow]="v.match.score" aria-valuemin="0" aria-valuemax="100"><span [style.width.%]="v.match.score"></span></div>
             <p class="muted">Skills {{ v.match.skillsScore }}/60 · experience {{ v.match.experienceScore }}/25 · salary {{ v.match.salaryScore }}/15</p>
             @if (v.match.matchedSkills.length) {
               <p>Has: {{ v.match.matchedSkills.join(', ') }}</p>

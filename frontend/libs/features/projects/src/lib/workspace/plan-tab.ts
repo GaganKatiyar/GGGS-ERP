@@ -185,8 +185,8 @@ import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
     }
 
     .plan__heading {
-      flex: 1;
-      margin: 0;
+      margin-inline-end: auto;
+      margin-block: 0;
       font-size: var(--gggs-font-size-md);
     }
 

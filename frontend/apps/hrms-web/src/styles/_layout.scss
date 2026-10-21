@@ -125,7 +125,7 @@
 .kpi-row {
   display: grid;
   gap: var(--gggs-space-4);
-  grid-template-columns: repeat(auto-fit, minmax(min(10rem, 45%), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(9rem, 45%), 1fr));
   margin-block-end: var(--gggs-space-4);
 }
 
@@ -149,6 +149,31 @@
   }
 }
 
+/*
+ * A list written as bare <dt>/<dd> pairs (no wrapping <div>): lay the pairs out as label | value
+ * columns, two pairs a row on a wide screen, so labels and values line up on one baseline.
+ */
+.definition-list:has(> dt) {
+  grid-template-columns: minmax(7rem, max-content) minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--gggs-space-3) var(--gggs-space-5);
+
+  @media (min-width: 64rem) {
+    grid-template-columns: minmax(7rem, max-content) minmax(0, 1fr) minmax(7rem, max-content) minmax(0, 1fr);
+  }
+
+  > dt {
+    font-size: var(--gggs-font-size-sm);
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  > dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
 /* A divided list of rows inside a panel. */
 .list {
   display: flex;
@@ -169,4 +194,14 @@
       border-block-end: 0;
     }
   }
+}
+
+/*
+ * Vertical rhythm between the top-level blocks a page stacks directly (panels, KPI rows, tables, tab bars,
+ * alerts) when no gap-based container spaces them. In normal flow the margins collapse, so a
+ * block that already has its own bottom margin does not get double space.
+ */
+.shell__content > * > :where(.panel, .kpi-row, .xp__kpis, .grid-2, .grid-3, .table-wrap, gggs-data-table, gggs-tabs, gggs-chart, .alert, .filter-toolbar)
+  + :where(.panel, .kpi-row, .xp__kpis, .grid-2, .grid-3, .table-wrap, gggs-data-table, gggs-chart, .alert, .filter-toolbar, section) {
+  margin-block-start: var(--gggs-space-4);
 }

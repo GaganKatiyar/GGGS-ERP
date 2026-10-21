@@ -43,11 +43,13 @@ const ROW = `
 @Component({
   selector: 'gggs-progress-bar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<span class="talent-bar" role="progressbar" [attr.aria-valuenow]="value()" aria-valuemin="0" aria-valuemax="100"><span [style.width.%]="value()"></span></span>`,
+  template: `<span class="talent-bar" role="progressbar" [attr.aria-label]="label()" [attr.aria-valuenow]="value()" aria-valuemin="0" aria-valuemax="100"><span [style.width.%]="value()"></span></span>`,
   styles: ROW,
 })
 export class ProgressBar {
   readonly value = input(0);
+  /** What is progressing, for screen readers ("Progress" when the row already names it). */
+  readonly label = input('Progress');
 }
 
 /** Employee 360 goals tab. */

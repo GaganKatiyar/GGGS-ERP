@@ -20,7 +20,7 @@ export interface TimelineEntry {
           <span class="timeline__dot" aria-hidden="true"></span>
           <div>
             <p class="timeline__title">{{ entry.title }}</p>
-            <p class="timeline__date">{{ entry.date }}</p>
+            <p class="timeline__date">{{ when(entry.date) }}</p>
             @if (entry.description) {
               <p class="timeline__description">{{ entry.description }}</p>
             }
@@ -84,6 +84,20 @@ export interface TimelineEntry {
   `,
 })
 export class Timeline {
+  /** Timestamps read as a local date and time, plain dates as a date; anything else as given. */
+  protected when(value: string): string {
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) {
+      const utc = /[zZ]|[+-]\d{2}:\d{2}$/.test(value) ? value : `${value}Z`;
+      return new Date(utc).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    return value;
+  }
+
   readonly entries = input.required<readonly TimelineEntry[]>();
 }
 
@@ -133,7 +147,7 @@ export interface ChartSeries {
       @if (title()) {
         <figcaption class="chart__title">{{ title() }}</figcaption>
       }
-      <p-chart [type]="kind()" [data]="data()" [options]="options()" [height]="height()" />
+      <p-chart [type]="kind()" [data]="data()" [options]="options()" [height]="height()" [ariaLabel]="title() || 'Chart'" />
     </figure>
   `,
   styles: `
@@ -192,6 +206,7 @@ export class Chart {
         backgroundColor: circular ? palette : palette[index % palette.length],
         borderColor: circular ? undefined : palette[index % palette.length],
         borderRadius: this.kind() === 'bar' ? 4 : undefined,
+        maxBarThickness: 56,
         tension: 0.3,
       })),
     };
@@ -200,6 +215,7 @@ export class Chart {
   protected readonly options = computed(() => {
     const { text, grid, font } = this.colours();
     const circular = this.kind() === 'doughnut' || this.kind() === 'pie';
+    const nonNegative = this.series().every((series) => series.values.every((value) => value >= 0));
     const axis = { ticks: { color: text, font: { family: font, size: 11 } }, grid: { color: grid }, border: { display: false } };
     return {
       maintainAspectRatio: false,
@@ -208,7 +224,9 @@ export class Chart {
         legend: { display: this.series().length > 1 || circular, labels: { color: text, font: { family: font }, usePointStyle: true, boxWidth: 8 } },
         tooltip: { padding: 10, cornerRadius: 6, titleFont: { family: font }, bodyFont: { family: font } },
       },
-      scales: circular ? undefined : { x: { ...axis, grid: { display: false } }, y: axis },
+      // Counts and money never go negative: start the axis at zero so an all-zero series is a flat
+      // line on the floor rather than floating in the middle of a -1..1 scale.
+      scales: circular ? undefined : { x: { ...axis, grid: { display: false } }, y: nonNegative ? { ...axis, min: 0, suggestedMax: 1 } : axis },
     };
   });
 }
@@ -256,6 +274,7 @@ export interface TabItem {
       display: flex;
       gap: var(--gggs-space-1);
       overflow-x: auto;
+      scrollbar-width: none;
       border-block-end: 1px solid var(--gggs-color-border);
       margin-block-end: var(--gggs-space-4);
     }
@@ -264,20 +283,34 @@ export interface TabItem {
       display: inline-flex;
       align-items: center;
       gap: var(--gggs-space-1);
-      padding: var(--gggs-space-2) var(--gggs-space-3);
+      margin-block-end: -1px;
+      padding: var(--gggs-space-3) var(--gggs-space-3) calc(var(--gggs-space-3) - 1px);
       border: 0;
       border-block-end: 2px solid transparent;
       background: transparent;
       color: var(--gggs-color-text-muted);
       font: inherit;
+      font-weight: var(--gggs-font-weight-medium);
       white-space: nowrap;
       cursor: pointer;
+      transition: color var(--gggs-transition-fast), border-color var(--gggs-transition-fast);
     }
 
-    .tabs__tab--active {
-      border-block-end-color: var(--gggs-color-primary);
+    .tabs__tab:hover:not(:disabled) {
       color: var(--gggs-color-text);
-      font-weight: var(--gggs-font-weight-semibold);
+      border-block-end-color: var(--gggs-color-border-strong);
+    }
+
+    .tabs__tab:focus-visible {
+      outline: none;
+      box-shadow: inset var(--gggs-focus-ring);
+      border-radius: var(--gggs-radius-sm) var(--gggs-radius-sm) 0 0;
+    }
+
+    .tabs__tab--active,
+    .tabs__tab--active:hover:not(:disabled) {
+      border-block-end-color: var(--gggs-color-primary);
+      color: var(--gggs-color-primary);
     }
 
     .tabs__tab:disabled {
@@ -286,6 +319,10 @@ export interface TabItem {
     }
 
     .tabs__note {
+      padding: 0 0.4rem;
+      border-radius: var(--gggs-radius-pill);
+      background: var(--gggs-color-surface-sunken);
+      color: var(--gggs-color-text-muted);
       font-size: var(--gggs-font-size-xs);
     }
   `,

@@ -9,18 +9,20 @@ gggs-shell {
 
 .shell {
   display: grid;
-  grid-template-columns: var(--gggs-rail-width) 1fr;
+  // minmax(0, 1fr): a wide child (a Kanban board, a big table) scrolls inside the content column
+  // instead of widening it past the window.
+  grid-template-columns: var(--gggs-rail-width) minmax(0, 1fr);
   height: 100%;
   background: var(--gggs-color-surface);
 
   &--with-panel {
-    grid-template-columns: calc(var(--gggs-rail-width) + var(--gggs-panel-width)) 1fr;
+    grid-template-columns: calc(var(--gggs-rail-width) + var(--gggs-panel-width)) minmax(0, 1fr);
   }
 
   @media (max-width: 48rem) {
     &,
     &--with-panel {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 }

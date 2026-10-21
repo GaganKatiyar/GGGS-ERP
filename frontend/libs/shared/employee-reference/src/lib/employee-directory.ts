@@ -4,6 +4,7 @@ import {
   Component,
   DestroyRef,
   Injectable,
+  computed,
   forwardRef,
   inject,
   input,
@@ -166,12 +167,14 @@ export class EmployeeDirectoryApi {
         [attr.aria-expanded]="isOpen()"
         [attr.aria-controls]="listboxId"
         [attr.aria-label]="ariaLabel()"
+        [attr.aria-activedescendant]="isOpen() && active() >= 0 ? listboxId + '-' + active() : null"
         [placeholder]="placeholder()"
         [value]="text()"
         [disabled]="disabled()"
         (input)="onInput($event)"
         (focus)="onInput($event)"
         (blur)="close()"
+        (keydown)="onKeydown($event)"
       />
       @if (value() && !disabled()) {
         <button type="button" class="employee-select__clear" aria-label="Clear" (mousedown)="clear()">
@@ -180,15 +183,20 @@ export class EmployeeDirectoryApi {
       }
       @if (isOpen()) {
         <ul class="employee-select__list" role="listbox" [id]="listboxId">
-          @for (employee of results(); track employee.id) {
-            @if (employee.id !== excludeId()) {
-              <li role="option" [attr.aria-selected]="employee.id === value()">
-                <button type="button" (mousedown)="pick(employee)">
-                  <strong>{{ employee.displayName }}</strong>
-                  <span class="muted">{{ employee.employeeCode }} · {{ employee.designation ?? employee.departmentName ?? '' }}</span>
-                </button>
-              </li>
-            }
+          @for (employee of options(); track employee.id; let index = $index) {
+            <!-- The option itself is chosen (mouse, or arrow keys and Enter in the input); a button
+                 inside an option would be an interactive control nested in another. -->
+            <li
+              role="option"
+              class="employee-select__option"
+              [id]="listboxId + '-' + index"
+              [class.employee-select__option--active]="index === active()"
+              [attr.aria-selected]="employee.id === value()"
+              (mousedown)="$event.preventDefault(); pick(employee)"
+            >
+              <strong>{{ employee.displayName }}</strong>
+              <span class="muted">{{ employee.employeeCode }} · {{ employee.designation ?? employee.departmentName ?? '' }}</span>
+            </li>
           } @empty {
             <li class="muted employee-select__empty">No matching employees.</li>
           }
@@ -231,20 +239,20 @@ export class EmployeeDirectoryApi {
       box-shadow: var(--gggs-shadow-md);
     }
 
-    .employee-select__list button {
+    .employee-select__option {
       display: flex;
       flex-direction: column;
-      width: 100%;
-      padding: 0.375rem 0.75rem;
-      border: 0;
-      background: transparent;
-      color: inherit;
-      font: inherit;
-      text-align: start;
+      padding: var(--gggs-space-2) var(--gggs-space-3);
       cursor: pointer;
     }
 
-    .employee-select__list button:hover {
+    .employee-select__option .muted {
+      margin-inline-start: 0;
+      font-size: var(--gggs-font-size-sm);
+    }
+
+    .employee-select__option:hover,
+    .employee-select__option--active {
       background: var(--gggs-color-surface-hover);
     }
 
@@ -268,6 +276,9 @@ export class EmployeeSelect implements ControlValueAccessor {
   protected readonly text = signal('');
   protected readonly results = signal<readonly EmployeeRow[]>([]);
   protected readonly isOpen = signal(false);
+  /** The option highlighted from the keyboard, or -1. */
+  protected readonly active = signal(-1);
+  protected readonly options = computed(() => this.results().filter((employee) => employee.id !== this.excludeId()));
   protected readonly disabled = signal(false);
 
   private onChange: (value: string | null) => void = () => undefined;
@@ -310,8 +321,27 @@ export class EmployeeSelect implements ControlValueAccessor {
     this.timer = setTimeout(async () => {
       const page = await this.api.list({ search: query, pageSize: 10 });
       this.results.set(page.items);
+      this.active.set(-1);
       this.isOpen.set(true);
     }, 250);
+  }
+
+  protected onKeydown(event: KeyboardEvent): void {
+    const count = this.options().length;
+    if (!this.isOpen() || count === 0) {
+      return;
+    }
+
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      this.active.set((this.active() + step + count) % count);
+      event.preventDefault();
+    } else if (event.key === 'Enter' && this.active() >= 0) {
+      this.pick(this.options()[this.active()]);
+      event.preventDefault();
+    } else if (event.key === 'Escape') {
+      this.isOpen.set(false);
+    }
   }
 
   protected pick(employee: EmployeeRow): void {

@@ -12,6 +12,7 @@ import { DrawerModule } from 'primeng/drawer';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <p-drawer
+      ariaCloseLabel="Close"
       [(visible)]="visible"
       [header]="title()"
       [position]="position()"
@@ -45,6 +46,7 @@ let nextFormId = 0;
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <p-dialog
+      closeAriaLabel="Close"
       [(visible)]="visible"
       [header]="title()"
       [modal]="true"

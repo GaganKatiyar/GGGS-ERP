@@ -48,6 +48,18 @@ body {
     }
   }
 
+  /* A link inside running text or a table cell keeps a quiet underline, so it is told apart from
+     the words around it by more than colour alone. */
+  :is(p, li, td, dd) a:not(.btn, .p-button) {
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+    text-underline-offset: 0.2em;
+
+    &:hover {
+      text-decoration-color: currentColor;
+    }
+  }
+
   code,
   kbd {
     font-family: var(--gggs-font-family-mono);

@@ -322,7 +322,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
   styles: `
     .fin__kpis {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(9rem, 45%), 1fr));
       gap: var(--gggs-space-3);
     }
 

@@ -15,7 +15,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, input, model, o
           type="search"
           [placeholder]="placeholder()"
           [value]="search()"
-          [attr.aria-label]="placeholder()"
+          [attr.aria-label]="placeholder() || 'Search'"
           (input)="onInput($event)"
         />
       </label>

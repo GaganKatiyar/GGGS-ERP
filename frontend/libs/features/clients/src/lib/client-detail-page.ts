@@ -190,7 +190,7 @@ import { ContractForm } from './contract-form';
 
     .kpi-row {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(9rem, 45%), 1fr));
       gap: var(--gggs-space-3);
     }
 
@@ -199,8 +199,8 @@ import { ContractForm } from './contract-form';
     }
 
     .client__heading {
-      flex: 1;
-      margin: 0;
+      margin-inline-end: auto;
+      margin-block: 0;
       font-size: var(--gggs-font-size-md);
     }
 

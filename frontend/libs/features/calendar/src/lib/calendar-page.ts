@@ -68,12 +68,12 @@ interface Day {
       }
     </div>
     <div class="cal">
-      <div class="cal__grid" role="grid" [attr.aria-label]="monthLabel()">
+      <div class="cal__grid" role="group" [attr.aria-label]="monthLabel()">
         @for (name of weekdays; track name) {
-          <div class="cal__weekday" role="columnheader">{{ name }}</div>
+          <div class="cal__weekday" aria-hidden="true">{{ name }}</div>
         }
         @for (day of days(); track day.date) {
-          <button type="button" role="gridcell" class="cal__day" [class.cal__day--out]="!day.inMonth" [class.cal__day--today]="day.today" [class.cal__day--weekend]="day.weekend"
+          <button type="button" class="cal__day" [attr.aria-label]="dayLabel(day.date)" [attr.aria-pressed]="day.date === selected()" [class.cal__day--out]="!day.inMonth" [class.cal__day--today]="day.today" [class.cal__day--weekend]="day.weekend"
             [class.cal__day--selected]="day.date === selected()" (click)="selected.set(day.date)">
             <span class="cal__num">{{ day.day }}</span>
             @for (entry of entriesOn(day.date).slice(0, 3); track $index) {
@@ -154,7 +154,8 @@ interface Day {
     }
 
     .cal__day--out {
-      opacity: 0.45;
+      color: var(--gggs-color-text-subtle);
+      background: var(--gggs-color-surface-sunken);
     }
 
     .cal__day--weekend {
@@ -259,6 +260,13 @@ export class CalendarPage {
       return { date: iso(date), day: date.getDate(), inMonth: date.getMonth() === first.getMonth(), today: iso(date) === today, weekend: date.getDay() === 0 || date.getDay() === 6 };
     });
   });
+
+  /** "Tuesday 20 October, 2 events" - the day button's name for screen readers. */
+  protected dayLabel(date: string): string {
+    const count = this.entriesOn(date).length;
+    const day = new Date(`${date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+    return count ? `${day}, ${count} event${count === 1 ? '' : 's'}` : day;
+  }
 
   private readonly visible = computed(() => this.entries().filter((entry) => !this.hidden().includes(entry.kind)));
   private readonly byDay = computed(() => {
