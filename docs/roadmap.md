@@ -38,3 +38,15 @@ A screen on its own does not count as done.
 | **M12** | AI and hardening | M11 | AI tool layer and assistants (HR command centre, workforce planner, resource manager, project, career, recruitment, performance and reward assistants) with human approval on actions; MFA and SSO federation; security and performance pass; end-to-end suites for the spec §134 critical flows |
 
 Status lives in [existing-vs-target.md §10](architecture/existing-vs-target.md#10-migration-sequence).
+
+## After M12: Separation v2 (India)
+
+A research-backed deepening of the M10 Separation module, delivered in phases:
+
+| Phase | Scope | Status |
+|---|---|---|
+| **A** | Separation policy and notice rules (grade, employment type, probation), buyout and early release, garden leave, leave blocked during notice, exit reason taxonomy and regretted flag, case timeline | Done |
+| **B** | Offboarding checklist templates and tasks (owner roles, due relative to the last day, overdue reminders), handover to a successor (direct reports, project seats, project tasks, pending approvals), sign-in disabled on exit or at once | Done |
+| **C** | Involuntary exits: termination with show-cause and enquiry, retrenchment compensation (IR Code), absconding detection from attendance, death with nominee, auto-opened retirement and contract-end cases | Planned |
+| **D** | Statutory F&F through payroll: gratuity (4 years 240 days, death waiver, ceiling, tax split), pro-rata bonus, encashment cap, clawbacks, claims and loans, an off-cycle F&F payroll run, EPF/ESI exit columns, F&F and gratuity deadlines | Planned |
+| **E** | Configurable exit survey, attrition analytics, alumni boomerang flag in Recruitment, AI tools | Planned |

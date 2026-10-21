@@ -86,7 +86,11 @@ applies.
   soonest-expiring first, a catalogue and budgets; and separation from resignation through
   clearance (assets and advances raised automatically), exit interview, full and final settlement
   (salary, leave encashment, gratuity, notice and other recoveries), letters, exit on the last day
-  and the alumni network.
+  and the alumni network. Separation v2 adds a notice policy (rules by grade, employment type and
+  probation; buyout, early release and garden leave; leave types blocked during notice), exit
+  reasons with regretted or not, a case timeline, an offboarding checklist from templates, handover
+  of reports, project seats and tasks and pending approvals to a successor, and the leaver's
+  sign-in switched off on exit (or at once by HR).
 - Insight and reach: dashboards for people, workforce, time, projects, resources, payroll, hiring,
   talent and experience, each assembled from the modules that own the data and limited to the
   viewer's report access, plus a company-wide executive dashboard and weekly or monthly digests;

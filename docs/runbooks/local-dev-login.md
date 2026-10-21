@@ -173,7 +173,10 @@ Since M10 it also:
 - awards work-anniversary points, lapses expired points and warns 30 days ahead, daily at 00:30
   (`rewards-sweep`); review and course points are awarded as those events arrive.
 - exits people the day after their last working day and adds them to the alumni network, daily at
-  01:00 (`separation-exit-sweep`).
+  01:00 (`separation-exit-sweep`). The exit also disables the leaver's sign-in and ends their
+  sessions.
+- reminds owners of overdue offboarding tasks every three days, daily at 03:30
+  (`separation-offboarding-reminders`).
 
 Every tenant gets default asset, expense, helpdesk categories, five knowledge articles, recognition
 types, reward rules and a catalogue. DevSeed's `experience` step registers twelve assets (eight
@@ -182,6 +185,11 @@ and two trips, one with an advance; five helpdesk tickets including a confidenti
 routed to EMP00004; a closed pulse survey with seven anonymous responses and an open one for
 everyone; six recognitions, a company budget and a redemption to fulfil; and Sara Khan (EMP00005) serving notice
 with clearance open, plus two alumni. It tops up every template role with the M10 permissions.
+Separation v2 seeds Sara's offboarding too: Rohan Das (EMP00006) named as successor, the standard
+checklist and the handover found across modules. The separation policy (Services > Separation
+policy) starts with Indian defaults: 60 days' notice (15 on probation), settlement within two
+working days and gratuity within 30 days. Offboarding checklists are under Services > Offboarding
+checklists and the steps waiting on you under Services > Offboarding tasks.
 
 Since M11 it also sends report digests daily at 06:00 (`insight-report-digests`): weekly
 subscriptions go out on Mondays and monthly ones on the 1st, only to people whose report access is
