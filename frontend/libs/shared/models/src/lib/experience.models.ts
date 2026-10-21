@@ -653,6 +653,50 @@ export interface SeparationCaseItem {
   readonly settlementNet?: number;
   readonly relievingLetterId?: string;
   readonly experienceLetterId?: string;
+  readonly reasonCode?: string;
+  readonly reasonLabel?: string;
+  readonly secondaryReasonCode?: string;
+  readonly regretted?: boolean;
+  readonly retentionNote?: string;
+  readonly requestedReleaseDay?: string;
+  readonly releaseWithBuyout: boolean;
+  readonly gardenLeave: boolean;
+}
+
+export interface SeparationEvent {
+  readonly kind: string;
+  readonly title: string;
+  readonly note?: string;
+  readonly actorName?: string;
+  readonly occurredAt: string;
+}
+
+export interface SeparationReason {
+  readonly code: string;
+  readonly label: string;
+  readonly voluntary: boolean;
+}
+
+export interface SeparationPolicy {
+  readonly defaultNoticeDays: number;
+  readonly probationNoticeDays: number;
+  readonly buyoutAllowed: boolean;
+  readonly gardenLeaveAllowed: boolean;
+  readonly blockedLeaveTypeCodes: readonly string[];
+  readonly encashableLeaveTypeCodes: readonly string[];
+  readonly encashmentCapDays: number | null;
+  readonly retirementAge: number;
+  readonly abscondingDays: number;
+  readonly settlementDueWorkingDays: number;
+  readonly gratuityDueDays: number;
+}
+
+export interface NoticeRule {
+  readonly id: string;
+  readonly gradeId?: string;
+  readonly employmentTypeCode?: string;
+  readonly onProbation?: boolean;
+  readonly noticeDays: number;
 }
 
 export interface ClearanceItem {
@@ -713,6 +757,7 @@ export interface SeparationCaseView {
   readonly clearance: readonly ClearanceItem[];
   readonly interview?: ExitInterviewView;
   readonly settlement?: SettlementView;
+  readonly events?: readonly SeparationEvent[];
 }
 
 export interface AlumniItem {

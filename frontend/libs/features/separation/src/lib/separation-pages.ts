@@ -1,5 +1,5 @@
 import { DatePipe, DecimalPipe, KeyValuePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
@@ -15,16 +15,27 @@ import type {
   SeparationCaseItem,
   SeparationCaseView,
   SeparationDashboard,
+  SeparationEvent,
+  SeparationPolicy,
+  SeparationReason,
   SeparationStatus,
   SeparationType,
 } from '@gggs/shared/models';
 import { CLEARANCE_AREAS, EXIT_REASONS, SEPARATION_TYPES, humanize } from '@gggs/shared/models';
-import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge, Tabs } from '@gggs/shared/ui';
-import type { TabItem } from '@gggs/shared/ui';
+import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge, Tabs, Timeline } from '@gggs/shared/ui';
+import type { TabItem, TimelineEntry } from '@gggs/shared/ui';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
 const today = () => new Date().toISOString().slice(0, 10);
 const inDays = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+/** Case events as timeline entries, newest first. */
+const timelineOf = (events: readonly SeparationEvent[] | undefined): readonly TimelineEntry[] =>
+  [...(events ?? [])].reverse().map((event) => ({
+    date: event.occurredAt,
+    title: event.title,
+    description: [event.note, event.actorName ? `by ${event.actorName}` : null].filter(Boolean).join(' · ') || undefined,
+    tone: event.kind.includes('declined') || event.kind === 'rejected' || event.kind === 'withdrawn' ? 'warning' : event.kind === 'completed' || event.kind.includes('granted') || event.kind === 'approved' ? 'success' : 'primary',
+  }));
 const blankInterview = (): ExitInterviewInput => ({ primaryReason: EXIT_REASONS[0], overallRating: 4, wouldRecommend: true, wouldReturn: true, whatWentWell: null, whatToImprove: null });
 
 /** The exit interview form, used by HR and by the leaver. */
@@ -253,12 +264,15 @@ export class SeparationPage {
 /** One separation: terms, clearance, exit interview, the full and final settlement and letters. */
 @Component({
   selector: 'gggs-separation-case-page',
-  imports: [FormsModule, DatePipe, DecimalPipe, RouterLink, PageHeader, StatusBadge, FormDialog, Skeleton, EmployeeSelect, ExitInterviewForm],
+  imports: [FormsModule, DatePipe, DecimalPipe, RouterLink, PageHeader, StatusBadge, FormDialog, Skeleton, EmployeeSelect, ExitInterviewForm, Timeline],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (view(); as v) {
       <gggs-page-header [title]="v.case.employeeName ?? 'Separation'" [subtitle]="label(v.case.type) + ' · last day ' + (v.case.lastWorkingDay | date: 'd MMM y')">
         <a class="btn" routerLink="/separation">All separations</a>
+        @if (canManage) {
+          <button type="button" class="btn" (click)="openClassify(v)">Exit reason</button>
+        }
         @if (canManage && (v.case.status === 'Approved' || v.case.status === 'PendingApproval')) {
           <button type="button" class="btn" (click)="openTerms(v)">Terms</button>
           <button type="button" class="btn btn--link" (click)="withdraw()">Withdraw</button>
@@ -274,8 +288,28 @@ export class SeparationPage {
         <div><span class="muted">Shortfall</span><br />{{ v.case.shortfallDays }} days{{ v.case.shortfallWaived ? ' (waived)' : '' }}</div>
         <div><span class="muted">Rehire</span><br />{{ v.case.eligibleForRehire ? 'Eligible' : 'Not eligible' }}</div>
         <div><span class="muted">Letters</span><br />{{ v.case.relievingLetterId ? 'Relieving' + (v.case.experienceLetterId ? ' and experience' : '') + ' issued' : 'Not issued' }}</div>
-        <div class="xp__wide"><span class="muted">Reason</span><br />{{ v.case.reason }}</div>
+        <div><span class="muted">Exit reason</span><br />{{ v.case.reasonLabel ?? 'Not recorded' }}{{ v.case.regretted === true ? ' · regretted' : v.case.regretted === false ? ' · not regretted' : '' }}</div>
+        @if (v.case.gardenLeave) {
+          <div><span class="muted">Garden leave</span><br />Paid to the last day, not working</div>
+        }
+        <div class="xp__wide"><span class="muted">In their words</span><br />{{ v.case.reason }}</div>
+        @if (v.case.retentionNote) {
+          <div class="xp__wide"><span class="muted">Retention</span><br />{{ v.case.retentionNote }}</div>
+        }
       </section>
+
+      @if (v.case.requestedReleaseDay; as day) {
+        <div class="alert alert--warning">
+          <i class="pi pi-calendar-clock" aria-hidden="true"></i>
+          <span>
+            Early release asked for {{ day | date: 'd MMM y' }}{{ v.case.releaseWithBuyout ? ', buying out the remaining notice' : '' }}.
+            @if (canManage) {
+              <button type="button" class="btn btn--sm btn--primary" [disabled]="busy()" (click)="decideRelease(true)">Grant</button>
+              <button type="button" class="btn btn--sm" [disabled]="busy()" (click)="decideRelease(false)">Decline</button>
+            }
+          </span>
+        </div>
+      }
 
       <section class="panel stack">
         <div class="toolbar">
@@ -360,6 +394,13 @@ export class SeparationPage {
           }
         </section>
       }
+
+      @if (timeline().length) {
+        <section class="panel stack">
+          <h2 class="xp__heading">Timeline</h2>
+          <gggs-timeline [entries]="timeline()" />
+        </section>
+      }
     } @else if (!error()) {
       <gggs-skeleton [lines]="8" />
     }
@@ -372,6 +413,44 @@ export class SeparationPage {
         <label class="field"><span class="field__label">Last working day</span><input type="date" [value]="termsDay()" (change)="termsDay.set($any($event.target).value)" /></label>
         <label class="xp__flag"><input type="checkbox" [checked]="termsWaive()" (change)="termsWaive.set($any($event.target).checked)" /> Waive the notice shortfall</label>
         <label class="xp__flag"><input type="checkbox" [checked]="termsRehire()" (change)="termsRehire.set($any($event.target).checked)" /> Eligible for rehire</label>
+        @if (policy()?.gardenLeaveAllowed || termsGarden()) {
+          <label class="xp__flag"><input type="checkbox" [checked]="termsGarden()" (change)="termsGarden.set($any($event.target).checked)" /> Garden leave: paid to the last day, not working</label>
+        }
+      </div>
+    </gggs-form-dialog>
+
+    <gggs-form-dialog [(visible)]="classifyOpen" title="Exit reason" description="Why they are leaving and whether it is a loss - used in attrition analysis." [busy]="busy()" [error]="formError()" (save)="saveClassify()">
+      <div class="form-grid">
+        <label class="field">
+          <span class="field__label">Main reason</span>
+          <select [value]="classifyReason()" (change)="classifyReason.set($any($event.target).value)">
+            <option value="">Not recorded</option>
+            @for (reason of reasons(); track reason.code) {
+              <option [value]="reason.code">{{ reason.label }}</option>
+            }
+          </select>
+        </label>
+        <label class="field">
+          <span class="field__label">Second reason</span>
+          <select [value]="classifySecond()" (change)="classifySecond.set($any($event.target).value)">
+            <option value="">None</option>
+            @for (reason of reasons(); track reason.code) {
+              <option [value]="reason.code">{{ reason.label }}</option>
+            }
+          </select>
+        </label>
+        <label class="field">
+          <span class="field__label">Regretted loss?</span>
+          <select [value]="classifyRegretted()" (change)="classifyRegretted.set($any($event.target).value)">
+            <option value="">Not decided</option>
+            <option value="yes">Yes - we wanted to keep them</option>
+            <option value="no">No</option>
+          </select>
+        </label>
+        <label class="field form-grid__full">
+          <span class="field__label">Retention attempted</span>
+          <textarea rows="3" maxlength="1000" placeholder="Conversation held, counter-offer made, outcome" [value]="classifyNote()" (input)="classifyNote.set($any($event.target).value)"></textarea>
+        </label>
       </div>
     </gggs-form-dialog>
 
@@ -423,6 +502,15 @@ export class SeparationCasePage {
   protected readonly termsDay = signal(today());
   protected readonly termsWaive = signal(false);
   protected readonly termsRehire = signal(true);
+  protected readonly termsGarden = signal(false);
+  protected readonly policy = signal<SeparationPolicy | null>(null);
+  protected readonly reasons = signal<readonly SeparationReason[]>([]);
+  protected readonly classifyOpen = signal(false);
+  protected readonly classifyReason = signal('');
+  protected readonly classifySecond = signal('');
+  protected readonly classifyRegretted = signal('');
+  protected readonly classifyNote = signal('');
+  protected readonly timeline = computed(() => timelineOf(this.view()?.events));
   protected readonly clearanceOpen = signal(false);
   protected readonly clearanceArea = signal<ClearanceArea>('Admin');
   protected readonly clearanceTitle = signal('');
@@ -448,6 +536,36 @@ export class SeparationCasePage {
         (error: unknown) => this.error.set(message(error, 'The separation could not be loaded.')),
       );
     });
+    this.api.policy().then((policy) => this.policy.set(policy), () => undefined);
+    this.api.reasons().then((reasons) => this.reasons.set(reasons), () => undefined);
+  }
+
+  protected openClassify(view: SeparationCaseView): void {
+    this.classifyReason.set(view.case.reasonCode ?? '');
+    this.classifySecond.set(view.case.secondaryReasonCode ?? '');
+    this.classifyRegretted.set(view.case.regretted === true ? 'yes' : view.case.regretted === false ? 'no' : '');
+    this.classifyNote.set(view.case.retentionNote ?? '');
+    this.formError.set(null);
+    this.classifyOpen.set(true);
+  }
+
+  protected saveClassify(): Promise<void> {
+    return this.run(async () => {
+      const regretted = this.classifyRegretted();
+      this.view.set(
+        await this.api.classify(this.id(), {
+          reasonCode: this.classifyReason() || null,
+          secondaryReasonCode: this.classifySecond() || null,
+          regretted: regretted === 'yes' ? true : regretted === 'no' ? false : null,
+          retentionNote: this.classifyNote().trim() || null,
+        }),
+      );
+      this.classifyOpen.set(false);
+    });
+  }
+
+  protected decideRelease(grant: boolean): Promise<void> {
+    return this.run(async () => this.view.set(await this.api.decideEarlyRelease(this.id(), grant)));
   }
 
   protected label(type: SeparationType): string {
@@ -462,13 +580,14 @@ export class SeparationCasePage {
     this.termsDay.set(view.case.lastWorkingDay);
     this.termsWaive.set(view.case.shortfallWaived);
     this.termsRehire.set(view.case.eligibleForRehire);
+    this.termsGarden.set(view.case.gardenLeave);
     this.formError.set(null);
     this.termsOpen.set(true);
   }
 
   protected saveTerms(): Promise<void> {
     return this.run(async () => {
-      this.view.set(await this.api.terms(this.id(), { lastWorkingDay: this.termsDay(), shortfallWaived: this.termsWaive(), eligibleForRehire: this.termsRehire() }));
+      this.view.set(await this.api.terms(this.id(), { lastWorkingDay: this.termsDay(), shortfallWaived: this.termsWaive(), eligibleForRehire: this.termsRehire(), gardenLeave: this.termsGarden() }));
       this.termsOpen.set(false);
     });
   }
@@ -602,7 +721,7 @@ export class ClearancePage {
 /** My resignation: submit it, follow notice and clearance, give an exit interview and see the settlement. */
 @Component({
   selector: 'gggs-my-separation-page',
-  imports: [DatePipe, DecimalPipe, PageHeader, StatusBadge, Skeleton, ExitInterviewForm],
+  imports: [DatePipe, DecimalPipe, PageHeader, StatusBadge, Skeleton, ExitInterviewForm, Timeline],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <gggs-page-header title="My resignation" subtitle="Resign, follow your notice and clearance, and see your full and final settlement." />
@@ -618,6 +737,23 @@ export class ClearancePage {
             <div><button type="button" class="btn" (click)="withdraw()">Withdraw resignation</button></div>
           }
         </section>
+        @if (v.case.status === 'PendingApproval' || v.case.status === 'Approved') {
+          <section class="panel stack">
+            <h2 class="xp__heading">Leave earlier</h2>
+            @if (v.case.requestedReleaseDay; as day) {
+              <p>You asked to leave on {{ day | date: 'd MMM y' }}{{ v.case.releaseWithBuyout ? ', buying out the remaining notice' : '' }}. HR will decide.</p>
+            } @else {
+              <p class="muted">Ask to finish before your notice ends.{{ policy()?.buyoutAllowed ? ' You can offer to pay for the days you do not serve (a buyout).' : '' }}</p>
+              <div class="toolbar">
+                <label class="field"><span class="field__label">Leave on</span><input type="date" [min]="v.case.noticeDate" [max]="v.case.lastWorkingDay" [value]="releaseDay()" (change)="releaseDay.set($any($event.target).value)" /></label>
+                @if (policy()?.buyoutAllowed) {
+                  <label class="xp__flag"><input type="checkbox" [checked]="buyout()" (change)="buyout.set($any($event.target).checked)" /> Buy out the remaining notice</label>
+                }
+                <button type="button" class="btn" [disabled]="busy() || !releaseDay()" (click)="askRelease()">Ask for early release</button>
+              </div>
+            }
+          </section>
+        }
         @if (v.clearance.length) {
           <section class="panel stack">
             <h2 class="xp__heading">Clearance</h2>
@@ -657,11 +793,26 @@ export class ClearancePage {
             <p><strong>Net {{ s.net | number: '1.2-2' }}</strong> · <gggs-status-badge [status]="s.status" />{{ s.paidOn ? ' on ' + (s.paidOn | date: 'd MMM y') : '' }}</p>
           </section>
         }
+        @if (timeline().length) {
+          <section class="panel stack">
+            <h2 class="xp__heading">What has happened</h2>
+            <gggs-timeline [entries]="timeline()" />
+          </section>
+        }
       } @else {
         <section class="panel stack">
-          <p>Resigning starts your notice period once it is accepted. Your notice period is normally {{ noticeDays }} days; ask for an earlier last day if you need one.</p>
+          <p>Resigning starts your notice period once it is accepted. The usual notice period is {{ policy()?.defaultNoticeDays ?? 60 }} days ({{ policy()?.probationNoticeDays ?? 15 }} on probation); ask for an earlier last day if you need one.</p>
           <label class="field"><span class="field__label">Last working day you are asking for</span><input type="date" [value]="lastDay()" (change)="lastDay.set($any($event.target).value)" /></label>
-          <label class="field"><span class="field__label">Reason</span><textarea rows="3" maxlength="1000" [value]="reason()" (input)="reason.set($any($event.target).value)"></textarea></label>
+          <label class="field">
+            <span class="field__label">Main reason</span>
+            <select [value]="reasonCode()" (change)="reasonCode.set($any($event.target).value)">
+              <option value="">Prefer not to say</option>
+              @for (option of voluntaryReasons(); track option.code) {
+                <option [value]="option.code">{{ option.label }}</option>
+              }
+            </select>
+          </label>
+          <label class="field"><span class="field__label">In your words</span><textarea rows="3" maxlength="1000" [value]="reason()" (input)="reason.set($any($event.target).value)"></textarea></label>
           <div><button type="button" class="btn btn--primary" [disabled]="busy() || !reason().trim()" (click)="resign()">Submit resignation</button></div>
         </section>
       }
@@ -676,8 +827,14 @@ export class ClearancePage {
 export class MySeparationPage {
   private readonly api = inject(SeparationApi);
 
-  protected readonly noticeDays = 60;
   protected readonly loaded = signal(false);
+  protected readonly policy = signal<SeparationPolicy | null>(null);
+  protected readonly reasons = signal<readonly SeparationReason[]>([]);
+  protected readonly voluntaryReasons = computed(() => this.reasons().filter((reason) => reason.voluntary));
+  protected readonly reasonCode = signal('');
+  protected readonly releaseDay = signal('');
+  protected readonly buyout = signal(true);
+  protected readonly timeline = computed(() => timelineOf(this.view()?.events));
   protected readonly view = signal<SeparationCaseView | null>(null);
   protected readonly lastDay = signal(inDays(60));
   protected readonly reason = signal('');
@@ -688,10 +845,22 @@ export class MySeparationPage {
 
   constructor() {
     this.load();
+    this.api.policy().then(
+      (policy) => {
+        this.policy.set(policy);
+        this.lastDay.set(inDays(policy.defaultNoticeDays));
+      },
+      () => undefined,
+    );
+    this.api.reasons().then((reasons) => this.reasons.set(reasons), () => undefined);
   }
 
   protected resign(): Promise<void> {
-    return confirm('Submit your resignation?') ? this.run(async () => this.view.set(await this.api.resign(this.reason(), this.lastDay()))) : Promise.resolve();
+    return confirm('Submit your resignation?') ? this.run(async () => this.view.set(await this.api.resign(this.reason(), this.lastDay(), this.reasonCode() || null))) : Promise.resolve();
+  }
+
+  protected askRelease(): Promise<void> {
+    return this.run(async () => this.view.set(await this.api.requestEarlyRelease(this.releaseDay(), this.policy()?.buyoutAllowed === true && this.buyout())));
   }
 
   protected withdraw(): Promise<void> {

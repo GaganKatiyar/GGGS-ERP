@@ -263,6 +263,7 @@ describe('filterNavigation', () => {
       '/policies',
       '/separation',
       '/separation/clearance',
+      '/separation/policy',
       '/analytics',
       '/calendar',
       '/ai',

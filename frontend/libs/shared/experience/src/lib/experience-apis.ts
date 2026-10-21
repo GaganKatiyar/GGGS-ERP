@@ -52,6 +52,9 @@ import type {
   SeparationCaseItem,
   SeparationCaseView,
   SeparationDashboard,
+  NoticeRule,
+  SeparationPolicy,
+  SeparationReason,
   SeparationStatus,
   SeparationType,
   SurveyInput,
@@ -491,7 +494,7 @@ export class SeparationApi {
     return firstValueFrom(this.http.post<SeparationCaseView>(`${this.base}/cases`, body));
   }
 
-  terms(id: string, body: { lastWorkingDay: string; shortfallWaived: boolean; eligibleForRehire: boolean }): Promise<SeparationCaseView> {
+  terms(id: string, body: { lastWorkingDay: string; shortfallWaived: boolean; eligibleForRehire: boolean; gardenLeave?: boolean }): Promise<SeparationCaseView> {
     return firstValueFrom(this.http.put<SeparationCaseView>(`${this.base}/cases/${id}/terms`, body));
   }
 
@@ -547,8 +550,44 @@ export class SeparationApi {
     return firstValueFrom(this.http.get<SeparationCaseView | null>('/api/v1/me/separation'));
   }
 
-  resign(reason: string, requestedLastDay: string | null): Promise<SeparationCaseView> {
-    return firstValueFrom(this.http.post<SeparationCaseView>('/api/v1/me/separation', { reason, requestedLastDay }));
+  resign(reason: string, requestedLastDay: string | null, reasonCode: string | null = null): Promise<SeparationCaseView> {
+    return firstValueFrom(this.http.post<SeparationCaseView>('/api/v1/me/separation', { reason, requestedLastDay, reasonCode }));
+  }
+
+  requestEarlyRelease(releaseDay: string, withBuyout: boolean): Promise<SeparationCaseView> {
+    return firstValueFrom(this.http.post<SeparationCaseView>('/api/v1/me/separation/early-release', { releaseDay, withBuyout }));
+  }
+
+  decideEarlyRelease(id: string, grant: boolean): Promise<SeparationCaseView> {
+    return firstValueFrom(this.http.post<SeparationCaseView>(`${this.base}/cases/${id}/early-release/${grant ? 'grant' : 'decline'}`, {}));
+  }
+
+  classify(id: string, body: { reasonCode: string | null; secondaryReasonCode: string | null; regretted: boolean | null; retentionNote: string | null }): Promise<SeparationCaseView> {
+    return firstValueFrom(this.http.put<SeparationCaseView>(`${this.base}/cases/${id}/classification`, body));
+  }
+
+  reasons(): Promise<readonly SeparationReason[]> {
+    return firstValueFrom(this.http.get<readonly SeparationReason[]>(`${this.base}/reasons`));
+  }
+
+  policy(): Promise<SeparationPolicy> {
+    return firstValueFrom(this.http.get<SeparationPolicy>(`${this.base}/policy`));
+  }
+
+  updatePolicy(body: SeparationPolicy): Promise<SeparationPolicy> {
+    return firstValueFrom(this.http.put<SeparationPolicy>(`${this.base}/policy`, body));
+  }
+
+  noticeRules(): Promise<readonly NoticeRule[]> {
+    return firstValueFrom(this.http.get<readonly NoticeRule[]>(`${this.base}/policy/notice-rules`));
+  }
+
+  addNoticeRule(body: { gradeId: string | null; employmentTypeCode: string | null; onProbation: boolean | null; noticeDays: number }): Promise<NoticeRule> {
+    return firstValueFrom(this.http.post<NoticeRule>(`${this.base}/policy/notice-rules`, body));
+  }
+
+  removeNoticeRule(id: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`${this.base}/policy/notice-rules/${id}`));
   }
 
   withdrawMine(): Promise<SeparationCaseView> {
