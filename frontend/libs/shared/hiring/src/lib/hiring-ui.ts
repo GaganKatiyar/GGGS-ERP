@@ -30,7 +30,7 @@ import { OnboardingApi } from './hiring-apis';
   styles: `
     .hiring-row {
       display: grid;
-      grid-template-columns: 1.4fr 1.6fr 1.4fr 8rem;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.6fr) minmax(0, 1.4fr) 8rem;
       gap: var(--gggs-space-3);
       align-items: center;
       padding-block: var(--gggs-space-2);
@@ -41,7 +41,7 @@ import { OnboardingApi } from './hiring-apis';
 
     @media (max-width: 48rem) {
       .hiring-row {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       }
     }
   `,

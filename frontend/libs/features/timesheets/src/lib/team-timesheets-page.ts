@@ -168,7 +168,7 @@ const mondayOf = (iso: string): string => {
 
     .team-ts__row {
       display: grid;
-      grid-template-columns: 2fr 1.3fr 1.6fr 1.2fr 7rem;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr) minmax(0, 1.6fr) minmax(0, 1.2fr) 7rem;
       gap: var(--gggs-space-3);
       align-items: center;
       padding: var(--gggs-space-2) 0;
@@ -198,7 +198,7 @@ const mondayOf = (iso: string): string => {
 
     @media (max-width: 56rem) {
       .team-ts__row {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       }
     }
   `,

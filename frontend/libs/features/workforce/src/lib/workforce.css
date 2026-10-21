@@ -37,7 +37,7 @@
 
 .wfp__row {
   display: grid;
-  grid-template-columns: 2fr 1.2fr 1.4fr 1.1fr 8rem 1fr;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1.4fr) 1.minmax(0, 1fr) 8rem minmax(0, 1fr);
   gap: var(--gggs-space-3);
   align-items: center;
   padding-block: var(--gggs-space-2);
@@ -57,7 +57,7 @@
 
 .wfp__edit {
   display: grid;
-  grid-template-columns: 1.5fr 1.2fr 1.2fr 6rem 8rem 8rem 2.5rem;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.2fr) minmax(0, 1.2fr) 6rem 8rem 8rem 2.5rem;
   gap: var(--gggs-space-2);
   align-items: center;
 }
@@ -92,6 +92,6 @@
 @media (max-width: 48rem) {
   .wfp__row,
   .wfp__edit {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }

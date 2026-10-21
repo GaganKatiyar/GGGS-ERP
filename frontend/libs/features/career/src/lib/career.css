@@ -33,7 +33,7 @@
 
 .car__row {
   display: grid;
-  grid-template-columns: 1.8fr 1.6fr 1.3fr 1.3fr 8rem;
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, 1.6fr) minmax(0, 1.3fr) minmax(0, 1.3fr) 8rem;
   gap: var(--gggs-space-3);
   align-items: center;
   padding-block: var(--gggs-space-2);
@@ -89,7 +89,7 @@ a.car__row:hover {
 
 .car__edit {
   display: grid;
-  grid-template-columns: 1.3fr 1.2fr 1.1fr 5rem 1.4fr 2.5rem;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.2fr) 1.minmax(0, 1fr) 5rem minmax(0, 1.4fr) 2.5rem;
   gap: var(--gggs-space-2);
   align-items: center;
   margin-block-end: var(--gggs-space-2);
@@ -145,6 +145,6 @@ a.car__row:hover {
 @media (max-width: 48rem) {
   .car__row,
   .car__edit {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }

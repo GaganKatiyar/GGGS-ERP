@@ -126,7 +126,7 @@ interface Dimension {
 
     .overview__grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
       gap: var(--gggs-space-3);
     }
 
@@ -138,7 +138,7 @@ interface Dimension {
 
     .overview__dimensions {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: var(--gggs-space-2);
     }
 
@@ -161,7 +161,7 @@ interface Dimension {
 
     .overview__row {
       display: grid;
-      grid-template-columns: 1fr auto auto;
+      grid-template-columns: minmax(0, 1fr) auto auto;
       gap: var(--gggs-space-3);
       align-items: center;
     }

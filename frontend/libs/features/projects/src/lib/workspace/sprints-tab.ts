@@ -156,14 +156,14 @@ import { Chart, EmptyState, FormDialog, StatusBadge, type ChartSeries } from '@g
   styles: `
     .sprints {
       display: grid;
-      grid-template-columns: minmax(16rem, 22rem) 1fr;
+      grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
       gap: var(--gggs-space-3);
       align-items: start;
     }
 
     @media (max-width: 56rem) {
       .sprints {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
       }
     }
 

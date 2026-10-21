@@ -191,7 +191,7 @@ import { AuditApi } from './audit-api';
     .diff {
       display: grid;
       gap: 1rem;
-      grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
     }
 
     .diff h3 {

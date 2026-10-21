@@ -206,7 +206,7 @@ import { ContractForm } from './contract-form';
 
     .client__facts {
       display: grid;
-      grid-template-columns: 10rem 1fr;
+      grid-template-columns: 10rem minmax(0, 1fr);
       gap: var(--gggs-space-2);
       margin: 0;
     }
@@ -221,7 +221,7 @@ import { ContractForm } from './contract-form';
 
     .client__row {
       display: grid;
-      grid-template-columns: 2fr 1.5fr 1fr auto;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 1fr) auto;
       gap: var(--gggs-space-3);
       align-items: center;
       padding-block: var(--gggs-space-2);

@@ -4,6 +4,7 @@ import {
   DestroyRef,
   ElementRef,
   ViewContainerRef,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -167,6 +168,29 @@ export class Shell {
       query.addEventListener('change', listener);
       inject(DestroyRef).onDestroy(() => query.removeEventListener('change', listener));
     }
+
+    // A table wider than a phone screen scrolls sideways inside itself (styles/_table.scss); make
+    // each such table a tab stop so it can be scrolled from the keyboard too.
+    const destroyRef = inject(DestroyRef);
+    afterNextRender(() => {
+      const content = document.getElementById('main-content');
+      if (!content || typeof MutationObserver === 'undefined') {
+        return;
+      }
+
+      let pending = 0;
+      const mark = () => {
+        pending = 0;
+        content.querySelectorAll<HTMLElement>('table:not(.p-datatable-table):not([tabindex])').forEach((table) => {
+          if (table.scrollWidth > table.clientWidth + 1) {
+            table.tabIndex = 0;
+          }
+        });
+      };
+      const observer = new MutationObserver(() => (pending ||= window.setTimeout(mark, 250)));
+      observer.observe(content, { childList: true, subtree: true });
+      destroyRef.onDestroy(() => observer.disconnect());
+    });
 
     if (this.canSeeNotifications() || this.canSeeApprovals()) {
       void this.refreshCounts();

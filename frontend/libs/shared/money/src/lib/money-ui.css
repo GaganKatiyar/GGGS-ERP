@@ -11,7 +11,7 @@
 
 .money-row {
   display: grid;
-  grid-template-columns: 1.4fr 1.6fr 1.8fr 8rem;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.6fr) minmax(0, 1.8fr) 8rem;
   gap: var(--gggs-space-3);
   align-items: center;
   padding-block: var(--gggs-space-2);
@@ -110,7 +110,7 @@ a.money-row:hover {
 }
 
 .slip__facts--tight {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .slip__facts dt {
@@ -124,7 +124,7 @@ a.money-row:hover {
 
 .slip__columns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--gggs-space-4);
 }
 
@@ -158,7 +158,7 @@ a.money-row:hover {
 @media (max-width: 48rem) {
   .money-row,
   .slip__columns {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 

@@ -337,7 +337,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
 
     .fin__two {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: var(--gggs-space-3);
       align-items: start;
     }
@@ -351,7 +351,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
 
     .fin__row {
       display: grid;
-      grid-template-columns: 1.4fr 1.6fr 1.6fr auto;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.6fr) minmax(0, 1.6fr) auto;
       gap: var(--gggs-space-3);
       align-items: center;
       padding-block: var(--gggs-space-2);
@@ -385,7 +385,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
     @media (max-width: 56rem) {
       .fin__two,
       .fin__row {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
       }
     }
   `,

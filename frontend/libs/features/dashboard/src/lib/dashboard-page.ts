@@ -93,11 +93,11 @@ const iso = (date: Date) => `${date.getFullYear()}-${`${date.getMonth() + 1}`.pa
     .dashboard__metrics {
       display: grid;
       gap: 1rem;
-      grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(min(16rem, 100%), 1fr));
     }
 
     .dashboard__metrics {
-      grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(min(18rem, 100%), 1fr));
     }
 
     .dashboard__head {
@@ -146,7 +146,7 @@ const iso = (date: Date) => `${date.getFullYear()}-${`${date.getMonth() + 1}`.pa
     .dashboard__entry {
       margin: 0;
       display: grid;
-      grid-template-columns: 4.5rem 1fr;
+      grid-template-columns: 4.5rem minmax(0, 1fr);
       gap: 0.5rem;
     }
 

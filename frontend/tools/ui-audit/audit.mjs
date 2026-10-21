@@ -93,7 +93,8 @@ function inspect() {
   const text = (main.innerText || '').trim();
   if (text.length < 15 && !main.querySelector('canvas, img, svg')) add('blocker', 'blank-page', 'The content area is empty.');
 
-  if (document.documentElement.scrollWidth > innerWidth + 1) add('blocker', 'page-overflow-x', `Page is ${document.documentElement.scrollWidth}px wide in a ${innerWidth}px window.`);
+  // Clipped overflow (overflow-x: hidden on the root) cannot be scrolled to, so it is not a defect.
+  if (getComputedStyle(document.documentElement).overflowX === 'visible' && document.documentElement.scrollWidth > innerWidth + 1) add('blocker', 'page-overflow-x', `Page is ${document.documentElement.scrollWidth}px wide in a ${innerWidth}px window.`);
   if (mainScroller.scrollWidth > mainScroller.clientWidth + 1) add('blocker', 'content-overflow-x', `Content is ${mainScroller.scrollWidth}px wide in ${mainScroller.clientWidth}px.`);
 
   const bounds = main.getBoundingClientRect();

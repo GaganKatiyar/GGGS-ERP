@@ -147,7 +147,7 @@ import { EmptyState, FormDialog, StatusBadge, Tabs, type TabItem } from '@gggs/s
 
     .raid__row {
       display: grid;
-      grid-template-columns: 5rem 1fr 7rem 9rem 5rem 7rem;
+      grid-template-columns: 5rem minmax(0, 1fr) 7rem 9rem 5rem 7rem;
       gap: var(--gggs-space-3);
       align-items: center;
       padding: var(--gggs-space-2) 0;

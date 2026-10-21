@@ -45,7 +45,7 @@
 
 .onb__row {
   display: grid;
-  grid-template-columns: 1.6fr 1.6fr 1.6fr 1.4fr 8rem;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.6fr) minmax(0, 1.6fr) minmax(0, 1.4fr) 8rem;
   gap: var(--gggs-space-3);
   align-items: center;
   padding-block: var(--gggs-space-2);
@@ -86,7 +86,7 @@
 
 .onb__task {
   display: grid;
-  grid-template-columns: 1.5rem 1fr auto;
+  grid-template-columns: 1.5rem minmax(0, 1fr) auto;
   gap: var(--gggs-space-3);
   align-items: start;
   padding-block: var(--gggs-space-2);
@@ -116,7 +116,7 @@
 
 .onb__edit {
   display: grid;
-  grid-template-columns: 2fr 1.2fr 1fr 5rem 6rem 2.5rem;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1fr) 5rem 6rem 2.5rem;
   gap: var(--gggs-space-2);
   align-items: center;
   margin-block-end: var(--gggs-space-2);
@@ -125,10 +125,10 @@
 @media (max-width: 48rem) {
   .onb__row,
   .onb__edit {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
   .onb__task {
-    grid-template-columns: 1.5rem 1fr;
+    grid-template-columns: 1.5rem minmax(0, 1fr);
   }
 }

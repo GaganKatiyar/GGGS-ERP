@@ -6,7 +6,7 @@
 
 .e-res__row {
   display: grid;
-  grid-template-columns: 2fr 1.5fr 1.5fr 7rem;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 1.5fr) 7rem;
   gap: var(--gggs-space-3);
   align-items: center;
   padding-block: var(--gggs-space-2);
@@ -63,6 +63,6 @@
 
 @media (max-width: 48rem) {
   .e-res__row {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }

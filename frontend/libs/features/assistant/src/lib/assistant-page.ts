@@ -135,7 +135,7 @@ const SUGGESTIONS: Readonly<Record<string, readonly string[]>> = {
   styles: `
     .ai {
       display: grid;
-      grid-template-columns: minmax(15rem, 20rem) 1fr;
+      grid-template-columns: minmax(15rem, 20rem) minmax(0, 1fr);
       gap: var(--gggs-space-3);
       align-items: start;
     }
@@ -272,7 +272,7 @@ const SUGGESTIONS: Readonly<Record<string, readonly string[]>> = {
     }
     @media (max-width: 56rem) {
       .ai {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
       }
       .ai__message {
         max-width: 100%;

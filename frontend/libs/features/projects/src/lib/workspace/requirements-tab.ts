@@ -98,7 +98,7 @@ import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
 
     .req__row {
       display: grid;
-      grid-template-columns: 6rem 1fr 5rem 9rem 8rem;
+      grid-template-columns: 6rem minmax(0, 1fr) 5rem 9rem 8rem;
       gap: var(--gggs-space-3);
       align-items: center;
       padding: var(--gggs-space-2) 0;

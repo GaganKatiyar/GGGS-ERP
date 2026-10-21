@@ -42,7 +42,7 @@ import { ProjectsApi } from './delivery-apis';
 
     .e-projects__row {
       display: grid;
-      grid-template-columns: 2fr 1fr 8rem 12rem 7rem;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) 8rem 12rem 7rem;
       gap: var(--gggs-space-3);
       align-items: center;
       padding-block: var(--gggs-space-2);
@@ -51,7 +51,7 @@ import { ProjectsApi } from './delivery-apis';
 
     @media (max-width: 48rem) {
       .e-projects__row {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       }
     }
   `,

@@ -179,7 +179,7 @@ import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
   styles: `
     .plan {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(24rem, 100%), 1fr));
       gap: var(--gggs-space-3);
       align-items: start;
     }
@@ -200,7 +200,7 @@ import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
 
     .plan__row {
       display: grid;
-      grid-template-columns: 1fr auto auto auto;
+      grid-template-columns: minmax(0, 1fr) auto auto auto;
       gap: var(--gggs-space-3);
       align-items: center;
     }

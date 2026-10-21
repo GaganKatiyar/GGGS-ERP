@@ -9,7 +9,7 @@ import { AssetsApi, ExpensesApi, HelpdeskApi, RewardsApi } from './experience-ap
 const ROW = `
   .xp-row {
     display: grid;
-    grid-template-columns: 1.8fr 1.2fr 1.2fr 8rem;
+    grid-template-columns: minmax(0, 1.8fr) minmax(0, 1.2fr) minmax(0, 1.2fr) 8rem;
     gap: var(--gggs-space-3);
     align-items: center;
     padding-block: var(--gggs-space-2);
@@ -20,7 +20,7 @@ const ROW = `
 
   @media (max-width: 48rem) {
     .xp-row {
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     }
   }
 `;

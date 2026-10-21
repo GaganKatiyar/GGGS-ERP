@@ -128,14 +128,14 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs
   styles: `
     .master-data {
       display: grid;
-      grid-template-columns: minmax(12rem, 16rem) 1fr;
+      grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr);
       gap: var(--gggs-space-4);
       align-items: start;
     }
 
     @media (max-width: 48rem) {
       .master-data {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
       }
     }
 

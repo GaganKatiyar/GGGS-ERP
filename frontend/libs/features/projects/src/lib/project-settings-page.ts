@@ -95,7 +95,7 @@ interface ThresholdField {
   styles: `
     .settings {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(26rem, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(26rem, 100%), 1fr));
       gap: var(--gggs-space-3);
       align-items: start;
     }
@@ -113,7 +113,7 @@ interface ThresholdField {
 
     .settings__role {
       display: grid;
-      grid-template-columns: 1fr auto auto;
+      grid-template-columns: minmax(0, 1fr) auto auto;
       gap: var(--gggs-space-3);
       align-items: center;
       padding-block: var(--gggs-space-2);

@@ -117,7 +117,7 @@ export function downloadFile(fileName: string, contentType: string, content: Blo
 
     .metric__bars li {
       display: grid;
-      grid-template-columns: minmax(6rem, 1fr) 2fr auto;
+      grid-template-columns: minmax(6rem, 1fr) minmax(0, 2fr) auto;
       gap: var(--gggs-space-2);
       align-items: center;
       font-size: var(--gggs-font-size-sm);

@@ -359,6 +359,21 @@ gggs-shell {
   }
 }
 
+// Phones: only the current page in the breadcrumb, so the trail never overlaps itself.
+@media (max-width: 48rem) {
+  .crumbs li:not(:last-child) {
+    display: none;
+  }
+
+  .crumbs li:last-child::before {
+    content: none;
+  }
+
+  .topbar__tenant {
+    display: none;
+  }
+}
+
 .topbar__spacer {
   flex: 1;
 }

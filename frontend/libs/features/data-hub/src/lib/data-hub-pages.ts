@@ -104,7 +104,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
   styles: `
     .hub {
       display: grid;
-      grid-template-columns: 18rem 1fr;
+      grid-template-columns: 18rem minmax(0, 1fr);
       gap: var(--gggs-space-3);
       align-items: start;
     }
@@ -129,7 +129,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
 
     @media (max-width: 64rem) {
       .hub {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
       }
     }
   `,

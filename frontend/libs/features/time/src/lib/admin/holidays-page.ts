@@ -107,14 +107,14 @@ import { EmptyState, FormDialog, PageHeader } from '@gggs/shared/ui';
   styles: `
     .holidays {
       display: grid;
-      grid-template-columns: minmax(12rem, 16rem) 1fr;
+      grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr);
       gap: var(--gggs-space-4);
       align-items: start;
     }
 
     @media (max-width: 48rem) {
       .holidays {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
       }
     }
 

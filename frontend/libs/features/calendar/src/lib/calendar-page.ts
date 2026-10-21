@@ -117,7 +117,7 @@ interface Day {
   styles: `
     .cal {
       display: grid;
-      grid-template-columns: 1fr 20rem;
+      grid-template-columns: minmax(0, 1fr) 20rem;
       gap: var(--gggs-space-3);
       align-items: start;
     }
@@ -219,7 +219,7 @@ interface Day {
 
     @media (max-width: 64rem) {
       .cal {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
       }
 
       .cal__chip {

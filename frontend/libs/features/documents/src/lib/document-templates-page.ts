@@ -101,7 +101,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs
   styles: `
     .templates {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(min(18rem, 100%), 1fr));
       gap: var(--gggs-space-3);
     }
 

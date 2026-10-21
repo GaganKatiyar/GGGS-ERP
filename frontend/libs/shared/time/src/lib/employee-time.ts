@@ -43,7 +43,7 @@ import { AttendanceApi, LeaveApi, addDays, todayIso } from './time-apis';
 
     .e-time__row {
       display: grid;
-      grid-template-columns: 8rem 1fr 9rem 5rem 8rem;
+      grid-template-columns: 8rem minmax(0, 1fr) 9rem 5rem 8rem;
       gap: var(--gggs-space-3);
       align-items: center;
       padding-block: var(--gggs-space-2);
@@ -52,7 +52,7 @@ import { AttendanceApi, LeaveApi, addDays, todayIso } from './time-apis';
 
     @media (max-width: 40rem) {
       .e-time__row {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       }
     }
   `,
@@ -140,7 +140,7 @@ export class EmployeeAttendance {
 
     .e-leave__row {
       display: grid;
-      grid-template-columns: 1fr 10rem 6rem 8rem;
+      grid-template-columns: minmax(0, 1fr) 10rem 6rem 8rem;
       gap: var(--gggs-space-3);
       align-items: center;
       padding-block: var(--gggs-space-2);

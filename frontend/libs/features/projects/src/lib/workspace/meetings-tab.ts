@@ -178,7 +178,7 @@ import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
 
     .meetings__action {
       display: grid;
-      grid-template-columns: auto 1fr auto auto;
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
       gap: var(--gggs-space-2);
       align-items: center;
     }

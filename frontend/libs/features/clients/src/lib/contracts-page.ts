@@ -170,7 +170,7 @@ import { ContractForm } from './contract-form';
 
     .contracts__facts {
       display: grid;
-      grid-template-columns: 9rem 1fr;
+      grid-template-columns: 9rem minmax(0, 1fr);
       gap: var(--gggs-space-2);
       margin: 0;
     }

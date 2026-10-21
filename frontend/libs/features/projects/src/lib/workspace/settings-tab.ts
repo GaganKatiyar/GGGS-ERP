@@ -65,7 +65,7 @@ interface ColumnDraft {
   styles: `
     .settings {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(24rem, 100%), 1fr));
       gap: var(--gggs-space-3);
       align-items: start;
     }
@@ -82,7 +82,7 @@ interface ColumnDraft {
 
     .settings__column {
       display: grid;
-      grid-template-columns: 1fr 9rem 5rem 6rem auto;
+      grid-template-columns: minmax(0, 1fr) 9rem 5rem 6rem auto;
       gap: var(--gggs-space-2);
       align-items: center;
     }

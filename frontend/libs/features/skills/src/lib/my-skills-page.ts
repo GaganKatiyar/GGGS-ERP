@@ -168,7 +168,7 @@ interface CertificationForm {
 
     .my-skills__row {
       display: grid;
-      grid-template-columns: 2fr 1.6fr 1.4fr 1.4fr 8rem;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1.6fr) minmax(0, 1.4fr) minmax(0, 1.4fr) 8rem;
       gap: var(--gggs-space-3);
       align-items: center;
       padding-block: var(--gggs-space-2);
@@ -209,7 +209,7 @@ interface CertificationForm {
 
     @media (max-width: 56rem) {
       .my-skills__row {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       }
     }
   `,

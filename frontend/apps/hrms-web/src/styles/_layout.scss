@@ -205,3 +205,15 @@
   + :where(.panel, .kpi-row, .xp__kpis, .grid-2, .grid-3, .table-wrap, gggs-data-table, gggs-chart, .alert, .filter-toolbar, section) {
   margin-block-start: var(--gggs-space-4);
 }
+
+/*
+ * Phones: side-by-side page layouts (`*__two`, `*__split`) and multi-column list rows (`*__row`)
+ * stack into one column. Feature styles set those columns, so this has to win over them; it only
+ * changes grids (grid-template-columns has no effect on flex rows) and never touches table rows.
+ */
+@media (max-width: 48rem) {
+  #main-content :is([class*='__two'], [class*='__split'], [class*='__row']):not(tr, td, th) {
+    grid-template-columns: minmax(0, 1fr) !important;
+    row-gap: var(--gggs-space-1);
+  }
+}

@@ -25,7 +25,7 @@
 
 .res__row {
   display: grid;
-  grid-template-columns: 2fr 2fr 1.4fr 1.4fr 8rem;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1.4fr) 8rem;
   gap: var(--gggs-space-3);
   align-items: center;
   padding-block: var(--gggs-space-2);
@@ -35,7 +35,7 @@
 }
 
 .res__row--release {
-  grid-template-columns: 2fr 1.5fr 1fr 2fr;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 2fr);
 }
 
 a.res__row:hover {
@@ -152,6 +152,6 @@ a.res__row:hover {
 @media (max-width: 56rem) {
   .res__row,
   .res__row--release {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }

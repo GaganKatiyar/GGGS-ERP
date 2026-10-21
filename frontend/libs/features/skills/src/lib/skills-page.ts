@@ -149,7 +149,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
 
     .skills__row {
       display: grid;
-      grid-template-columns: 2fr 2fr 8rem 7rem 9rem;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) 8rem 7rem 9rem;
       gap: var(--gggs-space-3);
       align-items: center;
       padding-block: var(--gggs-space-2);
@@ -185,7 +185,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
 
     .skills__person {
       display: grid;
-      grid-template-columns: 1.5fr 1.5fr 1fr;
+      grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.5fr) minmax(0, 1fr);
       gap: var(--gggs-space-2);
       padding-block: var(--gggs-space-2);
       border-block-end: 1px solid var(--gggs-color-border);
@@ -193,7 +193,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
 
     @media (max-width: 56rem) {
       .skills__row {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       }
     }
   `,
