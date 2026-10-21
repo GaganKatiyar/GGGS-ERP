@@ -59,6 +59,10 @@
   select,
   textarea {
     @include control;
+
+    /* Controls fit the grid cell or flex slot they are given instead of their intrinsic width. */
+    min-width: 0;
+    max-width: 100%;
   }
 
   textarea {

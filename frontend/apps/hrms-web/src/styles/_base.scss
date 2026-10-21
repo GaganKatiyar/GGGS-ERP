@@ -74,6 +74,11 @@ body {
     background: var(--gggs-color-surface-sunken);
   }
 
+  /* Long unbroken values (email addresses, URLs, IDs) wrap rather than push the layout wider. */
+  dd {
+    overflow-wrap: anywhere;
+  }
+
   hr {
     border: 0;
     border-block-start: 1px solid var(--gggs-color-border);

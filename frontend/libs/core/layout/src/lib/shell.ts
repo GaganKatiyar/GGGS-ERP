@@ -187,8 +187,11 @@ export class Shell {
           }
         });
       };
-      const observer = new MutationObserver(() => (pending ||= window.setTimeout(mark, 250)));
+      const schedule = () => (pending ||= window.setTimeout(mark, 250));
+      const observer = new MutationObserver(schedule);
       observer.observe(content, { childList: true, subtree: true });
+      window.addEventListener('resize', schedule);
+      destroyRef.onDestroy(() => window.removeEventListener('resize', schedule));
       destroyRef.onDestroy(() => observer.disconnect());
     });
 

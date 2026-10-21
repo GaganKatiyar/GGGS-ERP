@@ -247,6 +247,8 @@ export interface TabItem {
 @Component({
   selector: 'gggs-tabs',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // A block that never outgrows its container: extra tabs scroll inside the bar.
+  host: { style: 'display: block; min-width: 0; max-width: 100%' },
   template: `
     <div class="tabs" role="tablist">
       @for (tab of tabs(); track tab.key) {
@@ -273,6 +275,7 @@ export interface TabItem {
     .tabs {
       display: flex;
       gap: var(--gggs-space-1);
+      max-width: 100%;
       overflow-x: auto;
       scrollbar-width: none;
       border-block-end: 1px solid var(--gggs-color-border);
