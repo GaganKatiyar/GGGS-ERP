@@ -75,6 +75,8 @@ public sealed record ChangeAssignmentRequest(AssignmentChangeType ChangeType, Da
 
 public sealed record ConfirmRequest(DateOnly ConfirmationDate);
 
+public sealed record ContractEndRequest(DateOnly? ContractEndDate);
+
 public sealed record StartNoticeRequest(DateOnly NoticeStartDate);
 
 public sealed record ExitRequest(DateOnly ExitDate, string ExitReasonCode);
@@ -225,6 +227,14 @@ public sealed class EmployeeService(
     {
         EmployeeEntity employee = await LoadAsync(employeeId, cancellationToken);
         employee.Confirm(request.ConfirmationDate);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task SetContractEndAsync(Guid employeeId, ContractEndRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        EmployeeEntity employee = await LoadAsync(employeeId, cancellationToken);
+        employee.SetContractEnd(request.ContractEndDate);
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 

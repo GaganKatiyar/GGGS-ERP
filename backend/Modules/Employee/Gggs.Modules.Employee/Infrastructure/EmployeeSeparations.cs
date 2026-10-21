@@ -25,6 +25,36 @@ internal sealed class EmployeeSeparations(AppDbContext dbContext, EmployeeServic
             .Select(employee => employee.Id)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<UpcomingExit>> UpcomingExitsAsync(int retirementAge, DateOnly until, CancellationToken cancellationToken = default)
+    {
+        var people = await dbContext.Employees.AsNoTracking()
+            .Where(employee => employee.Status != EmployeeStatus.Exited && (employee.DateOfBirth != null || employee.ContractEndDate != null))
+            .Select(employee => new { employee.Id, employee.DateOfBirth, employee.ContractEndDate })
+            .ToListAsync(cancellationToken);
+        List<UpcomingExit> due = [];
+        foreach (var person in people)
+        {
+            if (person.DateOfBirth is { } born && RetirementDate(born, retirementAge) is var retires && retires <= until
+                && (person.ContractEndDate is null || retires <= person.ContractEndDate))
+            {
+                due.Add(new UpcomingExit(person.Id, UpcomingExitKind.Retirement, retires));
+            }
+            else if (person.ContractEndDate is { } ends && ends <= until)
+            {
+                due.Add(new UpcomingExit(person.Id, UpcomingExitKind.ContractEnd, ends));
+            }
+        }
+
+        return due;
+    }
+
+    /// <summary>Superannuation takes effect on the last day of the month in which the age is reached.</summary>
+    internal static DateOnly RetirementDate(DateOnly dateOfBirth, int retirementAge)
+    {
+        DateOnly birthday = dateOfBirth.AddYears(retirementAge);
+        return new DateOnly(birthday.Year, birthday.Month, DateTime.DaysInMonth(birthday.Year, birthday.Month));
+    }
+
     public async Task ChangeManagerAsync(Guid employeeId, Guid newManagerEmployeeId, DateOnly effectiveFrom, string reason, CancellationToken cancellationToken = default)
     {
         Domain.Employee current = await dbContext.Employees.AsNoTracking().FirstOrDefaultAsync(employee => employee.Id == employeeId, cancellationToken)

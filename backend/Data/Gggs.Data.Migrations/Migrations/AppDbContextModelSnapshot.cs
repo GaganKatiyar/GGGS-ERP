@@ -3533,6 +3533,9 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<DateOnly?>("ConfirmationDate")
                         .HasColumnType("date");
 
+                    b.Property<DateOnly?>("ContractEndDate")
+                        .HasColumnType("date");
+
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
 
@@ -15274,6 +15277,102 @@ namespace Gggs.Data.Migrations.Migrations
                     b.HasAnnotation("Gggs:TenantOwned", true);
                 });
 
+            modelBuilder.Entity("Gggs.Modules.Separation.Domain.AbsenceAlert", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateOnly>("DetectedOn")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("FirstAbsentDay")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("LastLetterId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly?>("LastNoticeOn")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("LastWorkedDay")
+                        .HasColumnType("date");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("NoticesSent")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly?>("RespondBy")
+                        .HasColumnType("date");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid?>("SeparationCaseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("WorkingDaysAbsent")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("TenantId", "EmployeeId")
+                        .HasDatabaseName("IX_AbsenceAlert_TenantId_Employee");
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_AbsenceAlert_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "Status")
+                        .HasDatabaseName("IX_AbsenceAlert_TenantId_Status");
+
+                    b.ToTable("AbsenceAlert", "sep");
+
+                    b.HasAnnotation("Gggs:TenantOwned", true);
+                });
+
             modelBuilder.Entity("Gggs.Modules.Separation.Domain.AlumniProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -16044,11 +16143,29 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<DateTime?>("ModifiedDate")
                         .HasColumnType("datetime2(3)");
 
+                    b.Property<string>("NomineeContact")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("NomineeName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("NomineeRelation")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
                     b.Property<DateOnly>("NoticeDate")
                         .HasColumnType("date");
 
                     b.Property<int>("NoticePeriodDays")
                         .HasColumnType("int");
+
+                    b.Property<int>("PayInLieuDays")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Proposed")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Reason")
                         .IsRequired()
@@ -16166,6 +16283,9 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<int?>("EncashmentCapDays")
                         .HasColumnType("int");
 
+                    b.Property<int>("ExitProposalLeadDays")
+                        .HasColumnType("int");
+
                     b.Property<bool>("GardenLeaveAllowed")
                         .HasColumnType("bit");
 
@@ -16196,6 +16316,9 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<int>("SettlementDueWorkingDays")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ShowCauseReplyDays")
                         .HasColumnType("int");
 
                     b.Property<Guid>("TenantId")
@@ -16387,6 +16510,118 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasDatabaseName("IX_SettlementLine_TenantId_Settlement");
 
                     b.ToTable("SettlementLine", "sep");
+
+                    b.HasAnnotation("Gggs:TenantOwned", true);
+                });
+
+            modelBuilder.Entity("Gggs.Modules.Separation.Domain.ShowCause", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Allegation")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateOnly?>("DecidedOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("DecisionNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly?>("EnquiryCompletedOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("EnquiryFindings")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<Guid?>("EnquiryOfficerEmployeeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("IssuedByEmployeeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("IssuedOn")
+                        .HasColumnType("date");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("NoticeLetterId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("Outcome")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateOnly?>("RepliedOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Reply")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateOnly>("ReplyDueOn")
+                        .HasColumnType("date");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid?>("SeparationCaseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("TenantId", "EmployeeId")
+                        .HasDatabaseName("IX_ShowCause_TenantId_Employee");
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_ShowCause_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "Status")
+                        .HasDatabaseName("IX_ShowCause_TenantId_Status");
+
+                    b.ToTable("ShowCause", "sep");
 
                     b.HasAnnotation("Gggs:TenantOwned", true);
                 });

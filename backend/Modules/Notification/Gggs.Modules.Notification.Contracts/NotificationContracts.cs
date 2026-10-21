@@ -76,5 +76,10 @@ public static class NotificationTemplates
     public const string ClearanceAssigned = "separation.clearance-assigned";
     public const string OffboardingTaskAssigned = "separation.offboarding-task-assigned";
     public const string OffboardingTaskOverdue = "separation.offboarding-task-overdue";
+    public const string ShowCauseIssued = "separation.show-cause-issued";
+    public const string ShowCauseReplied = "separation.show-cause-replied";
+    public const string AbsenceAlert = "separation.absence-alert";
+    public const string AbsenceNotice = "separation.absence-notice";
+    public const string ExitProposed = "separation.exit-proposed";
     public const string ReportDigest = "insight.report-digest";
 }

@@ -54,6 +54,7 @@ internal static class ExperienceDemo
         await SeedRewardsAsync(db, people);
         await SeedSeparationAsync(scope, db, people);
         await SeedOffboardingAsync(scope, db, people);
+        await SeedInvoluntaryAsync(db, people);
     }
 
     private static async Task SeedAssetsAsync(IServiceProvider scope, AppDbContext db, IReadOnlyDictionary<string, Guid> people)
@@ -339,6 +340,45 @@ internal static class ExperienceDemo
 
         await db.SaveChangesAsync();
         Console.WriteLine(count == 0 ? "Offboarding already laid out." : $"Offboarding: checklist and handover laid out for {count} separation(s).");
+    }
+
+    /// <summary>
+    /// Separation v2 phase C: a show-cause waiting for Meera Iyer's reply (EMP00003), an absence alert
+    /// for Arjun Nair (EMP00004) with no notice sent yet, and Rohan Das's (EMP00006) fixed-term
+    /// contract ending, proposed for HR to confirm. Each piece is added once.
+    /// </summary>
+    private static async Task SeedInvoluntaryAsync(AppDbContext db, IReadOnlyDictionary<string, Guid> people)
+    {
+        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+        List<string> added = [];
+        if (!await db.Set<ShowCause>().AnyAsync())
+        {
+            db.Add(ShowCause.Issue(people["EMP00003"], "Shared the client's staging credentials in a public chat channel on two occasions.", today.AddDays(-2), 7, null));
+            added.Add("a show-cause for EMP00003");
+        }
+
+        if (!await db.Set<AbsenceAlert>().AnyAsync())
+        {
+            db.Add(AbsenceAlert.Raise(people["EMP00004"], today.AddDays(-11), today.AddDays(-12), 7, today));
+            added.Add("an absence alert for EMP00004");
+        }
+
+        Guid rohan = people["EMP00006"];
+        if (!await db.Set<SeparationCase>().AnyAsync(row => row.EmployeeId == rohan && row.Type == SeparationType.ContractEnd))
+        {
+            // The contract end and the proposal the nightly exit-proposals job would raise for it.
+            Gggs.Modules.Employee.Domain.Employee contractor = await db.Set<Gggs.Modules.Employee.Domain.Employee>().SingleAsync(row => row.Id == rohan);
+            DateOnly ends = contractor.ContractEndDate ?? today.AddDays(45);
+            contractor.SetContractEnd(ends);
+            var proposal = SeparationCase.Open(rohan, SeparationType.ContractEnd, "Fixed-term contract ends", today, ends.DayNumber - today.DayNumber, ends);
+            proposal.Propose();
+            db.Add(proposal);
+            db.Add(CaseEvent.Record(proposal.Id, "proposed", "Contract end proposed", $"Due on {ends:d MMMM yyyy}; waiting for HR to confirm.", null, DateTime.UtcNow));
+            added.Add("EMP00006's contract end, proposed");
+        }
+
+        await db.SaveChangesAsync();
+        Console.WriteLine(added.Count == 0 ? "Involuntary exits already seeded." : $"Involuntary exits: {string.Join("; ", added)}.");
     }
 
     internal static async Task TopUpRolesAsync(IServiceProvider scope)

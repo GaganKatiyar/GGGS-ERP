@@ -107,7 +107,7 @@ public static class LookupCatalog
             [
                 new("RESIGNATION", "Resignation"), new("TERMINATION", "Termination"), new("RETIREMENT", "Retirement"),
                 new("CONTRACT_END", "End of contract"), new("ABSCONDING", "Absconding"), new("DEATH", "Death"),
-                new("MUTUAL", "Mutual separation"),
+                new("MUTUAL", "Mutual separation"), new("RETRENCHMENT", "Retrenchment"),
             ],
             [LookupLists.JobFamily] =
             [

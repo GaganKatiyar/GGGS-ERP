@@ -124,6 +124,14 @@ public static class EmployeeEndpoints
             .WithName("ConfirmEmployee")
             .RequirePermission(Permissions.Employee.EmploymentManage);
 
+        group.MapPut("/{id:guid}/contract-end", async (Guid id, ContractEndRequest body, EmployeeService service, CancellationToken ct) =>
+            {
+                await service.SetContractEndAsync(id, body, ct);
+                return TypedResults.NoContent();
+            })
+            .WithName("SetContractEnd")
+            .RequirePermission(Permissions.Employee.EmploymentManage);
+
         group.MapPost("/{id:guid}/notice", async (Guid id, StartNoticeRequest body, EmployeeService service, CancellationToken ct) =>
             {
                 await service.StartNoticeAsync(id, body, ct);

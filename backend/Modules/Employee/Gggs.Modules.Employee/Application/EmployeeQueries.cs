@@ -106,7 +106,8 @@ public sealed record EmployeeDetail(
     DateOnly? ExitDate,
     CodedValue? ExitReason,
     CurrentAssignmentView Assignment,
-    SensitiveSummary Sensitive);
+    SensitiveSummary Sensitive,
+    DateOnly? ContractEndDate = null);
 
 public sealed record StatutoryView(string? Pan, string? Uan, string? EsicNumber, string? NationalId, string? ProfessionalTaxStateCode);
 
@@ -478,7 +479,8 @@ public sealed class EmployeeQueries(
             assignment,
             new SensitiveSummary(
                 employee.Pan?.Hint, employee.Uan?.Hint, employee.EsicNumber?.Hint, employee.NationalId?.Hint, employee.ProfessionalTaxStateCode,
-                employee.BankName, employee.BankIfsc, employee.BankAccountNumber?.Hint));
+                employee.BankName, employee.BankIfsc, employee.BankAccountNumber?.Hint),
+            employee.ContractEndDate);
     }
 
     private async Task<Dictionary<Guid, string>> NamesOfAsync(IEnumerable<Guid?> ids, CancellationToken cancellationToken)

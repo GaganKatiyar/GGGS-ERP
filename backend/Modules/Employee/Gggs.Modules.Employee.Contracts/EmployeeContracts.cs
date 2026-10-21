@@ -134,6 +134,15 @@ public interface IEmployeePromotions
     Task PromoteAsync(Promotion promotion, CancellationToken cancellationToken = default);
 }
 
+/// <summary>An exit that falls due on its own: superannuation or the end of a fixed-term contract.</summary>
+public sealed record UpcomingExit(Guid EmployeeId, UpcomingExitKind Kind, DateOnly Date);
+
+public enum UpcomingExitKind
+{
+    Retirement = 1,
+    ContractEnd = 2,
+}
+
 /// <summary>Notice and exit decided in Separation (ADR-12), applied through Core HR's own rules and events.</summary>
 public interface IEmployeeSeparations
 {
@@ -146,6 +155,12 @@ public interface IEmployeeSeparations
 
     /// <summary>Current employees who report to <paramref name="managerEmployeeId"/>.</summary>
     Task<IReadOnlyList<Guid>> DirectReportsAsync(Guid managerEmployeeId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Current employees who reach the retirement age (on the last day of that month) or the end of a
+    /// fixed-term contract on or before <paramref name="until"/>.
+    /// </summary>
+    Task<IReadOnlyList<UpcomingExit>> UpcomingExitsAsync(int retirementAge, DateOnly until, CancellationToken cancellationToken = default);
 
     /// <summary>Moves an employee to a new manager (a leaver's handover), as a manager-change assignment.</summary>
     Task ChangeManagerAsync(Guid employeeId, Guid newManagerEmployeeId, DateOnly effectiveFrom, string reason, CancellationToken cancellationToken = default);

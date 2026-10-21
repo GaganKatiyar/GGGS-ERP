@@ -50,7 +50,12 @@ public sealed record CaseItem(
     string? RetentionNote = null,
     DateOnly? RequestedReleaseDay = null,
     bool ReleaseWithBuyout = false,
-    bool GardenLeave = false);
+    bool GardenLeave = false,
+    int PayInLieuDays = 0,
+    string? NomineeName = null,
+    string? NomineeRelation = null,
+    string? NomineeContact = null,
+    bool AwaitingConfirmation = false);
 
 public sealed record ClearanceView(Guid Id, ClearanceArea Area, string Title, Guid? OwnerEmployeeId, string? OwnerName, ClearanceStatus Status, decimal RecoveryAmount, string? Note, DateOnly? ClearedOn, bool CanResolve);
 
@@ -66,7 +71,18 @@ public sealed record CaseView(CaseItem Case, IReadOnlyList<ClearanceView> Cleara
 
 public sealed record ResignBody(string Reason, DateOnly? RequestedLastDay, string? ReasonCode = null);
 
-public sealed record InitiateBody(Guid EmployeeId, SeparationType Type, string Reason, DateOnly NoticeDate, DateOnly LastWorkingDay, int? NoticePeriodDays, string? ReasonCode = null);
+public sealed record InitiateBody(
+    Guid EmployeeId,
+    SeparationType Type,
+    string Reason,
+    DateOnly NoticeDate,
+    DateOnly LastWorkingDay,
+    int? NoticePeriodDays,
+    string? ReasonCode = null,
+    int? PayInLieuDays = null,
+    string? NomineeName = null,
+    string? NomineeRelation = null,
+    string? NomineeContact = null);
 
 public sealed record TermsBody(DateOnly LastWorkingDay, bool ShortfallWaived, bool EligibleForRehire, bool? GardenLeave = null);
 
@@ -225,18 +241,57 @@ internal sealed class SeparationService(
 
     /// <summary>HR starts a separation (termination, retirement, contract end...); it takes effect at once.</summary>
     public async Task<CaseView> InitiateAsync(InitiateBody body, CancellationToken cancellationToken)
+        => await ViewAsync(await StartAsync(body, Permissions.Separation.CaseManage, cancellationToken), includeSettlement: true, cancellationToken);
+
+    /// <summary>
+    /// Opens and approves a separation the company starts, for someone in the caller's scope under
+    /// <paramref name="permission"/> - HR's own start, a termination after show-cause, a retrenchment
+    /// or an absconding.
+    /// </summary>
+    internal async Task<SeparationCase> StartAsync(InitiateBody body, string permission, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(body);
-        if (!await employees.IsActiveAsync(body.EmployeeId, cancellationToken) || !await employees.IsInScopeAsync(body.EmployeeId, Permissions.Separation.CaseManage, cancellationToken))
+        if (!await employees.IsActiveAsync(body.EmployeeId, cancellationToken) || !await employees.IsInScopeAsync(body.EmployeeId, permission, cancellationToken))
         {
             throw new DomainRuleException("SEPARATION_EMPLOYEE", "Choose an active employee you manage separations for.");
         }
 
         await EnsureNoOpenCaseAsync(body.EmployeeId, cancellationToken);
         var separation = SeparationCase.Open(body.EmployeeId, body.Type, body.Reason, body.NoticeDate, body.NoticePeriodDays ?? (body.LastWorkingDay.DayNumber - body.NoticeDate.DayNumber), body.LastWorkingDay, body.ReasonCode);
+        separation.SetPayInLieu(body.PayInLieuDays ?? 0);
+        separation.SetNominee(body.NomineeName, body.NomineeRelation, body.NomineeContact);
         dbContext.SeparationCases.Add(separation);
         Note(separation, "initiated", $"{TypeLabel(body.Type)} started by HR", $"Last working day {Format(separation.LastWorkingDay)}.");
         await dbContext.SaveChangesAsync(cancellationToken);
+        await ApproveAsync(separation, null, cancellationToken);
+        return separation;
+    }
+
+    /// <summary>
+    /// Opens a retirement or contract end ahead of its date for HR to confirm or decline. Nothing
+    /// happens to the employee until it is confirmed.
+    /// </summary>
+    internal async Task<SeparationCase> ProposeAsync(Guid employeeId, SeparationType type, DateOnly lastDay, string reason, DateOnly today, CancellationToken cancellationToken)
+    {
+        DateOnly noticeDate = lastDay < today ? lastDay : today;
+        var separation = SeparationCase.Open(employeeId, type, reason, noticeDate, Math.Min(180, lastDay.DayNumber - noticeDate.DayNumber), lastDay);
+        separation.Propose();
+        dbContext.SeparationCases.Add(separation);
+        Note(separation, "proposed", $"{TypeLabel(type)} proposed", $"Due on {Format(lastDay)}; waiting for HR to confirm.");
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return separation;
+    }
+
+    /// <summary>HR confirms a proposed retirement or contract end: notice starts and offboarding begins.</summary>
+    public async Task<CaseView> ConfirmAsync(Guid id, CancellationToken cancellationToken)
+    {
+        SeparationCase separation = await ManagedAsync(id, cancellationToken);
+        if (!separation.AwaitingConfirmation)
+        {
+            throw new DomainRuleException("SEPARATION_NOT_PROPOSED", "This separation is not waiting for confirmation.");
+        }
+
+        Note(separation, "confirmed", "Confirmed by HR", null);
         await ApproveAsync(separation, null, cancellationToken);
         return await ViewAsync(separation, includeSettlement: true, cancellationToken);
     }
@@ -475,12 +530,29 @@ internal sealed class SeparationService(
 
             if (person.JoiningDate is { } joined && await rules.ResolveAsync(StatutoryRuleType.Gratuity, null, separation.LastWorkingDay, cancellationToken) is { } rule)
             {
+                // Death (and disablement) waives the five-year minimum (Payment of Gratuity Act s.4(1)).
                 GratuityConfig config = rule.Read<GratuityConfig>();
-                (decimal years, decimal amount, bool eligible) = SettlementMath.Gratuity(salary.MonthlyBasic, joined, separation.LastWorkingDay, config.DaysPerYear, config.DivisorDays, config.MinimumYears, config.MaximumAmount);
+                decimal minimumYears = separation.Type == SeparationType.Death ? 0 : config.MinimumYears;
+                (decimal years, decimal amount, bool eligible) = SettlementMath.Gratuity(salary.MonthlyBasic, joined, separation.LastWorkingDay, config.DaysPerYear, config.DivisorDays, minimumYears, config.MaximumAmount);
                 if (eligible)
                 {
-                    Add("GRATUITY", "Gratuity", false, amount, $"{years.ToString("0.##", CultureInfo.InvariantCulture)} years of service, {config.DaysPerYear}/{config.DivisorDays} days' basic per year");
+                    Add("GRATUITY", separation.Type == SeparationType.Death ? $"Gratuity (to {separation.NomineeName ?? "the nominee"})" : "Gratuity", false, amount,
+                        $"{years.ToString("0.##", CultureInfo.InvariantCulture)} years of service, {config.DaysPerYear}/{config.DivisorDays} days' basic per year{(separation.Type == SeparationType.Death ? "; no minimum service on death" : string.Empty)}");
                 }
+            }
+
+            if (separation.Type == SeparationType.Retrenchment && person.JoiningDate is { } since)
+            {
+                (int years, decimal amount, bool eligible) = SettlementMath.Retrenchment(salary.MonthlyBasic, since, separation.LastWorkingDay);
+                if (eligible)
+                {
+                    Add("RETRENCHMENT", "Retrenchment compensation", false, amount, $"{years} year(s) x 15 days' basic (basic/26), IR Code s.70");
+                }
+            }
+
+            if (separation.PayInLieuDays > 0)
+            {
+                Add("NOTICE_PAY", "Pay in lieu of notice", false, SettlementMath.NoticePay(salary.MonthlyGross, separation.PayInLieuDays), $"{separation.PayInLieuDays} days x gross/30");
             }
 
             if (separation.Type == SeparationType.Resignation && !separation.ShortfallWaived && separation.ShortfallDays > 0)
@@ -834,7 +906,7 @@ internal sealed class SeparationService(
                 clearance.TryGetValue(row.Id, out var counts) ? counts.Pending : 0, counts?.Total ?? 0, interviewed.Contains(row.Id),
                 settlement?.Status, settlement?.Net, row.RelievingLetterId, row.ExperienceLetterId,
                 row.ReasonCode, SeparationReasons.LabelOf(row.ReasonCode), row.SecondaryReasonCode, row.Regretted, row.RetentionNote,
-                row.RequestedReleaseDay, row.ReleaseWithBuyout, row.GardenLeave);
+                row.RequestedReleaseDay, row.ReleaseWithBuyout, row.GardenLeave, row.PayInLieuDays, row.NomineeName, row.NomineeRelation, row.NomineeContact, row.AwaitingConfirmation);
         })];
     }
 }

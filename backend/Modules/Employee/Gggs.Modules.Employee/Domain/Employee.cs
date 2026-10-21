@@ -278,6 +278,9 @@ public sealed class Employee : TenantAggregateRoot
 
     public string? ExitReasonCode { get; private set; }
 
+    /// <summary>When a fixed-term contract ends; Separation proposes the exit ahead of it.</summary>
+    public DateOnly? ContractEndDate { get; private set; }
+
     /// <summary>The Identity user who signs in as this employee, once linked.</summary>
     public Guid? UserId { get; private set; }
 
@@ -455,6 +458,13 @@ public sealed class Employee : TenantAggregateRoot
 
         current.CloseOn(effectiveFrom.AddDays(-1));
         return Open(changeType, effectiveFrom, assignment, reason);
+    }
+
+    public void SetContractEnd(DateOnly? contractEndDate)
+    {
+        EnsureNotExited();
+        Guard.Against(contractEndDate < JoiningDate, "EMPLOYEE_CONTRACT_END", "A contract cannot end before the joining date.");
+        ContractEndDate = contractEndDate;
     }
 
     public void Confirm(DateOnly confirmationDate)

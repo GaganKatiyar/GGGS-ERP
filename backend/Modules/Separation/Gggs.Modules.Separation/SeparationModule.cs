@@ -24,6 +24,7 @@ public sealed class SeparationModule : IModule
         services.AddScoped<SeparationService>();
         services.AddScoped<SeparationPolicyService>();
         services.AddScoped<OffboardingService>();
+        services.AddScoped<InvoluntaryService>();
         services.AddScoped<ILeaveApplicationRule, SeparationLeaveRule>();
         services.AddWorkflowSubject(SeparationService.Subject);
     }
@@ -37,6 +38,10 @@ public sealed class SeparationModule : IModule
         services.AddScoped<SeparationSweepJob>();
         services.AddScoped<OffboardingReminders>();
         services.AddScoped<OffboardingRemindersJob>();
+        services.AddScoped<AbsenceDetection>();
+        services.AddScoped<AbsenceDetectionJob>();
+        services.AddScoped<ExitProposals>();
+        services.AddScoped<ExitProposalsJob>();
         services.AddHostedService<SeparationJobRegistration>();
     }
 
@@ -138,6 +143,36 @@ public sealed class SeparationModule : IModule
             })
             .WithName("RemoveOffboardingTemplate").RequirePermission(Permissions.Separation.OffboardingManage);
 
+        group.MapPost("/cases/{id:guid}/confirm", async (Guid id, SeparationService service, CancellationToken ct) => TypedResults.Ok(await service.ConfirmAsync(id, ct)))
+            .WithName("ConfirmProposedSeparation").RequirePermission(Permissions.Separation.CaseManage);
+        group.MapPost("/exit-proposals/run", async (InvoluntaryService involuntary, CancellationToken ct) => TypedResults.Ok(new { Proposed = await involuntary.ProposeExitsAsync(ct) }))
+            .WithName("RunExitProposals").RequirePermission(Permissions.Separation.CaseManage);
+
+        group.MapGet("/show-causes", async (bool? open, InvoluntaryService involuntary, CancellationToken ct) => TypedResults.Ok(await involuntary.ShowCausesAsync(open, ct)))
+            .WithName("ListShowCauses").RequirePermission(Permissions.Separation.TerminationManage);
+        group.MapPost("/show-causes", async (ShowCauseBody body, InvoluntaryService involuntary, CancellationToken ct) => TypedResults.Ok(await involuntary.IssueAsync(body, ct)))
+            .WithName("IssueShowCause").RequirePermission(Permissions.Separation.TerminationManage);
+        group.MapGet("/show-causes/{id:guid}", async (Guid id, InvoluntaryService involuntary, CancellationToken ct) => TypedResults.Ok(await involuntary.ShowCauseAsync(id, ct)))
+            .WithName("GetShowCause").RequirePermission(Permissions.Separation.TerminationManage);
+        group.MapPost("/show-causes/{id:guid}/enquiry", async (Guid id, EnquiryBody body, InvoluntaryService involuntary, CancellationToken ct) => TypedResults.Ok(await involuntary.StartEnquiryAsync(id, body, ct)))
+            .WithName("StartEnquiry").RequirePermission(Permissions.Separation.TerminationManage);
+        group.MapPost("/show-causes/{id:guid}/findings", async (Guid id, FindingsBody body, InvoluntaryService involuntary, CancellationToken ct) => TypedResults.Ok(await involuntary.RecordFindingsAsync(id, body, ct)))
+            .WithName("RecordEnquiryFindings").RequirePermission(Permissions.Separation.TerminationManage);
+        group.MapPost("/show-causes/{id:guid}/decision", async (Guid id, ShowCauseDecisionBody body, InvoluntaryService involuntary, CancellationToken ct) => TypedResults.Ok(await involuntary.DecideAsync(id, body, ct)))
+            .WithName("DecideShowCause").RequirePermission(Permissions.Separation.TerminationManage);
+        group.MapPost("/retrenchment", async (RetrenchmentBody body, InvoluntaryService involuntary, CancellationToken ct) => TypedResults.Ok(await involuntary.RetrenchAsync(body, ct)))
+            .WithName("Retrench").RequirePermission(Permissions.Separation.TerminationManage);
+        group.MapGet("/absences", async (bool? open, InvoluntaryService involuntary, CancellationToken ct) => TypedResults.Ok(await involuntary.AbsencesAsync(open, ct)))
+            .WithName("ListAbsenceAlerts").RequirePermission(Permissions.Separation.TerminationManage);
+        group.MapPost("/absences/detect", async (InvoluntaryService involuntary, CancellationToken ct) => TypedResults.Ok(new { Raised = await involuntary.DetectAbsencesAsync(ct) }))
+            .WithName("DetectAbsences").RequirePermission(Permissions.Separation.TerminationManage);
+        group.MapPost("/absences/{id:guid}/notice", async (Guid id, InvoluntaryService involuntary, CancellationToken ct) => TypedResults.Ok(await involuntary.SendAbsenceNoticeAsync(id, ct)))
+            .WithName("SendAbsenceNotice").RequirePermission(Permissions.Separation.TerminationManage);
+        group.MapPost("/absences/{id:guid}/close", async (Guid id, AbsenceCloseBody body, InvoluntaryService involuntary, CancellationToken ct) => TypedResults.Ok(await involuntary.CloseAbsenceAsync(id, body, ct)))
+            .WithName("CloseAbsenceAlert").RequirePermission(Permissions.Separation.TerminationManage);
+        group.MapPost("/absences/{id:guid}/separate", async (Guid id, InvoluntaryService involuntary, CancellationToken ct) => TypedResults.Ok(await involuntary.SeparateAbsenceAsync(id, ct)))
+            .WithName("SeparateAbsentEmployee").RequirePermission(Permissions.Separation.TerminationManage);
+
         group.MapGet("/alumni", async (string? search, SeparationService service, CancellationToken ct) => TypedResults.Ok(await service.AlumniAsync(search, ct)))
             .WithName("ListAlumni").RequirePermission(Permissions.Separation.AlumniView);
         group.MapPut("/alumni/{id:guid}", async (Guid id, AlumniBody body, SeparationService service, CancellationToken ct) => TypedResults.Ok(await service.UpdateAlumniAsync(id, body, ct)))
@@ -152,6 +187,10 @@ public sealed class SeparationModule : IModule
             .WithName("WithdrawResignation").RequirePermission(Permissions.Self.ResignationSubmit);
         me.MapPut("/interview", async (InterviewBody body, SeparationService service, CancellationToken ct) => TypedResults.Ok(await service.RecordInterviewAsync(null, body, ct)))
             .WithName("SubmitExitInterview").RequirePermission(Permissions.Self.ResignationSubmit);
+        me.MapGet("/show-causes", async (InvoluntaryService involuntary, CancellationToken ct) => TypedResults.Ok(await involuntary.MyShowCausesAsync(ct)))
+            .WithName("MyShowCauses").RequirePermission(Permissions.Self.ResignationSubmit);
+        me.MapPost("/show-causes/{id:guid}/reply", async (Guid id, ShowCauseReplyBody body, InvoluntaryService involuntary, CancellationToken ct) => TypedResults.Ok(await involuntary.ReplyAsync(id, body, ct)))
+            .WithName("ReplyToShowCause").RequirePermission(Permissions.Self.ResignationSubmit);
         me.MapPost("/early-release", async (EarlyReleaseBody body, SeparationService service, CancellationToken ct) => TypedResults.Ok(await service.RequestEarlyReleaseAsync(body, ct)))
             .WithName("RequestEarlyRelease").RequirePermission(Permissions.Self.ResignationSubmit);
     }
@@ -217,12 +256,56 @@ internal sealed class OffboardingRemindersJob(OffboardingService offboarding, IL
     }
 }
 
+/// <summary>Fans the daily absconding check out to every tenant.</summary>
+[PlatformJob("Absence detection: fans out one absconding check per active tenant.")]
+internal sealed class AbsenceDetection(ITenantFanOutScheduler fanOut)
+{
+    public const string RecurringJobName = "separation-absence-detection";
+
+    public Task RunAsync() => fanOut.FanOutAsync<AbsenceDetectionJob>((job, tenantId) => job.RunAsync(tenantId));
+}
+
+internal sealed class AbsenceDetectionJob(InvoluntaryService involuntary, ILogger<AbsenceDetectionJob> logger)
+{
+    public async Task RunAsync(Guid tenantId)
+    {
+        int raised = await involuntary.DetectAbsencesAsync(CancellationToken.None);
+        if (raised > 0)
+        {
+            logger.LogInformation("Absence detection for tenant {TenantId}: {Raised} new alert(s).", tenantId, raised);
+        }
+    }
+}
+
+/// <summary>Fans the daily retirement and contract-end proposals out to every tenant.</summary>
+[PlatformJob("Exit proposals: fans out one retirement and contract-end check per active tenant.")]
+internal sealed class ExitProposals(ITenantFanOutScheduler fanOut)
+{
+    public const string RecurringJobName = "separation-exit-proposals";
+
+    public Task RunAsync() => fanOut.FanOutAsync<ExitProposalsJob>((job, tenantId) => job.RunAsync(tenantId));
+}
+
+internal sealed class ExitProposalsJob(InvoluntaryService involuntary, ILogger<ExitProposalsJob> logger)
+{
+    public async Task RunAsync(Guid tenantId)
+    {
+        int proposed = await involuntary.ProposeExitsAsync(CancellationToken.None);
+        if (proposed > 0)
+        {
+            logger.LogInformation("Exit proposals for tenant {TenantId}: {Proposed} retirement(s) or contract end(s) proposed.", tenantId, proposed);
+        }
+    }
+}
+
 internal sealed class SeparationJobRegistration(IRecurringJobManager recurringJobs) : IHostedService
 {
     public Task StartAsync(CancellationToken cancellationToken)
     {
         recurringJobs.AddOrUpdate<SeparationSweep>(SeparationSweep.RecurringJobName, sweep => sweep.RunAsync(), "0 1 * * *");
         recurringJobs.AddOrUpdate<OffboardingReminders>(OffboardingReminders.RecurringJobName, reminders => reminders.RunAsync(), "30 3 * * *");
+        recurringJobs.AddOrUpdate<AbsenceDetection>(AbsenceDetection.RecurringJobName, detection => detection.RunAsync(), "0 2 * * *");
+        recurringJobs.AddOrUpdate<ExitProposals>(ExitProposals.RecurringJobName, proposals => proposals.RunAsync(), "30 2 * * *");
         return Task.CompletedTask;
     }
 

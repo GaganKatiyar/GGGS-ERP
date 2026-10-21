@@ -427,7 +427,7 @@ internal sealed class OffboardingService(
     {
         OffboardingOwner.Manager => person?.ManagerEmployeeId,
         OffboardingOwner.Hr => person?.HrbpEmployeeId,
-        OffboardingOwner.Employee => separation.EmployeeId,
+        OffboardingOwner.Employee => separation.Type == SeparationType.Death ? null : separation.EmployeeId,
         OffboardingOwner.Successor => separation.SuccessorEmployeeId,
         _ => null,
     };

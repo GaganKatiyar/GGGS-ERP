@@ -659,6 +659,9 @@ public static class Permissions
 
         /// <summary>Offboarding checklists, handover and switching off a leaver's access.</summary>
         public const string OffboardingManage = "separation.offboarding.manage";
+
+        /// <summary>Show-cause and termination, retrenchment and absconding: exits the company starts.</summary>
+        public const string TerminationManage = "separation.termination.manage";
     }
 
     /// <summary>Bulk imports and integrations with outside systems (spec: import and integrations).</summary>

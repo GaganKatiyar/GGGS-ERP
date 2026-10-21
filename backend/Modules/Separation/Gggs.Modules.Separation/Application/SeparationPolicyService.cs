@@ -20,7 +20,9 @@ public sealed record PolicyView(
     int RetirementAge,
     int AbscondingDays,
     int SettlementDueWorkingDays,
-    int GratuityDueDays);
+    int GratuityDueDays,
+    int ShowCauseReplyDays,
+    int ExitProposalLeadDays);
 
 public sealed record PolicyBody(
     int DefaultNoticeDays,
@@ -33,7 +35,9 @@ public sealed record PolicyBody(
     int RetirementAge,
     int AbscondingDays,
     int SettlementDueWorkingDays,
-    int GratuityDueDays);
+    int GratuityDueDays,
+    int ShowCauseReplyDays = 7,
+    int ExitProposalLeadDays = 60);
 
 public sealed record NoticeRuleView(Guid Id, Guid? GradeId, string? EmploymentTypeCode, bool? OnProbation, int NoticeDays);
 
@@ -58,7 +62,8 @@ internal sealed class SeparationPolicyService(AppDbContext dbContext, IEmployeeD
         policy.Update(
             body.DefaultNoticeDays, body.ProbationNoticeDays, body.BuyoutAllowed, body.GardenLeaveAllowed,
             body.BlockedLeaveTypeCodes ?? [], body.EncashableLeaveTypeCodes ?? [], body.EncashmentCapDays,
-            body.RetirementAge, body.AbscondingDays, body.SettlementDueWorkingDays, body.GratuityDueDays);
+            body.RetirementAge, body.AbscondingDays, body.SettlementDueWorkingDays, body.GratuityDueDays,
+            body.ShowCauseReplyDays, body.ExitProposalLeadDays);
         await dbContext.SaveChangesAsync(cancellationToken);
         return View(policy);
     }
@@ -112,7 +117,8 @@ internal sealed class SeparationPolicyService(AppDbContext dbContext, IEmployeeD
 
     private static PolicyView View(SeparationPolicy policy) => new(
         policy.DefaultNoticeDays, policy.ProbationNoticeDays, policy.BuyoutAllowed, policy.GardenLeaveAllowed, policy.BlockedLeaveTypes, policy.EncashableLeaveTypes,
-        policy.EncashmentCapDays, policy.RetirementAge, policy.AbscondingDays, policy.SettlementDueWorkingDays, policy.GratuityDueDays);
+        policy.EncashmentCapDays, policy.RetirementAge, policy.AbscondingDays, policy.SettlementDueWorkingDays, policy.GratuityDueDays,
+        policy.ShowCauseReplyDays, policy.ExitProposalLeadDays);
 
     private static NoticeRuleView Rule(NoticeRule rule) => new(rule.Id, rule.GradeId, rule.EmploymentTypeCode, rule.OnProbation, rule.NoticeDays);
 }

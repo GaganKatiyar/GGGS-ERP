@@ -13,6 +13,9 @@ public enum SeparationType
     Mutual = 5,
     Absconding = 6,
     Death = 7,
+
+    /// <summary>Positions cut for business reasons (Industrial Relations Code, 2020 s.70): compensation is due.</summary>
+    Retrenchment = 8,
 }
 
 public enum CaseStatus
@@ -94,6 +97,19 @@ public sealed class SeparationCase : TenantAggregateRoot
     /// <summary>When the leaver's sign-in was switched off.</summary>
     public DateTime? AccessDisabledAt { get; private set; }
 
+    /// <summary>Notice days the company pays instead of the employee working them (termination, retrenchment).</summary>
+    public int PayInLieuDays { get; private set; }
+
+    /// <summary>Who receives the settlement after a death.</summary>
+    public string? NomineeName { get; private set; }
+
+    public string? NomineeRelation { get; private set; }
+
+    public string? NomineeContact { get; private set; }
+
+    /// <summary>Opened by the system ahead of a retirement or contract end, waiting for HR to confirm.</summary>
+    public bool Proposed { get; private set; }
+
     public string ExitReasonCode => Type switch
     {
         SeparationType.Resignation => "RESIGNATION",
@@ -102,6 +118,7 @@ public sealed class SeparationCase : TenantAggregateRoot
         SeparationType.ContractEnd => "CONTRACT_END",
         SeparationType.Absconding => "ABSCONDING",
         SeparationType.Death => "DEATH",
+        SeparationType.Retrenchment => "RETRENCHMENT",
         _ => "MUTUAL",
     };
 
@@ -149,6 +166,7 @@ public sealed class SeparationCase : TenantAggregateRoot
                 SeparationType.ContractEnd => "CONTRACT_END",
                 SeparationType.Death => "DEATH",
                 SeparationType.Absconding => "ABSCONDING",
+                SeparationType.Retrenchment => "RESTRUCTURING",
                 _ => null,
             },
         };
@@ -290,6 +308,47 @@ public sealed class SeparationCase : TenantAggregateRoot
     }
 
     public void AccessDisabled(DateTime now) => AccessDisabledAt ??= now;
+
+    public void SetPayInLieu(int days)
+    {
+        if (days is < 0 or > 180)
+        {
+            throw new DomainRuleException("SEPARATION_PAY_IN_LIEU", "Pay in lieu of notice runs 0 to 180 days.");
+        }
+
+        if (days > 0 && Type is SeparationType.Resignation or SeparationType.Absconding or SeparationType.Death)
+        {
+            throw new DomainRuleException("SEPARATION_PAY_IN_LIEU", "Pay in lieu of notice is for exits the company starts.");
+        }
+
+        PayInLieuDays = days;
+    }
+
+    public void SetNominee(string? name, string? relation, string? contact)
+    {
+        if (Type != SeparationType.Death && !string.IsNullOrWhiteSpace(name))
+        {
+            throw new DomainRuleException("SEPARATION_NOMINEE", "A nominee is recorded when an employee has died.");
+        }
+
+        NomineeName = string.IsNullOrWhiteSpace(name) ? null : Guard.MaxLength(name.Trim(), 200);
+        NomineeRelation = string.IsNullOrWhiteSpace(relation) ? null : Guard.MaxLength(relation.Trim(), 60);
+        NomineeContact = string.IsNullOrWhiteSpace(contact) ? null : Guard.MaxLength(contact.Trim(), 200);
+    }
+
+    /// <summary>Marks a case the system opened for HR to confirm (a retirement or contract end coming up).</summary>
+    public void Propose()
+    {
+        if (Status != CaseStatus.PendingApproval || Type is not (SeparationType.Retirement or SeparationType.ContractEnd))
+        {
+            throw new DomainRuleException("SEPARATION_PROPOSE", "Only a pending retirement or contract end can be proposed.");
+        }
+
+        Proposed = true;
+    }
+
+    /// <summary>A proposed exit HR has not yet confirmed or declined.</summary>
+    public bool AwaitingConfirmation => Proposed && Status == CaseStatus.PendingApproval;
 
     public void LettersIssued(Guid relievingLetterId, Guid? experienceLetterId)
     {
@@ -648,4 +707,30 @@ public static class SettlementMath
         decimal amount = Math.Min(maximumAmount, Math.Round(monthlyBasic * daysPerYear / divisorDays * counted, 0, MidpointRounding.AwayFromZero));
         return (Math.Round(exactYears, 2), eligible ? amount : 0, eligible);
     }
+
+    /// <summary>
+    /// Retrenchment compensation (Industrial Relations Code, 2020 s.70(b)): fifteen days' average pay
+    /// (basic over 26) for every completed year of continuous service or part over six months, for
+    /// someone with at least a year of service.
+    /// </summary>
+    public static (int Years, decimal Amount, bool Eligible) Retrenchment(decimal monthlyBasic, DateOnly joined, DateOnly lastDay)
+    {
+        if (lastDay < joined)
+        {
+            return (0, 0, false);
+        }
+
+        int months = ((lastDay.Year - joined.Year) * 12) + lastDay.Month - joined.Month - (lastDay.Day < joined.Day ? 1 : 0);
+        if (months < 12)
+        {
+            return (0, 0, false);
+        }
+
+        int counted = (months / 12) + (months % 12 > 6 ? 1 : 0);
+        return (counted, Math.Round(monthlyBasic * 15m / 26m * counted, 0, MidpointRounding.AwayFromZero), true);
+    }
+
+    /// <summary>Pay in lieu of notice the company owes: gross over 30 per day not given.</summary>
+    public static decimal NoticePay(decimal monthlyGross, int days)
+        => Math.Round(monthlyGross / 30m * Math.Max(0, days), 2, MidpointRounding.AwayFromZero);
 }

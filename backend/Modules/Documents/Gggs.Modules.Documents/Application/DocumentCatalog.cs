@@ -25,6 +25,7 @@ internal static class DocumentCatalog
         new("EMPLOYMENT_CERT", "Employment certificate", DocumentCategory.Letter, EmployeeVisible: true, RequiresExpiry: false),
         new("EXPERIENCE", "Experience letter", DocumentCategory.Letter, EmployeeVisible: true, RequiresExpiry: false),
         new("RELIEVING", "Relieving letter", DocumentCategory.Letter, EmployeeVisible: true, RequiresExpiry: false),
+        new("DISCIPLINARY", "Disciplinary and separation notice", DocumentCategory.Letter, EmployeeVisible: true, RequiresExpiry: false),
         new("CONTRACT", "Contract", DocumentCategory.Contract, EmployeeVisible: true, RequiresExpiry: false),
         new("POLICY", "Company policy", DocumentCategory.Policy, EmployeeVisible: false, RequiresExpiry: false),
         new("OTHER", "Other", DocumentCategory.Other, EmployeeVisible: false, RequiresExpiry: false),
@@ -52,6 +53,66 @@ internal static class DocumentCatalog
             <p>This is to certify that <strong>{{employeeName}}</strong> (employee code {{employeeCode}}) has been employed with us
             since {{joiningDate}} and currently works as {{designation}} in {{department}}.</p>
             <p>This certificate is issued at the employee's request.</p>
+            <p>For the company,<br />Human Resources</p>
+            """),
+        new(
+            "SHOW_CAUSE_NOTICE",
+            "Show-cause notice",
+            "Sets out an allegation and asks the employee to explain in writing by a date.",
+            "DISCIPLINARY",
+            """
+            <h1>Show-cause notice</h1>
+            <p>{{today}}</p>
+            <p>Dear {{employeeName}},</p>
+            <p>It has been reported that: {{allegation}}</p>
+            <p>You are asked to explain in writing, by {{replyBy}}, why disciplinary action should not be taken against you. You may
+            reply through PeopleOS under My resignation. If no reply is received by then, the matter will be decided on the
+            information available.</p>
+            <p>For the company,<br />Human Resources</p>
+            """),
+        new(
+            "TERMINATION_LETTER",
+            "Termination letter",
+            "Ends employment after a disciplinary process, with the last working day and notice terms.",
+            "DISCIPLINARY",
+            """
+            <h1>Termination of employment</h1>
+            <p>{{today}}</p>
+            <p>Dear {{employeeName}},</p>
+            <p>Further to the show-cause notice of {{issuedOn}} and {{process}}, the company has decided to end your employment as
+            {{designation}}. Your last working day is {{lastWorkingDay}}. {{noticeTerms}}</p>
+            <p>Your full and final settlement will be processed as per law. Please return all company property to the
+            administration team.</p>
+            <p>For the company,<br />Human Resources</p>
+            """),
+        new(
+            "RETRENCHMENT_NOTICE",
+            "Retrenchment notice",
+            "Notice of retrenchment under the Industrial Relations Code, 2020, with compensation terms.",
+            "DISCIPLINARY",
+            """
+            <h1>Notice of retrenchment</h1>
+            <p>{{today}}</p>
+            <p>Dear {{employeeName}},</p>
+            <p>Owing to {{reason}}, the company has had to reduce its workforce, and your position as {{designation}} in
+            {{department}} is affected. Your employment ends on {{lastWorkingDay}}. {{noticeTerms}}</p>
+            <p>You will receive retrenchment compensation of fifteen days' average pay for every completed year of continuous
+            service (or part over six months), with your full and final settlement. Should the company re-employ in your role,
+            you will be offered the opportunity first.</p>
+            <p>For the company,<br />Human Resources</p>
+            """),
+        new(
+            "ABSCONDING_NOTICE",
+            "Absence notice",
+            "Asks an employee absent without leave to report back or explain by a date.",
+            "DISCIPLINARY",
+            """
+            <h1>{{noticeTitle}}: unauthorised absence</h1>
+            <p>{{today}}</p>
+            <p>Dear {{employeeName}},</p>
+            <p>You have been absent from work without leave or information since {{absentSince}}. You are asked to report to
+            work, or to explain your absence in writing, by {{respondBy}}.</p>
+            <p>{{consequence}}</p>
             <p>For the company,<br />Human Resources</p>
             """),
         new(

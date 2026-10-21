@@ -23,6 +23,10 @@ internal sealed class SeparationModel : IModuleModel
             entity.Property(row => row.SecondaryReasonCode).HasMaxLength(40);
             entity.Property(row => row.RetentionNote).HasMaxLength(1000);
             entity.Property(row => row.HandoverNote).HasMaxLength(2000);
+            entity.Property(row => row.NomineeName).HasMaxLength(200);
+            entity.Property(row => row.NomineeRelation).HasMaxLength(60);
+            entity.Property(row => row.NomineeContact).HasMaxLength(200);
+            entity.Ignore(row => row.AwaitingConfirmation);
             entity.HasIndex(row => new { row.TenantId, row.EmployeeId }).HasDatabaseName("IX_Case_TenantId_Employee");
             entity.HasIndex(row => new { row.TenantId, row.Status, row.LastWorkingDay }).HasDatabaseName("IX_Case_TenantId_Status_LastDay");
             entity.Ignore(row => row.ExitReasonCode);
@@ -155,6 +159,32 @@ internal sealed class SeparationModel : IModuleModel
             entity.Ignore(row => row.DomainEvents);
         });
 
+        modelBuilder.Entity<ShowCause>(entity =>
+        {
+            entity.ToTable("ShowCause", Schema);
+            entity.Property(row => row.Allegation).HasMaxLength(2000);
+            entity.Property(row => row.Reply).HasMaxLength(4000);
+            entity.Property(row => row.EnquiryFindings).HasMaxLength(4000);
+            entity.Property(row => row.DecisionNote).HasMaxLength(2000);
+            entity.Property(row => row.Status).HasConversion<byte>();
+            entity.Property(row => row.Outcome).HasConversion<byte>();
+            entity.HasIndex(row => new { row.TenantId, row.EmployeeId }).HasDatabaseName("IX_ShowCause_TenantId_Employee");
+            entity.HasIndex(row => new { row.TenantId, row.Status }).HasDatabaseName("IX_ShowCause_TenantId_Status");
+            entity.Ignore(row => row.IsOpen);
+            entity.Ignore(row => row.DomainEvents);
+        });
+
+        modelBuilder.Entity<AbsenceAlert>(entity =>
+        {
+            entity.ToTable("AbsenceAlert", Schema);
+            entity.Property(row => row.Status).HasConversion<byte>();
+            entity.Property(row => row.Note).HasMaxLength(1000);
+            entity.HasIndex(row => new { row.TenantId, row.EmployeeId }).HasDatabaseName("IX_AbsenceAlert_TenantId_Employee");
+            entity.HasIndex(row => new { row.TenantId, row.Status }).HasDatabaseName("IX_AbsenceAlert_TenantId_Status");
+            entity.Ignore(row => row.IsOpen);
+            entity.Ignore(row => row.DomainEvents);
+        });
+
         modelBuilder.Entity<AlumniProfile>(entity =>
         {
             entity.ToTable("Alumni", Schema);
@@ -196,5 +226,9 @@ internal static class SeparationData
         public DbSet<OffboardingTask> OffboardingTasks => db.Set<OffboardingTask>();
 
         public DbSet<HandoverItem> HandoverItems => db.Set<HandoverItem>();
+
+        public DbSet<ShowCause> ShowCauses => db.Set<ShowCause>();
+
+        public DbSet<AbsenceAlert> AbsenceAlerts => db.Set<AbsenceAlert>();
     }
 }

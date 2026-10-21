@@ -49,6 +49,12 @@ public sealed class SeparationPolicy : TenantAggregateRoot
     /// <summary>Days after the last day within which gratuity must be paid (Payment of Gratuity Act s.7: thirty).</summary>
     public int GratuityDueDays { get; private set; }
 
+    /// <summary>Days given to answer a show-cause or absence notice.</summary>
+    public int ShowCauseReplyDays { get; private set; }
+
+    /// <summary>How far ahead a retirement or contract end is proposed for HR to confirm.</summary>
+    public int ExitProposalLeadDays { get; private set; }
+
     public static SeparationPolicy CreateDefault() => new()
     {
         DefaultNoticeDays = 60,
@@ -62,6 +68,8 @@ public sealed class SeparationPolicy : TenantAggregateRoot
         AbscondingDays = 7,
         SettlementDueWorkingDays = 2,
         GratuityDueDays = 30,
+        ShowCauseReplyDays = 7,
+        ExitProposalLeadDays = 60,
     };
 
     public void Update(
@@ -75,8 +83,22 @@ public sealed class SeparationPolicy : TenantAggregateRoot
         int retirementAge,
         int abscondingDays,
         int settlementDueWorkingDays,
-        int gratuityDueDays)
+        int gratuityDueDays,
+        int showCauseReplyDays = 7,
+        int exitProposalLeadDays = 60)
     {
+        if (showCauseReplyDays is < 1 or > 30)
+        {
+            throw new DomainRuleException("SEPARATION_POLICY", "The time to reply to a notice runs 1 to 30 days.");
+        }
+
+        if (exitProposalLeadDays is < 7 or > 180)
+        {
+            throw new DomainRuleException("SEPARATION_POLICY", "Retirements and contract ends are proposed 7 to 180 days ahead.");
+        }
+
+        ShowCauseReplyDays = showCauseReplyDays;
+        ExitProposalLeadDays = exitProposalLeadDays;
         DefaultNoticeDays = Days(defaultNoticeDays, "default notice period");
         ProbationNoticeDays = Days(probationNoticeDays, "probation notice period");
         BuyoutAllowed = buyoutAllowed;
