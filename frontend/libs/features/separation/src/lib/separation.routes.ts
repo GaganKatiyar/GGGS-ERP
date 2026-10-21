@@ -1,6 +1,7 @@
 import type { Routes } from '@angular/router';
 import { withPermissions } from '@gggs/core/permissions';
 import { ClearancePage, MySeparationPage, SeparationCasePage, SeparationPage } from './separation-pages';
+import { AbscondingPage, DisciplinaryPage, RetrenchmentPage } from './involuntary-pages';
 import { OffboardingTasksPage, OffboardingTemplatesPage } from './offboarding-pages';
 import { SeparationPolicyPage } from './separation-policy-page';
 
@@ -10,6 +11,9 @@ export const SEPARATION_ROUTES: Routes = [
   { path: 'clearance', component: ClearancePage, title: 'My clearance' },
   { path: 'offboarding', component: OffboardingTasksPage, title: 'Offboarding tasks' },
   { path: 'offboarding-checklists', component: OffboardingTemplatesPage, title: 'Offboarding checklists', ...withPermissions(['separation.offboarding.manage']) },
+  { path: 'disciplinary', component: DisciplinaryPage, title: 'Disciplinary', ...withPermissions(['separation.termination.manage']) },
+  { path: 'absconding', component: AbscondingPage, title: 'Absconding', ...withPermissions(['separation.termination.manage']) },
+  { path: 'retrenchment', component: RetrenchmentPage, title: 'Retrenchment', ...withPermissions(['separation.termination.manage']) },
   { path: 'policy', component: SeparationPolicyPage, title: 'Separation policy', ...withPermissions(['separation.policy.manage']) },
   { path: 'cases/:id', component: SeparationCasePage, title: 'Separation' },
 ];

@@ -53,6 +53,10 @@ import type {
   SeparationCaseView,
   SeparationDashboard,
   NoticeRule,
+  AbsenceAlert,
+  RetrenchmentResult,
+  ShowCause,
+  ShowCauseOutcome,
   OffboardingTask,
   OffboardingTemplate,
   OffboardingTemplateInput,
@@ -493,7 +497,18 @@ export class SeparationApi {
     return firstValueFrom(this.http.get<SeparationCaseView>(`${this.base}/cases/${id}`));
   }
 
-  initiate(body: { employeeId: string; type: SeparationType; reason: string; noticeDate: string; lastWorkingDay: string; noticePeriodDays: number | null }): Promise<SeparationCaseView> {
+  initiate(body: {
+    employeeId: string;
+    type: SeparationType;
+    reason: string;
+    noticeDate: string;
+    lastWorkingDay: string;
+    noticePeriodDays: number | null;
+    payInLieuDays?: number | null;
+    nomineeName?: string | null;
+    nomineeRelation?: string | null;
+    nomineeContact?: string | null;
+  }): Promise<SeparationCaseView> {
     return firstValueFrom(this.http.post<SeparationCaseView>(`${this.base}/cases`, body));
   }
 
@@ -629,6 +644,66 @@ export class SeparationApi {
 
   removeOffboardingTemplate(id: string): Promise<void> {
     return firstValueFrom(this.http.delete<void>(`${this.base}/offboarding/templates/${id}`));
+  }
+
+  confirm(id: string): Promise<SeparationCaseView> {
+    return firstValueFrom(this.http.post<SeparationCaseView>(`${this.base}/cases/${id}/confirm`, {}));
+  }
+
+  runExitProposals(): Promise<{ proposed: number }> {
+    return firstValueFrom(this.http.post<{ proposed: number }>(`${this.base}/exit-proposals/run`, {}));
+  }
+
+  showCauses(open: boolean | null): Promise<readonly ShowCause[]> {
+    return firstValueFrom(this.http.get<readonly ShowCause[]>(`${this.base}/show-causes`, { params: open === null ? {} : { open } }));
+  }
+
+  issueShowCause(body: { employeeId: string; allegation: string; replyDays: number | null }): Promise<ShowCause> {
+    return firstValueFrom(this.http.post<ShowCause>(`${this.base}/show-causes`, body));
+  }
+
+  startEnquiry(id: string, officerEmployeeId: string): Promise<ShowCause> {
+    return firstValueFrom(this.http.post<ShowCause>(`${this.base}/show-causes/${id}/enquiry`, { officerEmployeeId }));
+  }
+
+  recordFindings(id: string, findings: string): Promise<ShowCause> {
+    return firstValueFrom(this.http.post<ShowCause>(`${this.base}/show-causes/${id}/findings`, { findings }));
+  }
+
+  decideShowCause(id: string, body: { outcome: ShowCauseOutcome; note: string | null; lastWorkingDay: string | null; payInLieuDays: number | null; disableAccessNow: boolean }): Promise<ShowCause> {
+    return firstValueFrom(this.http.post<ShowCause>(`${this.base}/show-causes/${id}/decision`, body));
+  }
+
+  myShowCauses(): Promise<readonly ShowCause[]> {
+    return firstValueFrom(this.http.get<readonly ShowCause[]>('/api/v1/me/separation/show-causes'));
+  }
+
+  replyToShowCause(id: string, reply: string): Promise<ShowCause> {
+    return firstValueFrom(this.http.post<ShowCause>(`/api/v1/me/separation/show-causes/${id}/reply`, { reply }));
+  }
+
+  retrench(body: { employeeIds: readonly string[]; reason: string; noticeDate: string; lastWorkingDay: string; payInLieuOfNotice: boolean }): Promise<readonly RetrenchmentResult[]> {
+    return firstValueFrom(this.http.post<readonly RetrenchmentResult[]>(`${this.base}/retrenchment`, body));
+  }
+
+  absences(open: boolean | null): Promise<readonly AbsenceAlert[]> {
+    return firstValueFrom(this.http.get<readonly AbsenceAlert[]>(`${this.base}/absences`, { params: open === null ? {} : { open } }));
+  }
+
+  detectAbsences(): Promise<{ raised: number }> {
+    return firstValueFrom(this.http.post<{ raised: number }>(`${this.base}/absences/detect`, {}));
+  }
+
+  sendAbsenceNotice(id: string): Promise<AbsenceAlert> {
+    return firstValueFrom(this.http.post<AbsenceAlert>(`${this.base}/absences/${id}/notice`, {}));
+  }
+
+  closeAbsence(id: string, returned: boolean, note: string | null): Promise<AbsenceAlert> {
+    return firstValueFrom(this.http.post<AbsenceAlert>(`${this.base}/absences/${id}/close`, { returned, note }));
+  }
+
+  separateAbsence(id: string): Promise<AbsenceAlert> {
+    return firstValueFrom(this.http.post<AbsenceAlert>(`${this.base}/absences/${id}/separate`, {}));
   }
 
   withdrawMine(): Promise<SeparationCaseView> {

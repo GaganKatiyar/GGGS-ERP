@@ -121,6 +121,11 @@ export class EmployeeDirectoryApi {
     await firstValueFrom(this.http.post(`${this.base}/${id}/${action}`, body));
   }
 
+  /** When a fixed-term contract ends (null for open-ended); Separation proposes the exit ahead of it. */
+  async setContractEnd(id: string, contractEndDate: string | null): Promise<void> {
+    await firstValueFrom(this.http.put(`${this.base}/${id}/contract-end`, { contractEndDate }));
+  }
+
   dependents(id: string): Promise<readonly Dependent[]> {
     return firstValueFrom(this.http.get<readonly Dependent[]>(`${this.base}/${id}/dependents`));
   }

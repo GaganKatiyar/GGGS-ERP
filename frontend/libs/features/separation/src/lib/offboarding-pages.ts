@@ -30,7 +30,7 @@ const offsetLabel = (days: number): string => (days === 0 ? 'On the last day' : 
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (view().offboarding; as o) {
-      @if (mode() === 'hr') {
+      @if (mode() === 'hr' && (open() || o.handover.length || o.successorEmployeeId || o.accessDisabledAt)) {
         <section class="panel stack">
           <div class="toolbar">
             <h2 class="xp__heading">Handover</h2>

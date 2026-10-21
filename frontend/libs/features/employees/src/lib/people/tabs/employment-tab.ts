@@ -10,7 +10,7 @@ import { LOOKUP_LISTS } from '@gggs/shared/models';
 import { FormDialog } from '@gggs/shared/ui';
 import { AssignmentFields, assignmentForm, toAssignmentInput, type AssignmentForm } from '../assignment-fields';
 
-type LifecycleAction = 'confirm' | 'notice' | 'exit';
+type LifecycleAction = 'confirm' | 'notice' | 'exit' | 'contract';
 
 const CHANGE_TYPES: readonly { readonly value: AssignmentChangeType; readonly label: string }[] = [
   { value: 'Transfer', label: 'Transfer' },
@@ -39,6 +39,7 @@ const today = () => new Date().toISOString().slice(0, 10);
           @if (!p.confirmationDate) {
             <button type="button" class="btn" *gggsHasPermission="'employee.employment.manage'" (click)="openLifecycle('confirm')">Confirm</button>
           }
+          <button type="button" class="btn" *gggsHasPermission="'employee.employment.manage'" (click)="openLifecycle('contract')">Contract end</button>
           @if (p.status === 'Active') {
             <button type="button" class="btn" *gggsHasPermission="'employee.exit.manage'" (click)="openLifecycle('notice')">Start notice</button>
           }
@@ -57,6 +58,7 @@ const today = () => new Date().toISOString().slice(0, 10);
         <dt>Manager</dt><dd>{{ p.assignment.manager?.name ?? '—' }}</dd>
         <dt>Employment type</dt><dd>{{ p.assignment.employmentType.label }}</dd>
         <dt>Work mode</dt><dd>{{ p.assignment.workMode.label }}</dd>
+        <dt>Contract ends</dt><dd>{{ (p.contractEndDate | date: 'mediumDate') ?? 'Open-ended' }}</dd>
       </dl>
     </section>
 
@@ -90,15 +92,18 @@ const today = () => new Date().toISOString().slice(0, 10);
     <gggs-form-dialog [(visible)]="lifecycleOpen" [title]="lifecycleTitle()" [saveLabel]="lifecycleTitle()" [busy]="busy()" [error]="error()" (save)="saveLifecycle()">
       <div class="form-grid" [formGroup]="lifecycleForm">
         <label class="field">
-          <span class="field__label">{{ lifecycleDateLabel() }} *</span>
+          <span class="field__label">{{ lifecycleDateLabel() }}{{ lifecycle() === 'contract' ? '' : ' *' }}</span>
           <input type="date" formControlName="date" />
+          @if (lifecycle() === 'contract') {
+            <span class="field__hint">Leave empty for an open-ended contract. Separation proposes the exit ahead of this date.</span>
+          }
         </label>
         @if (lifecycle() === 'exit') {
           <label class="field">
             <span class="field__label">Reason *</span>
             <gggs-lookup-select [list]="lists.exitReason" formControlName="reasonCode" ariaLabel="Exit reason" />
           </label>
-          <p class="muted form-grid__full">Full and final settlement and the exit checklist arrive with Separation (M10). This records the date and reason.</p>
+          <p class="muted form-grid__full">This records only the date and reason. To run notice, clearance, offboarding and the full and final settlement, start a separation instead.</p>
         }
       </div>
     </gggs-form-dialog>
@@ -130,8 +135,8 @@ export class EmploymentTab {
     reasonCode: new FormControl<string | null>(null),
   });
 
-  protected readonly lifecycleTitle = computed(() => ({ confirm: 'Confirm employment', notice: 'Start notice period', exit: 'Record exit' })[this.lifecycle()]);
-  protected readonly lifecycleDateLabel = computed(() => ({ confirm: 'Confirmation date', notice: 'Notice starts', exit: 'Last working day' })[this.lifecycle()]);
+  protected readonly lifecycleTitle = computed(() => ({ confirm: 'Confirm employment', notice: 'Start notice period', exit: 'Record exit', contract: 'Set contract end' })[this.lifecycle()]);
+  protected readonly lifecycleDateLabel = computed(() => ({ confirm: 'Confirmation date', notice: 'Notice starts', exit: 'Last working day', contract: 'Contract ends on' })[this.lifecycle()]);
 
   protected openChange(): void {
     this.change.reset({ changeType: 'Transfer', effectiveFrom: today(), reason: null });
@@ -142,7 +147,7 @@ export class EmploymentTab {
 
   protected openLifecycle(action: LifecycleAction): void {
     this.lifecycle.set(action);
-    this.lifecycleForm.reset({ date: today(), reasonCode: null });
+    this.lifecycleForm.reset({ date: action === 'contract' ? (this.profile().contractEndDate ?? '') : today(), reasonCode: null });
     this.error.set(null);
     this.lifecycleOpen.set(true);
   }
@@ -170,6 +175,14 @@ export class EmploymentTab {
   protected async saveLifecycle(): Promise<void> {
     const { date, reasonCode } = this.lifecycleForm.getRawValue();
     const action = this.lifecycle();
+    if (action === 'contract') {
+      await this.run(
+        () => this.api.setContractEnd(this.profile().id, date || null),
+        () => this.lifecycleOpen.set(false),
+      );
+      return;
+    }
+
     if (!date || (action === 'exit' && !reasonCode)) {
       this.error.set(action === 'exit' ? 'Choose the last working day and a reason.' : 'Choose a date.');
       return;

@@ -178,6 +178,7 @@ export interface EmployeeProfile {
   readonly exitReason?: CodedValue;
   readonly assignment: EmployeeAssignment;
   readonly sensitive: SensitiveSummary;
+  readonly contractEndDate?: string;
 }
 
 export interface Employee360Section {

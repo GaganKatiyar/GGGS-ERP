@@ -619,13 +619,13 @@ export interface RewardDashboard {
 
 // ----- Separation -----------------------------------------------------------------------------
 
-export type SeparationType = 'Resignation' | 'Termination' | 'Retirement' | 'ContractEnd' | 'Mutual' | 'Absconding' | 'Death';
+export type SeparationType = 'Resignation' | 'Termination' | 'Retirement' | 'ContractEnd' | 'Mutual' | 'Absconding' | 'Death' | 'Retrenchment';
 export type SeparationStatus = 'PendingApproval' | 'Approved' | 'Rejected' | 'Withdrawn' | 'Completed';
 export type ClearanceArea = 'Manager' | 'It' | 'Admin' | 'Finance' | 'Assets' | 'Hr';
 export type ClearanceStatus = 'Pending' | 'Cleared' | 'Waived';
 export type SettlementStatus = 'Draft' | 'Approved' | 'Paid';
 
-export const SEPARATION_TYPES: readonly SeparationType[] = ['Resignation', 'Termination', 'Retirement', 'ContractEnd', 'Mutual', 'Absconding', 'Death'];
+export const SEPARATION_TYPES: readonly SeparationType[] = ['Resignation', 'Termination', 'Retirement', 'ContractEnd', 'Mutual', 'Absconding', 'Death', 'Retrenchment'];
 export const CLEARANCE_AREAS: readonly ClearanceArea[] = ['Manager', 'It', 'Admin', 'Finance', 'Assets', 'Hr'];
 export const EXIT_REASONS: readonly string[] = ['Better opportunity', 'Compensation', 'Career growth', 'Manager', 'Work-life balance', 'Relocation', 'Higher studies', 'Health', 'Personal', 'Other'];
 
@@ -661,6 +661,11 @@ export interface SeparationCaseItem {
   readonly requestedReleaseDay?: string;
   readonly releaseWithBuyout: boolean;
   readonly gardenLeave: boolean;
+  readonly payInLieuDays: number;
+  readonly nomineeName?: string;
+  readonly nomineeRelation?: string;
+  readonly nomineeContact?: string;
+  readonly awaitingConfirmation: boolean;
 }
 
 export interface SeparationEvent {
@@ -689,6 +694,64 @@ export interface SeparationPolicy {
   readonly abscondingDays: number;
   readonly settlementDueWorkingDays: number;
   readonly gratuityDueDays: number;
+  readonly showCauseReplyDays: number;
+  readonly exitProposalLeadDays: number;
+}
+
+export type ShowCauseStatus = 'Issued' | 'Replied' | 'UnderEnquiry' | 'Closed';
+export type ShowCauseOutcome = 'None' | 'Warning' | 'Termination' | 'Dropped';
+
+export interface ShowCause {
+  readonly id: string;
+  readonly employeeId: string;
+  readonly employeeName?: string;
+  readonly employeeCode?: string;
+  readonly allegation: string;
+  readonly issuedOn: string;
+  readonly replyDueOn: string;
+  readonly noticeLetterId?: string;
+  readonly reply?: string;
+  readonly repliedOn?: string;
+  readonly enquiryOfficerEmployeeId?: string;
+  readonly enquiryOfficerName?: string;
+  readonly enquiryFindings?: string;
+  readonly enquiryCompletedOn?: string;
+  readonly status: ShowCauseStatus;
+  readonly outcome: ShowCauseOutcome;
+  readonly decisionNote?: string;
+  readonly decidedOn?: string;
+  readonly separationCaseId?: string;
+  readonly heard: boolean;
+}
+
+export type AbsenceAlertStatus = 'Open' | 'Returned' | 'Separated' | 'Dismissed';
+
+export interface AbsenceAlert {
+  readonly id: string;
+  readonly employeeId: string;
+  readonly employeeName?: string;
+  readonly employeeCode?: string;
+  readonly firstAbsentDay: string;
+  readonly lastWorkedDay: string;
+  readonly workingDaysAbsent: number;
+  readonly detectedOn: string;
+  readonly status: AbsenceAlertStatus;
+  readonly noticesSent: number;
+  readonly lastNoticeOn?: string;
+  readonly respondBy?: string;
+  readonly lastLetterId?: string;
+  readonly note?: string;
+  readonly separationCaseId?: string;
+  readonly canSendNotice: boolean;
+  readonly canSeparate: boolean;
+}
+
+export interface RetrenchmentResult {
+  readonly employeeId: string;
+  readonly employeeName?: string;
+  readonly caseId?: string;
+  readonly payInLieuDays: number;
+  readonly error?: string;
 }
 
 export interface NoticeRule {

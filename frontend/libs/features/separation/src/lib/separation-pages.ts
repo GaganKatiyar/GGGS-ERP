@@ -20,6 +20,7 @@ import type {
   SeparationReason,
   SeparationStatus,
   SeparationType,
+  ShowCause,
 } from '@gggs/shared/models';
 import { CLEARANCE_AREAS, EXIT_REASONS, SEPARATION_TYPES, humanize } from '@gggs/shared/models';
 import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge, Tabs, Timeline } from '@gggs/shared/ui';
@@ -37,6 +38,7 @@ const timelineOf = (events: readonly SeparationEvent[] | undefined): readonly Ti
     description: [event.note, event.actorName ? `by ${event.actorName}` : null].filter(Boolean).join(' · ') || undefined,
     tone: event.kind.includes('declined') || event.kind === 'rejected' || event.kind === 'withdrawn' ? 'warning' : event.kind === 'completed' || event.kind.includes('granted') || event.kind === 'approved' ? 'success' : 'primary',
   }));
+const separationLabel = (type: SeparationType): string => (type === 'ContractEnd' ? 'End of contract' : type === 'Mutual' ? 'Mutual separation' : type);
 const blankInterview = (): ExitInterviewInput => ({ primaryReason: EXIT_REASONS[0], overallRating: 4, wouldRecommend: true, wouldReturn: true, whatWentWell: null, whatToImprove: null });
 
 /** The exit interview form, used by HR and by the leaver. */
@@ -90,9 +92,13 @@ export class ExitInterviewForm {
     <gggs-page-header title="Separation" subtitle="Resignations and exits through notice, clearance, settlement and letters.">
       <a class="btn" routerLink="/separation/clearance">My clearance</a>
       @if (canManage) {
+        <button type="button" class="btn" [disabled]="busy()" (click)="proposeExits()">Check upcoming exits</button>
         <button type="button" class="btn btn--primary" (click)="openStart()">Start a separation</button>
       }
     </gggs-page-header>
+    @if (info()) {
+      <p class="alert alert--success" role="status">{{ info() }}</p>
+    }
     @if (dashboard(); as d) {
       <div class="xp__kpis">
         <gggs-kpi-card label="In progress" [value]="d.inProgress" />
@@ -122,7 +128,7 @@ export class ExitInterviewForm {
         @for (item of cases(); track item.id) {
           <a class="xp__row" [routerLink]="['/separation/cases', item.id]">
             <span><strong>{{ item.employeeName }}</strong> <span class="muted">{{ item.employeeCode }} · {{ item.designation ?? '' }}</span></span>
-            <span>{{ label(item.type) }}</span>
+            <span>{{ label(item.type) }}{{ item.awaitingConfirmation ? ' · to confirm' : '' }}</span>
             <span>last day {{ item.lastWorkingDay | date: 'd MMM y' }}{{ item.shortfallDays && !item.shortfallWaived ? ' · ' + item.shortfallDays + ' days short' : '' }}</span>
             <span class="muted">clearance {{ item.clearanceTotal - item.clearancePending }}/{{ item.clearanceTotal }}{{ item.settlementStatus ? ' · settlement ' + item.settlementStatus.toLowerCase() : '' }}</span>
             <gggs-status-badge [status]="item.status" />
@@ -186,6 +192,13 @@ export class ExitInterviewForm {
         <label class="field"><span class="field__label">Notice given on</span><input type="date" [value]="noticeDate()" (change)="noticeDate.set($any($event.target).value)" /></label>
         <label class="field"><span class="field__label">Last working day</span><input type="date" [value]="lastDay()" (change)="lastDay.set($any($event.target).value)" /></label>
         <label class="field xp__wide"><span class="field__label">Reason</span><textarea rows="2" maxlength="1000" [value]="reason()" (input)="reason.set($any($event.target).value)"></textarea></label>
+        @if (type() === 'Death') {
+          <label class="field"><span class="field__label">Nominee</span><input type="text" maxlength="200" [value]="nomineeName()" (input)="nomineeName.set($any($event.target).value)" /></label>
+          <label class="field"><span class="field__label">Relation</span><input type="text" maxlength="60" placeholder="Spouse" [value]="nomineeRelation()" (input)="nomineeRelation.set($any($event.target).value)" /></label>
+          <label class="field xp__wide"><span class="field__label">Nominee's phone or email</span><input type="text" maxlength="200" [value]="nomineeContact()" (input)="nomineeContact.set($any($event.target).value)" /></label>
+        } @else if (type() !== 'Absconding') {
+          <label class="field"><span class="field__label">Days paid in lieu of notice</span><input type="number" min="0" max="180" [value]="payInLieu()" (input)="payInLieu.set(+$any($event.target).value)" /></label>
+        }
       </div>
     </gggs-form-dialog>
   `,
@@ -197,7 +210,7 @@ export class SeparationPage {
   protected readonly canManage = this.permissions.has('separation.case.manage');
   protected readonly humanize = humanize;
   protected readonly statuses: readonly SeparationStatus[] = ['PendingApproval', 'Approved', 'Completed', 'Withdrawn', 'Rejected'];
-  protected readonly types = SEPARATION_TYPES.filter((type) => type !== 'Resignation');
+  protected readonly types = SEPARATION_TYPES.filter((type) => type !== 'Resignation' && type !== 'Retrenchment');
   protected readonly tabs: readonly TabItem[] = [
     { key: 'cases', label: 'Cases' },
     { key: 'alumni', label: 'Alumni', disabled: !this.permissions.has('separation.alumni.view') },
@@ -214,6 +227,11 @@ export class SeparationPage {
   protected readonly noticeDate = signal(today());
   protected readonly lastDay = signal(inDays(30));
   protected readonly reason = signal('');
+  protected readonly payInLieu = signal(0);
+  protected readonly nomineeName = signal('');
+  protected readonly nomineeRelation = signal('');
+  protected readonly nomineeContact = signal('');
+  protected readonly info = signal<string | null>(null);
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly formError = signal<string | null>(null);
@@ -227,7 +245,7 @@ export class SeparationPage {
   }
 
   protected label(type: SeparationType): string {
-    return type === 'ContractEnd' ? 'End of contract' : type === 'Mutual' ? 'Mutual separation' : type;
+    return separationLabel(type);
   }
 
   protected load(): void {
@@ -244,14 +262,44 @@ export class SeparationPage {
     this.noticeDate.set(today());
     this.lastDay.set(inDays(30));
     this.reason.set('');
+    this.payInLieu.set(0);
+    this.nomineeName.set('');
+    this.nomineeRelation.set('');
+    this.nomineeContact.set('');
     this.formError.set(null);
     this.startOpen.set(true);
+  }
+
+  protected async proposeExits(): Promise<void> {
+    this.busy.set(true);
+    this.info.set(null);
+    try {
+      const { proposed } = await this.api.runExitProposals();
+      this.info.set(proposed ? `${proposed} retirement(s) or contract end(s) proposed; confirm or decline them below.` : 'No new retirements or contract ends are due.');
+      this.load();
+    } catch (error) {
+      this.error.set(message(error, 'Upcoming exits could not be checked.'));
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   protected async start(): Promise<void> {
     this.busy.set(true);
     try {
-      await this.api.initiate({ employeeId: this.employeeId() ?? '', type: this.type(), reason: this.reason(), noticeDate: this.noticeDate(), lastWorkingDay: this.lastDay(), noticePeriodDays: null });
+      const death = this.type() === 'Death';
+      await this.api.initiate({
+        employeeId: this.employeeId() ?? '',
+        type: this.type(),
+        reason: this.reason(),
+        noticeDate: this.noticeDate(),
+        lastWorkingDay: this.lastDay(),
+        noticePeriodDays: null,
+        payInLieuDays: death || this.type() === 'Absconding' ? null : this.payInLieu(),
+        nomineeName: death ? this.nomineeName().trim() || null : null,
+        nomineeRelation: death ? this.nomineeRelation().trim() || null : null,
+        nomineeContact: death ? this.nomineeContact().trim() || null : null,
+      });
       this.startOpen.set(false);
       this.load();
     } catch (error) {
@@ -293,11 +341,30 @@ export class SeparationPage {
         @if (v.case.gardenLeave) {
           <div><span class="muted">Garden leave</span><br />Paid to the last day, not working</div>
         }
+        @if (v.case.payInLieuDays) {
+          <div><span class="muted">Pay in lieu of notice</span><br />{{ v.case.payInLieuDays }} days</div>
+        }
+        @if (v.case.nomineeName) {
+          <div><span class="muted">Nominee</span><br />{{ v.case.nomineeName }}{{ v.case.nomineeRelation ? ' (' + v.case.nomineeRelation + ')' : '' }}{{ v.case.nomineeContact ? ' · ' + v.case.nomineeContact : '' }}</div>
+        }
         <div class="xp__wide"><span class="muted">In their words</span><br />{{ v.case.reason }}</div>
         @if (v.case.retentionNote) {
           <div class="xp__wide"><span class="muted">Retention</span><br />{{ v.case.retentionNote }}</div>
         }
       </section>
+
+      @if (v.case.awaitingConfirmation) {
+        <div class="alert alert--warning">
+          <i class="pi pi-calendar" aria-hidden="true"></i>
+          <span>
+            Proposed by PeopleOS: {{ label(v.case.type).toLowerCase() }} on {{ v.case.lastWorkingDay | date: 'd MMM y' }}. Nothing happens until it is confirmed.
+            @if (canManage) {
+              <button type="button" class="btn btn--sm btn--primary" [disabled]="busy()" (click)="confirmProposal()">Confirm</button>
+              <button type="button" class="btn btn--sm" [disabled]="busy()" (click)="withdraw()">Decline</button>
+            }
+          </span>
+        </div>
+      }
 
       @if (v.case.requestedReleaseDay; as day) {
         <div class="alert alert--warning">
@@ -568,12 +635,16 @@ export class SeparationCasePage {
     });
   }
 
+  protected confirmProposal(): Promise<void> {
+    return this.run(async () => this.view.set(await this.api.confirm(this.id())));
+  }
+
   protected decideRelease(grant: boolean): Promise<void> {
     return this.run(async () => this.view.set(await this.api.decideEarlyRelease(this.id(), grant)));
   }
 
   protected label(type: SeparationType): string {
-    return type === 'ContractEnd' ? 'End of contract' : type === 'Mutual' ? 'Mutual separation' : type;
+    return separationLabel(type);
   }
 
   protected areaLabel(area: ClearanceArea): string {
@@ -729,6 +800,21 @@ export class ClearancePage {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <gggs-page-header title="My resignation" subtitle="Resign, follow your notice and clearance, and see your full and final settlement." />
+    @for (notice of showCauses(); track notice.id) {
+      <section class="panel stack">
+        <h2 class="xp__heading">Show-cause notice of {{ notice.issuedOn | date: 'd MMM y' }}</h2>
+        <p>{{ notice.allegation }}</p>
+        @if (notice.status === 'Issued' || notice.status === 'Replied') {
+          <p class="muted">{{ notice.reply ? 'You replied on ' + (notice.repliedOn | date: 'd MMM y') + '. You can add to your reply until a decision is made.' : 'Please explain in writing by ' + (notice.replyDueOn | date: 'd MMM y') + '.' }}</p>
+          <label class="field"><span class="field__label">Your reply</span><textarea rows="4" maxlength="4000" [value]="replies()[notice.id] ?? notice.reply ?? ''" (input)="draftReply(notice.id, $any($event.target).value)"></textarea></label>
+          <div><button type="button" class="btn btn--primary" [disabled]="busy() || !(replies()[notice.id] ?? '').trim()" (click)="sendReply(notice.id)">Send reply</button></div>
+        } @else if (notice.status === 'UnderEnquiry') {
+          <p class="muted">An enquiry is looking into this. You will be told the outcome.</p>
+        } @else {
+          <p><strong>Outcome:</strong> {{ notice.outcome === 'Dropped' ? 'the matter was dropped' : notice.outcome === 'Warning' ? 'a warning' : 'termination' }}{{ notice.decisionNote ? ' - ' + notice.decisionNote : '' }}</p>
+        }
+      </section>
+    }
     @if (loaded()) {
       @if (view(); as v) {
         <section class="panel xp__grid">
@@ -845,11 +931,14 @@ export class MySeparationPage {
   protected readonly reason = signal('');
   protected readonly editingInterview = signal(false);
   protected interview: ExitInterviewInput = blankInterview();
+  protected readonly showCauses = signal<readonly ShowCause[]>([]);
+  protected readonly replies = signal<Readonly<Partial<Record<string, string>>>>({});
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
 
   constructor() {
     this.load();
+    this.api.myShowCauses().then((list) => this.showCauses.set(list), () => undefined);
     this.api.policy().then(
       (policy) => {
         this.policy.set(policy);
@@ -862,6 +951,18 @@ export class MySeparationPage {
 
   protected resign(): Promise<void> {
     return confirm('Submit your resignation?') ? this.run(async () => this.view.set(await this.api.resign(this.reason(), this.lastDay(), this.reasonCode() || null))) : Promise.resolve();
+  }
+
+  protected draftReply(id: string, text: string): void {
+    this.replies.set({ ...this.replies(), [id]: text });
+  }
+
+  protected sendReply(id: string): Promise<void> {
+    return this.run(async () => {
+      const updated = await this.api.replyToShowCause(id, (this.replies()[id] ?? '').trim());
+      this.showCauses.set(this.showCauses().map((notice) => (notice.id === id ? updated : notice)));
+      this.replies.set({ ...this.replies(), [id]: '' });
+    });
   }
 
   protected askRelease(): Promise<void> {

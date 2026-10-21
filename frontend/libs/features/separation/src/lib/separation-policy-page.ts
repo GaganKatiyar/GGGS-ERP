@@ -54,6 +54,8 @@ const codes = (text: string) => text.split(/[\s,;]+/).map((code) => code.trim().
             <label class="field"><span class="field__label">Gratuity due (days)</span><input type="number" min="1" max="90" [value]="p.gratuityDueDays" (input)="patch({ gratuityDueDays: +$any($event.target).value })" /></label>
             <label class="field"><span class="field__label">Retirement age</span><input type="number" min="50" max="75" [value]="p.retirementAge" (input)="patch({ retirementAge: +$any($event.target).value })" /></label>
             <label class="field"><span class="field__label">Absconding alert after (days absent)</span><input type="number" min="2" max="60" [value]="p.abscondingDays" (input)="patch({ abscondingDays: +$any($event.target).value })" /></label>
+            <label class="field"><span class="field__label">Days to answer a show-cause or absence notice</span><input type="number" min="1" max="30" [value]="p.showCauseReplyDays" (input)="patch({ showCauseReplyDays: +$any($event.target).value })" /></label>
+            <label class="field"><span class="field__label">Propose retirements and contract ends (days ahead)</span><input type="number" min="7" max="180" [value]="p.exitProposalLeadDays" (input)="patch({ exitProposalLeadDays: +$any($event.target).value })" /></label>
           </div>
         </section>
 
