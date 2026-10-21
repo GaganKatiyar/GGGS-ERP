@@ -94,6 +94,7 @@ internal sealed class StartOnboardingOnHire(OnboardingService onboarding) : IInt
 }
 
 /// <summary>Fans the daily onboarding pass out to every tenant.</summary>
+[PlatformJob("Onboarding daily sweep: fans out one advance and reminder pass per active tenant.")]
 internal sealed class OnboardingDailySweep(ITenantFanOutScheduler fanOut)
 {
     public const string RecurringJobName = "onboarding-daily";

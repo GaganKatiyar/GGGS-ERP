@@ -60,6 +60,7 @@ internal sealed class SeedComplianceOnTenantProvisioned(ComplianceSeeder seeder)
 }
 
 /// <summary>Fans the daily compliance sweep out to every tenant.</summary>
+[PlatformJob("Compliance sweep: fans out one compliance check per active tenant.")]
 internal sealed class ComplianceSweep(ITenantFanOutScheduler fanOut)
 {
     public const string RecurringJobName = "compliance-sweep";

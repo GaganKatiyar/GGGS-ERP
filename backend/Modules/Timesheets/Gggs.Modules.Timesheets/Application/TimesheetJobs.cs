@@ -6,6 +6,7 @@ using Hangfire;
 namespace Gggs.Modules.Timesheets.Application;
 
 /// <summary>Fans the weekly missing-timesheet reminder out to every tenant.</summary>
+[PlatformJob("Timesheet reminders: fans out one reminder pass per active tenant.")]
 internal sealed class TimesheetReminderSweep(ITenantFanOutScheduler fanOut)
 {
     public const string RecurringJobName = "timesheet-reminders";

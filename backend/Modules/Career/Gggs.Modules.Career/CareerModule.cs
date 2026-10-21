@@ -94,6 +94,7 @@ internal sealed class ReturnPromotionOnSendBack(CareerService career) : IIntegra
 }
 
 /// <summary>Fans the daily promotion pass (approved promotions whose date has come) out to every tenant.</summary>
+[PlatformJob("Promotion sweep: fans out one promotion check per active tenant.")]
 internal sealed class PromotionSweep(ITenantFanOutScheduler fanOut)
 {
     public const string RecurringJobName = "career-promotions";

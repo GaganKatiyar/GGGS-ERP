@@ -90,6 +90,7 @@ public sealed class InsightModule : IModule
 }
 
 /// <summary>Fans the daily digest pass out to every tenant.</summary>
+[PlatformJob("Report digests: fans out one digest run per active tenant.")]
 internal sealed class DigestSweep(ITenantFanOutScheduler fanOut)
 {
     public const string RecurringJobName = "insight-report-digests";

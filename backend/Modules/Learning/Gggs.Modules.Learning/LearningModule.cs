@@ -98,6 +98,7 @@ internal sealed class AssignJoinerLearningOnHire(LearningService learning) : IIn
 }
 
 /// <summary>Fans the daily learning pass out to every tenant.</summary>
+[PlatformJob("Learning daily sweep: fans out one due-date and expiry pass per active tenant.")]
 internal sealed class LearningDailySweep(ITenantFanOutScheduler fanOut)
 {
     public const string RecurringJobName = "learning-daily";

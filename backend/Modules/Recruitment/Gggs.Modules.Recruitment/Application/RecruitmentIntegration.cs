@@ -59,6 +59,7 @@ internal sealed class ReturnOfferOnSendBack(OfferService offers) : IIntegrationE
 }
 
 /// <summary>Fans the daily referral-bonus check out to every tenant.</summary>
+[PlatformJob("Referral bonus sweep: fans out one bonus check per active tenant.")]
 internal sealed class ReferralBonusSweep(ITenantFanOutScheduler fanOut)
 {
     public const string RecurringJobName = "referral-bonuses";

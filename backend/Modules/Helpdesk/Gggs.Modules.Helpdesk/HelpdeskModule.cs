@@ -96,6 +96,7 @@ internal sealed class SeedHelpdeskOnTenantProvisioned(HelpdeskSeeder seeder) : I
 }
 
 /// <summary>Fans the half-hourly SLA sweep out to every tenant.</summary>
+[PlatformJob("Helpdesk SLA sweep: fans out one SLA check per active tenant.")]
 internal sealed class HelpdeskSweep(ITenantFanOutScheduler fanOut)
 {
     public const string RecurringJobName = "helpdesk-sla-sweep";

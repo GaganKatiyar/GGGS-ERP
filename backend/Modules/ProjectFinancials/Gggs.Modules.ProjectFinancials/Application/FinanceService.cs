@@ -467,6 +467,7 @@ internal sealed class FinanceService(
 }
 
 /// <summary>Fans the nightly project financial snapshot out to every tenant.</summary>
+[PlatformJob("Finance snapshots: fans out one snapshot per active tenant.")]
 internal sealed class FinanceSnapshotSweep(ITenantFanOutScheduler fanOut)
 {
     public const string RecurringJobName = "project-financials";

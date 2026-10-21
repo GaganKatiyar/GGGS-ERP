@@ -57,6 +57,7 @@ public sealed class AiModule : IModule
 }
 
 /// <summary>Fans the daily conversation purge out to every tenant.</summary>
+[PlatformJob("AI retention sweep: fans out one retention clean-up per active tenant.")]
 internal sealed class AiRetentionSweep(ITenantFanOutScheduler fanOut)
 {
     public const string RecurringJobName = "ai-conversation-retention";

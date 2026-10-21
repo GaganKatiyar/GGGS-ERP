@@ -341,6 +341,7 @@ internal static class TaskHoursLedger
 }
 
 /// <summary>Fans the nightly health assessment out to every tenant.</summary>
+[PlatformJob("Project health sweep: fans out one health check per active tenant.")]
 internal sealed class ProjectHealthSweep(ITenantFanOutScheduler fanOut)
 {
     public const string RecurringJobName = "project-health";

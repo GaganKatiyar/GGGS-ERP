@@ -6,6 +6,7 @@ using Hangfire;
 namespace Gggs.Modules.Contract.Application;
 
 /// <summary>Fans the daily contract sweep out to every tenant.</summary>
+[PlatformJob("Contract sweep: fans out one renewal and expiry check per active tenant.")]
 internal sealed class ContractSweep(ITenantFanOutScheduler fanOut)
 {
     public const string RecurringJobName = "contract-sweep";

@@ -64,6 +64,7 @@ public sealed class EngagementModule : IModule
 }
 
 /// <summary>Fans the daily survey sweep (open, close, remind) out to every tenant.</summary>
+[PlatformJob("Survey sweep: fans out one survey open, close and reminder pass per active tenant.")]
 internal sealed class SurveySweep(ITenantFanOutScheduler fanOut)
 {
     public const string RecurringJobName = "engagement-survey-sweep";

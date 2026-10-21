@@ -131,6 +131,7 @@ public sealed class PerformanceModule : IModule
 }
 
 /// <summary>Fans the daily review reminder out to every tenant.</summary>
+[PlatformJob("Review reminders: fans out one reminder pass per active tenant.")]
 internal sealed class ReviewReminderSweep(ITenantFanOutScheduler fanOut)
 {
     public const string RecurringJobName = "performance-reminders";

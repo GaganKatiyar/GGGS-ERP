@@ -147,6 +147,7 @@ internal sealed class RewardOnCourseCompleted(RewardService rewards) : IIntegrat
 }
 
 /// <summary>Fans the daily rewards sweep (anniversaries, expiry, expiry warnings) out to every tenant.</summary>
+[PlatformJob("Rewards sweep: fans out one anniversary and expiry pass per active tenant.")]
 internal sealed class RewardSweep(ITenantFanOutScheduler fanOut)
 {
     public const string RecurringJobName = "rewards-sweep";

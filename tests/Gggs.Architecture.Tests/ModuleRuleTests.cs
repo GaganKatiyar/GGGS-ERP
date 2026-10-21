@@ -104,6 +104,27 @@ public sealed class ModuleRuleTests
         offenders.ShouldBeEmpty();
     }
 
+    [Fact]
+    public void FanOutJobs_AreMarkedAsPlatformJobs()
+    {
+        // A recurring job that fans out across tenants is queued without a tenant; the tenant job
+        // filter refuses it at run time unless it says why it may run outside one. Only a running
+        // worker would notice, so it is caught here.
+        List<string> offenders =
+        [
+            .. ModuleCatalog.All
+                .Select(module => module.GetType().Assembly)
+                .Distinct()
+                .SelectMany(assembly => assembly.GetTypes())
+                .Where(type => type.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                    .Any(constructor => constructor.GetParameters().Any(parameter => parameter.ParameterType == typeof(Gggs.BuildingBlocks.Jobs.ITenantFanOutScheduler))))
+                .Where(type => type.GetCustomAttribute<Gggs.BuildingBlocks.Jobs.PlatformJobAttribute>() is null)
+                .Select(type => type.FullName!),
+        ];
+
+        offenders.ShouldBeEmpty();
+    }
+
     private static Assembly? TryLoad(string name)
     {
         try
