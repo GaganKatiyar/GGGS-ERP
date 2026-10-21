@@ -29,7 +29,11 @@ gggs-shell {
 
 .shell__nav {
   display: flex;
+  min-width: 0;
   min-height: 0;
+  // Never wider than its grid column: anything that does not fit wraps or scrolls inside it, so the
+  // navigation can never slide over the page's padding.
+  overflow: hidden;
   z-index: var(--gggs-z-nav);
 
   @media (max-width: 48rem) {
@@ -53,6 +57,8 @@ gggs-shell {
   display: flex;
   flex-direction: column;
   flex: 0 0 var(--gggs-rail-width);
+  width: var(--gggs-rail-width);
+  min-width: 0;
   min-height: 0;
   background: var(--gggs-color-nav-bg);
   color: var(--gggs-color-nav-text);
@@ -85,9 +91,10 @@ gggs-shell {
   gap: 2px;
   margin: 0;
   padding: var(--gggs-space-2) var(--gggs-space-1);
+  overflow-x: hidden;
   overflow-y: auto;
   list-style: none;
-  scrollbar-color: var(--gggs-color-nav-border) transparent;
+  scrollbar-width: none;
 }
 
 .rail__item {
@@ -135,6 +142,8 @@ gggs-shell {
 
 .rail__label {
   max-width: 100%;
+  overflow-wrap: break-word;
+  hyphens: auto;
   overflow: hidden;
   font-size: 0.65rem;
   font-weight: var(--gggs-font-weight-medium);
@@ -172,6 +181,8 @@ gggs-shell {
   display: flex;
   flex-direction: column;
   flex: 0 0 var(--gggs-panel-width);
+  width: var(--gggs-panel-width);
+  min-width: 0;
   min-height: 0;
   background: var(--gggs-color-surface-raised);
   border-inline-end: 1px solid var(--gggs-color-border);

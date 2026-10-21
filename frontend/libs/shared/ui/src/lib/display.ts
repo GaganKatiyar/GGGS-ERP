@@ -226,7 +226,7 @@ export class Chart {
       },
       // Counts and money never go negative: start the axis at zero so an all-zero series is a flat
       // line on the floor rather than floating in the middle of a -1..1 scale.
-      scales: circular ? undefined : { x: { ...axis, grid: { display: false } }, y: nonNegative ? { ...axis, min: 0, suggestedMax: 1 } : axis },
+      scales: circular ? undefined : { x: { ...axis, ticks: { ...axis.ticks, autoSkip: true, maxRotation: 0 }, grid: { display: false } }, y: nonNegative ? { ...axis, min: 0, suggestedMax: 1, grace: '10%' } : { ...axis, grace: '10%' } },
     };
   });
 }

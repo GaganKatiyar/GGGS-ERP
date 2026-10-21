@@ -36,7 +36,7 @@
             (click)="openGroup(item)"
           >
             <i class="rail__icon {{ item.icon }}" aria-hidden="true"></i>
-            <span class="rail__label">{{ item.label }}</span>
+            <span class="rail__label">{{ item.railLabel ?? item.label }}</span>
           </button>
           } @else {
           <a
@@ -47,7 +47,7 @@
             [title]="item.label"
           >
             <i class="rail__icon {{ item.icon }}" aria-hidden="true"></i>
-            <span class="rail__label">{{ item.label }}</span>
+            <span class="rail__label">{{ item.railLabel ?? item.label }}</span>
             @if (badgeFor(item) > 0) {
             <span class="rail__badge" [attr.aria-label]="badgeFor(item) + ' waiting'">{{ badgeFor(item) }}</span>
             }

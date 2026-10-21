@@ -276,7 +276,8 @@ while (queue.length && samples.size < MAX) {
     if (new URL(desktop.url()).pathname.startsWith('/sign-in')) throw new Error('Signed out');
     const result = await audit(desktop, pattern, VARIANTS[0], errors);
     findings.push(...result.findings);
-    findings.push(...(await auditTabs(desktop, pattern, VARIANTS[0], errors)));
+    // A ?tab= variant shows the same tabs as its base page, which clicks through them already.
+    if (!pattern.includes('?tab=')) findings.push(...(await auditTabs(desktop, pattern, VARIANTS[0], errors)));
     await desktop.goto(BASE + url);
     await settle(desktop);
     const rowTarget = await discoverRowTarget(desktop);

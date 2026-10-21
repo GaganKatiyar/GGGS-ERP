@@ -7,6 +7,8 @@
  */
 export interface NavItem {
   readonly label: string;
+  /** A shorter label for the narrow module rail, when the full one does not fit two short lines. */
+  readonly railLabel?: string;
   readonly icon: string;
   readonly route?: string;
   /** Any one of these permissions reveals the item. */
@@ -295,6 +297,7 @@ export const NAVIGATION: readonly NavItem[] = [
   },
   {
     label: 'Compensation & benefits',
+    railLabel: 'Comp & benefits',
     icon: 'pi pi-gift',
     children: [
       { label: 'Salary revisions', icon: 'pi pi-arrow-up-right', route: '/compensation/revisions', permissions: ['compensation.revision.view'], feature: 'Compensation' },
