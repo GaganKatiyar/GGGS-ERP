@@ -22,6 +22,7 @@ internal sealed class SeparationModel : IModuleModel
             entity.Property(row => row.ReasonCode).HasMaxLength(40);
             entity.Property(row => row.SecondaryReasonCode).HasMaxLength(40);
             entity.Property(row => row.RetentionNote).HasMaxLength(1000);
+            entity.Property(row => row.HandoverNote).HasMaxLength(2000);
             entity.HasIndex(row => new { row.TenantId, row.EmployeeId }).HasDatabaseName("IX_Case_TenantId_Employee");
             entity.HasIndex(row => new { row.TenantId, row.Status, row.LastWorkingDay }).HasDatabaseName("IX_Case_TenantId_Status_LastDay");
             entity.Ignore(row => row.ExitReasonCode);
@@ -112,6 +113,48 @@ internal sealed class SeparationModel : IModuleModel
             entity.Ignore(row => row.DomainEvents);
         });
 
+        modelBuilder.Entity<OffboardingTemplate>(entity =>
+        {
+            entity.ToTable("OffboardingTemplate", Schema);
+            entity.Property(row => row.Name).HasMaxLength(200);
+            entity.Property(row => row.Description).HasMaxLength(1000);
+            entity.Property(row => row.EmploymentTypeCode).HasMaxLength(64);
+            entity.Property(row => row.StepsJson).HasColumnName("Steps");
+            entity.HasIndex(row => row.TenantId).HasDatabaseName("IX_OffboardingTemplate_TenantId");
+            entity.Ignore(row => row.Steps);
+            entity.Ignore(row => row.DomainEvents);
+        });
+
+        modelBuilder.Entity<OffboardingTask>(entity =>
+        {
+            entity.ToTable("OffboardingTask", Schema);
+            entity.Property(row => row.Title).HasMaxLength(200);
+            entity.Property(row => row.Description).HasMaxLength(1000);
+            entity.Property(row => row.Owner).HasConversion<byte>();
+            entity.Property(row => row.Status).HasConversion<byte>();
+            entity.Property(row => row.Notes).HasMaxLength(1000);
+            entity.HasOne<SeparationCase>().WithMany().HasForeignKey(row => row.CaseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(row => new { row.TenantId, row.CaseId }).HasDatabaseName("IX_OffboardingTask_TenantId_Case");
+            entity.HasIndex(row => new { row.TenantId, row.AssigneeEmployeeId, row.Status }).HasDatabaseName("IX_OffboardingTask_TenantId_Assignee_Status");
+            entity.Ignore(row => row.IsOpen);
+            entity.Ignore(row => row.DomainEvents);
+        });
+
+        modelBuilder.Entity<HandoverItem>(entity =>
+        {
+            entity.ToTable("HandoverItem", Schema);
+            entity.Property(row => row.Kind).HasConversion<byte>();
+            entity.Property(row => row.Status).HasConversion<byte>();
+            entity.Property(row => row.Title).HasMaxLength(300);
+            entity.Property(row => row.Detail).HasMaxLength(2000);
+            entity.Property(row => row.Outcome).HasMaxLength(500);
+            entity.HasOne<SeparationCase>().WithMany().HasForeignKey(row => row.CaseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(row => new { row.TenantId, row.CaseId }).HasDatabaseName("IX_HandoverItem_TenantId_Case");
+            entity.Ignore(row => row.IsOpen);
+            entity.Ignore(row => row.NeedsRecipient);
+            entity.Ignore(row => row.DomainEvents);
+        });
+
         modelBuilder.Entity<AlumniProfile>(entity =>
         {
             entity.ToTable("Alumni", Schema);
@@ -147,5 +190,11 @@ internal static class SeparationData
         public DbSet<NoticeRule> NoticeRules => db.Set<NoticeRule>();
 
         public DbSet<CaseEvent> CaseEvents => db.Set<CaseEvent>();
+
+        public DbSet<OffboardingTemplate> OffboardingTemplates => db.Set<OffboardingTemplate>();
+
+        public DbSet<OffboardingTask> OffboardingTasks => db.Set<OffboardingTask>();
+
+        public DbSet<HandoverItem> HandoverItems => db.Set<HandoverItem>();
     }
 }

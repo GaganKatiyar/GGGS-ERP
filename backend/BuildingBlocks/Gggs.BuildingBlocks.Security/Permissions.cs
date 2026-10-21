@@ -656,6 +656,9 @@ public static class Permissions
 
         /// <summary>Notice periods and the rest of the separation policy.</summary>
         public const string PolicyManage = "separation.policy.manage";
+
+        /// <summary>Offboarding checklists, handover and switching off a leaver's access.</summary>
+        public const string OffboardingManage = "separation.offboarding.manage";
     }
 
     /// <summary>Bulk imports and integrations with outside systems (spec: import and integrations).</summary>

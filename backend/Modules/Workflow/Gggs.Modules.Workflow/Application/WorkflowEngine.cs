@@ -27,7 +27,7 @@ internal sealed class WorkflowEngine(
     IIntegrationEventPublisher publisher,
     ICurrentUser currentUser,
     IEnumerable<WorkflowSubject> subjects,
-    TimeProvider timeProvider) : IWorkflowStarter
+    TimeProvider timeProvider) : IWorkflowStarter, IWorkflowTasks
 {
     /// <summary>
     /// History written in one pass shares a clock reading; a tick apart per entry (datetime2 keeps
@@ -211,6 +211,41 @@ internal sealed class WorkflowEngine(
         Log(instance, WorkflowActionKind.Reassigned, task.Id, comment);
 
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public Task<int> PendingCountAsync(Guid employeeId, CancellationToken cancellationToken = default)
+        => (from task in dbContext.WorkflowTasks
+            join instance in dbContext.WorkflowInstances on task.InstanceId equals instance.Id
+            where task.AssigneeEmployeeId == employeeId && task.Status == WorkflowTaskStatus.Pending && instance.Status == WorkflowInstanceStatus.Pending
+            select task.Id).CountAsync(cancellationToken);
+
+    public async Task<int> ReassignAllAsync(Guid fromEmployeeId, Guid toEmployeeId, string? comment, CancellationToken cancellationToken = default)
+    {
+        if (!await employees.IsActiveAsync(toEmployeeId, cancellationToken))
+        {
+            throw new DomainRuleException("WORKFLOW_ASSIGNEE_INACTIVE", "Tasks can only go to current employees.");
+        }
+
+        List<WorkflowTask> pending = await dbContext.WorkflowTasks
+            .Where(task => task.AssigneeEmployeeId == fromEmployeeId && task.Status == WorkflowTaskStatus.Pending)
+            .ToListAsync(cancellationToken);
+        int moved = 0;
+        foreach (WorkflowTask task in pending)
+        {
+            WorkflowInstance instance = await LoadInstanceAsync(task.InstanceId, cancellationToken);
+            if (instance.Status != WorkflowInstanceStatus.Pending || instance.RequesterEmployeeId == toEmployeeId || fromEmployeeId == toEmployeeId)
+            {
+                continue;
+            }
+
+            task.HandOver(Now, escalated: false);
+            instance.Touch(Now);
+            AddTask(instance, task.StageIndex, instance.Stages[task.StageIndex], toEmployeeId, delegatedFrom: null);
+            Log(instance, WorkflowActionKind.Reassigned, task.Id, comment);
+            moved++;
+        }
+
+        return moved;
     }
 
     /// <summary>

@@ -19,9 +19,11 @@
     <ProjectReference Include="..\..\Documents\Gggs.Modules.Documents.Contracts\Gggs.Modules.Documents.Contracts.csproj" />
     <ProjectReference Include="..\..\Employee\Gggs.Modules.Employee.Contracts\Gggs.Modules.Employee.Contracts.csproj" />
     <ProjectReference Include="..\..\Expense\Gggs.Modules.Expense.Contracts\Gggs.Modules.Expense.Contracts.csproj" />
+    <ProjectReference Include="..\..\Identity\Gggs.Modules.Identity.Contracts\Gggs.Modules.Identity.Contracts.csproj" />
     <ProjectReference Include="..\..\Leave\Gggs.Modules.Leave.Contracts\Gggs.Modules.Leave.Contracts.csproj" />
     <ProjectReference Include="..\..\Notification\Gggs.Modules.Notification.Contracts\Gggs.Modules.Notification.Contracts.csproj" />
     <ProjectReference Include="..\..\Payroll\Gggs.Modules.Payroll.Contracts\Gggs.Modules.Payroll.Contracts.csproj" />
+    <ProjectReference Include="..\..\Project\Gggs.Modules.Project.Contracts\Gggs.Modules.Project.Contracts.csproj" />
     <ProjectReference Include="..\..\Workflow\Gggs.Modules.Workflow.Contracts\Gggs.Modules.Workflow.Contracts.csproj" />
   </ItemGroup>
 

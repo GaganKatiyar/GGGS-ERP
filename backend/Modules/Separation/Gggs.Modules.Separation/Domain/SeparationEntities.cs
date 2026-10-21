@@ -86,6 +86,14 @@ public sealed class SeparationCase : TenantAggregateRoot
     /// <summary>Paid to the last day but not working it.</summary>
     public bool GardenLeave { get; private set; }
 
+    /// <summary>Who takes over the leaver's work; offboarding tasks for the successor go to them.</summary>
+    public Guid? SuccessorEmployeeId { get; private set; }
+
+    public string? HandoverNote { get; private set; }
+
+    /// <summary>When the leaver's sign-in was switched off.</summary>
+    public DateTime? AccessDisabledAt { get; private set; }
+
     public string ExitReasonCode => Type switch
     {
         SeparationType.Resignation => "RESIGNATION",
@@ -264,6 +272,24 @@ public sealed class SeparationCase : TenantAggregateRoot
 
         GardenLeave = gardenLeave;
     }
+
+    public void SetHandover(Guid? successorEmployeeId, string? note)
+    {
+        if (!InProgress)
+        {
+            throw new DomainRuleException("SEPARATION_CLOSED", "The separation is closed.");
+        }
+
+        if (successorEmployeeId == EmployeeId)
+        {
+            throw new DomainRuleException("SEPARATION_SUCCESSOR", "A leaver cannot be their own successor.");
+        }
+
+        SuccessorEmployeeId = successorEmployeeId;
+        HandoverNote = string.IsNullOrWhiteSpace(note) ? null : Guard.MaxLength(note.Trim(), 2000);
+    }
+
+    public void AccessDisabled(DateTime now) => AccessDisabledAt ??= now;
 
     public void LettersIssued(Guid relievingLetterId, Guid? experienceLetterId)
     {

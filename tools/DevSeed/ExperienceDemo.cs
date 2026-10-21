@@ -13,6 +13,7 @@ using Gggs.Modules.Identity.Domain.Roles;
 using Gggs.Modules.Identity.Domain.Users;
 using Gggs.Modules.Rewards.Application;
 using Gggs.Modules.Rewards.Domain;
+using Gggs.Modules.Separation.Application;
 using Gggs.Modules.Separation.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -52,6 +53,7 @@ internal static class ExperienceDemo
         await SeedEngagementAsync(scope, db, people);
         await SeedRewardsAsync(db, people);
         await SeedSeparationAsync(scope, db, people);
+        await SeedOffboardingAsync(scope, db, people);
     }
 
     private static async Task SeedAssetsAsync(IServiceProvider scope, AppDbContext db, IReadOnlyDictionary<string, Guid> people)
@@ -311,6 +313,32 @@ internal static class ExperienceDemo
         db.Add(AlumniProfile.Create(Guid.NewGuid(), "Kavya Nair", "kavya.nair@example.com", "QA Lead", null, today.AddMonths(-14), SeparationType.Resignation, true));
         await db.SaveChangesAsync();
         Console.WriteLine("Separation: EMP00005 serving notice with clearance open; 2 alumni.");
+    }
+
+    /// <summary>
+    /// Separation v2 phase B: the notice-serving leaver gets a successor, the standard offboarding
+    /// checklist and the handover found across modules. Runs once per approved case without one.
+    /// </summary>
+    private static async Task SeedOffboardingAsync(IServiceProvider scope, AppDbContext db, IReadOnlyDictionary<string, Guid> people)
+    {
+        List<SeparationCase> approved = await db.Set<SeparationCase>().Where(row => row.Status == CaseStatus.Approved).ToListAsync();
+        HashSet<Guid> started = [.. await db.Set<OffboardingTask>().Select(row => row.CaseId).Distinct().ToListAsync()];
+        IEmployeeDirectory directory = scope.GetRequiredService<IEmployeeDirectory>();
+        OffboardingService offboarding = scope.GetRequiredService<OffboardingService>();
+        int count = 0;
+        foreach (SeparationCase separation in approved.Where(row => !started.Contains(row.Id)))
+        {
+            if (separation.EmployeeId == people["EMP00005"] && separation.SuccessorEmployeeId is null)
+            {
+                separation.SetHandover(people["EMP00006"], "Takes over the payments integration and the vendor contacts.");
+            }
+
+            await offboarding.StartAsync(separation, await directory.GetAsync(separation.EmployeeId), CancellationToken.None);
+            count++;
+        }
+
+        await db.SaveChangesAsync();
+        Console.WriteLine(count == 0 ? "Offboarding already laid out." : $"Offboarding: checklist and handover laid out for {count} separation(s).");
     }
 
     internal static async Task TopUpRolesAsync(IServiceProvider scope)

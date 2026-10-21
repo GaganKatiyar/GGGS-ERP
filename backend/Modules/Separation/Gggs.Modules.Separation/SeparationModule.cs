@@ -23,6 +23,7 @@ public sealed class SeparationModule : IModule
         services.AddScoped<ICalendarSource, SeparationCalendar>();
         services.AddScoped<SeparationService>();
         services.AddScoped<SeparationPolicyService>();
+        services.AddScoped<OffboardingService>();
         services.AddScoped<ILeaveApplicationRule, SeparationLeaveRule>();
         services.AddWorkflowSubject(SeparationService.Subject);
     }
@@ -34,6 +35,8 @@ public sealed class SeparationModule : IModule
         services.AddGggsEventConsumer<WorkflowSentBackIntegrationEvent, CloseResignationOnSendBack>();
         services.AddScoped<SeparationSweep>();
         services.AddScoped<SeparationSweepJob>();
+        services.AddScoped<OffboardingReminders>();
+        services.AddScoped<OffboardingRemindersJob>();
         services.AddHostedService<SeparationJobRegistration>();
     }
 
@@ -96,6 +99,45 @@ public sealed class SeparationModule : IModule
             })
             .WithName("RemoveNoticeRule").RequirePermission(Permissions.Separation.PolicyManage);
 
+        group.MapGet("/offboarding/tasks", async (OffboardingService offboarding, CancellationToken ct) => TypedResults.Ok(await offboarding.MyTasksAsync(ct)))
+            .WithName("MyOffboardingTasks").RequirePermission(Permissions.Separation.OffboardingManage, Permissions.Separation.ClearanceManage, Permissions.Separation.CaseView, Permissions.Workflow.TaskAct, Permissions.Self.ResignationSubmit);
+        group.MapPost("/offboarding/tasks/{taskId:guid}", async (Guid taskId, FinishTaskBody body, OffboardingService offboarding, SeparationService service, CancellationToken ct) =>
+                TypedResults.Ok(await service.CaseAsync(await offboarding.FinishTaskAsync(taskId, body, ct), ct)))
+            .WithName("FinishOffboardingTask").RequirePermission(Permissions.Separation.OffboardingManage, Permissions.Separation.ClearanceManage, Permissions.Separation.CaseView, Permissions.Workflow.TaskAct, Permissions.Self.ResignationSubmit);
+        group.MapPut("/cases/{id:guid}/handover", async (Guid id, HandoverBody body, OffboardingService offboarding, SeparationService service, CancellationToken ct) =>
+            {
+                await offboarding.SetHandoverAsync(id, body, ct);
+                return TypedResults.Ok(await service.CaseAsync(id, ct));
+            })
+            .WithName("SetHandover").RequirePermission(Permissions.Separation.OffboardingManage);
+        group.MapPost("/cases/{id:guid}/handover/refresh", async (Guid id, OffboardingService offboarding, SeparationService service, CancellationToken ct) =>
+            {
+                await offboarding.RefreshAsync(id, ct);
+                return TypedResults.Ok(await service.CaseAsync(id, ct));
+            })
+            .WithName("RefreshHandover").RequirePermission(Permissions.Separation.OffboardingManage);
+        group.MapPost("/handover/{itemId:guid}", async (Guid itemId, HandoverActionBody body, OffboardingService offboarding, SeparationService service, CancellationToken ct) =>
+                TypedResults.Ok(await service.CaseAsync(await offboarding.ActAsync(itemId, body, ct), ct)))
+            .WithName("ActOnHandoverItem").RequirePermission(Permissions.Separation.OffboardingManage);
+        group.MapPost("/cases/{id:guid}/access/disable", async (Guid id, OffboardingService offboarding, SeparationService service, CancellationToken ct) =>
+            {
+                await offboarding.DisableAccessNowAsync(id, ct);
+                return TypedResults.Ok(await service.CaseAsync(id, ct));
+            })
+            .WithName("DisableLeaverAccess").RequirePermission(Permissions.Separation.OffboardingManage);
+        group.MapGet("/offboarding/templates", async (OffboardingService offboarding, CancellationToken ct) => TypedResults.Ok(await offboarding.TemplatesAsync(ct)))
+            .WithName("OffboardingTemplates").RequirePermission(Permissions.Separation.OffboardingManage);
+        group.MapPost("/offboarding/templates", async (OffboardingTemplateBody body, OffboardingService offboarding, CancellationToken ct) => TypedResults.Ok(await offboarding.SaveTemplateAsync(null, body, ct)))
+            .WithName("CreateOffboardingTemplate").RequirePermission(Permissions.Separation.OffboardingManage);
+        group.MapPut("/offboarding/templates/{id:guid}", async (Guid id, OffboardingTemplateBody body, OffboardingService offboarding, CancellationToken ct) => TypedResults.Ok(await offboarding.SaveTemplateAsync(id, body, ct)))
+            .WithName("UpdateOffboardingTemplate").RequirePermission(Permissions.Separation.OffboardingManage);
+        group.MapDelete("/offboarding/templates/{id:guid}", async (Guid id, OffboardingService offboarding, CancellationToken ct) =>
+            {
+                await offboarding.RemoveTemplateAsync(id, ct);
+                return TypedResults.NoContent();
+            })
+            .WithName("RemoveOffboardingTemplate").RequirePermission(Permissions.Separation.OffboardingManage);
+
         group.MapGet("/alumni", async (string? search, SeparationService service, CancellationToken ct) => TypedResults.Ok(await service.AlumniAsync(search, ct)))
             .WithName("ListAlumni").RequirePermission(Permissions.Separation.AlumniView);
         group.MapPut("/alumni/{id:guid}", async (Guid id, AlumniBody body, SeparationService service, CancellationToken ct) => TypedResults.Ok(await service.UpdateAlumniAsync(id, body, ct)))
@@ -134,6 +176,7 @@ internal sealed class CloseResignationOnSendBack(SeparationService separation) :
 }
 
 /// <summary>Fans the daily exit sweep out to every tenant.</summary>
+[PlatformJob("Separation exit sweep: fans out one exit pass per active tenant.")]
 internal sealed class SeparationSweep(ITenantFanOutScheduler fanOut)
 {
     public const string RecurringJobName = "separation-exit-sweep";
@@ -153,11 +196,33 @@ internal sealed class SeparationSweepJob(SeparationService separation, ILogger<S
     }
 }
 
+/// <summary>Fans the daily overdue-offboarding reminders out to every tenant.</summary>
+[PlatformJob("Offboarding reminders: fans out one overdue-task reminder pass per active tenant.")]
+internal sealed class OffboardingReminders(ITenantFanOutScheduler fanOut)
+{
+    public const string RecurringJobName = "separation-offboarding-reminders";
+
+    public Task RunAsync() => fanOut.FanOutAsync<OffboardingRemindersJob>((job, tenantId) => job.RunAsync(tenantId));
+}
+
+internal sealed class OffboardingRemindersJob(OffboardingService offboarding, ILogger<OffboardingRemindersJob> logger)
+{
+    public async Task RunAsync(Guid tenantId)
+    {
+        int sent = await offboarding.RemindAsync(CancellationToken.None);
+        if (sent > 0)
+        {
+            logger.LogInformation("Offboarding reminders for tenant {TenantId}: {Sent} overdue task reminder(s) sent.", tenantId, sent);
+        }
+    }
+}
+
 internal sealed class SeparationJobRegistration(IRecurringJobManager recurringJobs) : IHostedService
 {
     public Task StartAsync(CancellationToken cancellationToken)
     {
         recurringJobs.AddOrUpdate<SeparationSweep>(SeparationSweep.RecurringJobName, sweep => sweep.RunAsync(), "0 1 * * *");
+        recurringJobs.AddOrUpdate<OffboardingReminders>(OffboardingReminders.RecurringJobName, reminders => reminders.RunAsync(), "30 3 * * *");
         return Task.CompletedTask;
     }
 

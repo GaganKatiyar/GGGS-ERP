@@ -211,6 +211,11 @@ public sealed class CriticalFlowTests(PeopleOsApiFactory factory)
         await factory.RunAsWorkerAsync(PeopleOsApiFactory.SeededTenantId, async services => await services.GetRequiredService<SeparationService>().SweepAsync(Ct));
         (await admin.GetFromJsonAsync<JsonElement>($"/api/v1/employees/{person}", Ct)).GetProperty("status").GetString().ShouldBe("Exited");
         (await admin.GetFromJsonAsync<JsonElement[]>("/api/v1/separation/alumni", Ct))!.ShouldContain(row => row.GetProperty("employeeId").GetGuid() == person);
-        (await OkAsync(await self.GetAsync("/api/v1/me/separation", Ct))).GetProperty("settlement").GetProperty("status").GetString().ShouldBe("Paid");
+        JsonElement closed = await OkAsync(await admin.GetAsync($"/api/v1/separation/cases/{caseId}", Ct));
+        closed.GetProperty("settlement").GetProperty("status").GetString().ShouldBe("Paid");
+
+        // Leaving switches the sign-in off: the former employee's session no longer works.
+        closed.GetProperty("events").EnumerateArray().Select(row => row.GetProperty("kind").GetString()).ShouldContain("access-disabled");
+        (await self.GetAsync("/api/v1/me/separation", Ct)).StatusCode.ShouldBeOneOf(HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden);
     }
 }

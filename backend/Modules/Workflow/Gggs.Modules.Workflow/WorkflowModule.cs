@@ -18,6 +18,7 @@ public sealed class WorkflowModule : IModule
     {
         services.AddScoped<WorkflowEngine>();
         services.AddScoped<IWorkflowStarter>(provider => provider.GetRequiredService<WorkflowEngine>());
+        services.AddScoped<IWorkflowTasks>(provider => provider.GetRequiredService<WorkflowEngine>());
         services.AddScoped<WorkflowQueries>();
     }
 

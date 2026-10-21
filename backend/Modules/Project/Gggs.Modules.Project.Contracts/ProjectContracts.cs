@@ -130,6 +130,21 @@ public interface IProjectStaffing
     Task ReleaseAsync(Guid memberId, DateOnly lastDay, CancellationToken cancellationToken = default);
 }
 
+/// <summary>An unfinished task someone is assigned, for a leaver's handover.</summary>
+public sealed record OpenProjectTask(Guid TaskId, Guid ProjectId, string Code, string Title, DateOnly? DueDate);
+
+/// <summary>
+/// Task assignment for a leaver's handover (Separation). Writes into the caller's unit of work and
+/// saves nothing itself.
+/// </summary>
+public interface IProjectTasks
+{
+    Task<IReadOnlyList<OpenProjectTask>> OpenForAssigneeAsync(Guid employeeId, CancellationToken cancellationToken = default);
+
+    /// <summary>Gives every unfinished task of <paramref name="fromEmployeeId"/> to <paramref name="toEmployeeId"/>; returns how many moved.</summary>
+    Task<int> ReassignOpenAsync(Guid fromEmployeeId, Guid toEmployeeId, CancellationToken cancellationToken = default);
+}
+
 /// <summary>Project access as the Project module decides it, for modules acting on project data (timesheets, requests).</summary>
 public interface IProjectPermissions
 {

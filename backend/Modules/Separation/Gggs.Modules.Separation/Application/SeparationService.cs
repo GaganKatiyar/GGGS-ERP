@@ -62,7 +62,7 @@ public sealed record SettlementView(Guid Id, SettlementStatus Status, decimal Ea
 
 public sealed record CaseEventView(string Kind, string Title, string? Note, string? ActorName, DateTime OccurredAt);
 
-public sealed record CaseView(CaseItem Case, IReadOnlyList<ClearanceView> Clearance, InterviewView? Interview, SettlementView? Settlement, IReadOnlyList<CaseEventView>? Events = null);
+public sealed record CaseView(CaseItem Case, IReadOnlyList<ClearanceView> Clearance, InterviewView? Interview, SettlementView? Settlement, IReadOnlyList<CaseEventView>? Events = null, OffboardingView? Offboarding = null);
 
 public sealed record ResignBody(string Reason, DateOnly? RequestedLastDay, string? ReasonCode = null);
 
@@ -120,7 +120,8 @@ internal sealed class SeparationService(
     ICurrentUser currentUser,
     ITenantClock clock,
     TimeProvider timeProvider,
-    SeparationPolicyService policy)
+    SeparationPolicyService policy,
+    OffboardingService offboarding)
 {
     public const string SubjectType = "separation.resignation";
 
@@ -277,6 +278,7 @@ internal sealed class SeparationService(
         else
         {
             await separations.WithdrawNoticeAsync(separation.EmployeeId, cancellationToken);
+            await offboarding.CancelAsync(separation, cancellationToken);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -299,6 +301,11 @@ internal sealed class SeparationService(
 
             separation.SetGardenLeave(gardenLeave);
             Note(separation, "garden-leave", gardenLeave ? "Placed on garden leave" : "Garden leave ended", null);
+        }
+
+        if (before != separation.LastWorkingDay)
+        {
+            await offboarding.FollowLastDayAsync(separation, cancellationToken);
         }
 
         Note(separation, "terms", "Terms updated", before == separation.LastWorkingDay
@@ -344,6 +351,10 @@ internal sealed class SeparationService(
         DateOnly? asked = separation.RequestedReleaseDay;
         bool buyout = separation.ReleaseWithBuyout;
         separation.DecideEarlyRelease(granted);
+        if (granted)
+        {
+            await offboarding.FollowLastDayAsync(separation, cancellationToken);
+        }
         Note(separation, granted ? "early-release-granted" : "early-release-declined", granted ? "Early release granted" : "Early release declined",
             granted && asked is { } day ? $"Last day {Format(day)}; shortfall {(buyout ? "recovered as a buyout" : "waived")}." : null);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -681,6 +692,7 @@ internal sealed class SeparationService(
         }
 
         dbContext.ClearanceItems.AddRange(items);
+        await offboarding.StartAsync(separation, person, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         foreach (IGrouping<Guid, ClearanceItem> group in items.Where(item => item.OwnerEmployeeId != null && item.OwnerEmployeeId != separation.EmployeeId).GroupBy(item => item.OwnerEmployeeId!.Value))
         {
@@ -699,6 +711,7 @@ internal sealed class SeparationService(
         await separations.ExitAsync(separation.EmployeeId, separation.LastWorkingDay, separation.ExitReasonCode, cancellationToken);
         separation.Complete(timeProvider.GetUtcNow().UtcDateTime);
         Note(separation, "completed", "Exit completed", $"Last working day {Format(separation.LastWorkingDay)}.");
+        await offboarding.DeprovisionAsync(separation, cancellationToken);
         if (!await dbContext.Alumni.AnyAsync(row => row.EmployeeId == separation.EmployeeId, cancellationToken) && separation.Type != SeparationType.Death)
         {
             EmployeeSummary? person = await employees.GetAsync(separation.EmployeeId, cancellationToken);
@@ -722,11 +735,12 @@ internal sealed class SeparationService(
         return scope is null ? rows : rows.Where(row => row.EmployeeId == me || scope.Contains(row.EmployeeId));
     }
 
-    /// <summary>A clearance owner may open the case their item belongs to.</summary>
+    /// <summary>A clearance owner or offboarding task assignee may open the case their item belongs to.</summary>
     private async Task<SeparationCase?> ClearerCaseAsync(Guid id, CancellationToken cancellationToken)
     {
         Guid? me = currentUser.EmployeeId;
         bool owns = await dbContext.ClearanceItems.AnyAsync(row => row.CaseId == id && row.OwnerEmployeeId == me, cancellationToken)
+            || await dbContext.OffboardingTasks.AnyAsync(row => row.CaseId == id && row.AssigneeEmployeeId == me, cancellationToken)
             || await HasAsync(Permissions.Separation.ClearanceManage, cancellationToken);
         return owns ? await dbContext.SeparationCases.AsNoTracking().FirstOrDefaultAsync(row => row.Id == id, cancellationToken) : null;
     }
@@ -797,7 +811,8 @@ internal sealed class SeparationService(
             await ClearanceViewsAsync(items, cancellationToken),
             interview is null ? null : new InterviewView(interview.PrimaryReason, interview.OverallRating, interview.WouldRecommend, interview.WouldReturn, interview.WhatWentWell, interview.WhatToImprove, interview.ConductedOn),
             settlement,
-            [.. events.Select(row => new CaseEventView(row.Kind, row.Title, row.Note, row.ActorEmployeeId is { } actor ? actors.GetValueOrDefault(actor) : null, row.OccurredAt))]);
+            [.. events.Select(row => new CaseEventView(row.Kind, row.Title, row.Note, row.ActorEmployeeId is { } actor ? actors.GetValueOrDefault(actor) : null, row.OccurredAt))],
+            await offboarding.ViewAsync(separation, forHr: separation.EmployeeId != currentUser.EmployeeId && await HasAsync(Permissions.Separation.CaseView, cancellationToken), cancellationToken));
     }
 
     private async Task<List<CaseItem>> ItemsAsync(IReadOnlyList<SeparationCase> cases, CancellationToken cancellationToken)

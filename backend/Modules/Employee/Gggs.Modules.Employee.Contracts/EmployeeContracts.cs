@@ -143,6 +143,12 @@ public interface IEmployeeSeparations
 
     /// <summary>Ends employment on the last working day; Core HR publishes the exit event.</summary>
     Task ExitAsync(Guid employeeId, DateOnly exitDate, string exitReasonCode, CancellationToken cancellationToken = default);
+
+    /// <summary>Current employees who report to <paramref name="managerEmployeeId"/>.</summary>
+    Task<IReadOnlyList<Guid>> DirectReportsAsync(Guid managerEmployeeId, CancellationToken cancellationToken = default);
+
+    /// <summary>Moves an employee to a new manager (a leaver's handover), as a manager-change assignment.</summary>
+    Task ChangeManagerAsync(Guid employeeId, Guid newManagerEmployeeId, DateOnly effectiveFrom, string reason, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Someone joined. Recruitment, onboarding, payroll and resourcing react to this.</summary>

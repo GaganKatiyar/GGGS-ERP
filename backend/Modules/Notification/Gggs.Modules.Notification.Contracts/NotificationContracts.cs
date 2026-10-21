@@ -74,5 +74,7 @@ public static class NotificationTemplates
     public const string ExpenseDecided = "expense.decided";
     public const string ResignationSubmitted = "separation.resignation-submitted";
     public const string ClearanceAssigned = "separation.clearance-assigned";
+    public const string OffboardingTaskAssigned = "separation.offboarding-task-assigned";
+    public const string OffboardingTaskOverdue = "separation.offboarding-task-overdue";
     public const string ReportDigest = "insight.report-digest";
 }

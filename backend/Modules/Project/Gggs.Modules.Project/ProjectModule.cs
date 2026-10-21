@@ -33,6 +33,7 @@ public sealed class ProjectModule : IModule
         services.AddScoped<ProjectCatalogSeeder>();
         services.AddScoped<IProjectDirectory, ProjectDirectory>();
         services.AddScoped<IProjectStaffing, ProjectStaffing>();
+        services.AddScoped<IProjectTasks, ProjectTasks>();
         services.AddScoped<IProjectPermissions, ProjectPermissions>();
         services.AddScoped<IDocumentOwnerAccess, ProjectDocumentAccess>();
         services.AddWorkflowSubject(GovernanceService.ChangeRequestSubject);

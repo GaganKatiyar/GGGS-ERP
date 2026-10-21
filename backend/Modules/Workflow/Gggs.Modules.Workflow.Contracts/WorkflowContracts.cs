@@ -78,6 +78,21 @@ public interface IWorkflowStarter
     Task WithdrawAsync(string subjectType, Guid subjectId, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Pending approval tasks by person, for a leaver's handover (Separation). Writes into the caller's
+/// unit of work and saves nothing itself.
+/// </summary>
+public interface IWorkflowTasks
+{
+    Task<int> PendingCountAsync(Guid employeeId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Moves every pending task of <paramref name="fromEmployeeId"/> to <paramref name="toEmployeeId"/>;
+    /// a task on the new assignee's own request stays put. Returns how many moved.
+    /// </summary>
+    Task<int> ReassignAllAsync(Guid fromEmployeeId, Guid toEmployeeId, string? comment, CancellationToken cancellationToken = default);
+}
+
 /// <summary>A task landed in someone's inbox.</summary>
 [MessageType("gggs.workflow.task-assigned")]
 public sealed record WorkflowTaskAssignedIntegrationEvent(

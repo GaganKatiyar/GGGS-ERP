@@ -5,6 +5,7 @@ using Gggs.Modules.Identity.Application.Authentication;
 using Gggs.Modules.Identity.Application.PlatformStaff;
 using Gggs.Modules.Identity.Application.Provisioning;
 using Gggs.Modules.Identity.Application.Users;
+using Gggs.Modules.Identity.Contracts;
 using Gggs.Modules.Identity.Endpoints;
 using Gggs.Modules.Identity.Infrastructure;
 using Gggs.Modules.Identity.Sessions;
@@ -51,6 +52,7 @@ public sealed class IdentityModule : IModule
         services.AddScoped<TenantDiscoveryService>();
         services.AddScoped<ITenantDomainResolver, PlatformTenantDomainResolver>();
         services.AddScoped<UserManagementService>();
+        services.AddScoped<IUserAccounts, UserAccounts>();
         services.AddScoped<TenantBootstrapService>();
         services.AddScoped<TenantSeedingService>();
         services.AddScoped<PlatformStaffSignInService>();
