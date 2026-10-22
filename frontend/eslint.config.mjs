@@ -100,6 +100,7 @@ export default [
                 'scope:helpdesk',
                 'scope:assets',
                 'scope:expenses',
+                'scope:loans',
                 'scope:separation',
                 'scope:analytics',
                 'scope:calendar',
@@ -200,6 +201,10 @@ export default [
             {
               sourceTag: 'scope:expenses',
               onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:expenses'],
+            },
+            {
+              sourceTag: 'scope:loans',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:loans'],
             },
             {
               sourceTag: 'scope:assets',

@@ -958,3 +958,136 @@ export interface ProjectFinance {
   readonly trend: readonly { readonly month: string; readonly revenue: number; readonly cost: number; readonly billed: number; readonly collected: number; readonly forecastRevenue: number; readonly forecastCost: number }[];
   readonly canManage: boolean;
 }
+
+// ----- Loans ----------------------------------------------------------------------------------
+
+export type LoanStatus = 'PendingApproval' | 'Approved' | 'Active' | 'Closed' | 'Rejected' | 'Cancelled' | 'WrittenOff';
+export type DisbursementMode = 'Payroll' | 'Bank';
+export type InstalmentStatus = 'Scheduled' | 'Deducted' | 'Prepaid' | 'RecoveredAtExit' | 'WrittenOff' | 'Superseded';
+export type RepaymentKind = 'Prepayment' | 'WriteOff' | 'Settlement';
+export const LOAN_STATUSES: readonly LoanStatus[] = ['PendingApproval', 'Approved', 'Active', 'Closed', 'Rejected', 'Cancelled', 'WrittenOff'];
+
+export interface LoanTypeDetails {
+  code: string;
+  name: string;
+  description?: string | null;
+  interestRate: number;
+  maxTenureMonths: number;
+  maxAmount?: number | null;
+  maxGrossMultiple?: number | null;
+  minServiceMonths: number;
+  maxActive: number;
+  maxEmiPercentOfGross: number;
+  perquisiteExempt: boolean;
+}
+
+export interface LoanTypeItem extends LoanTypeDetails {
+  id: string;
+  isActive: boolean;
+}
+
+export interface LoanOffer {
+  type: LoanTypeItem;
+  limit: number;
+  problem?: string | null;
+}
+
+export interface LoanItem {
+  id: string;
+  number: string;
+  employeeId: string;
+  employeeName?: string | null;
+  employeeCode?: string | null;
+  typeId: string;
+  typeName: string;
+  principal: number;
+  interestRate: number;
+  tenureMonths: number;
+  emi: number;
+  purpose: string;
+  status: LoanStatus;
+  appliedOn: string;
+  workflowInstanceId?: string | null;
+  decisionNote?: string | null;
+  disbursementMode?: DisbursementMode | null;
+  disbursementReference?: string | null;
+  disbursedOn?: string | null;
+  firstEmiMonth?: string | null;
+  outstanding: number;
+  instalmentsLeft: number;
+  nextInstalmentMonth?: string | null;
+  nextInstalmentAmount?: number | null;
+  settlementId?: string | null;
+  closedOn?: string | null;
+  closeNote?: string | null;
+  canCancel: boolean;
+}
+
+export interface InstalmentItem {
+  id: string;
+  sequence: number;
+  month: string;
+  principal: number;
+  interest: number;
+  amount: number;
+  status: InstalmentStatus;
+  raised: boolean;
+  settledOn?: string | null;
+}
+
+export interface RepaymentItem {
+  id: string;
+  kind: RepaymentKind;
+  amount: number;
+  date: string;
+  reference?: string | null;
+  note?: string | null;
+}
+
+export interface LoanView {
+  loan: LoanItem;
+  schedule: readonly InstalmentItem[];
+  repayments: readonly RepaymentItem[];
+}
+
+export interface MyLoans {
+  loans: readonly LoanItem[];
+  offers: readonly LoanOffer[];
+  outstanding: number;
+  monthlyEmi: number;
+}
+
+export interface ScheduledInstalment {
+  sequence: number;
+  month: string;
+  principal: number;
+  interest: number;
+  balanceAfter: number;
+  amount: number;
+}
+
+export interface LoanQuote {
+  limit: number;
+  emi: number;
+  totalInterest: number;
+  problem?: string | null;
+  schedule: readonly ScheduledInstalment[];
+}
+
+export interface LoanSummary {
+  pendingApproval: number;
+  toDisburse: number;
+  active: number;
+  outstanding: number;
+  dueThisMonth: number;
+  recoveredThisMonth: number;
+  outstandingByType: Record<string, number>;
+}
+
+export interface LoanApplication {
+  typeId: string;
+  amount: number;
+  tenureMonths: number;
+  purpose: string;
+  employeeId?: string | null;
+}

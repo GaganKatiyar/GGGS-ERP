@@ -32,6 +32,7 @@
       "@gggs/shared/insight": ["./libs/shared/insight/src/index.ts"],
       "@gggs/features/separation": ["./libs/features/separation/src/index.ts"],
       "@gggs/features/expenses": ["./libs/features/expenses/src/index.ts"],
+      "@gggs/features/loans": ["./libs/features/loans/src/index.ts"],
       "@gggs/features/assets": ["./libs/features/assets/src/index.ts"],
       "@gggs/features/helpdesk": ["./libs/features/helpdesk/src/index.ts"],
       "@gggs/features/engagement": ["./libs/features/engagement/src/index.ts"],

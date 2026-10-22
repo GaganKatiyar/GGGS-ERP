@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import { PermissionStore } from '@gggs/core/permissions';
 import { EmployeeAllocation, EmployeeProjects, EmployeeSkills, EmployeeTimesheets } from '@gggs/shared/delivery';
-import { EmployeeBenefits, EmployeeCompensation, EmployeePayroll } from '@gggs/shared/money';
+import { EmployeeBenefits, EmployeeCompensation, EmployeeLoans, EmployeePayroll } from '@gggs/shared/money';
 import { EmployeeDocuments } from '@gggs/shared/documents';
 import { EmployeeDirectoryApi } from '@gggs/shared/employee-reference';
 import { EmployeeOnboarding } from '@gggs/shared/hiring';
@@ -26,7 +26,7 @@ import { StatutoryTab } from './tabs/statutory-tab';
  */
 @Component({
   selector: 'gggs-employee-360-page',
-  imports: [DatePipe, RouterLink, PageHeader, KpiCard, StatusBadge, Tabs, Skeleton, EmptyState, EmployeeDocuments, EmployeeAttendance, EmployeeLeave, EmployeeProjects, EmployeeSkills, EmployeeAllocation, EmployeeTimesheets, EmployeePayroll, EmployeeCompensation, EmployeeBenefits, EmployeeOnboarding, EmployeePerformance, EmployeeGoals, EmployeeLearning, EmployeeCareer, EmployeeRewards, EmployeeAssets, EmployeeExpenses, EmployeeHelpdesk, EmploymentTab, PersonalTab, FamilyTab, StatutoryTab, HistoryTab],
+  imports: [DatePipe, RouterLink, PageHeader, KpiCard, StatusBadge, Tabs, Skeleton, EmptyState, EmployeeDocuments, EmployeeAttendance, EmployeeLeave, EmployeeProjects, EmployeeSkills, EmployeeAllocation, EmployeeTimesheets, EmployeePayroll, EmployeeCompensation, EmployeeBenefits, EmployeeLoans, EmployeeOnboarding, EmployeePerformance, EmployeeGoals, EmployeeLearning, EmployeeCareer, EmployeeRewards, EmployeeAssets, EmployeeExpenses, EmployeeHelpdesk, EmploymentTab, PersonalTab, FamilyTab, StatutoryTab, HistoryTab],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (error()) {
@@ -161,6 +161,9 @@ import { StatutoryTab } from './tabs/statutory-tab';
           @case ('expenses') {
             <gggs-employee-expenses [employeeId]="p.id" />
           }
+          @case ('loans') {
+            <gggs-employee-loans [employeeId]="p.id" />
+          }
           @case ('helpdesk') {
             <gggs-employee-helpdesk [employeeId]="p.id" />
           }
@@ -217,6 +220,7 @@ export class Employee360Page {
         (section.key !== 'payroll' || this.permissions.has('payroll.employee-salary.view')) &&
         (section.key !== 'compensation' || this.permissions.has('compensation.revision.view')) &&
         (section.key !== 'benefits' || this.permissions.has('benefit.enrollment.view')) &&
+        (section.key !== 'loans' || this.permissions.has('loan.loan.view')) &&
         (section.key !== 'onboarding' || this.permissions.has('onboarding.case.view')) &&
         (section.key !== 'performance' || this.permissions.has('performance.review.view')) &&
         (section.key !== 'goals' || this.permissions.has('performance.goal.manage') || this.permissions.has('performance.review.view')) &&

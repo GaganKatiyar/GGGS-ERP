@@ -307,6 +307,18 @@ export const appRoutes: Route[] = [
           import('@gggs/features/expenses').then((m) => m.EXPENSES_ROUTES),
       },
       {
+        path: 'me/loans',
+        ...withPermissions(['self.loan.apply']),
+        loadChildren: () =>
+          import('@gggs/features/loans').then((m) => m.MY_LOANS_ROUTES),
+      },
+      {
+        path: 'loans',
+        ...withPermissions(['loan.loan.view', 'loan.type.manage', 'self.loan.apply', 'workflow.task.act']),
+        loadChildren: () =>
+          import('@gggs/features/loans').then((m) => m.LOANS_ROUTES),
+      },
+      {
         path: 'me/tickets',
         ...withPermissions(['self.ticket.create']),
         loadChildren: () =>

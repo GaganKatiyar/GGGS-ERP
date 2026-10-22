@@ -28,6 +28,16 @@ import type {
   GrantItem,
   InputItem,
   ItemStatus,
+  LoanApplication,
+  LoanItem,
+  LoanQuote,
+  LoanStatus,
+  LoanSummary,
+  LoanTypeDetails,
+  LoanTypeItem,
+  LoanView,
+  MyLoans,
+  DisbursementMode,
   MyBenefits,
   ObligationItem,
   PagedResult,
@@ -561,5 +571,65 @@ export class ProjectFinancialsApi {
 
   invoicePaid(id: string, invoiceId: string, paidOn: string): Promise<FinanceInvoice> {
     return firstValueFrom(this.http.post<FinanceInvoice>(`${this.base}/${id}/invoices/${invoiceId}/paid`, { paidOn }));
+  }
+}
+
+/** Employee loans and salary advances (`/api/v1/loans`) and one's own (`/api/v1/me/loans`). */
+@Injectable({ providedIn: 'root' })
+export class LoansApi {
+  private readonly http = inject(HttpClient);
+  private readonly base = '/api/v1/loans';
+
+  types(): Promise<readonly LoanTypeItem[]> {
+    return firstValueFrom(this.http.get<readonly LoanTypeItem[]>(`${this.base}/types`));
+  }
+
+  saveType(id: string | null, details: LoanTypeDetails, isActive: boolean): Promise<LoanTypeItem> {
+    const body = { details, isActive };
+    return firstValueFrom(id ? this.http.put<LoanTypeItem>(`${this.base}/types/${id}`, body) : this.http.post<LoanTypeItem>(`${this.base}/types`, body));
+  }
+
+  summary(): Promise<LoanSummary> {
+    return firstValueFrom(this.http.get<LoanSummary>(`${this.base}/summary`));
+  }
+
+  list(query: { status?: LoanStatus | null; employeeId?: string | null } = {}): Promise<readonly LoanItem[]> {
+    return firstValueFrom(this.http.get<readonly LoanItem[]>(this.base, { params: params(query) }));
+  }
+
+  get(id: string): Promise<LoanView> {
+    return firstValueFrom(this.http.get<LoanView>(`${this.base}/${id}`));
+  }
+
+  applyFor(body: LoanApplication): Promise<LoanView> {
+    return firstValueFrom(this.http.post<LoanView>(this.base, body));
+  }
+
+  disburse(id: string, body: { mode: DisbursementMode; reference?: string | null; disbursedOn?: string | null; firstEmiMonth?: string | null }): Promise<LoanView> {
+    return firstValueFrom(this.http.post<LoanView>(`${this.base}/${id}/disburse`, body));
+  }
+
+  prepay(id: string, body: { amount: number; date?: string | null; reference?: string | null; note?: string | null }): Promise<LoanView> {
+    return firstValueFrom(this.http.post<LoanView>(`${this.base}/${id}/prepay`, body));
+  }
+
+  writeOff(id: string, reason: string): Promise<LoanView> {
+    return firstValueFrom(this.http.post<LoanView>(`${this.base}/${id}/write-off`, { reason }));
+  }
+
+  cancel(id: string): Promise<LoanView> {
+    return firstValueFrom(this.http.post<LoanView>(`${this.base}/${id}/cancel`, {}));
+  }
+
+  mine(): Promise<MyLoans> {
+    return firstValueFrom(this.http.get<MyLoans>('/api/v1/me/loans'));
+  }
+
+  quote(body: { typeId: string; amount: number; tenureMonths: number }): Promise<LoanQuote> {
+    return firstValueFrom(this.http.post<LoanQuote>('/api/v1/me/loans/quote', body));
+  }
+
+  apply(body: LoanApplication): Promise<LoanView> {
+    return firstValueFrom(this.http.post<LoanView>('/api/v1/me/loans', body));
   }
 }

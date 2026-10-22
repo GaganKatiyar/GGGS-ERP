@@ -366,6 +366,7 @@ public sealed class EmployeeQueries(
             Section("documents", "Documents", true, Features.Documents, null),
             Section("assets", "Assets", true, Features.Assets, null),
             Section("expenses", "Expenses", true, Features.Expenses, null),
+            Section("loans", "Loans", true, Features.Payroll, null),
             Section("helpdesk", "Helpdesk", true, Features.Helpdesk, null),
         ]);
     }
