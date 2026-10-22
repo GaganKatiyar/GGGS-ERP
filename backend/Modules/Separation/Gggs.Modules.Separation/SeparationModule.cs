@@ -3,10 +3,12 @@ using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Ai.Contracts;
 using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Leave.Contracts;
 using Gggs.Modules.Payroll.Contracts;
 using Gggs.Modules.Separation.Application;
+using Gggs.Modules.Separation.Contracts;
 using Gggs.Modules.Separation.Domain;
 using Gggs.Modules.Workflow.Contracts;
 using Hangfire;
@@ -26,6 +28,12 @@ public sealed class SeparationModule : IModule
         services.AddScoped<SeparationPolicyService>();
         services.AddScoped<OffboardingService>();
         services.AddScoped<InvoluntaryService>();
+        services.AddScoped<ExitSurveyService>();
+        services.AddScoped<SeparationAnalytics>();
+        services.AddScoped<IAlumniDirectory, AlumniDirectory>();
+        services.AddScoped<IAiTool, MySeparationStatusTool>();
+        services.AddScoped<IAiTool, AttritionInsightsTool>();
+        services.AddScoped<IAiTool, DraftExitSummaryTool>();
         services.AddScoped<ILeaveApplicationRule, SeparationLeaveRule>();
         services.AddWorkflowSubject(SeparationService.Subject);
     }
@@ -178,6 +186,19 @@ public sealed class SeparationModule : IModule
         group.MapPost("/absences/{id:guid}/separate", async (Guid id, InvoluntaryService involuntary, CancellationToken ct) => TypedResults.Ok(await involuntary.SeparateAbsenceAsync(id, ct)))
             .WithName("SeparateAbsentEmployee").RequirePermission(Permissions.Separation.TerminationManage);
 
+        group.MapGet("/analytics", async (int? months, SeparationAnalytics analytics, CancellationToken ct) => TypedResults.Ok(await analytics.AttritionAsync(months ?? 12, ct)))
+            .WithName("AttritionAnalytics").RequirePermission(Permissions.Separation.AnalyticsView);
+        group.MapGet("/exit-survey", async (ExitSurveyService surveys, CancellationToken ct) => TypedResults.Ok(await surveys.GetAsync(ct)))
+            .WithName("ExitSurvey").RequirePermission(Permissions.Separation.PolicyManage, Permissions.Separation.CaseView);
+        group.MapPut("/exit-survey", async (ExitSurveyBody body, ExitSurveyService surveys, CancellationToken ct) => TypedResults.Ok(await surveys.UpdateAsync(body, ct)))
+            .WithName("UpdateExitSurvey").RequirePermission(Permissions.Separation.PolicyManage);
+        group.MapPost("/cases/{id:guid}/summary", async (Guid id, SummaryBody body, SeparationService service, CancellationToken ct) =>
+            {
+                await service.AddSummaryAsync(id, body.Summary, ct);
+                return TypedResults.Ok(await service.CaseAsync(id, ct));
+            })
+            .WithName("AddExitSummary").RequirePermission(Permissions.Separation.CaseManage);
+
         group.MapGet("/alumni", async (string? search, SeparationService service, CancellationToken ct) => TypedResults.Ok(await service.AlumniAsync(search, ct)))
             .WithName("ListAlumni").RequirePermission(Permissions.Separation.AlumniView);
         group.MapPut("/alumni/{id:guid}", async (Guid id, AlumniBody body, SeparationService service, CancellationToken ct) => TypedResults.Ok(await service.UpdateAlumniAsync(id, body, ct)))
@@ -192,6 +213,10 @@ public sealed class SeparationModule : IModule
             .WithName("WithdrawResignation").RequirePermission(Permissions.Self.ResignationSubmit);
         me.MapPut("/interview", async (InterviewBody body, SeparationService service, CancellationToken ct) => TypedResults.Ok(await service.RecordInterviewAsync(null, body, ct)))
             .WithName("SubmitExitInterview").RequirePermission(Permissions.Self.ResignationSubmit);
+        me.MapGet("/survey", async (ExitSurveyService surveys, CancellationToken ct) => TypedResults.Ok(await surveys.MineAsync(ct)))
+            .WithName("MyExitSurvey").RequirePermission(Permissions.Self.ResignationSubmit);
+        me.MapPut("/survey", async (SurveyAnswersBody body, ExitSurveyService surveys, CancellationToken ct) => TypedResults.Ok(await surveys.SubmitAsync(body, ct)))
+            .WithName("AnswerExitSurvey").RequirePermission(Permissions.Self.ResignationSubmit);
         me.MapGet("/show-causes", async (InvoluntaryService involuntary, CancellationToken ct) => TypedResults.Ok(await involuntary.MyShowCausesAsync(ct)))
             .WithName("MyShowCauses").RequirePermission(Permissions.Self.ResignationSubmit);
         me.MapPost("/show-causes/{id:guid}/reply", async (Guid id, ShowCauseReplyBody body, InvoluntaryService involuntary, CancellationToken ct) => TypedResults.Ok(await involuntary.ReplyAsync(id, body, ct)))
@@ -200,6 +225,8 @@ public sealed class SeparationModule : IModule
             .WithName("RequestEarlyRelease").RequirePermission(Permissions.Self.ResignationSubmit);
     }
 }
+
+public sealed record SummaryBody(string Summary);
 
 internal sealed class AcceptResignationOnApproval(SeparationService separation) : IIntegrationEventConsumer<WorkflowApprovedIntegrationEvent>
 {

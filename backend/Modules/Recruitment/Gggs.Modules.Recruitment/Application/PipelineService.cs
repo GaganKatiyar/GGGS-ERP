@@ -35,7 +35,11 @@ public sealed record CandidateItem(
     string? ReferrerName,
     Guid? EmployeeId,
     DateTime CreatedDate,
-    int Applications);
+    int Applications,
+    FormerEmployee? FormerEmployee = null);
+
+/// <summary>A candidate who worked here before ("boomerang"), from the alumni network.</summary>
+public sealed record FormerEmployee(Guid EmployeeId, string Name, string? LastDesignation, DateOnly ExitDate, string SeparationType, bool EligibleForRehire);
 
 public sealed record CandidateQuery
 {
@@ -165,7 +169,8 @@ internal sealed class PipelineService(
     IEmployeeDirectory employees,
     INotifier notifier,
     TimeProvider timeProvider,
-    Gggs.BuildingBlocks.MultiTenancy.ITenantClock clock)
+    Gggs.BuildingBlocks.MultiTenancy.ITenantClock clock,
+    Gggs.Modules.Separation.Contracts.IAlumniDirectory alumni)
 {
     private DateTime Now => timeProvider.GetUtcNow().UtcDateTime;
 
@@ -714,11 +719,20 @@ internal sealed class PipelineService(
         List<Guid> agencyIds = [.. candidates.Where(row => row.AgencyId != null).Select(row => row.AgencyId!.Value).Distinct()];
         Dictionary<Guid, string> agencies = await dbContext.Agencies.AsNoTracking().Where(row => agencyIds.Contains(row.Id)).ToDictionaryAsync(row => row.Id, row => row.Name, cancellationToken);
         Dictionary<Guid, string> referrers = await NamesAsync(candidates.Where(row => row.ReferrerEmployeeId != null).Select(row => row.ReferrerEmployeeId!.Value), cancellationToken);
+
+        // Former employees who apply again, recognised by email or mobile in the alumni network.
+        IReadOnlyList<Gggs.Modules.Separation.Contracts.AlumniMatch> former = await alumni.MatchAsync(
+            [.. candidates.Select(row => row.Email)], [.. candidates.Where(row => row.Mobile != null).Select(row => row.Mobile!)], cancellationToken);
+        FormerEmployee? Former(Candidate row) => former
+            .Where(match => string.Equals(match.Email, row.Email, StringComparison.OrdinalIgnoreCase) || (match.Mobile != null && match.Mobile == row.Mobile))
+            .OrderByDescending(match => match.ExitDate)
+            .Select(match => new FormerEmployee(match.EmployeeId, match.Name, match.LastDesignation, match.ExitDate, match.SeparationType, match.EligibleForRehire))
+            .FirstOrDefault();
         return [.. candidates.Select(row => new CandidateItem(
             row.Id, row.Number, row.FullName, row.FirstName, row.LastName, row.Email, row.Mobile, row.CurrentCompany, row.CurrentTitle, row.ExperienceYears, row.CurrentCtc,
             row.ExpectedCtc, row.NoticePeriodDays, row.Location, row.Skills, row.LinkedInUrl, row.Notes, row.Source, row.AgencyId,
             row.AgencyId is { } agency ? agencies.GetValueOrDefault(agency) : null, row.ReferrerEmployeeId,
-            row.ReferrerEmployeeId is { } referrer ? referrers.GetValueOrDefault(referrer) : null, row.EmployeeId, row.CreatedDate, applications.GetValueOrDefault(row.Id)))];
+            row.ReferrerEmployeeId is { } referrer ? referrers.GetValueOrDefault(referrer) : null, row.EmployeeId, row.CreatedDate, applications.GetValueOrDefault(row.Id), Former(row)))];
     }
 
     private async Task<List<ApplicationItem>> ApplicationItemsAsync(IReadOnlyList<JobApplication> applications, CancellationToken cancellationToken)

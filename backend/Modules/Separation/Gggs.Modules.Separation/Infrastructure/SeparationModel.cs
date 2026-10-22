@@ -185,11 +185,33 @@ internal sealed class SeparationModel : IModuleModel
             entity.Ignore(row => row.DomainEvents);
         });
 
+        modelBuilder.Entity<ExitSurvey>(entity =>
+        {
+            entity.ToTable("ExitSurvey", Schema);
+            entity.Property(row => row.Title).HasMaxLength(200);
+            entity.Property(row => row.Introduction).HasMaxLength(1000);
+            entity.Property(row => row.QuestionsJson).HasColumnName("Questions");
+            entity.HasIndex(row => row.TenantId).HasDatabaseName("UX_ExitSurvey_TenantId").IsUnique().HasFilter("[IsDeleted] = 0");
+            entity.Ignore(row => row.Questions);
+            entity.Ignore(row => row.DomainEvents);
+        });
+
+        modelBuilder.Entity<ExitSurveyResponse>(entity =>
+        {
+            entity.ToTable("ExitSurveyResponse", Schema);
+            entity.Property(row => row.AnswersJson).HasColumnName("Answers");
+            entity.HasOne<SeparationCase>().WithMany().HasForeignKey(row => row.CaseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(row => new { row.TenantId, row.CaseId }).HasDatabaseName("UX_ExitSurveyResponse_TenantId_Case").IsUnique().HasFilter("[IsDeleted] = 0");
+            entity.Ignore(row => row.Answers);
+            entity.Ignore(row => row.DomainEvents);
+        });
+
         modelBuilder.Entity<AlumniProfile>(entity =>
         {
             entity.ToTable("Alumni", Schema);
             entity.Property(row => row.Name).HasMaxLength(200);
             entity.Property(row => row.Email).HasMaxLength(256);
+            entity.Property(row => row.Mobile).HasMaxLength(20);
             entity.Property(row => row.LastDesignation).HasMaxLength(150);
             entity.Property(row => row.SeparationType).HasConversion<byte>();
             entity.Property(row => row.Notes).HasMaxLength(1000);
@@ -230,5 +252,9 @@ internal static class SeparationData
         public DbSet<ShowCause> ShowCauses => db.Set<ShowCause>();
 
         public DbSet<AbsenceAlert> AbsenceAlerts => db.Set<AbsenceAlert>();
+
+        public DbSet<ExitSurvey> ExitSurveys => db.Set<ExitSurvey>();
+
+        public DbSet<ExitSurveyResponse> ExitSurveyResponses => db.Set<ExitSurveyResponse>();
     }
 }

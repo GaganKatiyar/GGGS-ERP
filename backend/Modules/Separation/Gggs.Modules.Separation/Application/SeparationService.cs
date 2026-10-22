@@ -83,7 +83,7 @@ public sealed record SettlementView(
 
 public sealed record CaseEventView(string Kind, string Title, string? Note, string? ActorName, DateTime OccurredAt);
 
-public sealed record CaseView(CaseItem Case, IReadOnlyList<ClearanceView> Clearance, InterviewView? Interview, SettlementView? Settlement, IReadOnlyList<CaseEventView>? Events = null, OffboardingView? Offboarding = null);
+public sealed record CaseView(CaseItem Case, IReadOnlyList<ClearanceView> Clearance, InterviewView? Interview, SettlementView? Settlement, IReadOnlyList<CaseEventView>? Events = null, OffboardingView? Offboarding = null, SurveyResponseView? Survey = null);
 
 public sealed record ResignBody(string Reason, DateOnly? RequestedLastDay, string? ReasonCode = null);
 
@@ -116,9 +116,9 @@ public sealed record LineBody(string Code, string Label, bool IsDeduction, decim
 
 public sealed record PayBody(string? Reference);
 
-public sealed record AlumniItem(Guid Id, Guid EmployeeId, string Name, string? Email, string? LastDesignation, DateOnly ExitDate, SeparationType SeparationType, bool EligibleForRehire, bool OptedIn, string? Notes);
+public sealed record AlumniItem(Guid Id, Guid EmployeeId, string Name, string? Email, string? LastDesignation, DateOnly ExitDate, SeparationType SeparationType, bool EligibleForRehire, bool OptedIn, string? Notes, string? Mobile = null);
 
-public sealed record AlumniBody(string? Email, bool EligibleForRehire, bool OptedIn, string? Notes);
+public sealed record AlumniBody(string? Email, bool EligibleForRehire, bool OptedIn, string? Notes, string? Mobile = null);
 
 public sealed record SeparationDashboard(
     int InProgress,
@@ -156,7 +156,8 @@ internal sealed class SeparationService(
     SeparationPolicyService policy,
     OffboardingService offboarding,
     ILeaveCalendar calendar,
-    IFinalSettlementPayroll payrollSettlements)
+    IFinalSettlementPayroll payrollSettlements,
+    ExitSurveyService exitSurveys)
 {
     public const string SubjectType = "separation.resignation";
 
@@ -669,6 +670,15 @@ internal sealed class SeparationService(
         return await ViewAsync(separation, includeSettlement: true, cancellationToken);
     }
 
+    /// <summary>Adds HR's exit summary (written in the case or drafted by the assistant and approved) to the timeline.</summary>
+    public async Task AddSummaryAsync(Guid id, string summary, CancellationToken cancellationToken)
+    {
+        SeparationCase separation = await ManagedAsync(id, allowCompleted: true, cancellationToken);
+        string text = Gggs.BuildingBlocks.Domain.Primitives.Guard.MaxLength(Gggs.BuildingBlocks.Domain.Primitives.Guard.NotNullOrWhiteSpace(summary).Trim(), 1000);
+        Note(separation, "exit-summary", "Exit summary", text);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     /// <summary>A full and final payroll run was finalized: the leaver's payslip is out.</summary>
     public async Task SettlementPayslipIssuedAsync(Guid settlementId, CancellationToken cancellationToken)
     {
@@ -784,7 +794,7 @@ internal sealed class SeparationService(
     {
         ArgumentNullException.ThrowIfNull(body);
         AlumniProfile profile = await dbContext.Alumni.FirstOrDefaultAsync(row => row.Id == id, cancellationToken) ?? throw new NotFoundException(nameof(AlumniProfile), id);
-        profile.Update(body.Email, body.EligibleForRehire, body.OptedIn, body.Notes);
+        profile.Update(body.Email, body.EligibleForRehire, body.OptedIn, body.Notes, body.Mobile);
         await dbContext.SaveChangesAsync(cancellationToken);
         return Alumni(profile);
     }
@@ -901,7 +911,7 @@ internal sealed class SeparationService(
     }
 
     private static AlumniItem Alumni(AlumniProfile row)
-        => new(row.Id, row.EmployeeId, row.Name, row.Email, row.LastDesignation, row.ExitDate, row.SeparationType, row.EligibleForRehire, row.OptedIn, row.Notes);
+        => new(row.Id, row.EmployeeId, row.Name, row.Email, row.LastDesignation, row.ExitDate, row.SeparationType, row.EligibleForRehire, row.OptedIn, row.Notes, row.Mobile);
 
     /// <summary>Adds a step to the case's timeline; saved with the change it describes.</summary>
     private void Note(SeparationCase separation, string kind, string title, string? note)
@@ -974,7 +984,12 @@ internal sealed class SeparationService(
         if (!await dbContext.Alumni.AnyAsync(row => row.EmployeeId == separation.EmployeeId, cancellationToken) && separation.Type != SeparationType.Death)
         {
             EmployeeSummary? person = await employees.GetAsync(separation.EmployeeId, cancellationToken);
-            dbContext.Alumni.Add(AlumniProfile.Create(separation.EmployeeId, person?.DisplayName ?? "Former employee", person?.OfficialEmail, person?.Designation, person?.DepartmentId, separation.LastWorkingDay, separation.Type, separation.EligibleForRehire));
+            var alumnus = AlumniProfile.Create(separation.EmployeeId, person?.DisplayName ?? "Former employee", person?.OfficialEmail, person?.Designation, person?.DepartmentId, separation.LastWorkingDay, separation.Type, separation.EligibleForRehire);
+
+            // Personal contact details, so the person is recognised if they apply again.
+            PersonalContact? contact = (await separations.PersonalContactsAsync([separation.EmployeeId], cancellationToken)).GetValueOrDefault(separation.EmployeeId);
+            alumnus.Contact(contact?.PersonalEmail, contact?.MobilePhone);
+            dbContext.Alumni.Add(alumnus);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -1073,7 +1088,8 @@ internal sealed class SeparationService(
             interview is null ? null : new InterviewView(interview.PrimaryReason, interview.OverallRating, interview.WouldRecommend, interview.WouldReturn, interview.WhatWentWell, interview.WhatToImprove, interview.ConductedOn),
             settlement,
             [.. events.Select(row => new CaseEventView(row.Kind, row.Title, row.Note, row.ActorEmployeeId is { } actor ? actors.GetValueOrDefault(actor) : null, row.OccurredAt))],
-            await offboarding.ViewAsync(separation, forHr: separation.EmployeeId != currentUser.EmployeeId && await HasAsync(Permissions.Separation.CaseView, cancellationToken), cancellationToken));
+            await offboarding.ViewAsync(separation, forHr: separation.EmployeeId != currentUser.EmployeeId && await HasAsync(Permissions.Separation.CaseView, cancellationToken), cancellationToken),
+            await exitSurveys.ForCaseAsync(separation, cancellationToken));
     }
 
     private async Task<List<CaseItem>> ItemsAsync(IReadOnlyList<SeparationCase> cases, CancellationToken cancellationToken)

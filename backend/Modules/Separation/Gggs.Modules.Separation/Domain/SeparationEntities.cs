@@ -654,6 +654,9 @@ public sealed class AlumniProfile : TenantAggregateRoot
 
     public string? Email { get; private set; }
 
+    /// <summary>Personal mobile, digits only, kept to recognise the person if they apply again.</summary>
+    public string? Mobile { get; private set; }
+
     public string? LastDesignation { get; private set; }
 
     public Guid? DepartmentId { get; private set; }
@@ -682,9 +685,27 @@ public sealed class AlumniProfile : TenantAggregateRoot
         OptedIn = true,
     };
 
-    public void Update(string? email, bool eligibleForRehire, bool optedIn, string? notes)
+    /// <summary>Digits only, so numbers written differently still match.</summary>
+    public static string? Digits(string? mobile)
     {
-        Email = string.IsNullOrWhiteSpace(email) ? null : Guard.MaxLength(email.Trim(), 256);
+        string digits = new([.. (mobile ?? string.Empty).Where(char.IsAsciiDigit)]);
+        return digits.Length is >= 7 and <= 15 ? digits : null;
+    }
+
+    public void Contact(string? personalEmail, string? mobile)
+    {
+        if (!string.IsNullOrWhiteSpace(personalEmail))
+        {
+            Email = Guard.MaxLength(personalEmail.Trim().ToLowerInvariant(), 256);
+        }
+
+        Mobile = Digits(mobile) ?? Mobile;
+    }
+
+    public void Update(string? email, bool eligibleForRehire, bool optedIn, string? notes, string? mobile = null)
+    {
+        Email = string.IsNullOrWhiteSpace(email) ? null : Guard.MaxLength(email.Trim().ToLowerInvariant(), 256);
+        Mobile = Digits(mobile);
         EligibleForRehire = eligibleForRehire;
         OptedIn = optedIn;
         Notes = string.IsNullOrWhiteSpace(notes) ? null : Guard.MaxLength(notes.Trim(), 1000);

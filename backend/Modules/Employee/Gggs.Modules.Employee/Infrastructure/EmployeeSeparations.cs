@@ -55,6 +55,14 @@ internal sealed class EmployeeSeparations(AppDbContext dbContext, EmployeeServic
         return new DateOnly(birthday.Year, birthday.Month, DateTime.DaysInMonth(birthday.Year, birthday.Month));
     }
 
+    public async Task<IReadOnlyDictionary<Guid, PersonalContact>> PersonalContactsAsync(IEnumerable<Guid> employeeIds, CancellationToken cancellationToken = default)
+    {
+        List<Guid> ids = [.. employeeIds.Distinct()];
+        return await dbContext.Employees.AsNoTracking()
+            .Where(employee => ids.Contains(employee.Id))
+            .ToDictionaryAsync(employee => employee.Id, employee => new PersonalContact(employee.PersonalEmail, employee.MobilePhone), cancellationToken);
+    }
+
     public async Task ChangeManagerAsync(Guid employeeId, Guid newManagerEmployeeId, DateOnly effectiveFrom, string reason, CancellationToken cancellationToken = default)
     {
         Domain.Employee current = await dbContext.Employees.AsNoTracking().FirstOrDefaultAsync(employee => employee.Id == employeeId, cancellationToken)

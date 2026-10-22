@@ -14,13 +14,13 @@ public static class Assistants
     public static IReadOnlyList<AssistantDefinition> All { get; } =
     [
         new("me", "My assistant", "Your leave, goals, rewards, calendar and helpdesk - ask, or have it draft things for you to approve.", null,
-            ["my_leave_balances", "apply_leave", "my_goals", "my_career", "my_rewards", "give_recognition", "search_help_articles", "raise_ticket", "upcoming_calendar", "search_directory"],
+            ["my_leave_balances", "apply_leave", "my_goals", "my_career", "my_rewards", "give_recognition", "search_help_articles", "raise_ticket", "upcoming_calendar", "search_directory", "my_separation_status"],
             "You help one employee with their own work life: leave, goals, career, rewards, the helpdesk and their calendar."),
         new("hr", "HR command centre", "Headcount, attrition, leave, hiring and engagement at a glance, and answers about people within your reach.", Permissions.Report.View,
-            ["get_metrics", "get_employee", "who_is_on_leave", "search_directory", "upcoming_calendar", "search_help_articles"],
+            ["get_metrics", "get_employee", "who_is_on_leave", "search_directory", "upcoming_calendar", "search_help_articles", "attrition_insights", "draft_exit_summary"],
             "You support HR leaders: you explain people metrics, spot trends and risks, and answer questions about employees they may see."),
         new("workforce", "Workforce planner", "Plans against headcount, open positions, hiring pipeline and attrition.", Permissions.Report.View,
-            ["get_metrics", "search_directory"],
+            ["get_metrics", "search_directory", "attrition_insights"],
             "You help plan the workforce: compare plan with actuals, hiring and attrition, and suggest where capacity is short."),
         new("resources", "Resource manager", "Who is free, on the bench or over-allocated, and what projects need.", Permissions.Resource.AllocationView,
             ["get_metrics", "available_people", "project_status", "search_directory"],

@@ -135,6 +135,9 @@ public interface IEmployeePromotions
     Task PromoteAsync(Promotion promotion, CancellationToken cancellationToken = default);
 }
 
+/// <summary>How to reach someone outside work.</summary>
+public sealed record PersonalContact(string? PersonalEmail, string? MobilePhone);
+
 /// <summary>An exit that falls due on its own: superannuation or the end of a fixed-term contract.</summary>
 public sealed record UpcomingExit(Guid EmployeeId, UpcomingExitKind Kind, DateOnly Date);
 
@@ -162,6 +165,9 @@ public interface IEmployeeSeparations
     /// fixed-term contract on or before <paramref name="until"/>.
     /// </summary>
     Task<IReadOnlyList<UpcomingExit>> UpcomingExitsAsync(int retirementAge, DateOnly until, CancellationToken cancellationToken = default);
+
+    /// <summary>Personal email and mobile, kept with the alumni record to recognise a former employee who applies again.</summary>
+    Task<IReadOnlyDictionary<Guid, PersonalContact>> PersonalContactsAsync(IEnumerable<Guid> employeeIds, CancellationToken cancellationToken = default);
 
     /// <summary>Moves an employee to a new manager (a leaver's handover), as a manager-change assignment.</summary>
     Task ChangeManagerAsync(Guid employeeId, Guid newManagerEmployeeId, DateOnly effectiveFrom, string reason, CancellationToken cancellationToken = default);

@@ -662,6 +662,9 @@ public static class Permissions
 
         /// <summary>Show-cause and termination, retrenchment and absconding: exits the company starts.</summary>
         public const string TerminationManage = "separation.termination.manage";
+
+        /// <summary>Attrition analytics: rates, regretted losses, reasons and exit survey results.</summary>
+        public const string AnalyticsView = "separation.analytics.view";
     }
 
     /// <summary>Bulk imports and integrations with outside systems (spec: import and integrations).</summary>

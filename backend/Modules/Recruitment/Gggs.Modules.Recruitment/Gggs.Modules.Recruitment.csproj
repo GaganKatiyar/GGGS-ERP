@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\Workflow\Gggs.Modules.Workflow.Contracts\Gggs.Modules.Workflow.Contracts.csproj" />
     <ProjectReference Include="..\..\Workforce\Gggs.Modules.Workforce.Contracts\Gggs.Modules.Workforce.Contracts.csproj" />
     <ProjectReference Include="..\Gggs.Modules.Recruitment.Contracts\Gggs.Modules.Recruitment.Contracts.csproj" />
+    <ProjectReference Include="..\..\Separation\Gggs.Modules.Separation.Contracts\Gggs.Modules.Separation.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

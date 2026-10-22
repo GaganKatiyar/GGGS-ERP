@@ -575,7 +575,7 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             Permissions.Engagement.SurveyView, Permissions.Engagement.SurveyManage, Permissions.Engagement.ResultsView,
             Permissions.Helpdesk.TicketView, Permissions.Helpdesk.TicketManage, Permissions.Helpdesk.CategoryManage, Permissions.Helpdesk.KnowledgeManage,
             Permissions.Separation.CaseView, Permissions.Separation.CaseManage, Permissions.Separation.ClearanceManage,
-            Permissions.Separation.SettlementManage, Permissions.Separation.AlumniView, Permissions.Separation.PolicyManage, Permissions.Separation.OffboardingManage, Permissions.Separation.TerminationManage,
+            Permissions.Separation.SettlementManage, Permissions.Separation.AlumniView, Permissions.Separation.PolicyManage, Permissions.Separation.OffboardingManage, Permissions.Separation.TerminationManage, Permissions.Separation.AnalyticsView,
             Permissions.Report.View, Permissions.Report.Export, Permissions.Report.ScheduleManage, Permissions.Report.ExecutiveView,
             Permissions.DataHub.ImportRun, Permissions.DataHub.IntegrationView, Permissions.DataHub.IntegrationManage,
             Permissions.Ai.AssistantUse, Permissions.Ai.UsageView, Permissions.Admin.IdentityProviderManage,

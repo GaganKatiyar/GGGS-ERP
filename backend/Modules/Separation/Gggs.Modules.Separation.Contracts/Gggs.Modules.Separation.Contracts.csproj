@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Gggs.Modules.Separation.Contracts</RootNamespace>
+    <Description>The Separation module's public surface: the alumni network as other modules may read it.</Description>
+  </PropertyGroup>
+
+</Project>
