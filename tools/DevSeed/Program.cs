@@ -1,6 +1,7 @@
 using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Application.Hosting;
 using Gggs.BuildingBlocks.Caching;
+using Gggs.BuildingBlocks.Files;
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Security;
@@ -42,6 +43,9 @@ IConfiguration configuration = new ConfigurationBuilder()
     .AddInMemoryCollection(new Dictionary<string, string?>
     {
         [$"ConnectionStrings:{DataExtensions.ConnectionStringName}"] = connectionString,
+
+        // The same folder the API serves files from in development (run DevSeed from the repository root).
+        ["Gggs:Storage:FileSystem:RootPath"] = Environment.GetEnvironmentVariable("GGGS_FILES_ROOT") ?? Path.GetFullPath(Path.Combine(".local", "files")),
     })
     .Build();
 
@@ -53,6 +57,9 @@ services.AddSingleton(new GggsPlatformOptions { ServiceName = "dev-seed" });
 services.AddGggsMultiTenancy();
 services.AddGggsCaching(configuration, "dev-seed");
 services.AddGggsSensitiveData();
+
+// Letters (relieving, show-cause, retrenchment) are stored as documents; the demo steps generate them.
+services.AddGggsFileStorage(configuration, DeploymentProfile.OnPremise);
 services.AddScoped<ICurrentUser, SeedActor>();
 services.AddGggsAppDbContext(configuration, ModuleCatalog.ModelAssemblies);
 services.AddGggsMessaging<AppDbContext>(configuration);
@@ -237,6 +244,12 @@ await RunAsync(provider, "security", async (scope, tenant) =>
 {
     tenant.SetTenant(tenantId);
     await Gggs.DevSeed.SecurityDemo.SeedAsync(scope);
+});
+
+await RunAsync(provider, "exits", async (scope, tenant) =>
+{
+    tenant.SetTenant(tenantId);
+    await Gggs.DevSeed.ExitsDemo.SeedAsync(scope);
 });
 
 Console.WriteLine();

@@ -43,7 +43,13 @@ const percent = (value: number | null | undefined) => (value === null || value =
         </section>
         <div class="xp__grid">
           <section class="panel stack">
-            <gggs-chart kind="bar" title="Why people left" [labels]="labels(d.reasons)" [series]="series('Exits', d.reasons)" />
+            <h2 class="xp__heading">Why people left</h2>
+            @for (row of d.reasons; track row.label) {
+              <div class="xp__pair">
+                <span>{{ row.label }}</span>
+                <span class="xp__meter" [style.--share]="row.count / d.exits"><strong>{{ row.count }}</strong></span>
+              </div>
+            }
           </section>
           <section class="panel stack">
             <gggs-chart kind="doughnut" title="Tenure at exit" [labels]="labels(d.tenure)" [series]="series('Exits', d.tenure)" />
@@ -51,13 +57,13 @@ const percent = (value: number | null | undefined) => (value === null || value =
           <section class="panel stack">
             <h2 class="xp__heading">Departments</h2>
             @for (row of d.departments; track row.label) {
-              <div class="xp__row"><span>{{ row.label }}</span><span><strong>{{ row.count }}</strong></span></div>
+              <div class="xp__pair"><span>{{ row.label }}</span><strong>{{ row.count }}</strong></div>
             }
           </section>
           <section class="panel stack">
             <h2 class="xp__heading">Managers</h2>
             @for (row of d.managers; track row.label) {
-              <div class="xp__row"><span>{{ row.label }}</span><span><strong>{{ row.count }}</strong></span></div>
+              <div class="xp__pair"><span>{{ row.label }}</span><strong>{{ row.count }}</strong></div>
             }
           </section>
         </div>

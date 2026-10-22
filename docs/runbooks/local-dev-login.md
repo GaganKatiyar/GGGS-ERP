@@ -221,6 +221,17 @@ employee on the Recruitment candidate pages. The HR command centre can explain a
 an exit summary that is added to the case once approved; "My assistant" answers questions about
 one's own separation.
 
+DevSeed's `exits` step adds five people who left in August to October 2026, each through the real
+flows, so Exits > Attrition, the alumni list and Payroll runs have data: Neha Joshi (regretted
+resignation, gratuity, paid through payroll), Karan Mehta (resignation over pay, no payroll salary,
+paid by bank reference), Divya Rao (terminated after a show-cause she answered, 15 days' notice
+pay), Imran Shaikh (retrenched with compensation, paid through payroll) and Pooja Nair (left after
+five months - early attrition - with a pro-rata bonus). Divya's and Pooja's full and final runs
+are waiting in Payroll > Payroll runs to be approved, finalized and paid. Neha has applied again
+(candidate CAN-900001, flagged as a former employee), and Arjun Nair (EMP00004) has an open
+absconding alert after a day at work 16 days ago. The step runs once; DevSeed now also writes
+generated letters to `.local/files` (override with `GGGS_FILES_ROOT`).
+
 Since M11 it also sends report digests daily at 06:00 (`insight-report-digests`): weekly
 subscriptions go out on Mondays and monthly ones on the 1st, only to people whose report access is
 company-wide (or who hold executive access) when the digest is sent.

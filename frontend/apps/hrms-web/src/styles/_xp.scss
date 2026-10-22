@@ -29,6 +29,25 @@
   grid-column: 1 / -1;
 }
 
+/* A label and its figure on one line, the figure pushed to the right. */
+.xp__pair {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gggs-space-3);
+  padding-block: var(--gggs-space-2);
+  border-block-end: 1px solid var(--gggs-color-border);
+}
+
+/* A figure with a bar behind it showing its share (--share, 0 to 1). */
+.xp__meter {
+  min-inline-size: 4rem;
+  padding: 0.125rem 0.5rem;
+  text-align: end;
+  border-radius: var(--gggs-radius-sm, 0.25rem);
+  background: linear-gradient(to left, color-mix(in srgb, var(--gggs-color-primary) 22%, transparent) calc(var(--share, 0) * 100%), transparent 0);
+}
+
 /* Label-over-value summaries: narrower columns so two fit side by side on a phone. */
 .xp__grid--facts {
   grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
