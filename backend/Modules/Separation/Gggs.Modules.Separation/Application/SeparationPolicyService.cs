@@ -111,6 +111,10 @@ internal sealed class SeparationPolicyService(AppDbContext dbContext, IEmployeeD
             dbContext.SeparationPolicies.Add(policy);
             await dbContext.SaveChangesAsync(cancellationToken);
         }
+        else if (policy.FillMissingSettings())
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
 
         return policy;
     }

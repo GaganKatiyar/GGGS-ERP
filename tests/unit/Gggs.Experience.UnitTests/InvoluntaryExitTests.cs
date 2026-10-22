@@ -129,5 +129,6 @@ public sealed class InvoluntaryExitTests
         Should.Throw<DomainRuleException>(() => policy.Update(60, 15, true, false, ["EL"], ["EL"], null, 60, 7, 2, 30, exitProposalLeadDays: 400));
         policy.Update(60, 15, true, false, ["EL"], ["EL"], null, 58, 7, 2, 30, 10, 90);
         policy.ExitProposalLeadDays.ShouldBe(90);
+        policy.FillMissingSettings().ShouldBeFalse("nothing is missing");
     }
 }

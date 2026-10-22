@@ -812,7 +812,8 @@ internal sealed class SeparationService(
         HashSet<Guid> paid = [.. await dbContext.Settlements.Where(row => closed.Contains(row.CaseId) && row.Status == SettlementStatus.Paid).Select(row => row.CaseId).ToListAsync(cancellationToken)];
         int exits = cases.Count(row => row.Status == CaseStatus.Completed && row.LastWorkingDay >= yearAgo);
         int headcount = (await employees.ListActiveIdsAsync(null, null, cancellationToken)).Count;
-        List<string> reasons = await dbContext.ExitInterviews.AsNoTracking().Where(row => row.ConductedOn >= yearAgo).Select(row => row.PrimaryReason).ToListAsync(cancellationToken);
+        // Exit reasons as HR classified them (or the leaver gave them) over the last year.
+        List<string> reasons = [.. cases.Where(row => row.LastWorkingDay >= yearAgo && row.ReasonCode != null).Select(row => SeparationReasons.LabelOf(row.ReasonCode)!)];
         return new SeparationDashboard(
             cases.Count(row => row.InProgress),
             cases.Count(row => row.Status == CaseStatus.PendingApproval),

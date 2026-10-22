@@ -72,6 +72,28 @@ public sealed class SeparationPolicy : TenantAggregateRoot
         ExitProposalLeadDays = 60,
     };
 
+    /// <summary>
+    /// A policy saved before a setting existed has zero for it; give it the default instead.
+    /// Returns whether anything changed.
+    /// </summary>
+    public bool FillMissingSettings()
+    {
+        bool changed = false;
+        if (ShowCauseReplyDays <= 0)
+        {
+            ShowCauseReplyDays = 7;
+            changed = true;
+        }
+
+        if (ExitProposalLeadDays <= 0)
+        {
+            ExitProposalLeadDays = 60;
+            changed = true;
+        }
+
+        return changed;
+    }
+
     public void Update(
         int defaultNoticeDays,
         int probationNoticeDays,
