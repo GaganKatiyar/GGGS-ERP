@@ -18,7 +18,7 @@ import { message } from './payroll-shared';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (detail(); as d) {
-      <gggs-page-header [title]="'Payroll · ' + d.run.label" [subtitle]="'Pay date ' + (d.run.payDate | date: 'd MMM y')">
+      <gggs-page-header [title]="(d.run.kind === 'FullAndFinal' ? 'Full and final · ' : 'Payroll · ') + d.run.label" [subtitle]="(d.run.notes && d.run.kind === 'FullAndFinal' ? d.run.notes + ' ' : '') + 'Pay date ' + (d.run.payDate | date: 'd MMM y')">
         <a class="btn" routerLink="/payroll/runs">All runs</a>
         @if (canProcess && (d.run.status === 'Draft' || d.run.status === 'Calculated')) {
           <button type="button" class="btn" [disabled]="busy()" (click)="act('calculate')">{{ d.run.status === 'Draft' ? 'Calculate' : 'Recalculate' }}</button>
@@ -92,6 +92,7 @@ import { message } from './payroll-shared';
               <div class="toolbar">
                 <button type="button" class="btn btn--sm" (click)="download('bank-file')">Bank transfer file</button>
                 <button type="button" class="btn btn--sm" (click)="download('ecr')">EPF ECR</button>
+                <button type="button" class="btn btn--sm" (click)="download('epf-exits')">EPF exits</button>
                 <button type="button" class="btn btn--sm" (click)="download('esi')">ESI contribution</button>
               </div>
             } @else {

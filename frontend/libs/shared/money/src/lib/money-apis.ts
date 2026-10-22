@@ -89,7 +89,7 @@ async function download(http: HttpClient, url: string, fallbackName: string): Pr
   URL.revokeObjectURL(href);
 }
 
-export type PayrollReport = 'register' | 'bank-file' | 'ecr' | 'esi' | 'professional-tax' | 'journal';
+export type PayrollReport = 'register' | 'bank-file' | 'ecr' | 'epf-exits' | 'esi' | 'professional-tax' | 'journal';
 
 /** Payroll (`/api/v1/payroll`) and one's own payslips, salary and tax declaration (`/api/v1/me`). */
 @Injectable({ providedIn: 'root' })

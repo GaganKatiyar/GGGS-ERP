@@ -135,8 +135,8 @@ export class PayrollDashboardPage {
     <section class="panel stack">
       @for (run of runs(); track run.id) {
         <a class="pay__row" [routerLink]="['/payroll/runs', run.id]">
-          <strong>{{ run.label }}</strong>
-          <span>{{ run.employeeCount }} people</span>
+          <strong>{{ run.label }}{{ run.kind === 'FullAndFinal' ? ' · full and final' : '' }}</strong>
+          <span>{{ run.kind === 'FullAndFinal' ? (run.employeeName ?? 'One leaver') : run.employeeCount + ' people' }}</span>
           <span>Net {{ run.net | gggsMoney: run.currency }}</span>
           <span class="muted">Pay date {{ run.payDate | date: 'd MMM y' }}{{ run.errors ? ' · ' + run.errors + ' errors' : '' }}</span>
           <gggs-status-badge [status]="run.status" />

@@ -666,6 +666,9 @@ export interface SeparationCaseItem {
   readonly nomineeRelation?: string;
   readonly nomineeContact?: string;
   readonly awaitingConfirmation: boolean;
+  readonly settlementDueOn?: string;
+  readonly gratuityDueOn?: string;
+  readonly settlementOverdue: boolean;
 }
 
 export interface SeparationEvent {
@@ -892,6 +895,11 @@ export interface SettlementView {
   readonly paidOn?: string;
   readonly paymentReference?: string;
   readonly lines: readonly SettlementLine[];
+  readonly payrollRunId?: string;
+  readonly payrollStatus?: string;
+  readonly payrollNet?: number;
+  readonly payrollSalaryIncluded?: boolean;
+  readonly payrollIssues?: readonly string[];
 }
 
 export interface SeparationCaseView {
@@ -925,4 +933,5 @@ export interface SeparationDashboard {
   readonly attritionLast12Months: number;
   readonly byType: Readonly<Record<string, number>>;
   readonly topExitReasons: Readonly<Record<string, number>>;
+  readonly settlementsOverdue: number;
 }

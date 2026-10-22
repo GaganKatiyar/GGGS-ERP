@@ -2,10 +2,10 @@
 
 // ----- Compliance ----------------------------------------------------------------------------
 
-export type StatutoryRuleType = 'ProvidentFund' | 'StateInsurance' | 'ProfessionalTax' | 'IncomeTax' | 'Gratuity' | 'LabourWelfareFund';
+export type StatutoryRuleType = 'ProvidentFund' | 'StateInsurance' | 'ProfessionalTax' | 'IncomeTax' | 'Gratuity' | 'LabourWelfareFund' | 'Bonus' | 'TerminalExemption';
 export type RuleStatus = 'Draft' | 'Active' | 'Retired';
 
-export const STATUTORY_RULE_TYPES: readonly StatutoryRuleType[] = ['ProvidentFund', 'StateInsurance', 'ProfessionalTax', 'IncomeTax', 'Gratuity', 'LabourWelfareFund'];
+export const STATUTORY_RULE_TYPES: readonly StatutoryRuleType[] = ['ProvidentFund', 'StateInsurance', 'ProfessionalTax', 'IncomeTax', 'Gratuity', 'LabourWelfareFund', 'Bonus', 'TerminalExemption'];
 
 export interface RuleItem {
   readonly id: string;
@@ -405,6 +405,9 @@ export interface RunItem {
   readonly paymentReference?: string;
   readonly notes?: string;
   readonly workflowInstanceId?: string;
+  readonly kind: 'Regular' | 'FullAndFinal';
+  readonly employeeId?: string;
+  readonly employeeName?: string;
 }
 
 export interface StatutoryTotals {

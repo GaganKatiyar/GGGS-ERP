@@ -41,6 +41,8 @@ const TEMPLATES: Readonly<Record<StatutoryRuleType, unknown>> = {
   },
   Gratuity: { daysPerYear: 15, divisorDays: 26, minimumYears: 5, maximumAmount: 2000000, monthlyAccrualRate: 4.81 },
   LabourWelfareFund: { employeeAmount: 0, employerAmount: 0, months: [12] },
+  Bonus: { eligibilityWageCeiling: 21000, calculationWageCeiling: 7000, minimumPercent: 8.33, maximumPercent: 20, payablePercent: 8.33, minimumWorkingDays: 30 },
+  TerminalExemption: { gratuity: 2000000, leaveEncashment: 2500000, retrenchmentCompensation: 500000 },
 };
 
 /** The compliance centre (spec §107): rules in force, what is due, and registrations nearing expiry. */

@@ -106,6 +106,7 @@ export class ExitInterviewForm {
         <gggs-kpi-card label="Leaving this month" [value]="d.leavingThisMonth" />
         <gggs-kpi-card label="Clearance items open" [value]="d.clearancePending" />
         <gggs-kpi-card label="Settlements to pay" [value]="d.settlementsDue" />
+        <gggs-kpi-card label="Settlements overdue" [value]="d.settlementsOverdue" [hint]="d.settlementsOverdue ? 'past the two-working-day deadline' : 'none past the deadline'" />
         <gggs-kpi-card label="Attrition (12 months)" [value]="d.attritionLast12Months + '%'" />
       </div>
     } @else if (!error()) {
@@ -130,7 +131,7 @@ export class ExitInterviewForm {
             <span><strong>{{ item.employeeName }}</strong> <span class="muted">{{ item.employeeCode }} · {{ item.designation ?? '' }}</span></span>
             <span>{{ label(item.type) }}{{ item.awaitingConfirmation ? ' · to confirm' : '' }}</span>
             <span>last day {{ item.lastWorkingDay | date: 'd MMM y' }}{{ item.shortfallDays && !item.shortfallWaived ? ' · ' + item.shortfallDays + ' days short' : '' }}</span>
-            <span class="muted">clearance {{ item.clearanceTotal - item.clearancePending }}/{{ item.clearanceTotal }}{{ item.settlementStatus ? ' · settlement ' + item.settlementStatus.toLowerCase() : '' }}</span>
+            <span class="muted">clearance {{ item.clearanceTotal - item.clearancePending }}/{{ item.clearanceTotal }}{{ item.settlementStatus ? ' · settlement ' + item.settlementStatus.toLowerCase() : '' }}{{ item.settlementOverdue ? ' · overdue' : '' }}</span>
             <gggs-status-badge [status]="item.status" />
           </a>
         } @empty {
@@ -437,13 +438,33 @@ export class SeparationPage {
             }
             @if (v.settlement?.status === 'Draft') {
               <button type="button" class="btn btn--sm" (click)="lineOpen.set(true)">Add line</button>
-              <button type="button" class="btn btn--sm btn--primary" (click)="settlement('approve')">Approve</button>
+              <button type="button" class="btn btn--sm btn--primary" (click)="settlement('approve')">Approve and send to payroll</button>
             }
             @if (v.settlement?.status === 'Approved') {
               <button type="button" class="btn btn--sm" (click)="settlement('reopen')">Reopen</button>
-              <button type="button" class="btn btn--sm btn--primary" (click)="payOpen.set(true)">Mark paid</button>
+              @if (!v.settlement?.payrollRunId) {
+                <button type="button" class="btn btn--sm btn--primary" (click)="payOpen.set(true)">Mark paid</button>
+              }
             }
           </div>
+          @if (v.case.settlementDueOn) {
+            <p [class.xp__danger]="v.case.settlementOverdue">
+              Due by {{ v.case.settlementDueOn | date: 'd MMM y' }} (two working days after the last day, Code on Wages s.17(2)){{ v.case.settlementOverdue ? ' - overdue' : '' }};
+              gratuity by {{ v.case.gratuityDueOn | date: 'd MMM y' }}.
+            </p>
+          }
+          @if (v.settlement?.payrollRunId; as runId) {
+            <p class="alert">
+              <i class="pi pi-wallet" aria-hidden="true"></i>
+              <span>
+                Paid through payroll: an off-cycle run, {{ (v.settlement?.payrollStatus ?? 'open').toLowerCase() }}{{ v.settlement?.payrollNet !== undefined ? ', net ' + (v.settlement?.payrollNet | number: '1.2-2') : '' }}{{ v.settlement?.payrollSalaryIncluded ? ', with the salary for the exit month, PF and TDS' : '' }}.
+                It is marked paid when the run is paid.
+                @if (canSeePayroll) {
+                  <a [routerLink]="['/payroll/runs', runId]">Open the run</a>
+                }
+              </span>
+            </p>
+          }
           @if (v.settlement; as s) {
             @for (line of s.lines; track line.id) {
               <div class="xp__row">
@@ -567,6 +588,7 @@ export class SeparationCasePage {
   protected readonly canManage = this.permissions.has('separation.case.manage');
   protected readonly canSettle = this.permissions.has('separation.settlement.manage');
   protected readonly canOffboard = this.permissions.has('separation.offboarding.manage');
+  protected readonly canSeePayroll = this.permissions.has('payroll.run.view');
   protected readonly areas = CLEARANCE_AREAS;
   protected readonly view = signal<SeparationCaseView | null>(null);
   protected readonly termsOpen = signal(false);
