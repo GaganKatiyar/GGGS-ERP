@@ -25,6 +25,11 @@ public static class PayrollDefaults
         Input("COMMISSION", "Commission", ComponentKind.Earning, PayrollInputKind.Commission, taxable: true, esi: true, order: 43),
         Input("ARREARS", "Arrears", ComponentKind.Earning, PayrollInputKind.Arrears, taxable: true, esi: true, order: 44),
         Input("REIMBURSEMENT", "Reimbursement", ComponentKind.Reimbursement, PayrollInputKind.Reimbursement, taxable: false, esi: false, order: 50),
+        Terminal("GRATUITY_PAY", "Gratuity", PayrollInputKind.Gratuity, taxable: false, order: 45),
+        Terminal("LEAVE_ENCASH", "Leave encashment", PayrollInputKind.LeaveEncashment, taxable: false, order: 46),
+        Terminal("NOTICE_PAY", "Pay in lieu of notice", PayrollInputKind.NoticePay, taxable: true, order: 47),
+        Terminal("RETRENCH_COMP", "Retrenchment compensation", PayrollInputKind.RetrenchmentCompensation, taxable: false, order: 48),
+        Terminal("TERMINAL_TAXABLE", "Terminal benefits (taxable part)", PayrollInputKind.TerminalTaxable, taxable: true, order: 49),
         Statutory(StatutoryKeys.ProvidentFundEmployer, "Employer PF", ComponentKind.EmployerContribution, 60),
         Statutory(StatutoryKeys.StateInsuranceEmployer, "Employer ESI", ComponentKind.EmployerContribution, 61),
         Statutory(StatutoryKeys.Gratuity, "Gratuity", ComponentKind.EmployerContribution, 62),
@@ -46,6 +51,11 @@ public static class PayrollDefaults
 
     private static ComponentSeed Input(string code, string name, ComponentKind kind, PayrollInputKind inputKind, bool taxable, bool esi, int order)
         => new(code, new ComponentDefinition(name, kind, CalculationType.Input, null, null, null, inputKind, taxable, PfApplicable: inputKind == PayrollInputKind.Arrears, esi, PtApplicable: kind == ComponentKind.Earning, IsProrated: false, ShowOnPayslip: true, order, null), IsSystem: true);
+
+    /// <summary>An exit payment: not wages for PF, ESI or professional tax; taxable or within its exemption.</summary>
+    private static ComponentSeed Terminal(string code, string name, PayrollInputKind inputKind, bool taxable, int order)
+        => new(code, new ComponentDefinition(name, ComponentKind.Earning, CalculationType.Input, null, null, null, inputKind, taxable, PfApplicable: false, EsiApplicable: false, PtApplicable: false, IsProrated: false, ShowOnPayslip: true, order,
+            taxable ? "Paid in a full and final settlement; taxed with the final salary." : "Paid in a full and final settlement within its tax-free limit."), IsSystem: true);
 
     private static ComponentSeed Statutory(string code, string name, ComponentKind kind, int order)
         => new(code, new ComponentDefinition(name, kind, CalculationType.Statutory, null, null, null, null, IsTaxable: false, PfApplicable: false, EsiApplicable: false, PtApplicable: false, IsProrated: false, ShowOnPayslip: true, order, "Worked out by its statutory rule."), IsSystem: true);

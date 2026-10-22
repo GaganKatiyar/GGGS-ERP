@@ -33,7 +33,7 @@ internal sealed class EmployeeDirectory(AppDbContext dbContext, EmployeeScope sc
                 employee.DepartmentId, employee.PositionId, employee.JobId, employee.ManagerEmployeeId, employee.LocationId, employee.LegalEntityId,
                 employee.HrbpEmployeeId, employee.Designation, employee.JoiningDate,
                 employee.EmploymentTypeCode, employee.ProbationEndDate, employee.ConfirmationDate,
-                employee.WorkModeCode, employee.GradeId, employee.ExitDate))
+                employee.WorkModeCode, employee.GradeId, employee.ExitDate, employee.ExitReasonCode))
             .ToListAsync(cancellationToken);
     }
 

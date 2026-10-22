@@ -29,6 +29,8 @@ public sealed class PayrollModule : IModule
         services.AddScoped<IPayrollInputs>(provider => provider.GetRequiredService<InputService>());
         services.AddScoped<DeclarationService>();
         services.AddScoped<RunService>();
+        services.AddScoped<FinalSettlementPayroll>();
+        services.AddScoped<IFinalSettlementPayroll>(provider => provider.GetRequiredService<FinalSettlementPayroll>());
         services.AddScoped<PayslipService>();
         services.AddScoped<PayrollReports>();
         services.AddWorkflowSubject(RunService.Subject);

@@ -201,11 +201,10 @@ public sealed class CriticalFlowTests(PeopleOsApiFactory factory)
             await OkAsync(await admin.PostAsJsonAsync($"/api/v1/separation/clearance/{item.GetProperty("id").GetGuid()}", new { Status = "Cleared" }, Ct));
         }
 
-        // Full and final settlement, paid.
+        // Full and final settlement: approved, then paid through its off-cycle payroll run.
         await OkAsync(await admin.PostAsync($"/api/v1/separation/cases/{caseId}/settlement/calculate", null, Ct));
         await OkAsync(await admin.PostAsync($"/api/v1/separation/cases/{caseId}/settlement/approve", null, Ct));
-        (await OkAsync(await admin.PostAsJsonAsync($"/api/v1/separation/cases/{caseId}/settlement/pay", new { Reference = "NEFT-JOURNEY" }, Ct)))
-            .GetProperty("settlement").GetProperty("status").GetString().ShouldBe("Paid");
+        (await SettlementPayroll.PayAsync(factory, admin, caseId, "NEFT-JOURNEY")).GetProperty("status").GetString().ShouldBe("Paid");
 
         // The nightly sweep takes the exit into effect: the person leaves the workforce and joins the alumni.
         await factory.RunAsWorkerAsync(PeopleOsApiFactory.SeededTenantId, async services => await services.GetRequiredService<SeparationService>().SweepAsync(Ct));

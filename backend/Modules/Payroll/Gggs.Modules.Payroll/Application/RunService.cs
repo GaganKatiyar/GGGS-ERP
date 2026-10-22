@@ -43,7 +43,10 @@ public sealed record RunItem(
     DateTime? PaidDate,
     string? PaymentReference,
     string? Notes,
-    Guid? WorkflowInstanceId);
+    Guid? WorkflowInstanceId,
+    PayrollRunKind Kind = PayrollRunKind.Regular,
+    Guid? EmployeeId = null,
+    string? EmployeeName = null);
 
 public sealed record ReadinessCheck(string Code, string Level, string Message, int Count);
 
@@ -161,7 +164,10 @@ internal sealed class RunService(
             runs = runs.Where(run => run.Period >= start && run.Period <= end);
         }
 
-        return [.. (await runs.OrderByDescending(run => run.Period).ThenByDescending(run => run.CreatedDate).Take(60).ToListAsync(cancellationToken)).Select(Item)];
+        List<PayrollRun> rows = await runs.OrderByDescending(run => run.Period).ThenByDescending(run => run.CreatedDate).Take(60).ToListAsync(cancellationToken);
+        Dictionary<Guid, string> leavers = (await employees.GetManyAsync(rows.Where(run => run.EmployeeId != null).Select(run => run.EmployeeId!.Value).Distinct(), cancellationToken))
+            .ToDictionary(person => person.Id, person => person.DisplayName);
+        return [.. rows.Select(run => Item(run) with { EmployeeName = run.EmployeeId is { } leaver ? leavers.GetValueOrDefault(leaver) : null })];
     }
 
     public async Task<RunDetail> GetAsync(Guid id, CancellationToken cancellationToken)
@@ -169,7 +175,7 @@ internal sealed class RunService(
         PayrollRun run = await RunAsync(id, tracked: false, cancellationToken);
         List<PayrollRunItem> items = await dbContext.PayrollRunItems.AsNoTracking().Where(item => item.RunId == id).ToListAsync(cancellationToken);
         PayrollRun? previous = await dbContext.PayrollRuns.AsNoTracking()
-            .Where(other => other.Period < run.Period && other.LegalEntityId == run.LegalEntityId && (other.Status == RunStatus.Finalized || other.Status == RunStatus.Paid))
+            .Where(other => other.Kind == PayrollRunKind.Regular && other.Period < run.Period && other.LegalEntityId == run.LegalEntityId && (other.Status == RunStatus.Finalized || other.Status == RunStatus.Paid))
             .OrderByDescending(other => other.Period)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -188,7 +194,7 @@ internal sealed class RunService(
     {
         ArgumentNullException.ThrowIfNull(body);
         DateOnly period = new(body.Period.Year, body.Period.Month, 1);
-        if (await dbContext.PayrollRuns.AnyAsync(run => run.Period == period && run.LegalEntityId == body.LegalEntityId && run.Status != RunStatus.Cancelled, cancellationToken))
+        if (await dbContext.PayrollRuns.AnyAsync(run => run.Kind == PayrollRunKind.Regular && run.Period == period && run.LegalEntityId == body.LegalEntityId && run.Status != RunStatus.Cancelled, cancellationToken))
         {
             throw new DomainRuleException("RUN_EXISTS", $"There is already a payroll run for {period:MMMM yyyy}.");
         }
@@ -217,7 +223,7 @@ internal sealed class RunService(
             await inputs.ImportOvertimeAsync(run.Period, ids, cancellationToken);
         }
 
-        List<EmployeeSalary> salaries = await dbContext.EmployeeSalaries.AsNoTracking()
+        List<EmployeeSalary> salaries = run.SalaryExcluded ? [] : await dbContext.EmployeeSalaries.AsNoTracking()
             .Where(salary => ids.Contains(salary.EmployeeId) && salary.EffectiveFrom <= run.PeriodEnd && (salary.EffectiveTo == null || salary.EffectiveTo >= run.Period))
             .ToListAsync(cancellationToken);
         IReadOnlyDictionary<Guid, ResolvedStructure> structures = await catalog.StructuresAsync(salaries.Select(salary => salary.StructureId), cancellationToken);
@@ -237,8 +243,10 @@ internal sealed class RunService(
             }
         }
 
+        // A leaver's settlement also pays anything still waiting for them in later months (a claim, a bonus).
+        bool settlement = run.Kind == PayrollRunKind.FullAndFinal;
         List<PayrollInput> monthInputs = await dbContext.PayrollInputs
-            .Where(input => input.Period == run.Period && ids.Contains(input.EmployeeId)
+            .Where(input => (input.Period == run.Period || settlement) && ids.Contains(input.EmployeeId)
                 && (input.Status == InputStatus.Pending || (input.Status == InputStatus.Included && input.RunId == run.Id)))
             .ToListAsync(cancellationToken);
         ILookup<Guid, BenefitCharge> charges = (await benefits.ForPeriodAsync(ids, run.Period, run.PeriodEnd, cancellationToken)).ToLookup(charge => charge.EmployeeId);
@@ -266,11 +274,11 @@ internal sealed class RunService(
 
             PayResult result = PayCalculator.Calculate(new PayContext(
                 person.Id, person.EmployeeCode, person.DisplayName, person.DepartmentId, person.Designation, run.Period, run.PeriodEnd, settings.ProrationBasis,
-                person.JoiningDate, person.ExitDate, segments, lop.GetValueOrDefault(person.Id), lines, [.. charges[person.Id]],
+                person.JoiningDate, person.ExitDate ?? run.LastWorkingDay, segments, lop.GetValueOrDefault(person.Id), lines, [.. charges[person.Id]],
                 PayrollCatalog.RulesFor(rulesInForce, state), Age(identity?.DateOfBirth, run.PeriodEnd), state,
                 declarations.TryGetValue(person.Id, out TaxDeclaration? declaration) ? DeclarationService.Facts(declaration) : null,
                 settings.DefaultRegime, ytd.GetValueOrDefault(person.Id) ?? YearToDate.None,
-                identity?.BankAccountNumber is not null, identity?.Pan is not null, identity?.Uan is not null));
+                identity?.BankAccountNumber is not null, identity?.Pan is not null, identity?.Uan is not null, InputsOnly: settlement));
 
             var item = PayrollRunItem.For(run.Id, result);
             if (holds.TryGetValue(person.Id, out string? reason))
@@ -471,8 +479,10 @@ internal sealed class RunService(
 
         publisher.Publish(new PayrollRunFinalizedIntegrationEvent(
             run.Id, run.Period, paid.Count, run.Net,
-            [.. included.Where(input => input.Status == InputStatus.Paid && input.SourceId is not null && input.Source is not (InputService.ManualSource or InputService.TimesheetSource))
-                .Select(input => new PaidInput(input.Source, input.SourceId!.Value, input.EmployeeId, input.Amount))]));
+            [.. included.Where(input => input.Status == InputStatus.Paid && input.SourceId is not null && input.Source is not (InputService.ManualSource or InputService.TimesheetSource or FinalSettlementPayroll.Source))
+                .Select(input => new PaidInput(input.Source, input.SourceId!.Value, input.EmployeeId, input.Amount))],
+            run.Kind,
+            run.SourceId));
         await dbContext.SaveChangesAsync(cancellationToken);
 
         string period = Label(run.Period);
@@ -496,6 +506,7 @@ internal sealed class RunService(
         ArgumentNullException.ThrowIfNull(body);
         PayrollRun run = await RunAsync(id, tracked: true, cancellationToken);
         run.MarkPaid(body.PaidOn.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc), body.Reference);
+        publisher.Publish(new PayrollRunPaidIntegrationEvent(run.Id, run.Kind, run.SourceId, body.PaidOn, run.PaymentReference));
         await dbContext.SaveChangesAsync(cancellationToken);
         return Item(run);
     }
@@ -507,7 +518,15 @@ internal sealed class RunService(
         await workflow.WithdrawAsync(SubjectType, run.Id, cancellationToken);
         foreach (PayrollInput input in await dbContext.PayrollInputs.Where(row => row.RunId == run.Id && row.Status == InputStatus.Included).ToListAsync(cancellationToken))
         {
-            input.Release();
+            // A settlement's own lines go with its run; anything else waits for the next payroll.
+            if (input.Source == FinalSettlementPayroll.Source)
+            {
+                input.Cancel();
+            }
+            else
+            {
+                input.Release();
+            }
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -524,16 +543,29 @@ internal sealed class RunService(
         return await runs.FirstOrDefaultAsync(run => run.Id == id, cancellationToken) ?? throw new NotFoundException(nameof(PayrollRun), id);
     }
 
-    /// <summary>Everyone with a salary during the month, employed during it, within the caller's reach and the run's legal entity.</summary>
+    /// <summary>
+    /// Everyone with a salary during the month, employed during it, within the caller's reach and the
+    /// run's legal entity - less anyone whose full and final run pays that month. A full and final run
+    /// pays its leaver alone.
+    /// </summary>
     private async Task<List<EmployeeSummary>> PeopleAsync(PayrollRun run, CancellationToken cancellationToken)
     {
+        if (run.Kind == PayrollRunKind.FullAndFinal)
+        {
+            return [.. await employees.GetManyAsync([run.EmployeeId!.Value], cancellationToken)];
+        }
+
+        HashSet<Guid> settled = [.. await dbContext.PayrollRuns.AsNoTracking()
+            .Where(other => other.Kind == PayrollRunKind.FullAndFinal && other.Period == run.Period && other.Status != RunStatus.Cancelled && other.EmployeeId != null)
+            .Select(other => other.EmployeeId!.Value)
+            .ToListAsync(cancellationToken)];
         List<Guid> withSalary = await dbContext.EmployeeSalaries.AsNoTracking()
             .Where(salary => salary.EffectiveFrom <= run.PeriodEnd && (salary.EffectiveTo == null || salary.EffectiveTo >= run.Period))
             .Select(salary => salary.EmployeeId)
             .Distinct()
             .ToListAsync(cancellationToken);
         IReadOnlyCollection<Guid>? scope = await employees.InScopeIdsAsync(Permissions.Payroll.RunProcess, cancellationToken);
-        return [.. (await employees.GetManyAsync(withSalary.Where(id => scope is null || scope.Contains(id)), cancellationToken))
+        return [.. (await employees.GetManyAsync(withSalary.Where(id => (scope is null || scope.Contains(id)) && !settled.Contains(id)), cancellationToken))
             .Where(person => (person.JoiningDate is null || person.JoiningDate <= run.PeriodEnd) && (person.ExitDate is null || person.ExitDate >= run.Period))
             .Where(person => run.LegalEntityId is null || person.LegalEntityId == run.LegalEntityId)
             .OrderBy(person => person.DisplayName, StringComparer.CurrentCulture)];
@@ -623,7 +655,7 @@ internal sealed class RunService(
     internal static RunItem Item(PayrollRun run) => new(
         run.Id, run.Period, run.PeriodEnd, Label(run.Period), run.PayDate, run.LegalEntityId, run.Status, run.Currency, run.EmployeeCount, run.Gross,
         run.Deductions, run.Net, run.EmployerCost, run.Warnings, run.Errors, run.CalculatedDate, run.ApprovedDate, run.FinalizedDate, run.PaidDate,
-        run.PaymentReference, run.Notes, run.WorkflowInstanceId);
+        run.PaymentReference, run.Notes, run.WorkflowInstanceId, run.Kind, run.EmployeeId);
 
     private static RunItemDetail Detail(PayrollRunItem item) => new(
         item.Id, item.RunId, item.EmployeeId, item.EmployeeCode, item.EmployeeName, item.Designation, item.Status, item.PeriodDays, item.PaidDays, item.LopDays,

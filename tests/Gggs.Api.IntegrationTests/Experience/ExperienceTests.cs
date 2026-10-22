@@ -351,9 +351,9 @@ public sealed class ExperienceTests(PeopleOsApiFactory factory)
             codes.ShouldNotContain("RECOVERY");
             await OkAsync(await admin.PostAsJsonAsync($"/api/v1/separation/cases/{caseId}/settlement/lines", new { Code = "BONUS", Label = "Pro-rata bonus", IsDeduction = false, Amount = 15000m }, Ct));
             await OkAsync(await admin.PostAsync($"/api/v1/separation/cases/{caseId}/settlement/approve", null, Ct));
-            JsonElement paid = await OkAsync(await admin.PostAsJsonAsync($"/api/v1/separation/cases/{caseId}/settlement/pay", new { Reference = "NEFT-123" }, Ct));
-            paid.GetProperty("settlement").GetProperty("status").GetString().ShouldBe("Paid");
-            paid.GetProperty("settlement").GetProperty("net").GetDecimal().ShouldBeGreaterThan(15000m);
+            JsonElement paid = await SettlementPayroll.PayAsync(factory, admin, caseId, "NEFT-123");
+            paid.GetProperty("status").GetString().ShouldBe("Paid");
+            paid.GetProperty("net").GetDecimal().ShouldBeGreaterThan(15000m);
 
             JsonElement lettered = await OkAsync(await admin.PostAsync($"/api/v1/separation/cases/{caseId}/letters", null, Ct));
             lettered.GetProperty("case").GetProperty("relievingLetterId").ValueKind.ShouldNotBe(JsonValueKind.Null);

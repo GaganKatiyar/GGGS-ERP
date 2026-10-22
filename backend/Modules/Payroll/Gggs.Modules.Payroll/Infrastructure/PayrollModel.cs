@@ -129,6 +129,8 @@ internal sealed class PayrollModel : IModuleModel
             entity.Property(run => run.PaymentReference).HasMaxLength(100);
             entity.Property(run => run.Notes).HasMaxLength(1000);
             entity.HasIndex(run => new { run.TenantId, run.Period }).HasDatabaseName("IX_PayrollRun_TenantId_Period");
+            entity.Property(run => run.Kind).HasConversion<byte>();
+            entity.HasIndex(run => new { run.TenantId, run.SourceId }).HasDatabaseName("IX_PayrollRun_TenantId_Source");
             entity.Ignore(run => run.IsLocked);
             entity.Ignore(run => run.DomainEvents);
         });

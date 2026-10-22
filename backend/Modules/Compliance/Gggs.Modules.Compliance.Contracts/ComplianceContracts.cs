@@ -12,6 +12,12 @@ public enum StatutoryRuleType
     IncomeTax = 4,
     Gratuity = 5,
     LabourWelfareFund = 6,
+
+    /// <summary>Statutory bonus (Payment of Bonus Act, 1965; Code on Wages, 2019).</summary>
+    Bonus = 7,
+
+    /// <summary>Income-tax exemption limits for terminal benefits paid at exit.</summary>
+    TerminalExemption = 8,
 }
 
 /// <summary>
@@ -69,6 +75,19 @@ public sealed record IncomeTaxConfig(
 
 /// <summary>Gratuity: (last basic × days per year ÷ divisor) per completed year, after the minimum service, up to the maximum.</summary>
 public sealed record GratuityConfig(decimal DaysPerYear, decimal DivisorDays, decimal MinimumYears, decimal MaximumAmount, decimal MonthlyAccrualRate);
+
+/// <summary>
+/// Statutory bonus: payable to those whose monthly salary (basic and DA) is at most the eligibility
+/// ceiling and who worked the minimum days in the year, at the payable rate (between the minimum
+/// and maximum) of salary capped at the calculation ceiling.
+/// </summary>
+public sealed record BonusConfig(decimal EligibilityWageCeiling, decimal CalculationWageCeiling, decimal MinimumPercent, decimal MaximumPercent, decimal PayablePercent, int MinimumWorkingDays);
+
+/// <summary>
+/// Tax-free limits on terminal benefits: gratuity (s.10(10)), leave encashment on retirement or
+/// resignation (s.10(10AA)) and retrenchment compensation (s.10(10B)). Amounts above are taxable.
+/// </summary>
+public sealed record TerminalExemptionConfig(decimal Gratuity, decimal LeaveEncashment, decimal RetrenchmentCompensation);
 
 /// <summary>Labour welfare fund: flat amounts deducted in the listed months (1-12).</summary>
 public sealed record LabourWelfareConfig(decimal EmployeeAmount, decimal EmployerAmount, IReadOnlyList<int> Months);

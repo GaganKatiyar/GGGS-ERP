@@ -776,6 +776,32 @@ public sealed class PayrollRun : TenantAggregateRoot
 
     public string? Notes { get; private set; }
 
+    public PayrollRunKind Kind { get; private set; } = PayrollRunKind.Regular;
+
+    /// <summary>The leaver a full and final run pays.</summary>
+    public Guid? EmployeeId { get; private set; }
+
+    /// <summary>The settlement a full and final run pays.</summary>
+    public Guid? SourceId { get; private set; }
+
+    /// <summary>The exit month's salary was already paid by that month's regular run, so this run pays the settlement only.</summary>
+    public bool SalaryExcluded { get; private set; }
+
+    /// <summary>The leaver's last working day: salary is paid up to it even before Core HR records the exit.</summary>
+    public DateOnly? LastWorkingDay { get; private set; }
+
+    /// <summary>An off-cycle run for one leaver's full and final settlement.</summary>
+    public static PayrollRun OpenFinalSettlement(DateOnly period, DateOnly payDate, Guid? legalEntityId, string currency, Guid employeeId, Guid settlementId, DateOnly lastWorkingDay, bool salaryExcluded, string? notes)
+    {
+        PayrollRun run = Open(period, payDate, legalEntityId, currency, notes);
+        run.LastWorkingDay = lastWorkingDay;
+        run.Kind = PayrollRunKind.FullAndFinal;
+        run.EmployeeId = Guard.NotEmpty(employeeId);
+        run.SourceId = Guard.NotEmpty(settlementId);
+        run.SalaryExcluded = salaryExcluded;
+        return run;
+    }
+
     public static PayrollRun Open(DateOnly period, DateOnly payDate, Guid? legalEntityId, string currency, string? notes)
     {
         var start = new DateOnly(period.Year, period.Month, 1);

@@ -81,5 +81,6 @@ public static class NotificationTemplates
     public const string AbsenceAlert = "separation.absence-alert";
     public const string AbsenceNotice = "separation.absence-notice";
     public const string ExitProposed = "separation.exit-proposed";
+    public const string SettlementOverdue = "separation.settlement-overdue";
     public const string ReportDigest = "insight.report-digest";
 }

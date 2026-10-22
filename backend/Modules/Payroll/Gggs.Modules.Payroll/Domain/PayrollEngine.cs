@@ -427,7 +427,8 @@ public sealed record PayContext(
     YearToDate YearToDate,
     bool HasBankAccount,
     bool HasPan,
-    bool HasUan);
+    bool HasUan,
+    bool InputsOnly = false);
 
 /// <summary>One employee's calculated month.</summary>
 public sealed record PayResult(
@@ -498,7 +499,7 @@ public static class PayCalculator
 
         if (pieces.Count == 0)
         {
-            return Empty(context, ["No salary is assigned for this month."]);
+            return context.InputsOnly ? InputsOnly(context, applied) : Empty(context, ["No salary is assigned for this month."]);
         }
 
         decimal employedDays = pieces.Sum(piece => piece.Days);
@@ -695,6 +696,54 @@ public static class PayCalculator
             basisDays, paidDays, lop, latestSegment.AnnualCtc, gross, reimbursements, deductions, net, employer, taxable,
             [.. pay.OrderBy(line => line.Kind).ThenBy(line => rules.TryGetValue(line.Code, out ComponentRule? rule) ? rule.Order : 1000).ThenBy(line => line.Code, StringComparer.Ordinal)],
             applied, tax, providentFund, [.. errors.Concat(warnings).Distinct()], context.StateCode);
+    }
+
+    /// <summary>
+    /// A full and final run with no salary left to pay (the exit month was paid already): just the
+    /// settlement's lines, with TDS on them worked out against the year so far and nothing projected.
+    /// </summary>
+    private static PayResult InputsOnly(PayContext context, List<AppliedRule> applied)
+    {
+        List<PayLine> pay = [.. context.Inputs.GroupBy(input => input.Component.Code).Select(input =>
+        {
+            ComponentRule rule = input.First().Component;
+            return new PayLine(rule.Code, rule.Name, rule.Kind, Money.Rupees(input.Sum(line => line.Amount)), rule.Taxable, Note: string.Join("; ", input.Select(line => line.Description).Distinct()));
+        })];
+        Dictionary<string, int> order = context.Inputs.GroupBy(input => input.Component.Code).ToDictionary(group => group.Key, group => group.First().Component.Order, StringComparer.OrdinalIgnoreCase);
+        decimal taxable = pay.Where(line => line.Kind == ComponentKind.Earning && line.Taxable).Sum(line => line.Amount);
+        TaxComputation? tax = null;
+        if (taxable > 0 && Use(context.Rules.IncomeTax, applied)?.Read<IncomeTaxConfig>() is { } taxConfig)
+        {
+            tax = TaxMath.Project(
+                new TaxInput(context.Declaration?.Regime ?? context.DefaultRegime, TaxMath.MonthsRemaining(context.PeriodStart), 0, taxable, 0, 0, 0, 0, 0, 0, 0, 0, 0, context.YearToDate, context.Declaration),
+                taxConfig);
+            if (tax.MonthlyTds > 0)
+            {
+                pay.Add(new PayLine(StatutoryKeys.IncomeTax, "Income tax (TDS)", ComponentKind.Deduction, tax.MonthlyTds, false));
+            }
+        }
+
+        decimal gross = pay.Where(line => line.Kind == ComponentKind.Earning).Sum(line => line.Amount);
+        decimal reimbursements = pay.Where(line => line.Kind == ComponentKind.Reimbursement).Sum(line => line.Amount);
+        decimal deductions = pay.Where(line => line.Kind == ComponentKind.Deduction).Sum(line => line.Amount);
+        decimal net = Money.Rupees(gross + reimbursements - deductions);
+        List<string> issues = [];
+        if (net < 0)
+        {
+            issues.Add($"Recoveries exceed the settlement by {-net:0.##}; collect the balance from the employee.");
+        }
+
+        if (!context.HasBankAccount && net > 0)
+        {
+            issues.Add("No bank account on record; this person will be missing from the bank file.");
+        }
+
+        return new PayResult(
+            context.EmployeeId, context.EmployeeCode, context.EmployeeName, context.DepartmentId, context.Designation, null,
+            net < 0 ? ItemStatus.Error : issues.Count > 0 ? ItemStatus.Warning : ItemStatus.Ok,
+            0, 0, 0, 0, gross, reimbursements, deductions, net, 0, taxable,
+            [.. pay.OrderBy(line => line.Kind).ThenBy(line => order.GetValueOrDefault(line.Code, 1000)).ThenBy(line => line.Code, StringComparer.Ordinal)],
+            applied, tax, null, issues, context.StateCode);
     }
 
     private static bool IsStatutory(string code) => code is StatutoryKeys.ProvidentFundEmployer or StatutoryKeys.StateInsuranceEmployer or StatutoryKeys.Gratuity;

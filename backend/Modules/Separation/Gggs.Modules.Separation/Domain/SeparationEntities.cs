@@ -110,6 +110,9 @@ public sealed class SeparationCase : TenantAggregateRoot
     /// <summary>Opened by the system ahead of a retirement or contract end, waiting for HR to confirm.</summary>
     public bool Proposed { get; private set; }
 
+    /// <summary>When HR was told the settlement had missed its legal deadline.</summary>
+    public DateOnly? SettlementOverdueNotifiedOn { get; private set; }
+
     public string ExitReasonCode => Type switch
     {
         SeparationType.Resignation => "RESIGNATION",
@@ -347,6 +350,8 @@ public sealed class SeparationCase : TenantAggregateRoot
         Proposed = true;
     }
 
+    public void SettlementOverdueNotified(DateOnly today) => SettlementOverdueNotifiedOn ??= today;
+
     /// <summary>A proposed exit HR has not yet confirmed or declined.</summary>
     public bool AwaitingConfirmation => Proposed && Status == CaseStatus.PendingApproval;
 
@@ -529,7 +534,20 @@ public sealed class Settlement : TenantAggregateRoot
 
     public string? PaymentReference { get; private set; }
 
+    /// <summary>The off-cycle payroll run paying the settlement, once approved.</summary>
+    public Guid? PayrollRunId { get; private set; }
+
     public static Settlement Start(Guid caseId) => new() { CaseId = caseId, Status = SettlementStatus.Draft };
+
+    public void SentToPayroll(Guid runId)
+    {
+        if (Status != SettlementStatus.Approved)
+        {
+            throw new DomainRuleException("SETTLEMENT_NOT_APPROVED", "Approve the settlement before sending it to payroll.");
+        }
+
+        PayrollRunId = runId;
+    }
 
     public void Total(IEnumerable<SettlementLine> lines)
     {
@@ -554,6 +572,7 @@ public sealed class Settlement : TenantAggregateRoot
         }
 
         Status = SettlementStatus.Draft;
+        PayrollRunId = null;
     }
 
     public void Pay(string? reference, DateOnly paidOn)
@@ -703,7 +722,17 @@ public static class SettlementMath
         decimal exactYears = months / 12m;
         int completed = months / 12;
         int counted = months % 12 > 6 ? completed + 1 : completed;
-        bool eligible = exactYears >= minimumYears;
+
+        // Continuous service (s.2A): a year in which 240 days were worked counts in full, so four years
+        // and 240 working days in the fifth meet a five-year minimum. Working days are taken as six in
+        // every seven calendar days since the last work anniversary.
+        DateOnly anniversary = joined.AddYears(completed);
+        bool fifthYearCounts = minimumYears > 0 && completed == (int)Math.Ceiling(minimumYears) - 1 && (lastDay.DayNumber - anniversary.DayNumber + 1) * 6 / 7 >= ContinuousServiceDays;
+        bool eligible = exactYears >= minimumYears || fifthYearCounts;
+        if (fifthYearCounts)
+        {
+            counted = Math.Max(counted, completed + 1);
+        }
         decimal amount = Math.Min(maximumAmount, Math.Round(monthlyBasic * daysPerYear / divisorDays * counted, 0, MidpointRounding.AwayFromZero));
         return (Math.Round(exactYears, 2), eligible ? amount : 0, eligible);
     }
@@ -728,6 +757,57 @@ public static class SettlementMath
 
         int counted = (months / 12) + (months % 12 > 6 ? 1 : 0);
         return (counted, Math.Round(monthlyBasic * 15m / 26m * counted, 0, MidpointRounding.AwayFromZero), true);
+    }
+
+    /// <summary>Days worked in a year for it to count as a year of continuous service (Payment of Gratuity Act s.2A).</summary>
+    public const int ContinuousServiceDays = 240;
+
+    /// <summary>
+    /// Statutory bonus for the part of the financial year worked (Payment of Bonus Act): for salary
+    /// (basic and DA) up to the eligibility ceiling and at least the minimum days worked, the payable
+    /// rate of salary capped at the calculation ceiling, for the months worked since 1 April.
+    /// </summary>
+    public static (decimal Months, decimal Amount, bool Eligible) StatutoryBonus(decimal monthlyBasic, DateOnly joined, DateOnly lastDay, decimal eligibilityCeiling, decimal calculationCeiling, decimal payablePercent, int minimumDays)
+    {
+        var yearStart = new DateOnly(lastDay.Month >= 4 ? lastDay.Year : lastDay.Year - 1, 4, 1);
+        DateOnly from = joined > yearStart ? joined : yearStart;
+        int days = lastDay.DayNumber - from.DayNumber + 1;
+        if (monthlyBasic <= 0 || monthlyBasic > eligibilityCeiling || days < Math.Max(1, minimumDays))
+        {
+            return (0, 0, false);
+        }
+
+        int yearDays = yearStart.AddYears(1).DayNumber - yearStart.DayNumber;
+        decimal months = Math.Round(days * 12m / yearDays, 2);
+        decimal amount = Math.Round(Math.Min(monthlyBasic, calculationCeiling) * payablePercent / 100m * months, 0, MidpointRounding.AwayFromZero);
+        return (months, amount, amount > 0);
+    }
+
+    /// <summary>Splits a terminal benefit into its tax-free part (up to the limit) and the taxable rest.</summary>
+    public static (decimal Exempt, decimal Taxable) SplitExempt(decimal amount, decimal limit)
+    {
+        decimal exempt = Math.Min(Math.Max(0, amount), Math.Max(0, limit));
+        return (exempt, Math.Max(0, amount) - exempt);
+    }
+
+    /// <summary>
+    /// The day <paramref name="workingDays"/> working days after <paramref name="day"/>: Sundays and
+    /// the employee's holidays are not working days (Code on Wages s.17(2): settlement within two).
+    /// </summary>
+    public static DateOnly WorkingDaysAfter(DateOnly day, int workingDays, IReadOnlySet<DateOnly> holidays)
+    {
+        ArgumentNullException.ThrowIfNull(holidays);
+        DateOnly due = day;
+        for (int counted = 0; counted < workingDays;)
+        {
+            due = due.AddDays(1);
+            if (due.DayOfWeek != DayOfWeek.Sunday && !holidays.Contains(due))
+            {
+                counted++;
+            }
+        }
+
+        return due;
     }
 
     /// <summary>Pay in lieu of notice the company owes: gross over 30 per day not given.</summary>

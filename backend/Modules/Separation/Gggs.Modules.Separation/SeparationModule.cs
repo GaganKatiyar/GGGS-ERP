@@ -5,6 +5,7 @@ using Gggs.BuildingBlocks.Web;
 using Gggs.BuildingBlocks.Web.Modules;
 using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Leave.Contracts;
+using Gggs.Modules.Payroll.Contracts;
 using Gggs.Modules.Separation.Application;
 using Gggs.Modules.Separation.Domain;
 using Gggs.Modules.Workflow.Contracts;
@@ -34,6 +35,10 @@ public sealed class SeparationModule : IModule
         services.AddGggsEventConsumer<WorkflowApprovedIntegrationEvent, AcceptResignationOnApproval>();
         services.AddGggsEventConsumer<WorkflowRejectedIntegrationEvent, CloseResignationOnRejection>();
         services.AddGggsEventConsumer<WorkflowSentBackIntegrationEvent, CloseResignationOnSendBack>();
+        services.AddGggsEventConsumer<PayrollRunFinalizedIntegrationEvent, NoteSettlementPayslip>();
+        services.AddGggsEventConsumer<PayrollRunPaidIntegrationEvent, MarkSettlementPaidOnPayroll>();
+        services.AddScoped<SettlementDeadlines>();
+        services.AddScoped<SettlementDeadlinesJob>();
         services.AddScoped<SeparationSweep>();
         services.AddScoped<SeparationSweepJob>();
         services.AddScoped<OffboardingReminders>();
@@ -298,6 +303,43 @@ internal sealed class ExitProposalsJob(InvoluntaryService involuntary, ILogger<E
     }
 }
 
+internal sealed class NoteSettlementPayslip(SeparationService separation) : IIntegrationEventConsumer<PayrollRunFinalizedIntegrationEvent>
+{
+    public Task HandleAsync(PayrollRunFinalizedIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
+        => integrationEvent is { Kind: PayrollRunKind.FullAndFinal, SourceId: { } settlementId }
+            ? separation.SettlementPayslipIssuedAsync(settlementId, cancellationToken)
+            : Task.CompletedTask;
+}
+
+internal sealed class MarkSettlementPaidOnPayroll(SeparationService separation) : IIntegrationEventConsumer<PayrollRunPaidIntegrationEvent>
+{
+    public Task HandleAsync(PayrollRunPaidIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
+        => integrationEvent is { Kind: PayrollRunKind.FullAndFinal, SourceId: { } settlementId }
+            ? separation.SettlementPaidByPayrollAsync(settlementId, integrationEvent.PaidOn, integrationEvent.Reference, cancellationToken)
+            : Task.CompletedTask;
+}
+
+/// <summary>Fans the daily settlement-deadline check out to every tenant.</summary>
+[PlatformJob("Settlement deadlines: fans out one overdue full-and-final check per active tenant.")]
+internal sealed class SettlementDeadlines(ITenantFanOutScheduler fanOut)
+{
+    public const string RecurringJobName = "separation-settlement-deadlines";
+
+    public Task RunAsync() => fanOut.FanOutAsync<SettlementDeadlinesJob>((job, tenantId) => job.RunAsync(tenantId));
+}
+
+internal sealed class SettlementDeadlinesJob(SeparationService separation, ILogger<SettlementDeadlinesJob> logger)
+{
+    public async Task RunAsync(Guid tenantId)
+    {
+        int overdue = await separation.SettlementDeadlinesAsync(CancellationToken.None);
+        if (overdue > 0)
+        {
+            logger.LogInformation("Settlement deadlines for tenant {TenantId}: {Overdue} settlement(s) past their deadline reported.", tenantId, overdue);
+        }
+    }
+}
+
 internal sealed class SeparationJobRegistration(IRecurringJobManager recurringJobs) : IHostedService
 {
     public Task StartAsync(CancellationToken cancellationToken)
@@ -306,6 +348,7 @@ internal sealed class SeparationJobRegistration(IRecurringJobManager recurringJo
         recurringJobs.AddOrUpdate<OffboardingReminders>(OffboardingReminders.RecurringJobName, reminders => reminders.RunAsync(), "30 3 * * *");
         recurringJobs.AddOrUpdate<AbsenceDetection>(AbsenceDetection.RecurringJobName, detection => detection.RunAsync(), "0 2 * * *");
         recurringJobs.AddOrUpdate<ExitProposals>(ExitProposals.RecurringJobName, proposals => proposals.RunAsync(), "30 2 * * *");
+        recurringJobs.AddOrUpdate<SettlementDeadlines>(SettlementDeadlines.RecurringJobName, deadlines => deadlines.RunAsync(), "0 4 * * *");
         return Task.CompletedTask;
     }
 

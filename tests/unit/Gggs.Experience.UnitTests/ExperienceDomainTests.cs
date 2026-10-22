@@ -248,10 +248,11 @@ public sealed class SeparationTests
     }
 
     [Theory]
-    [InlineData("2020-01-01", "2024-12-31", false, 0)]
+    [InlineData("2020-01-01", "2024-06-30", false, 0)]
+    [InlineData("2020-01-01", "2024-12-31", true, 144231)]
     [InlineData("2020-01-01", "2025-01-01", true, 144231)]
     [InlineData("2020-01-01", "2025-08-01", true, 173077)]
-    public void Gratuity_counts_a_part_year_over_six_months_and_needs_five_years(string joined, string lastDay, bool eligible, decimal amount)
+    public void Gratuity_counts_a_part_year_over_six_months_and_needs_five_years_or_four_and_240_days(string joined, string lastDay, bool eligible, decimal amount)
     {
         (decimal _, decimal paid, bool qualifies) = SettlementMath.Gratuity(50000m, DateOnly.Parse(joined, System.Globalization.CultureInfo.InvariantCulture), DateOnly.Parse(lastDay, System.Globalization.CultureInfo.InvariantCulture), 15, 26, 5, 2000000);
         qualifies.ShouldBe(eligible);

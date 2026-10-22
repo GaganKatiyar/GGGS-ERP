@@ -178,6 +178,8 @@ internal static class PayrollEndpoints
             .WithName("PayrollProvidentFundReturn").RequirePermission(Permissions.Payroll.ReportView);
         group.MapGet("/runs/{id:guid}/reports/esi", async (Guid id, PayrollReports reports, CancellationToken ct) => File(await reports.StateInsuranceReturnAsync(id, ct)))
             .WithName("PayrollStateInsuranceReturn").RequirePermission(Permissions.Payroll.ReportView);
+        group.MapGet("/runs/{id:guid}/reports/epf-exits", async (Guid id, PayrollReports reports, CancellationToken ct) => File(await reports.ProvidentFundExitsAsync(id, ct)))
+            .WithName("PayrollProvidentFundExits").RequirePermission(Permissions.Payroll.ReportView);
         group.MapGet("/runs/{id:guid}/reports/professional-tax", async (Guid id, PayrollReports reports, CancellationToken ct) => File(await reports.ProfessionalTaxReturnAsync(id, ct)))
             .WithName("PayrollProfessionalTaxReturn").RequirePermission(Permissions.Payroll.ReportView);
         group.MapGet("/runs/{id:guid}/reports/journal", async (Guid id, PayrollReports reports, CancellationToken ct) => File(await reports.JournalAsync(id, ct)))

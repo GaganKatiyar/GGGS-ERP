@@ -4,6 +4,7 @@ using System.Text;
 using Gggs.BuildingBlocks.Security;
 using Gggs.Data;
 using Gggs.Modules.Insight.Contracts;
+using Gggs.Modules.Payroll.Contracts;
 using Gggs.Modules.Payroll.Domain;
 using Gggs.Modules.Payroll.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -55,7 +56,7 @@ internal sealed class PayrollRunFinder(AppDbContext dbContext, IPermissionProvid
         }
 
         PayrollRun? run = await dbContext.PayrollRuns.AsNoTracking()
-            .Where(row => row.Period == month && (row.Status == RunStatus.Finalized || row.Status == RunStatus.Paid))
+            .Where(row => row.Kind == PayrollRunKind.Regular && row.Period == month && (row.Status == RunStatus.Finalized || row.Status == RunStatus.Paid))
             .FirstOrDefaultAsync(cancellationToken);
         return run is null ? (null, $"There is no finalized payroll for {month:MMMM yyyy}.") : (run, null);
     }

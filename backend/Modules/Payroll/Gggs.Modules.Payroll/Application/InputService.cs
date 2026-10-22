@@ -205,7 +205,7 @@ internal sealed class InputService(
     // ----- Internals ----------------------------------------------------------------------------
 
     private async Task<bool> IsLockedAsync(DateOnly month, CancellationToken cancellationToken)
-        => await dbContext.PayrollRuns.AnyAsync(run => run.Period == month && (run.Status == RunStatus.Finalized || run.Status == RunStatus.Paid), cancellationToken);
+        => await dbContext.PayrollRuns.AnyAsync(run => run.Kind == PayrollRunKind.Regular && run.Period == month && (run.Status == RunStatus.Finalized || run.Status == RunStatus.Paid), cancellationToken);
 
     private async Task EnsureOpenAsync(DateOnly month, CancellationToken cancellationToken)
     {

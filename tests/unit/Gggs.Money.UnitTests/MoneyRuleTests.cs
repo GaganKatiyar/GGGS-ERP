@@ -3,6 +3,7 @@ using Gggs.BuildingBlocks.Domain.Exceptions;
 using Gggs.Modules.Compensation.Domain;
 using Gggs.Modules.Compliance.Contracts;
 using Gggs.Modules.Compliance.Domain;
+using Gggs.Modules.Payroll.Contracts;
 using Gggs.Modules.Payroll.Domain;
 using Gggs.Modules.Project.Contracts;
 using Gggs.Modules.ProjectFinancials.Domain;
@@ -207,6 +208,36 @@ public sealed class PayCalculatorTests
             segments, lop, [], [], new RulesInForce(null, null, null, null, null, null), 30, "IN-KA", null, TaxRegime.New, YearToDate.None, true, true, true);
 
     private static decimal Basic(PayResult result) => result.Lines.Single(line => line.Code == "BASIC").Amount;
+
+    private static ComponentRule Terminal(string code, PayrollInputKind kind, bool taxable, ComponentKind componentKind = ComponentKind.Earning)
+        => new(Guid.NewGuid(), code, code, componentKind, CalculationType.Input, null, null, null, kind, taxable, false, false, false, false, true, 45);
+
+    [Fact]
+    public void A_settlement_with_no_salary_left_pays_its_lines_and_recoveries_only()
+    {
+        PayContext context = Context([]) with
+        {
+            Inputs =
+            [
+                new InputLine(Terminal("GRATUITY_PAY", PayrollInputKind.Gratuity, taxable: false), 120_000m, "Gratuity"),
+                new InputLine(Terminal("NOTICE_PAY", PayrollInputKind.NoticePay, taxable: true), 30_000m, "Pay in lieu of notice"),
+                new InputLine(Terminal("RECOVERY", PayrollInputKind.Deduction, taxable: false, ComponentKind.Deduction), 5_000m, "Laptop not returned"),
+            ],
+            InputsOnly = true,
+        };
+
+        PayResult result = PayCalculator.Calculate(context);
+        result.Status.ShouldBe(ItemStatus.Ok);
+        result.Gross.ShouldBe(150_000m);
+        result.TaxableEarnings.ShouldBe(30_000m, "gratuity within its limit is tax-free");
+        result.Deductions.ShouldBe(5_000m, "no income-tax rule in force here, so recoveries only");
+        result.Net.ShouldBe(145_000m);
+        result.Lines.ShouldNotContain(line => line.Code == "BASIC");
+    }
+
+    [Fact]
+    public void Without_the_settlement_flag_a_month_with_no_salary_is_an_error()
+        => PayCalculator.Calculate(Context([])).Status.ShouldBe(ItemStatus.Error);
 
     [Fact]
     public void JoiningMidMonth_PaysTheDaysEmployed()

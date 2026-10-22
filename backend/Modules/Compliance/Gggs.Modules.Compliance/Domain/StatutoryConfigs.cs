@@ -25,6 +25,8 @@ public static class StatutoryConfigValidator
                 StatutoryRuleType.IncomeTax => Write(Check(Read<IncomeTaxConfig>(json))),
                 StatutoryRuleType.Gratuity => Write(Check(Read<GratuityConfig>(json))),
                 StatutoryRuleType.LabourWelfareFund => Write(Check(Read<LabourWelfareConfig>(json))),
+                StatutoryRuleType.Bonus => Write(Check(Read<BonusConfig>(json))),
+                StatutoryRuleType.TerminalExemption => Write(Check(Read<TerminalExemptionConfig>(json))),
                 _ => throw Invalid("Unknown rule type."),
             };
         }
@@ -138,6 +140,34 @@ public static class StatutoryConfigValidator
         return config with { Months = [.. config.Months.Distinct().Order()] };
     }
 
+    private static BonusConfig Check(BonusConfig config)
+    {
+        Positive(config.EligibilityWageCeiling, "eligibility wage ceiling");
+        Positive(config.CalculationWageCeiling, "calculation wage ceiling");
+        Rates(config.MinimumPercent, config.MaximumPercent, config.PayablePercent);
+        if (config.MinimumPercent > config.MaximumPercent || config.PayablePercent < config.MinimumPercent || config.PayablePercent > config.MaximumPercent)
+        {
+            throw Invalid("The payable rate must lie between the minimum and the maximum.");
+        }
+
+        if (config.MinimumWorkingDays is < 0 or > 366)
+        {
+            throw Invalid("The minimum working days run 0 to 366.");
+        }
+
+        return config;
+    }
+
+    private static TerminalExemptionConfig Check(TerminalExemptionConfig config)
+    {
+        if (config.Gratuity < 0 || config.LeaveEncashment < 0 || config.RetrenchmentCompensation < 0)
+        {
+            throw Invalid("Exemption limits cannot be negative.");
+        }
+
+        return config;
+    }
+
     private static void Steps(IEnumerable<decimal> froms, string what)
     {
         List<decimal> list = [.. froms];
@@ -230,6 +260,12 @@ public static class IndiaStatutoryDefaults
         new("IN-GRATUITY", "Gratuity", StatutoryRuleType.Gratuity, null, new DateOnly(2018, 3, 29),
             new GratuityConfig(15m, 26m, 5m, 2000000m, 4.81m),
             "Employees with five or more years of continuous service; accrued monthly at the accrual rate of basic."),
+        new("IN-BONUS", "Statutory bonus", StatutoryRuleType.Bonus, null, new DateOnly(2015, 4, 1),
+            new BonusConfig(21000m, 7000m, 8.33m, 20m, 8.33m, 30),
+            "Employees drawing basic and DA of up to 21,000 a month who worked at least 30 days in the financial year; paid pro rata at exit."),
+        new("IN-TERMINAL-EXEMPT", "Terminal benefit exemptions", StatutoryRuleType.TerminalExemption, null, new DateOnly(2023, 4, 1),
+            new TerminalExemptionConfig(2000000m, 2500000m, 500000m),
+            "Tax-free limits on gratuity (s.10(10)), leave encashment (s.10(10AA)) and retrenchment compensation (s.10(10B)); the excess is taxed with the final salary."),
         new("IN-KA-LWF", "Labour welfare fund - Karnataka", StatutoryRuleType.LabourWelfareFund, "IN-KA", new DateOnly(2021, 1, 1),
             new LabourWelfareConfig(50m, 100m, [12]),
             "Employees working in Karnataka; deducted once a year with December's salary."),

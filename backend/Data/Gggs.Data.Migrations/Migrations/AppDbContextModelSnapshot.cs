@@ -8614,6 +8614,9 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<int>("EmployeeCount")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("EmployeeId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<decimal>("EmployerCost")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
@@ -8636,6 +8639,12 @@ namespace Gggs.Data.Migrations.Migrations
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
+
+                    b.Property<byte>("Kind")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateOnly?>("LastWorkingDay")
+                        .HasColumnType("date");
 
                     b.Property<Guid?>("LegalEntityId")
                         .HasColumnType("uniqueidentifier");
@@ -8675,6 +8684,12 @@ namespace Gggs.Data.Migrations.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
+                    b.Property<bool>("SalaryExcluded")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("SourceId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<byte>("Status")
                         .HasColumnType("tinyint");
 
@@ -8699,6 +8714,9 @@ namespace Gggs.Data.Migrations.Migrations
 
                     b.HasIndex("TenantId", "Period")
                         .HasDatabaseName("IX_PayrollRun_TenantId_Period");
+
+                    b.HasIndex("TenantId", "SourceId")
+                        .HasDatabaseName("IX_PayrollRun_TenantId_Source");
 
                     b.ToTable("PayrollRun", "pay");
 
@@ -16204,6 +16222,9 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("nvarchar(40)");
 
+                    b.Property<DateOnly?>("SettlementOverdueNotifiedOn")
+                        .HasColumnType("date");
+
                     b.Property<bool>("ShortfallWaived")
                         .HasColumnType("bit");
 
@@ -16395,6 +16416,9 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<string>("PaymentReference")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid?>("PayrollRunId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()

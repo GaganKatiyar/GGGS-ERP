@@ -55,7 +55,10 @@ public sealed record CaseItem(
     string? NomineeName = null,
     string? NomineeRelation = null,
     string? NomineeContact = null,
-    bool AwaitingConfirmation = false);
+    bool AwaitingConfirmation = false,
+    DateOnly? SettlementDueOn = null,
+    DateOnly? GratuityDueOn = null,
+    bool SettlementOverdue = false);
 
 public sealed record ClearanceView(Guid Id, ClearanceArea Area, string Title, Guid? OwnerEmployeeId, string? OwnerName, ClearanceStatus Status, decimal RecoveryAmount, string? Note, DateOnly? ClearedOn, bool CanResolve);
 
@@ -63,7 +66,20 @@ public sealed record InterviewView(string PrimaryReason, int OverallRating, bool
 
 public sealed record SettlementLineView(Guid Id, string Code, string Label, bool IsDeduction, decimal Amount, bool IsManual, string? Basis);
 
-public sealed record SettlementView(Guid Id, SettlementStatus Status, decimal Earnings, decimal Deductions, decimal Net, DateOnly? PaidOn, string? PaymentReference, IReadOnlyList<SettlementLineView> Lines);
+public sealed record SettlementView(
+    Guid Id,
+    SettlementStatus Status,
+    decimal Earnings,
+    decimal Deductions,
+    decimal Net,
+    DateOnly? PaidOn,
+    string? PaymentReference,
+    IReadOnlyList<SettlementLineView> Lines,
+    Guid? PayrollRunId = null,
+    string? PayrollStatus = null,
+    decimal? PayrollNet = null,
+    bool? PayrollSalaryIncluded = null,
+    IReadOnlyList<string>? PayrollIssues = null);
 
 public sealed record CaseEventView(string Kind, string Title, string? Note, string? ActorName, DateTime OccurredAt);
 
@@ -112,7 +128,8 @@ public sealed record SeparationDashboard(
     int SettlementsDue,
     double AttritionLast12Months,
     IReadOnlyDictionary<string, int> ByType,
-    IReadOnlyDictionary<string, int> TopExitReasons);
+    IReadOnlyDictionary<string, int> TopExitReasons,
+    int SettlementsOverdue = 0);
 
 /// <summary>
 /// Separation and full and final (spec: separation): resignation through the workflow or an exit
@@ -137,7 +154,9 @@ internal sealed class SeparationService(
     ITenantClock clock,
     TimeProvider timeProvider,
     SeparationPolicyService policy,
-    OffboardingService offboarding)
+    OffboardingService offboarding,
+    ILeaveCalendar calendar,
+    IFinalSettlementPayroll payrollSettlements)
 {
     public const string SubjectType = "separation.resignation";
 
@@ -521,11 +540,19 @@ internal sealed class SeparationService(
             Add("SALARY", $"Salary for {separation.LastWorkingDay:MMMM yyyy}", false, SettlementMath.LastMonthSalary(salary.MonthlyGross, separation.LastWorkingDay),
                 $"{salary.MonthlyGross.ToString("N2", CultureInfo.InvariantCulture)} x {separation.LastWorkingDay.Day}/{DateTime.DaysInMonth(separation.LastWorkingDay.Year, separation.LastWorkingDay.Month)} days");
 
-            LeaveBalanceInfo? earned = (await leave.BalancesAsync(separation.EmployeeId, cancellationToken)).FirstOrDefault(balance => balance.Code is "EL" or "PL");
-            if (earned is { Available: > 0 })
+            // Only the leave types the policy encashes, up to its cap; tax-free up to the s.10(10AA) limit.
+            SeparationPolicy terms = await policy.PolicyAsync(cancellationToken);
+            TerminalExemptionConfig limits = await ExemptionsAsync(separation.LastWorkingDay, cancellationToken);
+            HashSet<string> encashable = [.. terms.EncashableLeaveTypes];
+            List<LeaveBalanceInfo> earned = [.. (await leave.BalancesAsync(separation.EmployeeId, cancellationToken)).Where(balance => encashable.Contains(balance.Code) && balance.Available > 0)];
+            decimal available = earned.Sum(balance => balance.Available);
+            decimal encashed = terms.EncashmentCapDays is { } cap ? Math.Min(available, cap) : available;
+            if (encashed > 0)
             {
-                Add("LEAVE_ENCASH", $"{earned.Name} encashment", false, SettlementMath.LeaveEncashment(salary.MonthlyBasic, earned.Available),
-                    $"{earned.Available.ToString("0.##", CultureInfo.InvariantCulture)} days x basic/26");
+                Add("LEAVE_ENCASH", earned.Count == 1 ? $"{earned[0].Name} encashment" : "Leave encashment", false, SettlementMath.LeaveEncashment(salary.MonthlyBasic, encashed),
+                    $"{encashed.ToString("0.##", CultureInfo.InvariantCulture)} days ({string.Join(", ", earned.Select(balance => balance.Code))}) x basic/26"
+                    + (encashed < available ? $", capped at {terms.EncashmentCapDays} days" : string.Empty)
+                    + $"; tax-free up to {Rupees(limits.LeaveEncashment)}");
             }
 
             if (person.JoiningDate is { } joined && await rules.ResolveAsync(StatutoryRuleType.Gratuity, null, separation.LastWorkingDay, cancellationToken) is { } rule)
@@ -537,7 +564,19 @@ internal sealed class SeparationService(
                 if (eligible)
                 {
                     Add("GRATUITY", separation.Type == SeparationType.Death ? $"Gratuity (to {separation.NomineeName ?? "the nominee"})" : "Gratuity", false, amount,
-                        $"{years.ToString("0.##", CultureInfo.InvariantCulture)} years of service, {config.DaysPerYear}/{config.DivisorDays} days' basic per year{(separation.Type == SeparationType.Death ? "; no minimum service on death" : string.Empty)}");
+                        $"{years.ToString("0.##", CultureInfo.InvariantCulture)} years of service, {config.DaysPerYear}/{config.DivisorDays} days' basic per year{(separation.Type == SeparationType.Death ? "; no minimum service on death" : years < config.MinimumYears ? "; 240 days worked in the final year count as a year" : string.Empty)}; tax-free up to {Rupees(limits.Gratuity)}");
+                }
+            }
+
+            if (person.JoiningDate is { } since2 && await rules.ResolveAsync(StatutoryRuleType.Bonus, null, separation.LastWorkingDay, cancellationToken) is { } bonusRule)
+            {
+                BonusConfig bonus = bonusRule.Read<BonusConfig>();
+                (decimal months, decimal amount, bool eligible) = SettlementMath.StatutoryBonus(
+                    salary.MonthlyBasic, since2, separation.LastWorkingDay, bonus.EligibilityWageCeiling, bonus.CalculationWageCeiling, bonus.PayablePercent, bonus.MinimumWorkingDays);
+                if (eligible)
+                {
+                    Add("BONUS", "Statutory bonus (pro rata)", false, amount,
+                        $"{months.ToString("0.##", CultureInfo.InvariantCulture)} months x {bonus.PayablePercent.ToString("0.##", CultureInfo.InvariantCulture)}% of {Rupees(Math.Min(salary.MonthlyBasic, bonus.CalculationWageCeiling))} a month (Payment of Bonus Act)");
                 }
             }
 
@@ -546,7 +585,7 @@ internal sealed class SeparationService(
                 (int years, decimal amount, bool eligible) = SettlementMath.Retrenchment(salary.MonthlyBasic, since, separation.LastWorkingDay);
                 if (eligible)
                 {
-                    Add("RETRENCHMENT", "Retrenchment compensation", false, amount, $"{years} year(s) x 15 days' basic (basic/26), IR Code s.70");
+                    Add("RETRENCHMENT", "Retrenchment compensation", false, amount, $"{years} year(s) x 15 days' basic (basic/26), IR Code s.70; tax-free up to {Rupees(limits.RetrenchmentCompensation)}");
                 }
             }
 
@@ -605,17 +644,90 @@ internal sealed class SeparationService(
                 }
 
                 settlement.Approve();
+                Note(separation, "settlement-approved", "Settlement approved", $"Net {Rupees(settlement.Net)}.");
+                await dbContext.SaveChangesAsync(cancellationToken);
+                await SendToPayrollAsync(separation, settlement, cancellationToken);
                 break;
             case "reopen":
+                // Its payroll run goes with it - unless that is already finalized, which refuses.
+                await payrollSettlements.CancelAsync(settlement.Id, cancellationToken);
                 settlement.Reopen();
+                Note(separation, "settlement-reopened", "Settlement reopened", null);
                 break;
             default:
+                if (settlement.PayrollRunId is not null)
+                {
+                    throw new DomainRuleException("SETTLEMENT_IN_PAYROLL", "This settlement is paid through payroll; it is marked paid when its payroll run is paid.");
+                }
+
                 settlement.Pay(reference, await clock.TodayAsync(cancellationToken));
+                Note(separation, "settlement-paid", "Settlement paid", reference);
                 break;
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return await ViewAsync(separation, includeSettlement: true, cancellationToken);
+    }
+
+    /// <summary>A full and final payroll run was finalized: the leaver's payslip is out.</summary>
+    public async Task SettlementPayslipIssuedAsync(Guid settlementId, CancellationToken cancellationToken)
+    {
+        if (await dbContext.Settlements.AsNoTracking().FirstOrDefaultAsync(row => row.Id == settlementId, cancellationToken) is { } settlement)
+        {
+            dbContext.CaseEvents.Add(CaseEvent.Record(settlement.CaseId, "settlement-payslip", "Full and final payslip issued", "The off-cycle payroll run was finalized; the payslip is in My payslips.", null, timeProvider.GetUtcNow().UtcDateTime));
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    /// <summary>A full and final payroll run was paid: so is the settlement.</summary>
+    public async Task SettlementPaidByPayrollAsync(Guid settlementId, DateOnly paidOn, string? reference, CancellationToken cancellationToken)
+    {
+        Settlement? settlement = await dbContext.Settlements.FirstOrDefaultAsync(row => row.Id == settlementId, cancellationToken);
+        if (settlement?.Status != SettlementStatus.Approved)
+        {
+            return;
+        }
+
+        settlement.Pay(reference ?? "Payroll", paidOn);
+        dbContext.CaseEvents.Add(CaseEvent.Record(settlement.CaseId, "settlement-paid", "Settlement paid through payroll", reference, null, timeProvider.GetUtcNow().UtcDateTime));
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Tells HR about settlements past their legal deadline (two working days after the last day, by
+    /// policy), once each. Returns how many were reported.
+    /// </summary>
+    public async Task<int> SettlementDeadlinesAsync(CancellationToken cancellationToken)
+    {
+        DateOnly today = await clock.TodayAsync(cancellationToken);
+        DateOnly since = today.AddDays(-120);
+        List<SeparationCase> candidates = await dbContext.SeparationCases
+            .Where(row => (row.Status == CaseStatus.Approved || row.Status == CaseStatus.Completed) && row.LastWorkingDay >= since && row.LastWorkingDay < today && row.SettlementOverdueNotifiedOn == null)
+            .ToListAsync(cancellationToken);
+        if (candidates.Count == 0)
+        {
+            return 0;
+        }
+
+        Dictionary<Guid, CaseItem> items = (await ItemsAsync(candidates, cancellationToken)).ToDictionary(item => item.Id);
+        List<SeparationCase> overdue = [.. candidates.Where(row => items[row.Id].SettlementOverdue)];
+        Dictionary<Guid, EmployeeSummary> people = (await employees.GetManyAsync(overdue.Select(row => row.EmployeeId), cancellationToken)).ToDictionary(person => person.Id);
+        foreach (SeparationCase separation in overdue)
+        {
+            separation.SettlementOverdueNotified(today);
+            EmployeeSummary? person = people.GetValueOrDefault(separation.EmployeeId);
+            if (person?.HrbpEmployeeId is { } hrbp)
+            {
+                await notifier.NotifyAsync(
+                    new NotificationRequest(NotificationTemplates.SettlementOverdue, [new NotificationRecipient(hrbp)],
+                        new Dictionary<string, string> { ["employeeName"] = person.DisplayName, ["dueOn"] = Format(items[separation.Id].SettlementDueOn!.Value) },
+                        $"/separation/cases/{separation.Id}"),
+                    cancellationToken);
+            }
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return overdue.Count;
     }
 
     /// <summary>Issues the relieving letter (and an experience letter unless the person absconded or was terminated).</summary>
@@ -699,7 +811,9 @@ internal sealed class SeparationService(
             cases.Count(row => row.Status == CaseStatus.Completed && !paid.Contains(row.Id)),
             headcount + exits == 0 ? 0 : Math.Round(100.0 * exits / (headcount + (exits / 2.0)), 1),
             cases.Where(row => row.LastWorkingDay >= yearAgo).GroupBy(row => Label(row.Type)).ToDictionary(group => group.Key, group => group.Count()),
-            reasons.GroupBy(reason => reason).OrderByDescending(group => group.Count()).Take(6).ToDictionary(group => group.Key, group => group.Count()));
+            reasons.GroupBy(reason => reason).OrderByDescending(group => group.Count()).Take(6).ToDictionary(group => group.Key, group => group.Count()),
+            (await ItemsAsync([.. cases.Where(row => row.Status is CaseStatus.Approved or CaseStatus.Completed && row.LastWorkingDay >= today.AddDays(-120) && row.LastWorkingDay < today)], cancellationToken))
+                .Count(item => item.SettlementOverdue));
     }
 
     // ----- Internals ----------------------------------------------------------------------------
@@ -712,6 +826,79 @@ internal sealed class SeparationService(
     };
 
     private static string Format(DateOnly day) => day.ToString("d MMMM yyyy", CultureInfo.InvariantCulture);
+
+    private static string Rupees(decimal amount) => "Rs " + amount.ToString("N0", CultureInfo.GetCultureInfo("en-IN"));
+
+    /// <summary>The tax-free limits on terminal benefits in force on the day (defaults if no rule is published).</summary>
+    private async Task<TerminalExemptionConfig> ExemptionsAsync(DateOnly day, CancellationToken cancellationToken)
+        => (await rules.ResolveAsync(StatutoryRuleType.TerminalExemption, null, day, cancellationToken))?.Read<TerminalExemptionConfig>()
+            ?? new TerminalExemptionConfig(2_000_000m, 2_500_000m, 500_000m);
+
+    /// <summary>
+    /// Sends an approved settlement to payroll as an off-cycle run: the exit month's salary is worked
+    /// out there (with PF, ESI, PT and TDS), so only the other lines go across - terminal benefits split
+    /// at their tax-free limits, other earnings as taxable, and every recovery. Someone without a
+    /// payroll salary, or who has died (paid to the nominee), is paid outside payroll by reference.
+    /// </summary>
+    private async Task SendToPayrollAsync(SeparationCase separation, Settlement settlement, CancellationToken cancellationToken)
+    {
+        if (separation.Type == SeparationType.Death
+            || !(await salaries.CurrentAsync([separation.EmployeeId], separation.LastWorkingDay, cancellationToken)).ContainsKey(separation.EmployeeId))
+        {
+            return;
+        }
+
+        TerminalExemptionConfig limits = await ExemptionsAsync(separation.LastWorkingDay, cancellationToken);
+        List<FinalSettlementLine> lines = [];
+        void Split(PayrollInputKind kind, decimal amount, decimal limit, string label)
+        {
+            (decimal exempt, decimal taxable) = SettlementMath.SplitExempt(amount, limit);
+            if (exempt > 0)
+            {
+                lines.Add(new FinalSettlementLine(kind, exempt, label));
+            }
+
+            if (taxable > 0)
+            {
+                lines.Add(new FinalSettlementLine(PayrollInputKind.TerminalTaxable, taxable, $"{label} above the tax-free limit"));
+            }
+        }
+
+        foreach (SettlementLine line in await dbContext.SettlementLines.AsNoTracking().Where(row => row.SettlementId == settlement.Id).ToListAsync(cancellationToken))
+        {
+            switch (line.Code)
+            {
+                case "SALARY":
+                    break;
+                case var _ when line.IsDeduction:
+                    lines.Add(new FinalSettlementLine(PayrollInputKind.Deduction, line.Amount, line.Label));
+                    break;
+                case "LEAVE_ENCASH":
+                    Split(PayrollInputKind.LeaveEncashment, line.Amount, limits.LeaveEncashment, line.Label);
+                    break;
+                case "GRATUITY":
+                    Split(PayrollInputKind.Gratuity, line.Amount, limits.Gratuity, "Gratuity");
+                    break;
+                case "RETRENCHMENT":
+                    Split(PayrollInputKind.RetrenchmentCompensation, line.Amount, limits.RetrenchmentCompensation, line.Label);
+                    break;
+                case "NOTICE_PAY":
+                    lines.Add(new FinalSettlementLine(PayrollInputKind.NoticePay, line.Amount, line.Label));
+                    break;
+                case "BONUS":
+                    lines.Add(new FinalSettlementLine(PayrollInputKind.Bonus, line.Amount, line.Label));
+                    break;
+                default:
+                    lines.Add(new FinalSettlementLine(PayrollInputKind.TerminalTaxable, line.Amount, line.Label));
+                    break;
+            }
+        }
+
+        FinalSettlementRun run = await payrollSettlements.SubmitAsync(new FinalSettlementRequest(separation.EmployeeId, settlement.Id, separation.LastWorkingDay, lines), cancellationToken);
+        settlement.SentToPayroll(run.RunId);
+        Note(separation, "settlement-payroll", "Sent to payroll", $"Off-cycle run for {run.Period:MMMM yyyy}, net {Rupees(run.Net)}{(run.SalaryIncluded ? ", with the exit month's salary" : string.Empty)}.");
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 
     private static AlumniItem Alumni(AlumniProfile row)
         => new(row.Id, row.EmployeeId, row.Name, row.Email, row.LastDesignation, row.ExitDate, row.SeparationType, row.EligibleForRehire, row.OptedIn, row.Notes);
@@ -871,8 +1058,10 @@ internal sealed class SeparationService(
         if (includeSettlement && await dbContext.Settlements.AsNoTracking().FirstOrDefaultAsync(row => row.CaseId == separation.Id, cancellationToken) is { } row)
         {
             List<SettlementLine> lines = await dbContext.SettlementLines.AsNoTracking().Where(line => line.SettlementId == row.Id).ToListAsync(cancellationToken);
+            FinalSettlementRun? payroll = row.PayrollRunId is null ? null : await payrollSettlements.FindAsync(row.Id, cancellationToken);
             settlement = new SettlementView(row.Id, row.Status, row.Earnings, row.Deductions, row.Net, row.PaidOn, row.PaymentReference,
-                [.. lines.OrderBy(line => line.IsDeduction).ThenBy(line => line.Code, StringComparer.Ordinal).Select(line => new SettlementLineView(line.Id, line.Code, line.Label, line.IsDeduction, line.Amount, line.IsManual, line.Basis))]);
+                [.. lines.OrderBy(line => line.IsDeduction).ThenBy(line => line.Code, StringComparer.Ordinal).Select(line => new SettlementLineView(line.Id, line.Code, line.Label, line.IsDeduction, line.Amount, line.IsManual, line.Basis))],
+                payroll?.RunId ?? row.PayrollRunId, payroll?.Status, payroll?.Net, payroll?.SalaryIncluded, payroll?.Issues);
         }
 
         List<CaseEvent> events = await dbContext.CaseEvents.AsNoTracking().Where(row => row.CaseId == separation.Id).OrderBy(row => row.OccurredAt).ToListAsync(cancellationToken);
@@ -896,8 +1085,21 @@ internal sealed class SeparationService(
         HashSet<Guid> interviewed = [.. await dbContext.ExitInterviews.AsNoTracking().Where(row => ids.Contains(row.CaseId)).Select(row => row.CaseId).ToListAsync(cancellationToken)];
         Dictionary<Guid, Settlement> settlements = await dbContext.Settlements.AsNoTracking().Where(row => ids.Contains(row.CaseId)).ToDictionaryAsync(row => row.CaseId, cancellationToken);
         Dictionary<Guid, EmployeeSummary> people = (await employees.GetManyAsync(cases.Select(row => row.EmployeeId).Distinct(), cancellationToken)).ToDictionary(person => person.Id);
+
+        // Settlement due two working days after the last day (by policy), gratuity thirty days after.
+        List<SeparationCase> settling = [.. cases.Where(row => row.Status is CaseStatus.Approved or CaseStatus.Completed)];
+        SeparationPolicy terms = await policy.PolicyAsync(cancellationToken);
+        IReadOnlyDictionary<Guid, IReadOnlyList<HolidayEntry>> holidays = settling.Count == 0
+            ? new Dictionary<Guid, IReadOnlyList<HolidayEntry>>()
+            : await calendar.GetHolidaysAsync([.. settling.Select(row => row.EmployeeId).Distinct()], settling.Min(row => row.LastWorkingDay), settling.Max(row => row.LastWorkingDay).AddDays(30), cancellationToken);
+        DateOnly today = await clock.TodayAsync(cancellationToken);
+        DateOnly? DueOn(SeparationCase row) => row.Status is CaseStatus.Approved or CaseStatus.Completed
+            ? SettlementMath.WorkingDaysAfter(row.LastWorkingDay, terms.SettlementDueWorkingDays,
+                holidays.TryGetValue(row.EmployeeId, out IReadOnlyList<HolidayEntry>? days) ? days.Where(day => !day.IsOptional).Select(day => day.Date).ToHashSet() : [])
+            : null;
         return [.. cases.Select(row =>
         {
+            DateOnly? due = DueOn(row);
             EmployeeSummary? person = people.GetValueOrDefault(row.EmployeeId);
             Settlement? settlement = settlements.GetValueOrDefault(row.Id);
             return new CaseItem(
@@ -906,7 +1108,8 @@ internal sealed class SeparationService(
                 clearance.TryGetValue(row.Id, out var counts) ? counts.Pending : 0, counts?.Total ?? 0, interviewed.Contains(row.Id),
                 settlement?.Status, settlement?.Net, row.RelievingLetterId, row.ExperienceLetterId,
                 row.ReasonCode, SeparationReasons.LabelOf(row.ReasonCode), row.SecondaryReasonCode, row.Regretted, row.RetentionNote,
-                row.RequestedReleaseDay, row.ReleaseWithBuyout, row.GardenLeave, row.PayInLieuDays, row.NomineeName, row.NomineeRelation, row.NomineeContact, row.AwaitingConfirmation);
+                row.RequestedReleaseDay, row.ReleaseWithBuyout, row.GardenLeave, row.PayInLieuDays, row.NomineeName, row.NomineeRelation, row.NomineeContact, row.AwaitingConfirmation,
+                due, due is null ? null : row.LastWorkingDay.AddDays(terms.GratuityDueDays), due is { } by && today > by && settlement?.Status != SettlementStatus.Paid);
         })];
     }
 }

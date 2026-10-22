@@ -6,6 +6,7 @@ using Gggs.BuildingBlocks.Security;
 using Gggs.Data;
 using Gggs.Modules.Employee.Contracts;
 using Gggs.Modules.Organization.Contracts;
+using Gggs.Modules.Payroll.Contracts;
 using Gggs.Modules.Payroll.Domain;
 using Gggs.Modules.Payroll.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -129,11 +130,61 @@ internal sealed class PayrollReports(
             DateOnly? exit = people.GetValueOrDefault(item.EmployeeId)?.ExitDate;
             csv.Row([
                 identities.GetValueOrDefault(item.EmployeeId)?.EsicNumber ?? string.Empty, item.EmployeeName, Whole(item.PaidDays), Whole(item.Gross),
-                item.PaidDays > 0 ? "0" : "1", exit is { } left && left <= run.PeriodEnd ? left.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) : string.Empty,
+                EsiReason(item, people.GetValueOrDefault(item.EmployeeId), run), exit is { } left && left <= run.PeriodEnd ? left.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) : string.Empty,
                 Number(Line(StatutoryKeys.StateInsuranceEmployee)), Number(Line(StatutoryKeys.StateInsuranceEmployer))]);
         }
 
         return csv.File($"esi-{run.Period:yyyy-MM}.csv");
+    }
+
+    /// <summary>
+    /// Members who left during the run's month, for marking their exit on the EPFO unified portal:
+    /// UAN, name, date of exit and reason (C cessation, S superannuation, R retirement, D death in service).
+    /// </summary>
+    public async Task<ReportFile> ProvidentFundExitsAsync(Guid runId, CancellationToken cancellationToken)
+    {
+        (PayrollRun run, List<PayrollRunItem> items) = await RunAsync(runId, requireLocked: true, cancellationToken);
+        List<PayrollRunItem> members = [.. items.Where(item => item.IsPayable && (item.ProvidentFund is not null || run.Kind == PayrollRunKind.FullAndFinal))];
+        Dictionary<Guid, EmployeeSummary> people = (await employees.GetManyAsync(members.Select(item => item.EmployeeId), cancellationToken)).ToDictionary(person => person.Id);
+        List<PayrollRunItem> leavers = [.. members.Where(item => people.GetValueOrDefault(item.EmployeeId)?.ExitDate is { } left && left >= run.Period && left <= run.PeriodEnd.AddMonths(1))];
+        IReadOnlyDictionary<Guid, PayrollIdentity> identities = await payrollDetails.GetAsync(leavers.Select(item => item.EmployeeId), reveal: true, cancellationToken);
+
+        var csv = new Csv();
+        csv.Row(["UAN", "Member name", "Date of exit", "Reason of exit"]);
+        foreach (PayrollRunItem item in leavers.OrderBy(item => item.EmployeeCode, StringComparer.Ordinal))
+        {
+            EmployeeSummary person = people[item.EmployeeId];
+            csv.Row([
+                identities.GetValueOrDefault(item.EmployeeId)?.Uan ?? string.Empty, item.EmployeeName.ToUpperInvariant(),
+                person.ExitDate!.Value.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture), EpfExitCode(person.ExitReasonCode)]);
+        }
+
+        return csv.File($"epf-exits-{run.Period:yyyy-MM}.csv");
+    }
+
+    /// <summary>EPFO exit reasons: superannuation, retirement, death in service, else cessation of service.</summary>
+    internal static string EpfExitCode(string? exitReason) => exitReason switch
+    {
+        "RETIREMENT" => "S",
+        "DEATH" => "D",
+        _ => "C",
+    };
+
+    /// <summary>ESIC reason codes for a month with no or few working days: 2 left service, 3 retired, 5 expired, 10 retrenchment.</summary>
+    private static string EsiReason(PayrollRunItem item, EmployeeSummary? person, PayrollRun run)
+    {
+        if (person?.ExitDate is { } left && left <= run.PeriodEnd)
+        {
+            return person.ExitReasonCode switch
+            {
+                "RETIREMENT" => "3",
+                "DEATH" => "5",
+                "RETRENCHMENT" => "10",
+                _ => "2",
+            };
+        }
+
+        return item.PaidDays > 0 ? "0" : "1";
     }
 
     /// <summary>Professional tax deducted, by state and by employee.</summary>
@@ -208,7 +259,7 @@ internal sealed class PayrollReports(
     public async Task<PayrollDashboard> DashboardAsync(CancellationToken cancellationToken)
     {
         DateOnly today = await clock.TodayAsync(cancellationToken);
-        List<PayrollRun> runs = await dbContext.PayrollRuns.AsNoTracking().Where(run => run.Status != RunStatus.Cancelled).OrderByDescending(run => run.Period).Take(24).ToListAsync(cancellationToken);
+        List<PayrollRun> runs = await dbContext.PayrollRuns.AsNoTracking().Where(run => run.Kind == PayrollRunKind.Regular && run.Status != RunStatus.Cancelled).OrderByDescending(run => run.Period).Take(24).ToListAsync(cancellationToken);
         List<PayrollRun> locked = [.. runs.Where(run => run.IsLocked).Take(12).OrderBy(run => run.Period)];
         PayrollRun? last = locked.LastOrDefault();
 
