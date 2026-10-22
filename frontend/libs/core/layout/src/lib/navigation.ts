@@ -351,6 +351,8 @@ export const NAVIGATION: readonly NavItem[] = [
       { label: 'Disciplinary', icon: 'pi pi-file-edit', route: '/separation/disciplinary', permissions: ['separation.termination.manage'], feature: 'Separation' },
       { label: 'Absconding', icon: 'pi pi-user-minus', route: '/separation/absconding', permissions: ['separation.termination.manage'], feature: 'Separation' },
       { label: 'Retrenchment', icon: 'pi pi-users', route: '/separation/retrenchment', permissions: ['separation.termination.manage'], feature: 'Separation' },
+      { label: 'Attrition', icon: 'pi pi-chart-line', route: '/separation/analytics', permissions: ['separation.analytics.view'], feature: 'Separation' },
+      { label: 'Exit survey', icon: 'pi pi-comments', route: '/separation/exit-survey', permissions: ['separation.policy.manage'], feature: 'Separation' },
       { label: 'Separation policy', icon: 'pi pi-sliders-h', route: '/separation/policy', permissions: ['separation.policy.manage'], feature: 'Separation' },
     ],
   },

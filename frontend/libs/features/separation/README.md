@@ -9,3 +9,4 @@ Separation cases, clearance, settlement, letters and alumni, and my resignation.
   and on my resignation, the offboarding tasks queue and the checklist templates.
 - `involuntary-pages.ts`: disciplinary (show-cause, enquiry and decision), absconding (alerts,
   notices, separation) and batch retrenchment.
+- `insight-pages.ts`: attrition analytics and the exit survey editor.

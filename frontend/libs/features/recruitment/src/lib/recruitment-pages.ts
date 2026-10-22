@@ -450,7 +450,7 @@ export class PostingsPage {
     <section class="panel stack">
       @for (candidate of candidates(); track candidate.id) {
         <a class="rec__row rec__row--link" [routerLink]="['/recruitment/candidates', candidate.id]">
-          <span><strong>{{ candidate.fullName }}</strong> <span class="muted">{{ candidate.number }}</span></span>
+          <span><strong>{{ candidate.fullName }}</strong> <span class="muted">{{ candidate.number }}</span>@if (candidate.formerEmployee; as former) {<span class="badge" [title]="'Former employee - ' + (former.eligibleForRehire ? 'eligible' : 'not eligible') + ' for rehire'"> former employee</span>}</span>
           <span>{{ candidate.currentTitle ?? '' }}{{ candidate.currentCompany ? ' at ' + candidate.currentCompany : '' }}</span>
           <span class="muted">{{ candidate.skills.slice(0, 4).join(', ') }}</span>
           <span class="muted">{{ humanize(candidate.source) }}{{ candidate.agencyName ? ' · ' + candidate.agencyName : '' }}{{ candidate.referrerName ? ' · ' + candidate.referrerName : '' }}</span>
@@ -515,6 +515,15 @@ export class CandidatesPage {
         }
       </gggs-page-header>
       <p><a routerLink="/recruitment/candidates">← All candidates</a></p>
+      @if (v.candidate.formerEmployee; as former) {
+        <p class="alert" [class.alert--warning]="!former.eligibleForRehire" role="note">
+          <i class="pi pi-replay" aria-hidden="true"></i>
+          <span>
+            Worked here before as {{ former.name }}{{ former.lastDesignation ? ' (' + former.lastDesignation + ')' : '' }}, left {{ former.exitDate | date: 'MMM y' }} ({{ former.separationType.toLowerCase() }}) -
+            {{ former.eligibleForRehire ? 'eligible for rehire.' : 'marked not eligible for rehire.' }}
+          </span>
+        </p>
+      }
       <section class="panel rec__facts">
         <div><span class="field__label">Now</span><p>{{ v.candidate.currentTitle ?? '—' }}{{ v.candidate.currentCompany ? ' at ' + v.candidate.currentCompany : '' }}</p></div>
         <div><span class="field__label">Experience · notice</span><p>{{ v.candidate.experienceYears ?? '—' }} years · {{ v.candidate.noticePeriodDays ?? '—' }} days</p></div>

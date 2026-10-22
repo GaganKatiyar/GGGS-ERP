@@ -20,6 +20,7 @@ import type {
   SeparationReason,
   SeparationStatus,
   SeparationType,
+  MySurvey,
   ShowCause,
 } from '@gggs/shared/models';
 import { CLEARANCE_AREAS, EXIT_REASONS, SEPARATION_TYPES, humanize } from '@gggs/shared/models';
@@ -49,9 +50,9 @@ const blankInterview = (): ExitInterviewInput => ({ primaryReason: EXIT_REASONS[
     <div class="xp__grid">
       <label class="field">
         <span class="field__label">Main reason for leaving</span>
-        <select [value]="value().primaryReason" (change)="patch({ primaryReason: $any($event.target).value })">
+        <select (change)="patch({ primaryReason: $any($event.target).value })">
           @for (reason of reasons; track reason) {
-            <option [value]="reason">{{ reason }}</option>
+            <option [value]="reason" [selected]="reason === value().primaryReason">{{ reason }}</option>
           }
         </select>
       </label>
@@ -166,7 +167,7 @@ export class ExitInterviewForm {
           <div class="xp__row">
             <span><strong>{{ person.name }}</strong> <span class="muted">{{ person.lastDesignation ?? '' }}</span></span>
             <span>{{ label(person.separationType) }} · left {{ person.exitDate | date: 'MMM y' }}</span>
-            <span class="muted">{{ person.email ?? '' }}</span>
+            <span class="muted">{{ person.email ?? '' }}{{ person.mobile ? ' · ' + person.mobile : '' }}</span>
             <span>{{ person.optedIn ? 'In the network' : 'Opted out' }}</span>
             <gggs-status-badge [status]="person.eligibleForRehire ? 'Eligible' : 'Not eligible'" />
           </div>
@@ -184,9 +185,9 @@ export class ExitInterviewForm {
         <label class="field xp__wide"><span class="field__label">Employee</span><gggs-employee-select [ngModel]="employeeId()" (ngModelChange)="employeeId.set($event)" /></label>
         <label class="field">
           <span class="field__label">Type</span>
-          <select [value]="type()" (change)="type.set($any($event.target).value)">
+          <select (change)="type.set($any($event.target).value)">
             @for (option of types; track option) {
-              <option [value]="option">{{ label(option) }}</option>
+              <option [value]="option" [selected]="option === type()">{{ label(option) }}</option>
             }
           </select>
         </label>
@@ -322,6 +323,7 @@ export class SeparationPage {
         <a class="btn" routerLink="/separation">All separations</a>
         @if (canManage) {
           <button type="button" class="btn" (click)="openClassify(v)">Exit reason</button>
+          <button type="button" class="btn" (click)="summaryOpen.set(true)">Exit summary</button>
         }
         @if (canManage && (v.case.status === 'Approved' || v.case.status === 'PendingApproval')) {
           <button type="button" class="btn" (click)="openTerms(v)">Terms</button>
@@ -408,6 +410,25 @@ export class SeparationPage {
           </div>
         }
       </section>
+
+      @if (v.survey; as survey) {
+        <section class="panel stack">
+          <div class="toolbar">
+            <h2 class="xp__heading">Exit survey</h2>
+            <span class="muted">answered {{ survey.submittedOn | date: 'd MMM y' }}{{ survey.hiddenFromManager ? ' · hidden from the manager' : '' }}</span>
+          </div>
+          @if (survey.withheld) {
+            <p class="muted">The leaver asked that their manager not see these answers.</p>
+          } @else {
+            @for (answer of survey.answers; track answer.key) {
+              <div class="xp__row">
+                <span>{{ answer.question }}</span>
+                <span><strong>{{ answer.type === 'Rating' && answer.answer ? answer.answer + ' / 5' : answer.answer === 'yes' ? 'Yes' : answer.answer === 'no' ? 'No' : (answer.answer ?? '-') }}</strong></span>
+              </div>
+            }
+          }
+        </section>
+      }
 
       <section class="panel stack">
         <div class="toolbar">
@@ -499,6 +520,10 @@ export class SeparationPage {
       <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
 
+    <gggs-form-dialog [(visible)]="summaryOpen" title="Exit summary" description="HR's summary of the exit - why they left, retention attempted, follow-ups. It goes on the timeline. The HR assistant can draft one for you." [busy]="busy()" [error]="formError()" [saveDisabled]="!summary().trim()" (save)="saveSummary()">
+      <label class="field"><span class="field__label">Summary</span><textarea rows="5" maxlength="1000" [value]="summary()" (input)="summary.set($any($event.target).value)"></textarea></label>
+    </gggs-form-dialog>
+
     <gggs-form-dialog [(visible)]="termsOpen" title="Separation terms" [busy]="busy()" [error]="formError()" (save)="saveTerms()">
       <div class="stack">
         <label class="field"><span class="field__label">Last working day</span><input type="date" [value]="termsDay()" (change)="termsDay.set($any($event.target).value)" /></label>
@@ -514,19 +539,19 @@ export class SeparationPage {
       <div class="form-grid">
         <label class="field">
           <span class="field__label">Main reason</span>
-          <select [value]="classifyReason()" (change)="classifyReason.set($any($event.target).value)">
+          <select (change)="classifyReason.set($any($event.target).value)">
             <option value="">Not recorded</option>
             @for (reason of reasons(); track reason.code) {
-              <option [value]="reason.code">{{ reason.label }}</option>
+              <option [value]="reason.code" [selected]="reason.code === classifyReason()">{{ reason.label }}</option>
             }
           </select>
         </label>
         <label class="field">
           <span class="field__label">Second reason</span>
-          <select [value]="classifySecond()" (change)="classifySecond.set($any($event.target).value)">
+          <select (change)="classifySecond.set($any($event.target).value)">
             <option value="">None</option>
             @for (reason of reasons(); track reason.code) {
-              <option [value]="reason.code">{{ reason.label }}</option>
+              <option [value]="reason.code" [selected]="reason.code === classifySecond()">{{ reason.label }}</option>
             }
           </select>
         </label>
@@ -549,9 +574,9 @@ export class SeparationPage {
       <div class="xp__grid">
         <label class="field">
           <span class="field__label">Area</span>
-          <select [value]="clearanceArea()" (change)="clearanceArea.set($any($event.target).value)">
+          <select (change)="clearanceArea.set($any($event.target).value)">
             @for (area of areas; track area) {
-              <option [value]="area">{{ areaLabel(area) }}</option>
+              <option [value]="area" [selected]="area === clearanceArea()">{{ areaLabel(area) }}</option>
             }
           </select>
         </label>
@@ -589,6 +614,8 @@ export class SeparationCasePage {
   protected readonly canSettle = this.permissions.has('separation.settlement.manage');
   protected readonly canOffboard = this.permissions.has('separation.offboarding.manage');
   protected readonly canSeePayroll = this.permissions.has('payroll.run.view');
+  protected readonly summaryOpen = signal(false);
+  protected readonly summary = signal('');
   protected readonly areas = CLEARANCE_AREAS;
   protected readonly view = signal<SeparationCaseView | null>(null);
   protected readonly termsOpen = signal(false);
@@ -654,6 +681,14 @@ export class SeparationCasePage {
         }),
       );
       this.classifyOpen.set(false);
+    });
+  }
+
+  protected saveSummary(): Promise<void> {
+    return this.run(async () => {
+      this.view.set(await this.api.addSummary(this.id(), this.summary().trim()));
+      this.summaryOpen.set(false);
+      this.summary.set('');
     });
   }
 
@@ -818,7 +853,7 @@ export class ClearancePage {
 /** My resignation: submit it, follow notice and clearance, give an exit interview and see the settlement. */
 @Component({
   selector: 'gggs-my-separation-page',
-  imports: [DatePipe, DecimalPipe, PageHeader, StatusBadge, Skeleton, ExitInterviewForm, Timeline, OffboardingPanel],
+  imports: [DatePipe, DecimalPipe, PageHeader, StatusBadge, Skeleton, Timeline, OffboardingPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <gggs-page-header title="My resignation" subtitle="Resign, follow your notice and clearance, and see your full and final settlement." />
@@ -881,17 +916,55 @@ export class ClearancePage {
             }
           </section>
         }
-        @if (v.case.status === 'Approved') {
-          <section class="panel stack">
-            <h2 class="xp__heading">Exit interview</h2>
-            @if (v.interview && !editingInterview()) {
-              <p>Thank you - your feedback is recorded ({{ v.interview.primaryReason }}, {{ v.interview.overallRating }}/5).</p>
-              <div><button type="button" class="btn btn--sm" (click)="editingInterview.set(true)">Change</button></div>
-            } @else {
-              <gggs-exit-interview-form [value]="interview" />
-              <div><button type="button" class="btn btn--primary" [disabled]="busy()" (click)="sendInterview()">Send feedback</button></div>
-            }
-          </section>
+        @if (survey(); as s) {
+          @if (s.canAnswer || s.response) {
+            <section class="panel stack">
+              <h2 class="xp__heading">{{ s.survey.title }}</h2>
+              @if (s.response && !editingInterview()) {
+                <p>Thank you - your answers are recorded{{ s.response.hiddenFromManager ? ' and hidden from your manager' : '' }}.</p>
+                @if (s.canAnswer) {
+                  <div><button type="button" class="btn btn--sm" (click)="editSurvey(s)">Change my answers</button></div>
+                }
+              } @else {
+                @if (s.survey.introduction) {
+                  <p class="muted">{{ s.survey.introduction }}</p>
+                }
+                @for (question of s.survey.questions; track question.key) {
+                  <div class="field">
+                    <span class="field__label">{{ question.text }}{{ question.required ? ' *' : '' }}</span>
+                    @switch (question.type) {
+                      @case ('Rating') {
+                        <div class="toolbar" role="radiogroup" [attr.aria-label]="question.text">
+                          @for (n of [1, 2, 3, 4, 5]; track n) {
+                            <button type="button" class="btn btn--sm" [class.btn--primary]="answers()[question.key] === '' + n" [attr.aria-pressed]="answers()[question.key] === '' + n" (click)="answer(question.key, '' + n)">{{ n }}</button>
+                          }
+                        </div>
+                      }
+                      @case ('YesNo') {
+                        <div class="toolbar">
+                          <button type="button" class="btn btn--sm" [class.btn--primary]="answers()[question.key] === 'yes'" (click)="answer(question.key, 'yes')">Yes</button>
+                          <button type="button" class="btn btn--sm" [class.btn--primary]="answers()[question.key] === 'no'" (click)="answer(question.key, 'no')">No</button>
+                        </div>
+                      }
+                      @case ('Choice') {
+                        <select (change)="answer(question.key, $any($event.target).value)" [attr.aria-label]="question.text">
+                          <option value="">Choose...</option>
+                          @for (option of question.options ?? []; track option) {
+                            <option [value]="option" [selected]="option === answers()[question.key]">{{ option }}</option>
+                          }
+                        </select>
+                      }
+                      @default {
+                        <textarea rows="3" maxlength="2000" [value]="answers()[question.key] ?? ''" (input)="answer(question.key, $any($event.target).value)" [attr.aria-label]="question.text"></textarea>
+                      }
+                    }
+                  </div>
+                }
+                <label class="xp__flag"><input type="checkbox" [checked]="hidden()" (change)="hidden.set($any($event.target).checked)" /> Hide my answers from my manager (HR still sees them)</label>
+                <div><button type="button" class="btn btn--primary" [disabled]="busy()" (click)="sendSurvey()">Send answers</button></div>
+              }
+            </section>
+          }
         }
         @if (v.settlement; as s) {
           <section class="panel stack">
@@ -918,10 +991,10 @@ export class ClearancePage {
           <label class="field"><span class="field__label">Last working day you are asking for</span><input type="date" [value]="lastDay()" (change)="lastDay.set($any($event.target).value)" /></label>
           <label class="field">
             <span class="field__label">Main reason</span>
-            <select [value]="reasonCode()" (change)="reasonCode.set($any($event.target).value)">
+            <select (change)="reasonCode.set($any($event.target).value)">
               <option value="">Prefer not to say</option>
               @for (option of voluntaryReasons(); track option.code) {
-                <option [value]="option.code">{{ option.label }}</option>
+                <option [value]="option.code" [selected]="option.code === reasonCode()">{{ option.label }}</option>
               }
             </select>
           </label>
@@ -952,8 +1025,10 @@ export class MySeparationPage {
   protected readonly lastDay = signal(inDays(60));
   protected readonly reason = signal('');
   protected readonly editingInterview = signal(false);
-  protected interview: ExitInterviewInput = blankInterview();
   protected readonly showCauses = signal<readonly ShowCause[]>([]);
+  protected readonly survey = signal<MySurvey | null>(null);
+  protected readonly answers = signal<Readonly<Partial<Record<string, string>>>>({});
+  protected readonly hidden = signal(false);
   protected readonly replies = signal<Readonly<Partial<Record<string, string>>>>({});
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -961,6 +1036,7 @@ export class MySeparationPage {
   constructor() {
     this.load();
     this.api.myShowCauses().then((list) => this.showCauses.set(list), () => undefined);
+    this.api.mySurvey().then((survey) => this.survey.set(survey), () => undefined);
     this.api.policy().then(
       (policy) => {
         this.policy.set(policy);
@@ -973,6 +1049,24 @@ export class MySeparationPage {
 
   protected resign(): Promise<void> {
     return confirm('Submit your resignation?') ? this.run(async () => this.view.set(await this.api.resign(this.reason(), this.lastDay(), this.reasonCode() || null))) : Promise.resolve();
+  }
+
+  protected answer(key: string, value: string): void {
+    this.answers.set({ ...this.answers(), [key]: value });
+  }
+
+  protected editSurvey(survey: MySurvey): void {
+    this.answers.set(Object.fromEntries((survey.response?.answers ?? []).filter((item) => item.answer).map((item) => [item.key, item.answer as string])));
+    this.hidden.set(survey.response?.hiddenFromManager ?? false);
+    this.editingInterview.set(true);
+  }
+
+  protected sendSurvey(): Promise<void> {
+    const answers = Object.fromEntries(Object.entries(this.answers()).filter((entry): entry is [string, string] => !!entry[1]?.trim()));
+    return this.run(async () => {
+      this.survey.set(await this.api.answerSurvey(answers, this.hidden()));
+      this.editingInterview.set(false);
+    });
   }
 
   protected draftReply(id: string, text: string): void {
@@ -996,13 +1090,6 @@ export class MySeparationPage {
           await this.api.withdrawMine();
           this.view.set(null);
         }) : Promise.resolve();
-  }
-
-  protected sendInterview(): Promise<void> {
-    return this.run(async () => {
-      this.view.set(await this.api.myInterview({ ...this.interview }));
-      this.editingInterview.set(false);
-    });
   }
 
   private load(): void {

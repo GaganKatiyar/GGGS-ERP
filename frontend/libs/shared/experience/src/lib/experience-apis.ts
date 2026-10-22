@@ -53,6 +53,9 @@ import type {
   SeparationCaseView,
   SeparationDashboard,
   NoticeRule,
+  AttritionAnalytics,
+  ExitSurvey,
+  MySurvey,
   AbsenceAlert,
   RetrenchmentResult,
   ShowCause,
@@ -644,6 +647,30 @@ export class SeparationApi {
 
   removeOffboardingTemplate(id: string): Promise<void> {
     return firstValueFrom(this.http.delete<void>(`${this.base}/offboarding/templates/${id}`));
+  }
+
+  analytics(months: number): Promise<AttritionAnalytics> {
+    return firstValueFrom(this.http.get<AttritionAnalytics>(`${this.base}/analytics`, { params: { months } }));
+  }
+
+  exitSurvey(): Promise<ExitSurvey> {
+    return firstValueFrom(this.http.get<ExitSurvey>(`${this.base}/exit-survey`));
+  }
+
+  updateExitSurvey(body: ExitSurvey): Promise<ExitSurvey> {
+    return firstValueFrom(this.http.put<ExitSurvey>(`${this.base}/exit-survey`, body));
+  }
+
+  mySurvey(): Promise<MySurvey> {
+    return firstValueFrom(this.http.get<MySurvey>('/api/v1/me/separation/survey'));
+  }
+
+  answerSurvey(answers: Readonly<Record<string, string>>, hiddenFromManager: boolean): Promise<MySurvey> {
+    return firstValueFrom(this.http.put<MySurvey>('/api/v1/me/separation/survey', { answers, hiddenFromManager }));
+  }
+
+  addSummary(id: string, summary: string): Promise<SeparationCaseView> {
+    return firstValueFrom(this.http.post<SeparationCaseView>(`${this.base}/cases/${id}/summary`, { summary }));
   }
 
   confirm(id: string): Promise<SeparationCaseView> {

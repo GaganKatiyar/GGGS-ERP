@@ -268,6 +268,8 @@ describe('filterNavigation', () => {
       '/separation/disciplinary',
       '/separation/absconding',
       '/separation/retrenchment',
+      '/separation/analytics',
+      '/separation/exit-survey',
       '/separation/policy',
       '/analytics',
       '/calendar',

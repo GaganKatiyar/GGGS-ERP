@@ -347,9 +347,9 @@ const blankStep = (): OffboardingStep => ({ title: '', description: null, owner:
             <label class="field"><span class="field__label">Step</span><input type="text" maxlength="200" [value]="step.title" (input)="patch(i, { title: $any($event.target).value })" /></label>
             <label class="field">
               <span class="field__label">Owner</span>
-              <select [value]="step.owner" (change)="patch(i, { owner: $any($event.target).value })">
+              <select (change)="patch(i, { owner: $any($event.target).value })">
                 @for (option of owners; track option) {
-                  <option [value]="option">{{ owner(option) }}</option>
+                  <option [value]="option" [selected]="option === step.owner">{{ owner(option) }}</option>
                 }
               </select>
             </label>

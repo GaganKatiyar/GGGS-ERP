@@ -263,6 +263,16 @@ export interface PostingInput {
   readonly expiresOn?: string | null;
 }
 
+/** A candidate who worked here before, from the alumni network. */
+export interface FormerEmployee {
+  readonly employeeId: string;
+  readonly name: string;
+  readonly lastDesignation?: string;
+  readonly exitDate: string;
+  readonly separationType: string;
+  readonly eligibleForRehire: boolean;
+}
+
 export interface CandidateProfile {
   readonly id: string;
   readonly number: string;
@@ -289,6 +299,7 @@ export interface CandidateProfile {
   readonly employeeId?: string;
   readonly createdDate: string;
   readonly applications: number;
+  readonly formerEmployee?: FormerEmployee;
 }
 
 export interface CandidateDetailsInput {

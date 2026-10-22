@@ -1,6 +1,7 @@
 import type { Routes } from '@angular/router';
 import { withPermissions } from '@gggs/core/permissions';
 import { ClearancePage, MySeparationPage, SeparationCasePage, SeparationPage } from './separation-pages';
+import { AttritionPage, ExitSurveyPage } from './insight-pages';
 import { AbscondingPage, DisciplinaryPage, RetrenchmentPage } from './involuntary-pages';
 import { OffboardingTasksPage, OffboardingTemplatesPage } from './offboarding-pages';
 import { SeparationPolicyPage } from './separation-policy-page';
@@ -14,6 +15,8 @@ export const SEPARATION_ROUTES: Routes = [
   { path: 'disciplinary', component: DisciplinaryPage, title: 'Disciplinary', ...withPermissions(['separation.termination.manage']) },
   { path: 'absconding', component: AbscondingPage, title: 'Absconding', ...withPermissions(['separation.termination.manage']) },
   { path: 'retrenchment', component: RetrenchmentPage, title: 'Retrenchment', ...withPermissions(['separation.termination.manage']) },
+  { path: 'analytics', component: AttritionPage, title: 'Attrition', ...withPermissions(['separation.analytics.view']) },
+  { path: 'exit-survey', component: ExitSurveyPage, title: 'Exit survey', ...withPermissions(['separation.policy.manage']) },
   { path: 'policy', component: SeparationPolicyPage, title: 'Separation policy', ...withPermissions(['separation.policy.manage']) },
   { path: 'cases/:id', component: SeparationCasePage, title: 'Separation' },
 ];

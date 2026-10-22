@@ -909,6 +909,81 @@ export interface SeparationCaseView {
   readonly settlement?: SettlementView;
   readonly events?: readonly SeparationEvent[];
   readonly offboarding?: OffboardingView;
+  readonly survey?: SurveyResponse;
+}
+
+export type ExitQuestionType = 'Rating' | 'YesNo' | 'Choice' | 'Text';
+
+export interface ExitQuestion {
+  readonly key: string;
+  readonly text: string;
+  readonly type: ExitQuestionType;
+  readonly options?: readonly string[] | null;
+  readonly required: boolean;
+}
+
+export interface ExitSurvey {
+  readonly title: string;
+  readonly introduction?: string | null;
+  readonly questions: readonly ExitQuestion[];
+}
+
+export interface SurveyAnswer {
+  readonly key: string;
+  readonly question: string;
+  readonly type: ExitQuestionType;
+  readonly answer?: string;
+}
+
+export interface SurveyResponse {
+  readonly submittedOn: string;
+  readonly hiddenFromManager: boolean;
+  readonly withheld: boolean;
+  readonly answers: readonly SurveyAnswer[];
+}
+
+export interface MySurvey {
+  readonly survey: ExitSurvey;
+  readonly response?: SurveyResponse;
+  readonly canAnswer: boolean;
+}
+
+export interface CountItem {
+  readonly label: string;
+  readonly count: number;
+}
+
+export interface SurveyScore {
+  readonly question: string;
+  readonly kind: 'rating' | 'yes';
+  readonly value: number;
+  readonly responses: number;
+}
+
+export interface AttritionAnalytics {
+  readonly months: number;
+  readonly from: string;
+  readonly to: string;
+  readonly exits: number;
+  readonly headcount: number;
+  readonly attritionRate: number;
+  readonly voluntary: number;
+  readonly involuntary: number;
+  readonly natural: number;
+  readonly regretted: number;
+  readonly classified: number;
+  readonly regrettedPercent?: number;
+  readonly earlyExits: number;
+  readonly earlyExitPercent: number;
+  readonly noticeServedPercent?: number;
+  readonly averageSettlementDays?: number;
+  readonly settlementsLate: number;
+  readonly reasons: readonly CountItem[];
+  readonly tenure: readonly CountItem[];
+  readonly departments: readonly CountItem[];
+  readonly managers: readonly CountItem[];
+  readonly trend: readonly CountItem[];
+  readonly survey: readonly SurveyScore[];
 }
 
 export interface AlumniItem {
@@ -922,6 +997,7 @@ export interface AlumniItem {
   readonly eligibleForRehire: boolean;
   readonly optedIn: boolean;
   readonly notes?: string;
+  readonly mobile?: string;
 }
 
 export interface SeparationDashboard {
