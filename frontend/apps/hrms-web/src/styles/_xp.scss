@@ -29,6 +29,11 @@
   grid-column: 1 / -1;
 }
 
+/* Label-over-value summaries: narrower columns so two fit side by side on a phone. */
+.xp__grid--facts {
+  grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
+}
+
 .xp__flag {
   display: inline-flex;
   gap: var(--gggs-space-2);

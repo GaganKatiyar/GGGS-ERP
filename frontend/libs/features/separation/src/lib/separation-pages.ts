@@ -127,7 +127,7 @@ export class ExitInterviewForm {
             </select>
           </label>
         </div>
-        @for (item of cases(); track item.id) {
+        @for (item of sortedCases(); track item.id) {
           <a class="xp__row" [routerLink]="['/separation/cases', item.id]">
             <span><strong>{{ item.employeeName }}</strong> <span class="muted">{{ item.employeeCode }} · {{ item.designation ?? '' }}</span></span>
             <span>{{ label(item.type) }}{{ item.awaitingConfirmation ? ' · to confirm' : '' }}</span>
@@ -151,7 +151,7 @@ export class ExitInterviewForm {
               @for (entry of d.topExitReasons | keyvalue; track entry.key) {
                 <span><strong>{{ entry.value }}</strong> {{ entry.key }}</span>
               } @empty {
-                <span class="muted">No exit interviews yet.</span>
+                <span class="muted">No exit reasons recorded yet.</span>
               }
             </div>
           </div>
@@ -220,6 +220,11 @@ export class SeparationPage {
   protected readonly tab = signal('cases');
   protected readonly dashboard = signal<SeparationDashboard | null>(null);
   protected readonly cases = signal<readonly SeparationCaseItem[]>([]);
+  /** Work first: awaiting approval, then serving notice, then completed; withdrawn and rejected last. */
+  protected readonly sortedCases = computed(() => {
+    const rank: Record<SeparationStatus, number> = { PendingApproval: 0, Approved: 1, Completed: 2, Withdrawn: 3, Rejected: 3 };
+    return [...this.cases()].sort((a, b) => rank[a.status] - rank[b.status] || a.lastWorkingDay.localeCompare(b.lastWorkingDay));
+  });
   protected readonly alumni = signal<readonly AlumniItem[]>([]);
   protected readonly status = signal<SeparationStatus | ''>('');
   protected readonly search = signal('');
@@ -315,12 +320,11 @@ export class SeparationPage {
 /** One separation: terms, clearance, exit interview, the full and final settlement and letters. */
 @Component({
   selector: 'gggs-separation-case-page',
-  imports: [FormsModule, DatePipe, DecimalPipe, RouterLink, PageHeader, StatusBadge, FormDialog, Skeleton, EmployeeSelect, ExitInterviewForm, Timeline, OffboardingPanel],
+  imports: [FormsModule, DatePipe, DecimalPipe, RouterLink, PageHeader, StatusBadge, FormDialog, Skeleton, EmployeeSelect, ExitInterviewForm, Timeline, OffboardingPanel, Tabs],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (view(); as v) {
       <gggs-page-header [title]="v.case.employeeName ?? 'Separation'" [subtitle]="label(v.case.type) + ' · last day ' + (v.case.lastWorkingDay | date: 'd MMM y')">
-        <a class="btn" routerLink="/separation">All separations</a>
         @if (canManage) {
           <button type="button" class="btn" (click)="openClassify(v)">Exit reason</button>
           <button type="button" class="btn" (click)="summaryOpen.set(true)">Exit summary</button>
@@ -333,7 +337,7 @@ export class SeparationPage {
           <button type="button" class="btn" (click)="letters()">{{ v.case.relievingLetterId ? 'Reissue letters' : 'Issue letters' }}</button>
         }
       </gggs-page-header>
-      <section class="panel xp__grid">
+      <section class="panel xp__grid xp__grid--facts">
         <div><span class="muted">Status</span><br /><gggs-status-badge [status]="v.case.status" /></div>
         <div><span class="muted">Notice given</span><br />{{ v.case.noticeDate | date: 'd MMM y' }} ({{ v.case.noticePeriodDays }} days due)</div>
         <div><span class="muted">Asked for</span><br />{{ v.case.requestedLastDay | date: 'd MMM y' }}</div>
@@ -382,136 +386,155 @@ export class SeparationPage {
         </div>
       }
 
-      <gggs-offboarding-panel [view]="v" [canManage]="canOffboard" (changed)="view.set($event)" />
-
-      <section class="panel stack">
-        <div class="toolbar">
-          <h2 class="xp__heading">Clearance</h2>
-          @if (canManage && v.case.status === 'Approved') {
-            <button type="button" class="btn btn--sm" (click)="clearanceOpen.set(true)">Add item</button>
-          }
-        </div>
-        @for (item of v.clearance; track item.id) {
-          <div class="xp__row">
-            <span><strong>{{ item.title }}</strong> <span class="muted">{{ areaLabel(item.area) }}</span></span>
-            <span>{{ item.ownerName ?? 'Clearance team' }}</span>
-            <span>{{ item.recoveryAmount ? 'recover ' + (item.recoveryAmount | number: '1.0-0') : '' }}{{ item.note ? ' · ' + item.note : '' }}</span>
-            <span class="toolbar">
-              @if (item.canResolve && v.case.status !== 'Withdrawn') {
-                @if (item.status === 'Pending') {
-                  <button type="button" class="btn btn--sm" (click)="resolve(item, 'Cleared')">Clear</button>
-                  <button type="button" class="btn btn--link btn--sm" (click)="resolve(item, 'Waived')">Waive</button>
-                } @else {
-                  <button type="button" class="btn btn--link btn--sm" (click)="resolve(item, 'Pending')">Undo</button>
-                }
-              }
-            </span>
-            <gggs-status-badge [status]="item.status" />
-          </div>
+      <gggs-tabs [tabs]="caseTabs()" [(selected)]="tab" />
+      @switch (tab()) {
+        @case ('offboarding') {
+          <gggs-offboarding-panel [view]="v" [canManage]="canOffboard" (changed)="view.set($event)" />
         }
-      </section>
-
-      @if (v.survey; as survey) {
+        @case ('clearance') {
         <section class="panel stack">
           <div class="toolbar">
-            <h2 class="xp__heading">Exit survey</h2>
-            <span class="muted">answered {{ survey.submittedOn | date: 'd MMM y' }}{{ survey.hiddenFromManager ? ' · hidden from the manager' : '' }}</span>
-          </div>
-          @if (survey.withheld) {
-            <p class="muted">The leaver asked that their manager not see these answers.</p>
-          } @else {
-            @for (answer of survey.answers; track answer.key) {
-              <div class="xp__row">
-                <span>{{ answer.question }}</span>
-                <span><strong>{{ answer.type === 'Rating' && answer.answer ? answer.answer + ' / 5' : answer.answer === 'yes' ? 'Yes' : answer.answer === 'no' ? 'No' : (answer.answer ?? '-') }}</strong></span>
-              </div>
-            }
-          }
-        </section>
-      }
-
-      <section class="panel stack">
-        <div class="toolbar">
-          <h2 class="xp__heading">Exit interview</h2>
-          @if (canManage) {
-            <button type="button" class="btn btn--sm" (click)="openInterview(v)">{{ v.interview ? 'Edit' : 'Record' }}</button>
-          }
-        </div>
-        @if (v.interview; as i) {
-          <p><strong>{{ i.primaryReason }}</strong> · {{ i.overallRating }}/5 · {{ i.wouldRecommend ? 'would recommend' : 'would not recommend' }} · {{ i.wouldReturn ? 'would return' : 'would not return' }}</p>
-          @if (i.whatWentWell) {
-            <p>Went well: {{ i.whatWentWell }}</p>
-          }
-          @if (i.whatToImprove) {
-            <p>Improve: {{ i.whatToImprove }}</p>
-          }
-        } @else {
-          <p class="muted">Not done yet.</p>
-        }
-      </section>
-
-      @if (canSettle && (v.case.status === 'Approved' || v.case.status === 'Completed')) {
-        <section class="panel stack">
-          <div class="toolbar">
-            <h2 class="xp__heading">Full and final settlement</h2>
-            @if (!v.settlement || v.settlement.status === 'Draft') {
-              <button type="button" class="btn btn--sm" (click)="settlement('calculate')">{{ v.settlement ? 'Recalculate' : 'Calculate' }}</button>
-            }
-            @if (v.settlement?.status === 'Draft') {
-              <button type="button" class="btn btn--sm" (click)="lineOpen.set(true)">Add line</button>
-              <button type="button" class="btn btn--sm btn--primary" (click)="settlement('approve')">Approve and send to payroll</button>
-            }
-            @if (v.settlement?.status === 'Approved') {
-              <button type="button" class="btn btn--sm" (click)="settlement('reopen')">Reopen</button>
-              @if (!v.settlement?.payrollRunId) {
-                <button type="button" class="btn btn--sm btn--primary" (click)="payOpen.set(true)">Mark paid</button>
-              }
+            <h2 class="xp__heading">Clearance</h2>
+            @if (canManage && v.case.status === 'Approved') {
+              <button type="button" class="btn btn--sm" (click)="clearanceOpen.set(true)">Add item</button>
             }
           </div>
-          @if (v.case.settlementDueOn) {
-            <p [class.xp__danger]="v.case.settlementOverdue">
-              Due by {{ v.case.settlementDueOn | date: 'd MMM y' }} (two working days after the last day, Code on Wages s.17(2)){{ v.case.settlementOverdue ? ' - overdue' : '' }};
-              gratuity by {{ v.case.gratuityDueOn | date: 'd MMM y' }}.
-            </p>
-          }
-          @if (v.settlement?.payrollRunId; as runId) {
-            <p class="alert">
-              <i class="pi pi-wallet" aria-hidden="true"></i>
-              <span>
-                Paid through payroll: an off-cycle run, {{ (v.settlement?.payrollStatus ?? 'open').toLowerCase() }}{{ v.settlement?.payrollNet !== undefined ? ', net ' + (v.settlement?.payrollNet | number: '1.2-2') : '' }}{{ v.settlement?.payrollSalaryIncluded ? ', with the salary for the exit month, PF and TDS' : '' }}.
-                It is marked paid when the run is paid.
-                @if (canSeePayroll) {
-                  <a [routerLink]="['/payroll/runs', runId]">Open the run</a>
+          @for (item of v.clearance; track item.id) {
+            <div class="xp__row">
+              <span><strong>{{ item.title }}</strong> <span class="muted">{{ areaLabel(item.area) }}</span></span>
+              <span>{{ item.ownerName ?? 'Clearance team' }}</span>
+              <span>{{ item.recoveryAmount ? 'recover ' + (item.recoveryAmount | number: '1.0-0') : '' }}{{ item.note ? ' · ' + item.note : '' }}</span>
+              <span class="toolbar">
+                @if (item.canResolve && v.case.status !== 'Withdrawn') {
+                  @if (item.status === 'Pending') {
+                    <button type="button" class="btn btn--sm" (click)="resolve(item, 'Cleared')">Clear</button>
+                    <button type="button" class="btn btn--link btn--sm" (click)="resolve(item, 'Waived')">Waive</button>
+                  } @else {
+                    <button type="button" class="btn btn--link btn--sm" (click)="resolve(item, 'Pending')">Undo</button>
+                  }
                 }
               </span>
-            </p>
+              <gggs-status-badge [status]="item.status" />
+            </div>
           }
-          @if (v.settlement; as s) {
-            @for (line of s.lines; track line.id) {
-              <div class="xp__row">
-                <span><strong>{{ line.label }}</strong> <span class="muted">{{ line.code }}</span></span>
-                <span class="muted">{{ line.basis ?? '' }}</span>
-                <span [class.xp__danger]="line.isDeduction">{{ line.isDeduction ? '-' : '' }}{{ line.amount | number: '1.2-2' }}</span>
+        </section>
+        }
+        @case ('feedback') {
+        @if (v.survey; as survey) {
+          <section class="panel stack">
+            <div class="toolbar">
+              <h2 class="xp__heading">Exit survey</h2>
+              <span class="muted">answered {{ survey.submittedOn | date: 'd MMM y' }}{{ survey.hiddenFromManager ? ' · hidden from the manager' : '' }}</span>
+            </div>
+            @if (survey.withheld) {
+              <p class="muted">The leaver asked that their manager not see these answers.</p>
+            } @else {
+              @for (answer of survey.answers; track answer.key) {
+                <div class="xp__row">
+                  <span>{{ answer.question }}</span>
+                  <span><strong>{{ answer.type === 'Rating' && answer.answer ? answer.answer + ' / 5' : answer.answer === 'yes' ? 'Yes' : answer.answer === 'no' ? 'No' : (answer.answer ?? '-') }}</strong></span>
+                </div>
+              }
+            }
+          </section>
+        }
+        <section class="panel stack">
+          <div class="toolbar">
+            <h2 class="xp__heading">Exit interview</h2>
+            @if (canManage) {
+              <button type="button" class="btn btn--sm" (click)="openInterview(v)">{{ v.interview ? 'Edit' : 'Record' }}</button>
+            }
+          </div>
+          @if (v.interview; as i) {
+            <p><strong>{{ i.primaryReason }}</strong> · {{ i.overallRating }}/5 · {{ i.wouldRecommend ? 'would recommend' : 'would not recommend' }} · {{ i.wouldReturn ? 'would return' : 'would not return' }}</p>
+            @if (i.whatWentWell) {
+              <p>Went well: {{ i.whatWentWell }}</p>
+            }
+            @if (i.whatToImprove) {
+              <p>Improve: {{ i.whatToImprove }}</p>
+            }
+          } @else {
+            <p class="muted">Not done yet.</p>
+          }
+        </section>
+        }
+        @case ('settlement') {
+          <section class="panel stack">
+            <div class="toolbar">
+              <h2 class="xp__heading">Full and final settlement</h2>
+              @if (!v.settlement || v.settlement.status === 'Draft') {
+                <button type="button" class="btn btn--sm" (click)="settlement('calculate')">{{ v.settlement ? 'Recalculate' : 'Calculate' }}</button>
+              }
+              @if (v.settlement?.status === 'Draft') {
+                <button type="button" class="btn btn--sm" (click)="lineOpen.set(true)">Add line</button>
+                <button type="button" class="btn btn--sm btn--primary" (click)="settlement('approve')">Approve and send to payroll</button>
+              }
+              @if (v.settlement?.status === 'Approved') {
+                <button type="button" class="btn btn--sm" (click)="settlement('reopen')">Reopen</button>
+                @if (!v.settlement?.payrollRunId) {
+                  <button type="button" class="btn btn--sm btn--primary" (click)="payOpen.set(true)">Mark paid</button>
+                }
+              }
+            </div>
+            @if (v.case.settlementDueOn) {
+              <p [class.xp__danger]="v.case.settlementOverdue">
+                Due by {{ v.case.settlementDueOn | date: 'd MMM y' }} (two working days after the last day, Code on Wages s.17(2)){{ v.case.settlementOverdue ? ' - overdue' : '' }};
+                gratuity by {{ v.case.gratuityDueOn | date: 'd MMM y' }}.
+              </p>
+            }
+            @if (v.settlement?.payrollRunId; as runId) {
+              <p class="alert">
+                <i class="pi pi-wallet" aria-hidden="true"></i>
                 <span>
-                  @if (s.status === 'Draft' && line.isManual) {
-                    <button type="button" class="btn btn--link btn--sm" (click)="removeLine(line.id)">Remove</button>
+                  Paid through payroll: an off-cycle run, {{ (v.settlement?.payrollStatus ?? 'open').toLowerCase() }}{{ v.settlement?.payrollNet !== undefined ? ', net ' + (v.settlement?.payrollNet | number: '1.2-2') : '' }}{{ v.settlement?.payrollSalaryIncluded ? ', with the salary for the exit month, PF and TDS' : '' }}.
+                  It is marked paid when the run is paid.
+                  @if (canSeePayroll) {
+                    <a [routerLink]="['/payroll/runs', runId]">Open the run</a>
                   }
                 </span>
-              </div>
+              </p>
             }
-            <p>Earnings {{ s.earnings | number: '1.2-2' }} · deductions {{ s.deductions | number: '1.2-2' }} · <strong>net {{ s.net | number: '1.2-2' }}</strong></p>
-            <p><gggs-status-badge [status]="s.status" />{{ s.paidOn ? ' on ' + (s.paidOn | date: 'd MMM y') : '' }}{{ s.paymentReference ? ' · ' + s.paymentReference : '' }}</p>
-          } @else {
-            <p class="muted">Calculate to work out salary, leave encashment, gratuity and recoveries.</p>
-          }
-        </section>
-      }
-
-      @if (timeline().length) {
-        <section class="panel stack">
-          <h2 class="xp__heading">Timeline</h2>
-          <gggs-timeline [entries]="timeline()" />
-        </section>
+            @if (v.settlement; as s) {
+              <p><gggs-status-badge [status]="s.status" />{{ s.paidOn ? ' on ' + (s.paidOn | date: 'd MMM y') : '' }}{{ s.paymentReference ? ' · ' + s.paymentReference : '' }}</p>
+              <div class="table-wrap">
+                <table class="table">
+                  <thead><tr><th>Line</th><th>How it was worked out</th><th class="num">Amount</th><th class="actions"><span class="sr-only">Actions</span></th></tr></thead>
+                  <tbody>
+                    @for (line of s.lines; track line.id) {
+                      <tr>
+                        <td><strong>{{ line.label }}</strong>{{ line.isManual ? ' (added by HR)' : '' }}</td>
+                        <td class="muted">{{ line.basis ?? '' }}</td>
+                        <td class="num" [class.xp__danger]="line.isDeduction">{{ line.isDeduction ? '-' : '' }}{{ line.amount | number: '1.2-2' }}</td>
+                        <td class="actions">
+                          @if (s.status === 'Draft' && line.isManual) {
+                            <button type="button" class="btn btn--link btn--sm" (click)="removeLine(line.id)">Remove</button>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                  <tfoot>
+                    <tr><td colspan="2">Earnings</td><td class="num">{{ s.earnings | number: '1.2-2' }}</td><td></td></tr>
+                    <tr><td colspan="2">Deductions</td><td class="num xp__danger">-{{ s.deductions | number: '1.2-2' }}</td><td></td></tr>
+                    <tr><td colspan="2"><strong>Net payable</strong></td><td class="num"><strong>{{ s.net | number: '1.2-2' }}</strong></td><td></td></tr>
+                  </tfoot>
+                </table>
+              </div>
+            } @else {
+              <p class="muted">Calculate to work out salary, leave encashment, gratuity and recoveries.</p>
+            }
+          </section>
+        }
+        @default {
+          <section class="panel stack">
+            <h2 class="xp__heading">Timeline</h2>
+            @if (timeline().length) {
+              <gggs-timeline [entries]="timeline()" />
+            } @else {
+              <p class="muted">Nothing has happened yet.</p>
+            }
+          </section>
+        }
       }
     } @else if (!error()) {
       <gggs-skeleton [lines]="8" />
@@ -614,6 +637,21 @@ export class SeparationCasePage {
   protected readonly canSettle = this.permissions.has('separation.settlement.manage');
   protected readonly canOffboard = this.permissions.has('separation.offboarding.manage');
   protected readonly canSeePayroll = this.permissions.has('payroll.run.view');
+  protected readonly tab = signal('offboarding');
+  /** The case's sections, with progress in the labels so the next thing to do stands out. */
+  protected readonly caseTabs = computed<readonly TabItem[]>(() => {
+    const v = this.view();
+    const tasks = v?.offboarding?.tasks ?? [];
+    const done = tasks.filter((task) => task.status !== 'Pending').length;
+    const settled = !!v && this.canSettle && (v.case.status === 'Approved' || v.case.status === 'Completed');
+    return [
+      { key: 'offboarding', label: tasks.length ? `Handover & offboarding (${done}/${tasks.length})` : 'Handover & offboarding' },
+      { key: 'clearance', label: v ? `Clearance (${v.case.clearanceTotal - v.case.clearancePending}/${v.case.clearanceTotal})` : 'Clearance' },
+      { key: 'feedback', label: v?.survey || v?.interview ? 'Exit feedback' : 'Exit feedback (none yet)' },
+      ...(settled ? [{ key: 'settlement', label: v?.case.settlementOverdue ? 'Settlement (overdue)' : 'Settlement' }] : []),
+      { key: 'timeline', label: 'Timeline' },
+    ];
+  });
   protected readonly summaryOpen = signal(false);
   protected readonly summary = signal('');
   protected readonly areas = CLEARANCE_AREAS;
@@ -874,7 +912,7 @@ export class ClearancePage {
     }
     @if (loaded()) {
       @if (view(); as v) {
-        <section class="panel xp__grid">
+        <section class="panel xp__grid xp__grid--facts">
           <div><span class="muted">Status</span><br /><gggs-status-badge [status]="v.case.status" /></div>
           <div><span class="muted">Last working day</span><br /><strong>{{ v.case.lastWorkingDay | date: 'd MMM y' }}</strong></div>
           <div><span class="muted">Notice given</span><br />{{ v.case.noticeDate | date: 'd MMM y' }}</div>

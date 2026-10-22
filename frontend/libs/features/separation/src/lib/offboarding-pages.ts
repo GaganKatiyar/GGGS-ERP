@@ -39,7 +39,7 @@ const offsetLabel = (days: number): string => (days === 0 ? 'On the last day' : 
               <button type="button" class="btn btn--sm btn--link" [disabled]="busy()" (click)="refresh()">Look again</button>
             }
           </div>
-          <div class="xp__grid">
+          <div class="xp__grid xp__grid--facts">
             <div><span class="muted">Successor</span><br />{{ o.successorName ?? 'Not named yet' }}</div>
             <div>
               <span class="muted">Sign-in</span><br />
