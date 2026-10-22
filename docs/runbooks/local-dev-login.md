@@ -195,14 +195,12 @@ routed to EMP00004; a closed pulse survey with seven anonymous responses and an 
 everyone; six recognitions, a company budget and a redemption to fulfil; and Sara Khan (EMP00005) serving notice
 with clearance open, plus two alumni. It tops up every template role with the M10 permissions.
 Separation v2 seeds Sara's offboarding too: Rohan Das (EMP00006) named as successor, the standard
-checklist and the handover found across modules. The separation policy (Services > Separation
-policy) starts with Indian defaults: 60 days' notice (15 on probation), settlement within two
-working days and gratuity within 30 days. Offboarding checklists are under Services > Offboarding
-checklists and the steps waiting on you under Services > Offboarding tasks.
+checklist and the handover found across modules. The separation policy (Exits > Policy) starts with Indian defaults: 60 days' notice (15 on probation), settlement within two
+working days and gratuity within 30 days. Offboarding checklists are under Exits > Checklists and the steps waiting on you under Exits > Offboarding.
 For involuntary exits it adds a show-cause notice waiting for Meera Iyer's (EMP00003) reply under
-Services > Disciplinary, an absence alert for Arjun Nair (EMP00004) under Services > Absconding,
-and Rohan Das's (EMP00006) fixed-term contract ending in 45 days, proposed on the Separation page
-for HR to confirm. Retrenchment is under Services > Retrenchment; a contract end date is set from
+Exits > Disciplinary, an absence alert for Arjun Nair (EMP00004) under Exits > Absconding,
+and Rohan Das's (EMP00006) fixed-term contract ending in 45 days, proposed on Exits > Separations
+for HR to confirm. Retrenchment is under Exits > Retrenchment; a contract end date is set from
 an employee's Employment tab.
 
 Full and final settlements go through payroll once approved: approving one opens an off-cycle
@@ -216,8 +214,8 @@ nominee), is still marked paid by reference on the case. The statutory bonus com
 `IN-BONUS` rule; both rules are in Compliance > Statutory rules.
 
 Leavers answer the exit survey from My resignation once their separation is approved; HR edits
-the questions under Services > Exit survey and sees answers on the case (a manager does not, if
-the leaver hid them). Services > Attrition shows the analytics for 3 to 24 months. Alumni keep the
+the questions under Exits > Exit survey and sees answers on the case (a manager does not, if
+the leaver hid them). Exits > Attrition shows the analytics for 3 to 24 months. Alumni keep the
 personal email and mobile they had on leaving, and a candidate with either is flagged as a former
 employee on the Recruitment candidate pages. The HR command centre can explain attrition and draft
 an exit summary that is added to the case once approved; "My assistant" answers questions about
