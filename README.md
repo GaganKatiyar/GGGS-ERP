@@ -96,7 +96,14 @@ applies.
   in lieu and fifteen days' pay per year of service as compensation (Industrial Relations Code);
   absconding found nightly from attendance and handled through first, second and final notices; a
   death recorded with the nominee and gratuity paid without the five-year minimum; and
-  retirements and fixed-term contract ends proposed ahead of their date for HR to confirm.
+  retirements and fixed-term contract ends proposed ahead of their date for HR to confirm. The full
+  and final settlement follows the statutes: gratuity with four years and 240 working days
+  counting as five, pro-rata statutory bonus, leave encashment limited to the policy's leave types
+  and cap, and tax-free limits on terminal benefits - all from versioned statutory rules - and,
+  once approved, it is paid through an off-cycle payroll run (salary to the last day with PF, ESI,
+  PT and TDS, a payslip and the bank file) that the month's regular run leaves out. Settlement and
+  gratuity deadlines are tracked and overdue ones reported; ESI returns carry exit reason codes
+  and each run lists its leavers for marking exit on the EPFO portal.
 - Insight and reach: dashboards for people, workforce, time, projects, resources, payroll, hiring,
   talent and experience, each assembled from the modules that own the data and limited to the
   viewer's report access, plus a company-wide executive dashboard and weekly or monthly digests;

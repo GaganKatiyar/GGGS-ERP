@@ -183,6 +183,9 @@ Since M10 it also:
 - proposes a separation for retirements (the last day of the month the retirement age is reached)
   and fixed-term contract ends within the policy's lead time, for HR to confirm, daily at 02:30
   (`separation-exit-proposals`). A declined proposal is not raised again for the same date.
+- reports full and final settlements past their deadline (by default two working days after the
+  last day; Sundays and the employee's holidays are not working days) to the HRBP, once each, daily
+  at 04:00 (`separation-settlement-deadlines`).
 
 Every tenant gets default asset, expense, helpdesk categories, five knowledge articles, recognition
 types, reward rules and a catalogue. DevSeed's `experience` step registers twelve assets (eight
@@ -201,6 +204,16 @@ Services > Disciplinary, an absence alert for Arjun Nair (EMP00004) under Servic
 and Rohan Das's (EMP00006) fixed-term contract ending in 45 days, proposed on the Separation page
 for HR to confirm. Retrenchment is under Services > Retrenchment; a contract end date is set from
 an employee's Employment tab.
+
+Full and final settlements go through payroll once approved: approving one opens an off-cycle
+payroll run ("full and final" in Payroll > Payroll runs) for the leaver, already calculated -
+salary up to the last working day with PF, ESI, PT and TDS, plus leave encashment, gratuity,
+retrenchment compensation and notice pay as inputs (split at their tax-free limits from the
+`IN-TERMINAL-EXEMPT` rule) and every recovery. Submit, finalize and mark it paid as usual; the
+settlement is marked paid with the run's payment reference. Reopening the settlement cancels the
+run unless it is finalized. A leaver without a payroll salary, or one who has died (paid to the
+nominee), is still marked paid by reference on the case. The statutory bonus comes from the
+`IN-BONUS` rule; both rules are in Compliance > Statutory rules.
 
 Since M11 it also sends report digests daily at 06:00 (`insight-report-digests`): weekly
 subscriptions go out on Mondays and monthly ones on the 1st, only to people whose report access is
