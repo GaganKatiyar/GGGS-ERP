@@ -215,6 +215,14 @@ run unless it is finalized. A leaver without a payroll salary, or one who has di
 nominee), is still marked paid by reference on the case. The statutory bonus comes from the
 `IN-BONUS` rule; both rules are in Compliance > Statutory rules.
 
+Leavers answer the exit survey from My resignation once their separation is approved; HR edits
+the questions under Services > Exit survey and sees answers on the case (a manager does not, if
+the leaver hid them). Services > Attrition shows the analytics for 3 to 24 months. Alumni keep the
+personal email and mobile they had on leaving, and a candidate with either is flagged as a former
+employee on the Recruitment candidate pages. The HR command centre can explain attrition and draft
+an exit summary that is added to the case once approved; "My assistant" answers questions about
+one's own separation.
+
 Since M11 it also sends report digests daily at 06:00 (`insight-report-digests`): weekly
 subscriptions go out on Mondays and monthly ones on the 1st, only to people whose report access is
 company-wide (or who hold executive access) when the digest is sent.

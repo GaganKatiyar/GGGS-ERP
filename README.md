@@ -103,7 +103,12 @@ applies.
   once approved, it is paid through an off-cycle payroll run (salary to the last day with PF, ESI,
   PT and TDS, a payslip and the bank file) that the month's regular run leaves out. Settlement and
   gratuity deadlines are tracked and overdue ones reported; ESI returns carry exit reason codes
-  and each run lists its leavers for marking exit on the EPFO portal.
+  and each run lists its leavers for marking exit on the EPFO portal. Leavers answer a configurable
+  exit survey (and can hide it from their manager); attrition analytics show the annualised rate,
+  voluntary, involuntary and natural exits, regretted losses, early attrition, reasons, tenure,
+  departments, managers, notice served, settlement turnaround and survey scores; former employees
+  who apply again are flagged in Recruitment with their rehire eligibility; and the assistants can
+  report one's own separation, explain attrition and draft an exit summary for HR to approve.
 - Insight and reach: dashboards for people, workforce, time, projects, resources, payroll, hiring,
   talent and experience, each assembled from the modules that own the data and limited to the
   viewer's report access, plus a company-wide executive dashboard and weekly or monthly digests;
