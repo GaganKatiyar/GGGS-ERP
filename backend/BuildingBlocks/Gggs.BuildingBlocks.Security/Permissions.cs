@@ -125,6 +125,9 @@ public static class Permissions
         /// <see cref="Spend.TravelAdvanceManage"/>.</summary>
         public const string TravelRequestCreate = "self.travel-request.create";
 
+        /// <summary>Applying for one's own loans and salary advances, and seeing their schedules.</summary>
+        public const string LoanApply = "self.loan.apply";
+
         /// <summary>Seeing which assets are currently assigned to oneself - read-only; registering,
         /// assigning or returning an asset is always an admin action (<see cref="Asset.Manage"/>).</summary>
         public const string AssetView = "self.asset.view";
@@ -601,6 +604,20 @@ public static class Permissions
 
         /// <summary>Marking approved claims reimbursed, or sending them to payroll.</summary>
         public const string ClaimPay = "spend.claim.pay";
+    }
+
+    /// <summary>Employee loans and salary advances: the loan types, loans, disbursement and recovery.</summary>
+    public static class Loan
+    {
+        /// <summary>Viewing any employee's loans, schedules and repayments. Approving an application
+        /// goes through Workflow (<c>workflow.task.act</c>), like every other approvable record.</summary>
+        public const string View = "loan.loan.view";
+
+        /// <summary>Disbursing approved loans, recording repayments, and writing loans off.</summary>
+        public const string Manage = "loan.loan.manage";
+
+        /// <summary>The loan types on offer: limits, tenure, interest and eligibility.</summary>
+        public const string TypeManage = "loan.type.manage";
     }
 
     /// <summary>Rewards and recognition: the catalogue, programme rules and budgets, recognitions and redemptions.</summary>

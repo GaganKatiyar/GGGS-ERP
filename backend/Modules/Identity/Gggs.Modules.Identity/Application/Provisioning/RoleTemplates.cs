@@ -217,6 +217,7 @@ public static class RoleTemplates
                 .. HiringManagement(),
                 .. TalentManagement(),
                 .. ExperienceManagement(),
+                .. LoanManagement(),
 
                 new(Permissions.Notification.TemplateView, DataScope.Tenant),
                 new(Permissions.Notification.TemplateManage, DataScope.Tenant),
@@ -375,6 +376,7 @@ public static class RoleTemplates
                 new(Permissions.Compensation.RevisionView, DataScope.LegalEntity),
                 new(Permissions.Compensation.RevisionManage, DataScope.LegalEntity),
                 new(Permissions.Compensation.VariablePayView, DataScope.LegalEntity),
+                .. LoanManagement(),
 
                 .. SelfService(),
             ],
@@ -387,6 +389,7 @@ public static class RoleTemplates
                 new(Permissions.Spend.TravelAdvanceManage, DataScope.Tenant),
                 new(Permissions.Spend.ClaimPay, DataScope.Tenant),
                 new(Permissions.Spend.CategoryManage, DataScope.Tenant),
+                .. LoanManagement(),
                 new(Permissions.Separation.CaseView, DataScope.Tenant),
                 new(Permissions.Separation.ClearanceManage, DataScope.Tenant),
                 new(Permissions.Separation.SettlementManage, DataScope.Tenant),
@@ -894,6 +897,14 @@ public static class RoleTemplates
         new(Permissions.Separation.AnalyticsView, DataScope.Tenant),
     ];
 
+    /// <summary>Employee loans and salary advances: the types on offer, disbursement and recovery.</summary>
+    private static PermissionAssignment[] LoanManagement() =>
+    [
+        new(Permissions.Loan.View, DataScope.Tenant),
+        new(Permissions.Loan.Manage, DataScope.Tenant),
+        new(Permissions.Loan.TypeManage, DataScope.Tenant),
+    ];
+
     /// <summary>Goals, performance, learning and career end to end.</summary>
     private static PermissionAssignment[] TalentManagement() =>
     [
@@ -1005,6 +1016,7 @@ public static class RoleTemplates
         new(Permissions.Self.AssetView, DataScope.Own),
         new(Permissions.Self.ExpenseClaimCreate, DataScope.Own),
         new(Permissions.Self.TravelRequestCreate, DataScope.Own),
+        new(Permissions.Self.LoanApply, DataScope.Own),
         new(Permissions.Ai.AssistantUse, DataScope.Own),
 
         // Everyone receives notifications - approvals, policies to acknowledge, invitations.

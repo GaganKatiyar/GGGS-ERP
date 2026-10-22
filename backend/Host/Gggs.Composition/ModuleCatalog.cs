@@ -18,6 +18,7 @@ using Gggs.Modules.Identity;
 using Gggs.Modules.Insight;
 using Gggs.Modules.Learning;
 using Gggs.Modules.Leave;
+using Gggs.Modules.Loans;
 using Gggs.Modules.MasterData;
 using Gggs.Modules.Notification;
 using Gggs.Modules.Onboarding;
@@ -85,6 +86,7 @@ public static class ModuleCatalog
         new EngagementModule(),
         new HelpdeskModule(),
         new ExpenseModule(),
+        new LoansModule(),
         new AssetsModule(),
         new CareerModule(),
         new LearningModule(),

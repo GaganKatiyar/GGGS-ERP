@@ -63,6 +63,12 @@ public enum PayrollInputKind
 
     /// <summary>Terminal benefits above their tax-free limits, and other taxable exit payments.</summary>
     TerminalTaxable = 12,
+
+    /// <summary>A loan or salary advance instalment recovered from pay (not taxable).</summary>
+    LoanRecovery = 13,
+
+    /// <summary>A loan or salary advance paid out with salary (not taxable, not wages).</summary>
+    LoanDisbursement = 14,
 }
 
 /// <summary>A one-off amount for a month's payroll, raised by another module (a bonus award, a project incentive).</summary>

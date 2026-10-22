@@ -72,6 +72,7 @@ public static class NotificationTemplates
     public const string TicketSlaBreached = "helpdesk.sla-breached";
     public const string AssetAssigned = "asset.assigned";
     public const string ExpenseDecided = "expense.decided";
+    public const string LoanUpdate = "loan.update";
     public const string ResignationSubmitted = "separation.resignation-submitted";
     public const string ClearanceAssigned = "separation.clearance-assigned";
     public const string OffboardingTaskAssigned = "separation.offboarding-task-assigned";

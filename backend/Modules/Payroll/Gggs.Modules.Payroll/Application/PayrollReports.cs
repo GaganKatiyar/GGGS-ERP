@@ -214,10 +214,15 @@ internal sealed class PayrollReports(
         decimal Sum(params string[] codes) => lines.Where(line => codes.Contains(line.Code)).Sum(line => line.Amount);
 
         var entries = new List<(string Account, decimal Debit, decimal Credit)>();
-        foreach (IGrouping<string, PayLine> group in lines.Where(line => line.Kind is ComponentKind.Earning or ComponentKind.Reimbursement).GroupBy(line => line.Name).OrderBy(group => group.Key, StringComparer.Ordinal))
+        foreach (IGrouping<string, PayLine> group in lines.Where(line => line.Kind is ComponentKind.Earning or ComponentKind.Reimbursement && line.Code != PayrollDefaults.LoanDisbursementCode).GroupBy(line => line.Name).OrderBy(group => group.Key, StringComparer.Ordinal))
         {
             entries.Add(($"Salary expense - {group.Key}", group.Sum(line => line.Amount), 0));
         }
+
+        // Loans paid out with salary are money the employees owe back, and instalments repay it.
+        decimal loansOut = Sum(PayrollDefaults.LoanDisbursementCode);
+        decimal loansBack = Sum(PayrollDefaults.LoanInstalmentCode);
+        entries.Add(("Employee loans recoverable", loansOut, loansBack));
 
         foreach (IGrouping<string, PayLine> group in lines.Where(line => line.Kind == ComponentKind.EmployerContribution).GroupBy(line => line.Name).OrderBy(group => group.Key, StringComparer.Ordinal))
         {
@@ -241,7 +246,8 @@ internal sealed class PayrollReports(
         entries.Add(("Benefits payable", 0, benefits));
         decimal otherDeductions = lines.Where(line => line.Kind == ComponentKind.Deduction).Sum(line => line.Amount)
             - Sum(StatutoryKeys.ProvidentFundEmployee, StatutoryKeys.StateInsuranceEmployee, StatutoryKeys.ProfessionalTax, StatutoryKeys.IncomeTax, StatutoryKeys.LabourWelfareEmployee)
-            - lines.Where(line => line.Kind == ComponentKind.Deduction && line.Code.StartsWith("BEN", StringComparison.Ordinal)).Sum(line => line.Amount);
+            - lines.Where(line => line.Kind == ComponentKind.Deduction && line.Code.StartsWith("BEN", StringComparison.Ordinal)).Sum(line => line.Amount)
+            - loansBack;
         entries.Add(("Other recoveries", 0, otherDeductions));
 
         var csv = new Csv();
