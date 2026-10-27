@@ -10,7 +10,7 @@
   border: 1px solid var(--gggs-color-border);
   border-radius: var(--gggs-radius-lg);
   background: var(--gggs-color-surface-raised);
-  box-shadow: var(--gggs-shadow-xs);
+  box-shadow: var(--gggs-shadow-1), var(--gggs-shadow-highlight);
 }
 
 /* Flush panel: for tables and lists that run edge to edge. */

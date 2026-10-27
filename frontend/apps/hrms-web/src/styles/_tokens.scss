@@ -7,26 +7,33 @@
  * place the next theme change will miss.
  */
 :root {
-  /* Brand and action. Primary matches Aura's blue 700 (see GggsPreset in app.config.ts). */
-  --gggs-color-primary: #1d4ed8;
-  --gggs-color-primary-hover: #1e40af;
-  --gggs-color-primary-subtle: #e8efff;
+  /*
+   * Brand and action. Primary is electric blue (Aura's blue 600, see GggsPreset in app.config.ts)
+   * over a navy brand colour; cyan is the accent. `accent` is dark enough to be text on white,
+   * `accent-bright` is for gradients, glows and chart fills only - it fails contrast as text.
+   */
+  --gggs-color-brand: #142b4a;
+  --gggs-color-primary: #2563eb;
+  --gggs-color-primary-hover: #1d4ed8;
+  --gggs-color-primary-subtle: #eaf1fe;
   --gggs-color-primary-contrast: #ffffff;
-  --gggs-color-accent: #7c3aed;
-  --gggs-color-accent-subtle: #f1eafe;
+  --gggs-color-accent: #0e7490;
+  --gggs-color-accent-subtle: #e6f7fb;
+  --gggs-color-accent-bright: #06b6d4;
 
   /* Surfaces and text. */
-  --gggs-color-surface: #f4f6f9;
+  --gggs-color-surface: #f5f7fb;
   --gggs-color-surface-raised: #ffffff;
-  --gggs-color-surface-sunken: #eef1f5;
-  --gggs-color-surface-hover: #f0f3f8;
-  --gggs-color-surface-selected: #e8efff;
-  --gggs-color-border: #e3e7ee;
-  --gggs-color-border-strong: #cbd2dc;
-  --gggs-color-text: #111827;
-  --gggs-color-text-muted: #5b6577;
-  --gggs-color-text-subtle: #687082;
-  --gggs-color-overlay: rgb(15 23 42 / 45%);
+  --gggs-color-surface-sunken: #eef2f7;
+  --gggs-color-surface-hover: #f1f4f9;
+  --gggs-color-surface-selected: #eaf1fe;
+  --gggs-color-border: #e2e8f0;
+  --gggs-color-border-strong: #cbd5e1;
+  --gggs-color-text: #172033;
+  /* Muted text sits on the page background too, so it is a step darker than slate 500 (AA). */
+  --gggs-color-text-muted: #5b6b80;
+  --gggs-color-text-subtle: #627085;
+  --gggs-color-overlay: rgb(15 27 46 / 45%);
 
   /* Semantic. "Strong" is text on the matching subtle background; both pass AA together. */
   --gggs-color-info: #0369a1;
@@ -41,20 +48,21 @@
   --gggs-color-danger-subtle: #fdecea;
 
   /* Primary navigation: a deep navy rail, the same in both themes. */
-  --gggs-color-nav-bg: #0f1b2e;
-  --gggs-color-nav-bg-hover: #1a2a44;
-  --gggs-color-nav-text: #b9c3d4;
+  --gggs-color-nav-bg: #142b4a;
+  --gggs-color-nav-bg-deep: #0d1d33;
+  --gggs-color-nav-bg-hover: #1c3a61;
+  --gggs-color-nav-text: #c7d2e3;
   --gggs-color-nav-text-active: #ffffff;
-  --gggs-color-nav-active: #2d5bdb;
-  --gggs-color-nav-border: #1e2c45;
+  --gggs-color-nav-active: #2563eb;
+  --gggs-color-nav-border: #1e3858;
 
   /* Categorical palette for charts and calendar kinds - distinguishable, not semantic. */
-  --gggs-cat-1: #1d4ed8;
-  --gggs-cat-2: #0e9f6e;
-  --gggs-cat-3: #d97706;
-  --gggs-cat-4: #7c3aed;
+  --gggs-cat-1: #2563eb;
+  --gggs-cat-2: #06b6d4;
+  --gggs-cat-3: #f59e0b;
+  --gggs-cat-4: #16a34a;
   --gggs-cat-5: #db2777;
-  --gggs-cat-6: #0891b2;
+  --gggs-cat-6: #7c3aed;
   --gggs-cat-7: #dc2626;
   --gggs-cat-8: #65a30d;
   --gggs-cat-9: #475569;
@@ -77,13 +85,48 @@
   --gggs-radius-sm: 0.375rem;
   --gggs-radius-md: 0.5rem;
   --gggs-radius-lg: 0.75rem;
+  --gggs-radius-xl: 1rem;
   --gggs-radius-pill: 999px;
 
-  /* Elevation. */
-  --gggs-shadow-xs: 0 1px 1px rgb(15 23 42 / 4%);
-  --gggs-shadow-sm: 0 1px 2px rgb(15 23 42 / 6%), 0 1px 1px rgb(15 23 42 / 4%);
-  --gggs-shadow-md: 0 4px 10px rgb(15 23 42 / 8%), 0 2px 4px rgb(15 23 42 / 4%);
-  --gggs-shadow-lg: 0 12px 24px rgb(15 23 42 / 12%), 0 4px 8px rgb(15 23 42 / 6%);
+  /*
+   * Elevation: five levels lit from above, each a tight contact shadow plus a soft ambient one,
+   * tinted navy rather than grey so depth reads as light, not dirt. Resting cards sit at 1, a card
+   * under the pointer at 3, popovers at 4, dialogs at 5. `highlight` is the lit top edge of a
+   * raised surface. The xs-lg names are the older scale, kept as aliases.
+   */
+  --gggs-shadow-1: 0 1px 2px rgb(20 43 74 / 6%), 0 1px 3px rgb(20 43 74 / 4%);
+  --gggs-shadow-2: 0 1px 2px rgb(20 43 74 / 6%), 0 4px 10px -2px rgb(20 43 74 / 9%);
+  --gggs-shadow-3: 0 2px 4px rgb(20 43 74 / 5%), 0 14px 28px -8px rgb(20 43 74 / 18%);
+  --gggs-shadow-4: 0 4px 8px rgb(20 43 74 / 6%), 0 22px 40px -10px rgb(20 43 74 / 24%);
+  --gggs-shadow-5: 0 8px 16px rgb(20 43 74 / 8%), 0 32px 64px -12px rgb(20 43 74 / 32%);
+  --gggs-shadow-highlight: inset 0 1px 0 rgb(255 255 255 / 70%);
+  --gggs-shadow-glow: 0 6px 18px -6px color-mix(in srgb, var(--gggs-color-primary) 55%, transparent);
+  --gggs-shadow-xs: var(--gggs-shadow-1);
+  --gggs-shadow-sm: var(--gggs-shadow-2);
+  --gggs-shadow-md: var(--gggs-shadow-3);
+  --gggs-shadow-lg: var(--gggs-shadow-4);
+
+  /* Gradients: accents only (logo, active marks, icon tiles, bars), never behind body text. */
+  --gggs-gradient-brand: linear-gradient(
+    135deg,
+    var(--gggs-color-brand) 0%,
+    var(--gggs-color-primary) 58%,
+    var(--gggs-color-accent-bright) 100%
+  );
+  --gggs-gradient-primary: linear-gradient(180deg, var(--gggs-color-primary) 0%, var(--gggs-color-primary-hover) 100%);
+  --gggs-gradient-accent: linear-gradient(90deg, var(--gggs-color-primary) 0%, var(--gggs-color-accent-bright) 100%);
+  --gggs-gradient-tile: linear-gradient(135deg, var(--gggs-color-primary-subtle) 0%, var(--gggs-color-accent-subtle) 100%);
+  --gggs-gradient-nav: linear-gradient(180deg, var(--gggs-color-nav-bg) 0%, var(--gggs-color-nav-bg-deep) 100%);
+  --gggs-gradient-wash: radial-gradient(
+    ellipse 70% 22rem at 75% -6rem,
+    color-mix(in srgb, var(--gggs-color-primary) 8%, transparent),
+    transparent 70%
+  );
+
+  /* Glass: floating chrome only (header, flyout, menus, overlays) - never cards, forms or tables. */
+  --gggs-glass-bg: color-mix(in srgb, var(--gggs-color-surface-raised) 80%, transparent);
+  --gggs-glass-border: color-mix(in srgb, var(--gggs-color-border) 75%, transparent);
+  --gggs-glass-blur: saturate(1.6) blur(14px);
 
   /* Typography. */
   --gggs-font-family: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -112,14 +155,21 @@
   /* Layout. */
   --gggs-header-height: 3.5rem;
   --gggs-rail-width: 5.75rem;
+  --gggs-rail-width-compact: 4rem;
   --gggs-panel-width: 15rem;
   --gggs-content-max-width: 100rem;
 
   /* Interaction. */
   --gggs-focus-ring: 0 0 0 3px color-mix(in srgb, var(--gggs-color-primary) 35%, transparent);
   --gggs-focus-outline: 2px solid var(--gggs-color-primary);
-  --gggs-transition-fast: 120ms ease;
-  --gggs-transition: 180ms ease;
+  --gggs-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --gggs-duration-fast: 120ms;
+  --gggs-duration: 180ms;
+  --gggs-duration-slow: 260ms;
+  --gggs-transition-fast: var(--gggs-duration-fast) var(--gggs-ease-out);
+  --gggs-transition: var(--gggs-duration) var(--gggs-ease-out);
+  /* How far a card rises under the pointer. Zeroed for reduced motion (_base.scss). */
+  --gggs-lift: -2px;
   --gggs-disabled-opacity: 0.55;
 
   /* Stacking. */
@@ -140,23 +190,25 @@
 }
 
 .gggs-dark {
-  --gggs-color-primary: #8fb0ff;
-  --gggs-color-primary-hover: #b0c8ff;
-  --gggs-color-primary-subtle: #1b2a4a;
+  --gggs-color-brand: #0b1a2e;
+  --gggs-color-primary: #7aa7ff;
+  --gggs-color-primary-hover: #a3c2ff;
+  --gggs-color-primary-subtle: #182a4d;
   --gggs-color-primary-contrast: #0b1220;
-  --gggs-color-accent: #b794f6;
-  --gggs-color-accent-subtle: #2a1f45;
+  --gggs-color-accent: #22d3ee;
+  --gggs-color-accent-subtle: #0e2a33;
+  --gggs-color-accent-bright: #22d3ee;
 
-  --gggs-color-surface: #0f131a;
-  --gggs-color-surface-raised: #171c25;
-  --gggs-color-surface-sunken: #12161e;
-  --gggs-color-surface-hover: #1f2632;
-  --gggs-color-surface-selected: #1b2a4a;
-  --gggs-color-border: #2a3240;
-  --gggs-color-border-strong: #3a4455;
-  --gggs-color-text: #e7eaf0;
-  --gggs-color-text-muted: #a1abbb;
-  --gggs-color-text-subtle: #7f8a9c;
+  --gggs-color-surface: #0f1623;
+  --gggs-color-surface-raised: #151c2b;
+  --gggs-color-surface-sunken: #111827;
+  --gggs-color-surface-hover: #1c2536;
+  --gggs-color-surface-selected: #182a4d;
+  --gggs-color-border: #263044;
+  --gggs-color-border-strong: #364157;
+  --gggs-color-text: #e6eaf2;
+  --gggs-color-text-muted: #9ca8bb;
+  --gggs-color-text-subtle: #8892a6;
   --gggs-color-overlay: rgb(0 0 0 / 60%);
 
   --gggs-color-info: #7cc4ec;
@@ -170,26 +222,32 @@
   --gggs-color-danger-hover: #ffaaa2;
   --gggs-color-danger-subtle: #3a1a17;
 
-  --gggs-color-nav-bg: #0a1220;
-  --gggs-color-nav-bg-hover: #16223a;
-  --gggs-color-nav-border: #18233a;
+  --gggs-color-nav-bg: #0d1b30;
+  --gggs-color-nav-bg-deep: #08111f;
+  --gggs-color-nav-bg-hover: #182a47;
+  --gggs-color-nav-border: #1a2a44;
 
-  --gggs-cat-1: #7aa2ff;
-  --gggs-cat-2: #34d399;
+  --gggs-cat-1: #7aa7ff;
+  --gggs-cat-2: #22d3ee;
   --gggs-cat-3: #fbbf24;
-  --gggs-cat-4: #b794f6;
+  --gggs-cat-4: #4ade80;
   --gggs-cat-5: #f472b6;
-  --gggs-cat-6: #22d3ee;
+  --gggs-cat-6: #b794f6;
   --gggs-cat-7: #f87171;
   --gggs-cat-8: #a3e635;
   --gggs-cat-9: #94a3b8;
   --gggs-cat-10: #c084fc;
 
-  /* Shadows need more opacity to read against a dark surface. */
-  --gggs-shadow-xs: 0 1px 1px rgb(0 0 0 / 24%);
-  --gggs-shadow-sm: 0 1px 2px rgb(0 0 0 / 30%), 0 1px 1px rgb(0 0 0 / 24%);
-  --gggs-shadow-md: 0 4px 10px rgb(0 0 0 / 36%), 0 2px 4px rgb(0 0 0 / 24%);
-  --gggs-shadow-lg: 0 12px 24px rgb(0 0 0 / 44%), 0 4px 8px rgb(0 0 0 / 30%);
+  /* Shadows need more opacity to read against a dark surface; the lit edge is much fainter. */
+  --gggs-shadow-1: 0 1px 2px rgb(0 0 0 / 30%), 0 1px 3px rgb(0 0 0 / 20%);
+  --gggs-shadow-2: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 10px -2px rgb(0 0 0 / 36%);
+  --gggs-shadow-3: 0 2px 4px rgb(0 0 0 / 30%), 0 14px 28px -8px rgb(0 0 0 / 50%);
+  --gggs-shadow-4: 0 4px 8px rgb(0 0 0 / 32%), 0 22px 40px -10px rgb(0 0 0 / 56%);
+  --gggs-shadow-5: 0 8px 16px rgb(0 0 0 / 36%), 0 32px 64px -12px rgb(0 0 0 / 64%);
+  --gggs-shadow-highlight: inset 0 1px 0 rgb(255 255 255 / 5%);
+
+  /* Dark primary is the light blue, with hover lighter still: keep the brighter end on top. */
+  --gggs-gradient-primary: linear-gradient(180deg, var(--gggs-color-primary-hover) 0%, var(--gggs-color-primary) 100%);
 
   color-scheme: dark;
 }

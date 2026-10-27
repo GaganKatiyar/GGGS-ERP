@@ -27,7 +27,7 @@ import { ProductTitleStrategy } from './product-title-strategy';
  * Bridges the `--gggs-color-*` custom properties (styles.scss) into PrimeNG's own token system, so
  * a single source of truth recolors hand-rolled markup and PrimeNG components alike - without this,
  * changing `--gggs-color-primary` (tenant branding) would silently do nothing to PrimeNG components.
- * `primary` reuses Aura's stock `blue` scale, whose 700 step is already our exact primary hex.
+ * `primary` reuses Aura's stock `blue` scale, whose 600 step is already our exact primary hex.
  */
 const GggsPreset = definePreset(Aura, {
   semantic: {
@@ -52,7 +52,7 @@ const GggsPreset = definePreset(Aura, {
       sm: 'var(--gggs-radius-sm)',
       md: 'var(--gggs-radius-md)',
       lg: 'var(--gggs-radius-lg)',
-      xl: 'var(--gggs-radius-lg)',
+      xl: 'var(--gggs-radius-xl)',
     },
     focusRing: {
       width: '2px',
@@ -78,8 +78,8 @@ const GggsPreset = definePreset(Aura, {
         primary: {
           color: 'var(--gggs-color-primary)',
           contrastColor: '#ffffff',
-          hoverColor: '{blue.800}',
-          activeColor: '{blue.900}',
+          hoverColor: '{blue.700}',
+          activeColor: '{blue.800}',
         },
         highlight: {
           background: 'var(--gggs-color-primary-subtle)',
