@@ -199,6 +199,9 @@ export class Shell {
       const schedule = () => (pending ||= window.setTimeout(mark, 250));
       const observer = new MutationObserver(schedule);
       observer.observe(content, { childList: true, subtree: true });
+      // On a full page load the routed page can already be in place by now, with nothing left to
+      // change it, so check once without waiting for a mutation.
+      schedule();
       window.addEventListener('resize', schedule);
       destroyRef.onDestroy(() => window.removeEventListener('resize', schedule));
       destroyRef.onDestroy(() => observer.disconnect());

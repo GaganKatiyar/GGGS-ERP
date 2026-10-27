@@ -81,6 +81,30 @@
   font-weight: var(--gggs-font-weight-semibold);
 }
 
+/*
+ * Tag severities on the semantic tokens, the same pairs as .badge: Aura's own green sits at 4.57:1,
+ * close enough to the AA line that any tint behind it tips it under, and it ignores dark mode.
+ */
+.p-tag.p-tag-success {
+  background: var(--gggs-color-success-subtle);
+  color: var(--gggs-color-success);
+}
+
+.p-tag.p-tag-info {
+  background: var(--gggs-color-info-subtle);
+  color: var(--gggs-color-info);
+}
+
+.p-tag.p-tag-warn {
+  background: var(--gggs-color-warning-subtle);
+  color: var(--gggs-color-warning-strong);
+}
+
+.p-tag.p-tag-danger {
+  background: var(--gggs-color-danger-subtle);
+  color: var(--gggs-color-danger);
+}
+
 .p-component {
   font-family: var(--gggs-font-family);
 }
