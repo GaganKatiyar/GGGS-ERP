@@ -15,7 +15,7 @@ import { EmptyState, KpiCard, PageHeader, Skeleton, StatusBadge } from '@gggs/sh
   template: `
     <gggs-page-header title="Project financials" subtitle="Revenue, cost and margin across the projects you can see." />
     @if (portfolio(); as p) {
-      <div class="fin__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="Contract value" [value]="p.contractValue | gggsMoney" icon="pi pi-briefcase" />
         <gggs-kpi-card label="Revenue to date" [value]="p.revenue | gggsMoney" />
         <gggs-kpi-card label="Cost to date" [value]="p.actualCost | gggsMoney" />
@@ -58,13 +58,6 @@ import { EmptyState, KpiCard, PageHeader, Skeleton, StatusBadge } from '@gggs/sh
     }
   `,
   styles: `
-    .fin__kpis {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(9rem, 45%), 1fr));
-      gap: var(--gggs-space-3);
-      margin-block-end: var(--gggs-space-3);
-    }
-
     .fin__scroll {
       overflow-x: auto;
     }

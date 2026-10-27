@@ -24,7 +24,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
     @if (error()) {
       <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
-    <div class="usage__kpis">
+    <div class="xp__kpis">
       <gggs-kpi-card label="Conversations" [value]="total().conversations" icon="pi pi-comments" />
       <gggs-kpi-card label="Turns" [value]="total().turns" icon="pi pi-reply" />
       <gggs-kpi-card label="Tokens" [value]="(total().inputTokens + total().outputTokens | number) ?? '0'" icon="pi pi-database" />
@@ -64,12 +64,6 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
     </div>
   `,
   styles: `
-    .usage__kpis {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(9rem, 45%), 1fr));
-      gap: var(--gggs-space-3);
-      margin-block-end: var(--gggs-space-3);
-    }
     .usage__period {
       width: auto;
     }

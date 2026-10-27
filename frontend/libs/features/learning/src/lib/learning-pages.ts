@@ -47,7 +47,7 @@ const blankCourse = (): CourseInput => ({
       <a class="btn btn--primary" routerLink="/learning/courses">Courses</a>
     </gggs-page-header>
     @if (dashboard(); as d) {
-      <div class="lms__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="Assigned, not started" [value]="d.assigned" />
         <gggs-kpi-card label="In progress" [value]="d.inProgress" />
         <gggs-kpi-card label="Completed (90 days)" [value]="d.completedLast90Days" />
@@ -489,7 +489,7 @@ export class CertificatesPage {
   template: `
     <gggs-page-header title="My learning" subtitle="Courses assigned to you, the catalogue, and your certificates." />
     @if (mine(); as m) {
-      <div class="lms__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="To do" [value]="m.active.length" [hint]="overdueCount() + ' overdue'" />
         <gggs-kpi-card label="Completed" [value]="m.completed.length" />
         <gggs-kpi-card label="Hours this year" [value]="m.hoursThisYear" />

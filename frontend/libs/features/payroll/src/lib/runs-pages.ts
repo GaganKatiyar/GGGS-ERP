@@ -19,7 +19,7 @@ import { financialYearLabel, financialYearOf, message, recentFinancialYears, thi
       }
     </gggs-page-header>
     @if (dashboard(); as d) {
-      <div class="pay__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="On payroll" [value]="d.employeesWithSalary" icon="pi pi-users" [hint]="d.employeesWithoutSalary ? d.employeesWithoutSalary + ' active without a salary' : 'everyone has a salary'" />
         <gggs-kpi-card label="Last net pay" [value]="d.lastFinalized ? (d.lastFinalized.net | gggsMoney: d.lastFinalized.currency) : '—'" [hint]="d.lastFinalized?.label" />
         <gggs-kpi-card label="Last employer cost" [value]="d.lastFinalized ? (d.lastFinalized.employerCost | gggsMoney: d.lastFinalized.currency) : '—'" />

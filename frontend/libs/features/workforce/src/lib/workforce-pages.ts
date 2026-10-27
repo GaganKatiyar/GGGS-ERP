@@ -32,7 +32,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
       <a class="btn btn--primary" routerLink="/workforce/requests">Manpower requests</a>
     </gggs-page-header>
     @if (dashboard(); as d) {
-      <div class="wfp__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="Planned headcount" [value]="d.planned" [hint]="d.plan ? d.plan.name + ' (' + d.plan.year + ')' : 'No approved plan'" />
         <gggs-kpi-card label="Headcount today" [value]="d.live" />
         <gggs-kpi-card label="Gap to plan" [value]="d.gap" />
@@ -228,7 +228,7 @@ interface LineDraft {
         }
       </gggs-page-header>
       <p><a routerLink="/workforce/plans">← All plans</a></p>
-      <div class="wfp__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="Headcount at planning" [value]="v.plan.currentHeadcount" />
         <gggs-kpi-card label="Planned" [value]="v.plan.plannedHeadcount" />
         <gggs-kpi-card label="Salary budget" [value]="v.plan.salaryBudget | gggsMoney" />

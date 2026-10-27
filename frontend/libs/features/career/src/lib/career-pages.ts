@@ -567,7 +567,7 @@ export class SuccessionPage {
       </label>
     </section>
     @if (view(); as v) {
-      <div class="car__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="People" [value]="v.people.length" />
         <gggs-kpi-card label="Not yet assessed" [value]="v.unassessed" />
         <gggs-kpi-card label="No released rating" [value]="v.unrated" />
@@ -717,7 +717,7 @@ export class TalentReviewPage {
   template: `
     <gggs-page-header title="My career" subtitle="Your path, your next step and what it takes." />
     @if (mine(); as m) {
-      <div class="car__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="Role" [value]="m.designation ?? '—'" [hint]="(m.jobName ?? '') + (m.gradeName ? ' · ' + m.gradeName : '')" />
         <gggs-kpi-card label="Latest rating" [value]="m.latestRating ? m.latestRating.rating + ' / 5' : '—'" [hint]="m.latestRating ? m.latestRating.label + ' · ' + m.latestRating.cycleName : 'No released review yet'" />
         <gggs-kpi-card label="With us since" [value]="m.joiningDate ? (m.joiningDate | date: 'MMM y') : '—'" />

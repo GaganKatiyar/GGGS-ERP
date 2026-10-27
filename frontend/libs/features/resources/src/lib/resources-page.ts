@@ -19,7 +19,7 @@ import { message } from './allocation-dialogs';
     <gggs-page-header title="Resources" subtitle="Who is available, who is stretched, and who is about to free up." />
 
     @if (dashboard(); as d) {
-      <div class="res__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="People" [value]="d.totalPeople" icon="pi pi-users" />
         <gggs-kpi-card label="Billable" [value]="d.billable" [hint]="d.nonBillable + ' non-billable'" />
         <gggs-kpi-card label="On bench" [value]="d.onBench" [hint]="d.benchCostPerDay ? (d.benchCostPerDay | number: '1.0-0') + ' a day' : undefined" />

@@ -8,7 +8,20 @@
   overflow-x: auto;
   border: 1px solid var(--gggs-color-border);
   border-radius: var(--gggs-radius-md);
-  background: var(--gggs-color-surface-raised);
+  /*
+   * Scroll shadows: a soft shade at whichever edge has more table beyond it. The two covers scroll
+   * with the content (local) and hide each shade once its edge is reached; the shades stay put.
+   */
+  background-color: var(--gggs-color-surface-raised);
+  background-image:
+    linear-gradient(to right, var(--gggs-color-surface-raised) 40%, transparent),
+    linear-gradient(to left, var(--gggs-color-surface-raised) 40%, transparent),
+    radial-gradient(farthest-side at 0 50%, color-mix(in srgb, var(--gggs-color-brand) 16%, transparent), transparent),
+    radial-gradient(farthest-side at 100% 50%, color-mix(in srgb, var(--gggs-color-brand) 16%, transparent), transparent);
+  background-position: left, right, left, right;
+  background-size: 2rem 100%, 2rem 100%, 0.75rem 100%, 0.75rem 100%;
+  background-repeat: no-repeat;
+  background-attachment: local, local, scroll, scroll;
 
   /* Inside a panel the panel already draws the frame. */
   .panel > &,
@@ -52,8 +65,10 @@
     transition: background-color var(--gggs-transition-fast);
   }
 
+  /* The row under the pointer is tinted and marked at its edge, so the eye can follow it across. */
   tbody tr:hover {
     background: var(--gggs-color-surface-hover);
+    box-shadow: inset 2px 0 0 color-mix(in srgb, var(--gggs-color-primary) 55%, transparent);
   }
 
   tbody tr:last-child td {

@@ -53,7 +53,7 @@ const TEMPLATES: Readonly<Record<StatutoryRuleType, unknown>> = {
   template: `
     <gggs-page-header title="Compliance" subtitle="Statutory rules in force, the filing calendar, and licences and certificates." />
     @if (dashboard(); as d) {
-      <div class="cmp__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="Rules in force" [value]="d.rulesInForce" [hint]="d.draftRules ? d.draftRules + ' draft(s)' : undefined" icon="pi pi-shield" />
         <gggs-kpi-card label="Due in 30 days" [value]="d.dueIn30Days" />
         <gggs-kpi-card label="Overdue" [value]="d.overdue" />

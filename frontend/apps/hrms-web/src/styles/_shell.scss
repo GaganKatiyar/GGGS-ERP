@@ -417,7 +417,9 @@ gggs-shell {
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
-  background: var(--gggs-gradient-wash) no-repeat local;
+  background-image: var(--gggs-gradient-wash);
+  background-repeat: no-repeat;
+  background-attachment: local;
 }
 
 .topbar {

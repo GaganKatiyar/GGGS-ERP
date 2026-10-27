@@ -17,7 +17,9 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="empty-state" role="status">
-      <i class="empty-state__icon {{ icon() }}" aria-hidden="true"></i>
+      <span class="empty-state__halo" aria-hidden="true">
+        <i class="{{ icon() }}"></i>
+      </span>
       <p class="empty-state__title">{{ title() }}</p>
 
       @if (description()) {
@@ -27,7 +29,7 @@ import {
       @if (actionLabel()) {
         <button
           type="button"
-          class="empty-state__action"
+          class="btn btn--primary btn--sm empty-state__action"
           (click)="action.emit()"
         >
           {{ actionLabel() }}
@@ -40,19 +42,35 @@ import {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0.5rem;
-      padding: 2.5rem 1rem;
+      gap: var(--gggs-space-2);
+      padding: var(--gggs-space-10) var(--gggs-space-4);
       text-align: center;
       color: var(--gggs-color-text-muted);
     }
 
-    .empty-state__icon {
-      font-size: 1.75rem;
+    /* The icon sits on a raised tile, lit like the KPI cards' icons. */
+    .empty-state__halo {
+      display: grid;
+      place-items: center;
+      width: 3.25rem;
+      height: 3.25rem;
+      margin-block-end: var(--gggs-space-1);
+      border-radius: var(--gggs-radius-lg);
+      background: var(--gggs-gradient-tile);
+      box-shadow:
+        var(--gggs-shadow-2),
+        inset 0 0 0 1px color-mix(in srgb, var(--gggs-color-primary) 14%, transparent);
+      color: var(--gggs-color-primary);
+    }
+
+    /* PrimeIcons sizes .pi itself, so the size goes on the icon, not the tile. */
+    .empty-state__halo > i {
+      font-size: var(--gggs-font-size-lg);
     }
 
     .empty-state__title {
       margin: 0;
-      font-weight: 600;
+      font-weight: var(--gggs-font-weight-semibold);
       color: var(--gggs-color-text);
     }
 
@@ -62,7 +80,7 @@ import {
     }
 
     .empty-state__action {
-      margin-block-start: 0.5rem;
+      margin-block-start: var(--gggs-space-2);
     }
   `,
 })

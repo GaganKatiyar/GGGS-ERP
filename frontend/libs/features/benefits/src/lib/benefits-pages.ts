@@ -403,7 +403,7 @@ export class BenefitEnrollmentsPage {
   template: `
     <gggs-page-header title="My benefits" subtitle="Your cover, what you pay, what the company pays, and plans you can join." />
     @if (mine(); as m) {
-      <div class="ben__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="You pay a month" [value]="m.monthlyEmployeeCost | gggsMoney" />
         <gggs-kpi-card label="The company pays a month" [value]="m.monthlyEmployerCost | gggsMoney" />
         <gggs-kpi-card label="Dependents on record" [value]="m.dependents.length" />

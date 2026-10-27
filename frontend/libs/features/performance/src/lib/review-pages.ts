@@ -199,7 +199,7 @@ export class CyclesPage {
         }
       </gggs-page-header>
       <p><a routerLink="/performance">← Cycles</a></p>
-      <div class="perf__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="Reviews" [value]="c.reviews" />
         <gggs-kpi-card label="Waiting on self-review" [value]="count(c, 'Pending')" />
         <gggs-kpi-card label="Waiting on manager" [value]="count(c, 'SelfSubmitted')" />

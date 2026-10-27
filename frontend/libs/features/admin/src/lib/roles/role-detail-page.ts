@@ -47,7 +47,7 @@ import { AdminApi } from '@gggs/shared/identity';
                   <td *gggsHasPermission="'admin.role.manage'">
                     <button
                       type="button"
-                      class="btn btn--danger"
+                      class="btn btn--danger btn--sm"
                       [disabled]="isActing()"
                       (click)="revoke(permission.permissionCode)"
                     >
@@ -106,16 +106,12 @@ import { AdminApi } from '@gggs/shared/identity';
   `,
   styles: `
     .panel {
-      padding: 1rem;
-      margin-block-end: 1rem;
-      border: 1px solid var(--gggs-color-border);
-      border-radius: 0.5rem;
-      background: var(--gggs-color-surface-raised);
+      margin-block-end: var(--gggs-space-4);
     }
 
     .panel__heading {
-      margin: 0 0 0.75rem;
-      font-size: 1rem;
+      margin: 0 0 var(--gggs-space-3);
+      font-size: var(--gggs-font-size-md);
     }
 
 
@@ -124,14 +120,14 @@ import { AdminApi } from '@gggs/shared/identity';
       display: flex;
       flex-wrap: wrap;
       align-items: flex-end;
-      gap: 0.75rem;
+      gap: var(--gggs-space-3);
     }
 
     .field {
       display: flex;
       flex-direction: column;
-      gap: 0.25rem;
-      font-size: 0.875rem;
+      gap: var(--gggs-space-1);
+      font-size: var(--gggs-font-size-base);
       min-width: 16rem;
     }
 
@@ -143,40 +139,7 @@ import { AdminApi } from '@gggs/shared/identity';
       flex-basis: 100%;
       margin: 0;
       color: var(--gggs-color-danger);
-      font-size: 0.875rem;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.5rem 1rem;
-      font-weight: 600;
-      font-family: inherit;
-      font-size: inherit;
-      border-radius: 0.375rem;
-      border: 1px solid var(--gggs-color-border);
-      background: var(--gggs-color-surface-raised);
-      text-decoration: none;
-      color: inherit;
-      cursor: pointer;
-    }
-
-    .btn--primary {
-      background: var(--gggs-color-primary);
-      border-color: transparent;
-      color: var(--gggs-color-primary-contrast);
-    }
-
-    .btn--danger {
-      border-color: var(--gggs-color-danger);
-      color: var(--gggs-color-danger);
-      font-size: 0.8125rem;
-      padding: 0.375rem 0.75rem;
-    }
-
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
+      font-size: var(--gggs-font-size-base);
     }
   `,
 })

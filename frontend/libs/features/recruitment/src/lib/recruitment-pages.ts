@@ -127,7 +127,7 @@ export class RequisitionsPage {
         }
       </gggs-page-header>
       <p><a routerLink="/recruitment/requisitions">← All requisitions</a></p>
-      <div class="rec__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="Openings" [value]="r.openings" [hint]="r.remaining + ' remaining'" />
         <gggs-kpi-card label="Applications" [value]="r.applications" />
         <gggs-kpi-card label="CTC range" [value]="(r.salaryMin | gggsMoney) + ' – ' + (r.salaryMax | gggsMoney)" />
@@ -1012,7 +1012,7 @@ export class RecruitmentSettingsPage {
       </label>
     </section>
     @if (data(); as d) {
-      <div class="rec__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="Open requisitions" [value]="d.openRequisitions" [hint]="d.openPositions + ' positions to fill'" />
         <gggs-kpi-card label="Applications" [value]="d.applications" />
         <gggs-kpi-card label="Hires" [value]="d.hires" />

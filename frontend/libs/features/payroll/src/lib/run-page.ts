@@ -59,7 +59,7 @@ import { message } from './payroll-shared';
         }
       </section>
 
-      <div class="pay__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="People paid" [value]="d.run.employeeCount" [hint]="d.held ? d.held + ' on hold' : undefined" icon="pi pi-users" />
         <gggs-kpi-card label="Gross" [value]="d.run.gross | gggsMoney: d.run.currency" />
         <gggs-kpi-card label="Deductions" [value]="d.run.deductions | gggsMoney: d.run.currency" />

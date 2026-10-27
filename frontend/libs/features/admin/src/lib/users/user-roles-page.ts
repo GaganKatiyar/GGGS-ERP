@@ -54,56 +54,29 @@ import { AdminApi } from '@gggs/shared/identity';
     .panel {
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
-      padding: 1rem;
+      gap: var(--gggs-space-3);
       max-width: 28rem;
-      border: 1px solid var(--gggs-color-border);
-      border-radius: 0.5rem;
-      background: var(--gggs-color-surface-raised);
     }
 
     .checkbox {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 0.5rem;
-      font-size: 0.875rem;
+      gap: var(--gggs-space-2);
+      font-size: var(--gggs-font-size-base);
     }
 
     .checkbox__hint {
       flex-basis: 100%;
-      margin-inline-start: 1.5rem;
+      margin-inline-start: var(--gggs-space-6);
       color: var(--gggs-color-text-muted);
-      font-size: 0.8125rem;
+      font-size: var(--gggs-font-size-sm);
     }
 
     .field__error {
       margin: 0;
       color: var(--gggs-color-danger);
-      font-size: 0.875rem;
-    }
-
-    .btn {
-      align-self: flex-start;
-      padding: 0.5rem 1rem;
-      font-weight: 600;
-      border-radius: 0.375rem;
-      border: 1px solid var(--gggs-color-border);
-      background: var(--gggs-color-surface-raised);
-      text-decoration: none;
-      color: inherit;
-      cursor: pointer;
-    }
-
-    .btn--primary {
-      background: var(--gggs-color-primary);
-      border-color: transparent;
-      color: var(--gggs-color-primary-contrast);
-    }
-
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
+      font-size: var(--gggs-font-size-base);
     }
   `,
 })

@@ -186,9 +186,9 @@ export class DataTableCell {
       min-width: 12rem;
       padding: var(--gggs-space-3);
       border: 1px solid var(--gggs-color-border);
-      border-radius: var(--gggs-radius-sm);
+      border-radius: var(--gggs-radius-md);
       background: var(--gggs-color-surface-raised);
-      box-shadow: var(--gggs-shadow-md);
+      box-shadow: var(--gggs-shadow-4);
       font-size: var(--gggs-font-size-sm);
     }
 
@@ -196,7 +196,7 @@ export class DataTableCell {
       border: 1px solid var(--gggs-color-border);
       border-radius: var(--gggs-radius-lg);
       background: var(--gggs-color-surface-raised);
-      box-shadow: var(--gggs-shadow-xs);
+      box-shadow: var(--gggs-shadow-1), var(--gggs-shadow-highlight);
       overflow: hidden;
     }
 
@@ -219,8 +219,15 @@ export class DataTableCell {
       cursor: pointer;
     }
 
+    /* Same hover as the plain .table (styles/_table.scss): a tint and a mark at the row's edge. */
     :host ::ng-deep .p-datatable-tbody > tr:hover {
       background: var(--gggs-color-surface-hover);
+      box-shadow: inset 2px 0 0 color-mix(in srgb, var(--gggs-color-primary) 55%, transparent);
+    }
+
+    /* The column the list is sorted by reads as chosen, not only through its small arrow. */
+    :host ::ng-deep .p-datatable-thead > tr > th.p-datatable-column-sorted {
+      color: var(--gggs-color-primary);
     }
 
     :host ::ng-deep .p-paginator {

@@ -185,7 +185,7 @@ export class OnboardingTasks {
       }
     </gggs-page-header>
     @if (dashboard(); as d) {
-      <div class="onb__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="In progress" [value]="d.open" />
         <gggs-kpi-card label="Pre-boarding" [value]="d.preBoarding" hint="Not joined yet" />
         <gggs-kpi-card label="Joining in 30 days" [value]="d.joiningNext30Days" />
@@ -313,7 +313,7 @@ export class OnboardingDashboardPage {
         }
       </gggs-page-header>
       <p><a routerLink="/onboarding">← All joiners</a> · <a [routerLink]="['/employees', v.case.employeeId]">Employee record</a></p>
-      <div class="onb__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="Joining" [value]="v.case.joiningDate | date: 'd MMM y'" />
         <gggs-kpi-card label="Progress" [value]="v.case.progressPercent + '%'" [hint]="v.case.done + ' of ' + v.case.tasks + ' tasks'" />
         <gggs-kpi-card label="Overdue" [value]="v.case.overdue" />
@@ -629,7 +629,7 @@ export class OnboardingTemplatesPage {
     </gggs-page-header>
     @if (loaded()) {
       @if (view(); as v) {
-        <div class="onb__kpis">
+        <div class="xp__kpis">
           <gggs-kpi-card label="Joining" [value]="v.case.joiningDate | date: 'd MMM y'" />
           <gggs-kpi-card label="Progress" [value]="v.case.progressPercent + '%'" [hint]="v.case.done + ' of ' + v.case.tasks + ' tasks'" />
           <gggs-kpi-card label="Your manager" [value]="v.case.managerName ?? '—'" />

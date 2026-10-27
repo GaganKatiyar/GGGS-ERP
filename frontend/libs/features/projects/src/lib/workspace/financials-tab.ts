@@ -25,7 +25,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
   template: `
     @if (finance(); as f) {
       <div class="stack">
-        <div class="fin__kpis">
+        <div class="xp__kpis">
           <gggs-kpi-card label="Contract value" [value]="f.summary.contractValue | gggsMoney: f.currency" [hint]="humanize(f.billingType)" />
           <gggs-kpi-card label="Revenue" [value]="f.summary.revenue | gggsMoney: f.currency" [hint]="'forecast ' + (f.summary.forecastRevenue | gggsMoney: f.currency)" />
           <gggs-kpi-card label="Billed / unbilled" [value]="f.summary.billed | gggsMoney: f.currency" [hint]="(f.summary.unbilled | gggsMoney: f.currency) + ' unbilled'" />
@@ -320,12 +320,6 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
     </gggs-form-dialog>
   `,
   styles: `
-    .fin__kpis {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(9rem, 45%), 1fr));
-      gap: var(--gggs-space-3);
-    }
-
     .fin__heading {
       margin: 0;
       font-size: var(--gggs-font-size-md);
