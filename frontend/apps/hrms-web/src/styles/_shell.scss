@@ -55,10 +55,11 @@ gggs-shell {
     z-index: var(--gggs-z-drawer);
     transform: translateX(-100%);
     transition: transform var(--gggs-transition);
-    box-shadow: var(--gggs-shadow-lg);
 
+    // Shadow only while open: from the parked position it would bleed in along the screen edge.
     .shell--drawer-open & {
       transform: none;
+      box-shadow: var(--gggs-shadow-4);
     }
   }
 }
