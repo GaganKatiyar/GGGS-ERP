@@ -222,7 +222,8 @@ import { TaskEditor } from './task-editor';
     }
 
     .cdk-drag-preview {
-      box-shadow: 0 6px 16px rgb(0 0 0 / 20%);
+      /* A card being dragged is lifted to the popover level. */
+      box-shadow: var(--gggs-shadow-4);
     }
 
     .cdk-drag-placeholder {
