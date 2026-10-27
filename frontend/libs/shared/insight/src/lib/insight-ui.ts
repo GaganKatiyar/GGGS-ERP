@@ -77,14 +77,27 @@ export function downloadFile(fileName: string, contentType: string, content: Blo
     </article>
   `,
   styles: `
+    /* Raised like a KPI card (shared/ui kpi-card.ts), so both kinds of metric read as one family. */
     .metric {
       display: grid;
       gap: var(--gggs-space-2);
       align-content: start;
-      padding: var(--gggs-space-3);
+      height: 100%;
+      padding: var(--gggs-space-4);
       border: 1px solid var(--gggs-color-border);
-      border-radius: var(--gggs-radius-md, 0.5rem);
-      background: var(--gggs-color-surface, transparent);
+      border-radius: var(--gggs-radius-lg);
+      background: var(--gggs-color-surface-raised);
+      box-shadow: var(--gggs-shadow-1), var(--gggs-shadow-highlight);
+      transition:
+        transform var(--gggs-transition),
+        box-shadow var(--gggs-transition),
+        border-color var(--gggs-transition);
+    }
+
+    .metric:hover {
+      transform: translateY(var(--gggs-lift));
+      border-color: color-mix(in srgb, var(--gggs-color-primary) 24%, var(--gggs-color-border));
+      box-shadow: var(--gggs-shadow-3), var(--gggs-shadow-highlight);
     }
 
     .metric__head {
@@ -98,8 +111,11 @@ export function downloadFile(fileName: string, contentType: string, content: Blo
     }
 
     .metric__value {
-      font-size: 1.75rem;
-      line-height: 1.1;
+      font-size: var(--gggs-font-size-2xl);
+      font-weight: var(--gggs-font-weight-semibold);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+      line-height: var(--gggs-line-height-tight);
     }
 
     .metric__hint {
@@ -131,15 +147,16 @@ export function downloadFile(fileName: string, contentType: string, content: Blo
 
     .metric__bar {
       height: 0.5rem;
-      border-radius: 999px;
-      background: var(--gggs-color-border);
+      border-radius: var(--gggs-radius-pill);
+      background: var(--gggs-color-surface-sunken);
       overflow: hidden;
     }
 
     .metric__bar span {
       display: block;
       height: 100%;
-      background: var(--gggs-color-primary);
+      border-radius: inherit;
+      background: var(--gggs-gradient-accent);
     }
   `,
 })

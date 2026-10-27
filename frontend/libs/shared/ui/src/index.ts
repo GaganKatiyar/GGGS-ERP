@@ -10,4 +10,5 @@ export * from './lib/kpi-card';
 export * from './lib/overlays';
 export * from './lib/page-header';
 export * from './lib/status-badge';
+export * from './lib/tilt';
 export * from './lib/toast-host';
