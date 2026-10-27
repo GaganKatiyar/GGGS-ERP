@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import { AdminApi } from '@gggs/shared/identity';
 import { Button, FormField } from '@gggs/shared/ui';
+import { PRODUCT_NAME } from '../product-title-strategy';
 
 /**
  * Setting a password from an invitation link.
@@ -20,12 +21,13 @@ import { Button, FormField } from '@gggs/shared/ui';
   imports: [ReactiveFormsModule, FormField, Button],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <main class="page">
-      <form class="card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <h1 class="card__title">Set your password</h1>
+    <main class="auth">
+      <form class="auth__card rise-in" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <p class="auth__brand"><span class="auth__logo" aria-hidden="true">P</span>{{ productName }}</p>
+        <h1 class="auth__title">Set your password</h1>
 
         @if (!tenantCode() || !userId() || !token()) {
-          <p class="card__error" role="alert">
+          <p class="auth__error" role="alert">
             This link is missing something it needs. Ask whoever invited you to send it again.
           </p>
         } @else {
@@ -40,11 +42,11 @@ import { Button, FormField } from '@gggs/shared/ui';
           </gggs-form-field>
 
           @if (errorMessage()) {
-            <p class="card__error" role="alert">{{ errorMessage() }}</p>
+            <p class="auth__error" role="alert">{{ errorMessage() }}</p>
           }
 
           @if (succeeded()) {
-            <p class="card__success" role="status">
+            <p class="auth__success" role="status">
               Password set. You can sign in now.
             </p>
           }
@@ -61,48 +63,10 @@ import { Button, FormField } from '@gggs/shared/ui';
       </form>
     </main>
   `,
-  styles: `
-    .page {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100dvh;
-      padding: var(--gggs-space-4, 1rem);
-    }
-
-    .card {
-      display: flex;
-      flex-direction: column;
-      gap: var(--gggs-space-4, 1rem);
-      width: 100%;
-      max-width: 24rem;
-      padding: var(--gggs-space-8, 2rem);
-      border: 1px solid var(--gggs-color-border, #e2e5ea);
-      border-radius: var(--gggs-radius-lg, 0.75rem);
-      background: var(--gggs-color-surface-raised, #ffffff);
-      box-shadow: var(--gggs-shadow-md, none);
-    }
-
-    .card__title {
-      margin: 0;
-      font-size: var(--gggs-font-size-xl, 1.25rem);
-      font-weight: var(--gggs-font-weight-semibold, 600);
-    }
-
-    .card__error {
-      margin: 0;
-      color: var(--gggs-color-danger, #b3261e);
-      font-size: var(--gggs-font-size-base, 0.875rem);
-    }
-
-    .card__success {
-      margin: 0;
-      color: var(--gggs-color-success, #0e6b30);
-      font-size: var(--gggs-font-size-base, 0.875rem);
-    }
-  `,
+  // Styled by the shared signed-out layout (.auth in styles/_depth.scss).
 })
 export class CompleteInvitationPage {
+  protected readonly productName = PRODUCT_NAME;
   private readonly api = inject(AdminApi);
   private readonly formBuilder = inject(FormBuilder);
   private readonly router = inject(Router);

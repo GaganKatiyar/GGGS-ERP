@@ -13,7 +13,7 @@ are used for accents only, and motion is brief and always optional.
 | Tokens (colour, elevation, gradients, glass, motion, spacing, type, z-index) | `frontend/apps/hrms-web/src/styles/_tokens.scss` |
 | Element defaults (in `@layer gggs-elements`), focus, reduced motion | `styles/_base.scss` |
 | Buttons, forms, tables, panels, alerts and badges | `styles/_buttons.scss`, `_forms.scss`, `_table.scss`, `_layout.scss`, `_feedback.scss`, `_xp.scss` |
-| Depth helpers: `.elevated`, `.elevated--interactive`, `.glass`, `.rise-in` | `styles/_depth.scss` |
+| Depth helpers: `.elevated`, `.elevated--interactive`, `.glass`, `.rise-in`; the signed-out layout `.auth` (sign-in, invitation) | `styles/_depth.scss` |
 | App shell: rail, flyout, header, module tabs | `styles/_shell.scss` (global, because it exceeds the per-component style budget) |
 | PrimeNG dialogs, drawers, toasts and tags | `styles/_overlays.scss` |
 | PrimeNG preset bridged to the tokens | `apps/hrms-web/src/app/app.config.ts` (`GggsPreset`) |
@@ -58,7 +58,8 @@ The older names `--gggs-shadow-xs`, `-sm`, `-md` and `-lg` are aliases for level
 
 **Hover lift.** Cards (`gggs-kpi-card`, metric panels, `a.panel`, link and button `.xp__card`s)
 rise by `--gggs-lift` (2px) to level 3 under the pointer. Raised buttons rise by half that amount
-and press down on click. Ghost and link buttons stay flat. Table rows never lift; a hovered row
+and press down on click; solid PrimeNG buttons (`gggs-button`) do the same. Ghost, link, text
+and outlined buttons stay flat. Table rows never lift; a hovered row
 gets a tint and an accent mark at its edge instead.
 
 ## Glass

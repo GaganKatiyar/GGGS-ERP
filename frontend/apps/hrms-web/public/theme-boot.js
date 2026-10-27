@@ -2,10 +2,10 @@
 // while Angular loads. Mirrors readInitialTheme() in libs/core/layout/src/lib/theme.ts, which
 // takes over once the shell starts. A file rather than an inline script: the CSP allows 'self' only.
 (function () {
-  var theme;
+  let theme = null;
   try {
     theme = localStorage.getItem('gggs-theme');
-  } catch (e) {
+  } catch {
     // Blocked storage: fall through to the OS preference.
   }
   if (theme !== 'light' && theme !== 'dark') {

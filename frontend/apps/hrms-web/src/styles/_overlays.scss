@@ -131,6 +131,31 @@
   }
 }
 
+/* Solid PrimeNG buttons rise and press like .btn (_buttons.scss); text, outlined and link stay flat. */
+.p-button:not(.p-button-text, .p-button-outlined, .p-button-link) {
+  box-shadow: var(--gggs-shadow-1), inset 0 1px 0 rgb(255 255 255 / 18%);
+  transition:
+    background-color var(--gggs-transition-fast),
+    border-color var(--gggs-transition-fast),
+    box-shadow var(--gggs-transition-fast),
+    transform var(--gggs-transition-fast);
+
+  &:not(:disabled):hover {
+    box-shadow: var(--gggs-shadow-glow), inset 0 1px 0 rgb(255 255 255 / 18%);
+    transform: translateY(calc(var(--gggs-lift) / 2));
+  }
+
+  &:not(:disabled):active {
+    box-shadow: inset 0 1px 3px color-mix(in srgb, var(--gggs-color-brand) 40%, transparent);
+    transform: none;
+  }
+}
+
+/* The default (primary) severity gets the primary button's lit face; hover falls back to solid. */
+.p-button:not(.p-button-secondary, .p-button-success, .p-button-info, .p-button-warn, .p-button-help, .p-button-danger, .p-button-contrast, .p-button-text, .p-button-outlined, .p-button-link):not(:disabled, :hover) {
+  background-image: var(--gggs-gradient-primary);
+}
+
 /* PrimeNG's danger severity uses its own lighter red, which fails contrast with white text. */
 .p-button.p-button-danger:not(.p-button-text, .p-button-outlined) {
   border-color: var(--gggs-color-danger);

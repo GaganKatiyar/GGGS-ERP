@@ -30,18 +30,18 @@ import { PRODUCT_NAME } from '../product-title-strategy';
   imports: [ReactiveFormsModule, FormField, Button],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <main class="sign-in">
+    <main class="auth">
       <form
-        class="sign-in__card"
+        class="auth__card rise-in"
         [formGroup]="form"
         (ngSubmit)="submit()"
         novalidate
       >
-        <p class="sign-in__product">{{ productName }}</p>
-        <h1 class="sign-in__title">{{ step() === 'mfa' ? 'Two-step sign-in' : 'Sign in' }}</h1>
+        <p class="auth__brand"><span class="auth__logo" aria-hidden="true">P</span>{{ productName }}</p>
+        <h1 class="auth__title">{{ step() === 'mfa' ? 'Two-step sign-in' : 'Sign in' }}</h1>
 
         @if (step() === 'mfa') {
-          <p class="sign-in__hint">Enter the six-digit code from your authenticator app, or one of your recovery codes.</p>
+          <p class="auth__note">Enter the six-digit code from your authenticator app, or one of your recovery codes.</p>
           <gggs-form-field label="Code" required>
             <input
               type="text"
@@ -93,7 +93,7 @@ import { PRODUCT_NAME } from '../product-title-strategy';
         @if (message()) {
           <!-- assertive: a failed sign-in must reach a screen reader immediately, because the
                person cannot proceed until they have heard it. -->
-          <p class="sign-in__error" role="alert" aria-live="assertive">
+          <p class="auth__error" role="alert" aria-live="assertive">
             {{ message() }}
           </p>
         }
@@ -115,48 +115,8 @@ import { PRODUCT_NAME } from '../product-title-strategy';
       </form>
     </main>
   `,
+  // The page and card are the shared signed-out layout (.auth in styles/_depth.scss).
   styles: `
-    .sign-in {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100dvh;
-      padding: var(--gggs-space-4, 1rem);
-    }
-
-    .sign-in__card {
-      display: flex;
-      flex-direction: column;
-      gap: var(--gggs-space-4, 1rem);
-      width: 100%;
-      max-width: 24rem;
-      padding: var(--gggs-space-8, 2rem);
-      border: 1px solid var(--gggs-color-border, #e2e5ea);
-      border-radius: var(--gggs-radius-lg, 0.75rem);
-      background: var(--gggs-color-surface-raised, #ffffff);
-      box-shadow: var(--gggs-shadow-md, none);
-    }
-
-    .sign-in__product {
-      margin: 0;
-      color: var(--gggs-color-primary, #3b5bdb);
-      font-size: var(--gggs-font-size-sm, 0.75rem);
-      font-weight: var(--gggs-font-weight-semibold, 600);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .sign-in__title {
-      margin: 0;
-      font-size: var(--gggs-font-size-xl, 1.25rem);
-      font-weight: var(--gggs-font-weight-semibold, 600);
-    }
-
-    .sign-in__hint {
-      margin: 0;
-      color: var(--gggs-color-text-muted, #5f6b7a);
-    }
-
     .sign-in__or {
       margin: 0;
       text-align: center;
@@ -166,12 +126,6 @@ import { PRODUCT_NAME } from '../product-title-strategy';
 
     .sign-in__sso {
       justify-content: center;
-    }
-
-    .sign-in__error {
-      margin: 0;
-      color: var(--gggs-color-danger, #b3261e);
-      font-size: var(--gggs-font-size-base, 0.875rem);
     }
   `,
 })

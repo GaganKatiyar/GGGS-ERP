@@ -52,6 +52,89 @@ button.xp__card {
 }
 
 /*
+ * Signed-out pages (sign-in, accepting an invitation): one raised card in the brand's light.
+ * Outside the shell, so the brand mark is drawn here as it is on the rail.
+ */
+.auth {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: var(--gggs-space-4);
+  background-color: var(--gggs-color-surface);
+  background-image:
+    radial-gradient(ellipse 60% 50% at 15% 0%, color-mix(in srgb, var(--gggs-color-primary) 14%, transparent), transparent 70%),
+    radial-gradient(ellipse 50% 45% at 90% 100%, color-mix(in srgb, var(--gggs-color-accent-bright) 12%, transparent), transparent 70%);
+}
+
+.auth__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gggs-space-4);
+  width: 100%;
+  max-width: 24rem;
+  padding: var(--gggs-space-8);
+  border: 1px solid var(--gggs-color-border);
+  border-radius: var(--gggs-radius-xl);
+  background: var(--gggs-color-surface-raised);
+  box-shadow: var(--gggs-shadow-4), var(--gggs-shadow-highlight);
+
+  @media (max-width: 30rem) {
+    padding: var(--gggs-space-6);
+  }
+}
+
+.auth__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--gggs-space-2);
+  margin: 0;
+  color: var(--gggs-color-text);
+  font-weight: var(--gggs-font-weight-semibold);
+  letter-spacing: -0.01em;
+}
+
+.auth__logo {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--gggs-radius-md);
+  background: var(--gggs-gradient-brand);
+  box-shadow:
+    0 6px 16px -6px color-mix(in srgb, var(--gggs-color-accent-bright) 70%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 25%);
+  color: #fff;
+  font-weight: var(--gggs-font-weight-bold);
+}
+
+.auth__title {
+  margin: 0;
+  font-size: var(--gggs-font-size-xl);
+  font-weight: var(--gggs-font-weight-semibold);
+  letter-spacing: -0.02em;
+}
+
+.auth__note {
+  margin: 0;
+  color: var(--gggs-color-text-muted);
+}
+
+.auth__error,
+.auth__success {
+  margin: 0;
+  font-size: var(--gggs-font-size-base);
+}
+
+.auth__error {
+  color: var(--gggs-color-danger);
+}
+
+.auth__success {
+  color: var(--gggs-color-success);
+}
+
+/*
  * Entrance: a block fades up into place once, when it first renders. Set --i on siblings to
  * stagger them (style="--i: 2"). Never loops; zeroed by the reduced-motion rule.
  */
