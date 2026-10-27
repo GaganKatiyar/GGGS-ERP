@@ -3,6 +3,7 @@
 <div
   class="shell"
   [class.shell--drawer-open]="isDrawerOpen()"
+  [class.shell--compact]="isRailCompact()"
 >
   <!-- One navigation landmark: the rail of modules and the active module's pages. On a small
        screen both slide in together as a drawer. -->
@@ -56,6 +57,16 @@
         </li>
         }
       </ul>
+      <button
+        type="button"
+        class="rail__toggle"
+        [attr.aria-pressed]="isRailCompact()"
+        aria-label="Compact menu"
+        [title]="isRailCompact() ? 'Show menu labels' : 'Hide menu labels'"
+        (click)="toggleCompactRail()"
+      >
+        <i class="pi" [class.pi-angle-double-right]="isRailCompact()" [class.pi-angle-double-left]="!isRailCompact()" aria-hidden="true"></i>
+      </button>
     </div>
 
     @if (panelGroup(); as group) {

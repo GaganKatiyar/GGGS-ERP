@@ -30,6 +30,9 @@ const UNREAD_COUNT_REFRESH_MS = 60_000;
 /** Below this, the rail and panel stop being columns and become one drawer (shell.scss). */
 const MOBILE_BREAKPOINT_QUERY = '(max-width: 48rem)';
 
+/** Where the compact (icons only) rail preference is kept, per browser. */
+const COMPACT_RAIL_KEY = 'gggs-rail';
+
 interface Crumb {
   readonly label: string;
   readonly route?: string;
@@ -72,6 +75,8 @@ export class Shell {
   /** On a small screen: whether the navigation drawer is open. */
   protected readonly isDrawerOpen = signal(false);
   protected readonly isUserMenuOpen = signal(false);
+  /** On a desktop: the rail shows icons only, with each module's name on hover. */
+  protected readonly isRailCompact = signal(readCompactRail());
 
   protected readonly unreadCount = signal(0);
   /** Tasks waiting in the approvals inbox, shown on the Approvals entry. */
@@ -235,6 +240,15 @@ export class Shell {
     this.isDrawerOpen.set(false);
   }
 
+  protected toggleCompactRail(): void {
+    this.isRailCompact.update((compact) => !compact);
+    try {
+      localStorage.setItem(COMPACT_RAIL_KEY, this.isRailCompact() ? 'compact' : 'full');
+    } catch {
+      // Blocked storage: the choice holds for this session only.
+    }
+  }
+
   protected toggleUserMenu(): void {
     this.isUserMenuOpen.update((open) => !open);
   }
@@ -335,6 +349,14 @@ export class Shell {
     }
 
     return item.permissions === undefined || this.permissions.hasAny(item.permissions);
+  }
+}
+
+function readCompactRail(): boolean {
+  try {
+    return localStorage.getItem(COMPACT_RAIL_KEY) === 'compact';
+  } catch {
+    return false;
   }
 }
 
