@@ -22,6 +22,7 @@ import { filter } from 'rxjs';
 import { NAVIGATION, filterNavigation, isBuilt, locate, moduleTabs, type NavItem } from './navigation';
 import { ThemeStore } from './theme';
 import { GlobalSearch } from './global-search';
+import { refreshSortableTables, sortableHeader, toggleSort } from './table-sort';
 
 /** How often the header bell's unread count refreshes. There is no push yet (architecture.md
  * §14 puts SignalR in a later phase), so this is the whole story until then. */
@@ -178,8 +179,9 @@ export class Shell {
       inject(DestroyRef).onDestroy(() => query.removeEventListener('change', listener));
     }
 
-    // A table wider than a phone screen scrolls sideways inside itself (styles/_table.scss); make
-    // each such table a tab stop so it can be scrolled from the keyboard too.
+    // Plain tables in the page get two things the shared data table has built in: a wide one
+    // (scrolling sideways inside itself on a phone, styles/_table.scss) becomes a tab stop so it can
+    // be scrolled from the keyboard, and their column headers sort the rows (table-sort.ts).
     const destroyRef = inject(DestroyRef);
     afterNextRender(() => {
       const content = document.getElementById('main-content');
@@ -195,7 +197,21 @@ export class Shell {
             table.tabIndex = 0;
           }
         });
+        refreshSortableTables(content);
       };
+      const sortFrom = (event: Event) => {
+        const header = sortableHeader(event.target);
+        if (header && (event.type === 'click' || (event as KeyboardEvent).key === 'Enter' || (event as KeyboardEvent).key === ' ')) {
+          event.preventDefault();
+          toggleSort(header);
+        }
+      };
+      content.addEventListener('click', sortFrom);
+      content.addEventListener('keydown', sortFrom);
+      destroyRef.onDestroy(() => {
+        content.removeEventListener('click', sortFrom);
+        content.removeEventListener('keydown', sortFrom);
+      });
       const schedule = () => (pending ||= window.setTimeout(mark, 250));
       const observer = new MutationObserver(schedule);
       observer.observe(content, { childList: true, subtree: true });

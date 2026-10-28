@@ -61,6 +61,53 @@
     white-space: nowrap;
   }
 
+  /*
+   * Headers the shell made sortable (libs/core/layout table-sort.ts): a quiet two-way arrow that
+   * firms up on hover, and points the chosen way on the sorted column.
+   */
+  thead th[data-gggs-sortable] {
+    cursor: pointer;
+    user-select: none;
+    transition: color var(--gggs-transition-fast);
+
+    &::after {
+      content: '↕' / '';
+      margin-inline-start: var(--gggs-space-1);
+      opacity: 0.4;
+      transition: opacity var(--gggs-transition-fast);
+    }
+
+    &:hover {
+      color: var(--gggs-color-text);
+
+      &::after {
+        opacity: 0.8;
+      }
+    }
+
+    &:focus-visible {
+      outline: var(--gggs-focus-outline);
+      outline-offset: -2px;
+    }
+  }
+
+  thead th[aria-sort='ascending'],
+  thead th[aria-sort='descending'] {
+    color: var(--gggs-color-primary);
+
+    &::after {
+      opacity: 1;
+    }
+  }
+
+  thead th[aria-sort='ascending']::after {
+    content: '↑' / '';
+  }
+
+  thead th[aria-sort='descending']::after {
+    content: '↓' / '';
+  }
+
   tbody tr {
     transition: background-color var(--gggs-transition-fast);
   }

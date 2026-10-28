@@ -128,6 +128,16 @@ there. Pages pass labels and series only.
 
 **KPI grids.** Use `.xp__kpis` or `.kpi-row`. Do not add a per-feature copy.
 
+**Plain tables sort themselves.** The shell (`libs/core/layout` `table-sort.ts`) makes the column
+headers of every plain `<table>` in the page sortable. It sorts the rows already on screen and
+makes no request. Clicking a header, or pressing Enter or Space on it, cycles ascending,
+descending, then the page's own order. Columns are read as numbers (₹, %, h, days and commas
+included), dates or text, with blank cells always last. The header shows `aria-sort` and an
+arrow. A table is skipped when it is not safe to reorder: no `<thead>`, more than one body,
+merged cells, or inputs in its rows (an editable grid). Header cells are skipped when they are
+empty, hold a control, are `.actions`, or carry `data-nosort`. The shared data table sorts on the
+server and is not affected.
+
 ## Compact rail
 
 The rail can show icons only. The switch is at the foot of the rail, and the choice is kept per
