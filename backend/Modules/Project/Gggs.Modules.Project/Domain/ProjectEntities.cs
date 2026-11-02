@@ -16,6 +16,9 @@ public enum ProjectType
     ManagedService = 7,
     Implementation = 8,
     Consulting = 9,
+
+    /// <summary>Where a department's people book time that belongs to no other project. Nobody is allocated to it.</summary>
+    DepartmentDefault = 10,
 }
 
 /// <summary>Where a project is in its life (spec §40), from the first conversation to closure.</summary>
@@ -251,6 +254,11 @@ public sealed class Project : TenantAggregateRoot
         if (profile.ContractId is not null && profile.ClientId is null)
         {
             throw new DomainRuleException("PROJECT_CONTRACT_WITHOUT_CLIENT", "A project delivered under a contract needs that contract's client.");
+        }
+
+        if (profile.Type == ProjectType.DepartmentDefault && (profile.ClientId is not null || profile.BillingType != ProjectBillingType.NonBillable))
+        {
+            throw new DomainRuleException("PROJECT_DEFAULT_TERMS", "A department's default project has no client and is not billed.");
         }
 
         Name = Guard.MaxLength(Guard.NotNullOrWhiteSpace(profile.Name).Trim(), 200);

@@ -300,6 +300,14 @@ internal static class ProjectEndpoints
                 return TypedResults.NoContent();
             })
             .WithName("DeactivateProjectRole").RequirePermission(Permissions.Project.SettingsManage);
+        group.MapGet("/default-projects", async (DefaultProjectService defaults, CancellationToken ct) => TypedResults.Ok(await defaults.ListAsync(ct)))
+            .WithName("ListDefaultProjects").RequirePermission(Permissions.Project.SettingsManage);
+        group.MapPost("/default-projects/ensure", async (DefaultProjectService defaults, CancellationToken ct) =>
+            {
+                await defaults.EnsureAllAsync(ct);
+                return TypedResults.Ok(await defaults.ListAsync(ct));
+            })
+            .WithName("EnsureDefaultProjects").RequirePermission(Permissions.Project.SettingsManage);
         group.MapGet("/settings/health", async (ProjectService projects, CancellationToken ct) => TypedResults.Ok(await projects.ThresholdsAsync(ct)))
             .WithName("GetProjectHealthThresholds").RequirePermission(Permissions.Project.View);
         group.MapPut("/settings/health", async (ProjectHealthThresholds body, ProjectService projects, CancellationToken ct) => TypedResults.Ok(await projects.SaveThresholdsAsync(body, ct)))

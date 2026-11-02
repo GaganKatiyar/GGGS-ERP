@@ -115,6 +115,13 @@ internal sealed class OrgStructure(AppDbContext dbContext) : IOrgStructure
         return heads.GroupBy(row => row.Head).ToDictionary(group => group.Key, group => (IReadOnlyList<Guid>)[.. group.Select(row => row.Id)]);
     }
 
+    public async Task<IReadOnlyList<DepartmentNode>> DepartmentsAsync(CancellationToken cancellationToken = default)
+        => await dbContext.Departments
+            .AsNoTracking()
+            .OrderBy(unit => unit.Name)
+            .Select(unit => new DepartmentNode(unit.Id, unit.Code, unit.Name, unit.ParentDepartmentId, unit.IsActive))
+            .ToListAsync(cancellationToken);
+
     private async Task<List<Guid>> ActiveIdsAsync(OrgUnitKind kind, List<Guid> ids, CancellationToken cancellationToken)
         => await UnitsOf(kind)
             .AsNoTracking()

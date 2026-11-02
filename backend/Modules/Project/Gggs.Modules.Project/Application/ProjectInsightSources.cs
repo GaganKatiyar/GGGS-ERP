@@ -20,7 +20,7 @@ internal sealed class ProjectMetrics(AppDbContext dbContext) : IMetricSource
     public async Task<IReadOnlyList<Metric>> CollectAsync(MetricContext context, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(context);
-        IQueryable<ProjectEntity> query = dbContext.Projects.AsNoTracking();
+        IQueryable<ProjectEntity> query = dbContext.Projects.AsNoTracking().Where(row => row.Type != ProjectType.DepartmentDefault);
         if (context.EmployeeScope is { } scope)
         {
             query = query.Where(row => (row.ProjectManagerEmployeeId != null && scope.Contains(row.ProjectManagerEmployeeId.Value))

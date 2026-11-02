@@ -30,6 +30,7 @@ public sealed class ProjectModule : IModule
         services.AddScoped<PlanningService>();
         services.AddScoped<GovernanceService>();
         services.AddScoped<InsightService>();
+        services.AddScoped<DefaultProjectService>();
         services.AddScoped<ProjectCatalogSeeder>();
         services.AddScoped<IProjectDirectory, ProjectDirectory>();
         services.AddScoped<IProjectStaffing, ProjectStaffing>();
@@ -43,6 +44,8 @@ public sealed class ProjectModule : IModule
     {
         services.AddScoped<ProjectHealthSweep>();
         services.AddScoped<ProjectHealthJob>();
+        services.AddScoped<DefaultProjectSweep>();
+        services.AddScoped<DefaultProjectJob>();
         services.AddHostedService<ProjectJobRegistration>();
         services.AddGggsEventConsumer<TenantProvisionedIntegrationEvent, SeedProjectCatalogOnTenantProvisioned>();
         services.AddGggsEventConsumer<EmployeeExitedIntegrationEvent, ReleaseFromProjectsOnExit>();

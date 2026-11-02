@@ -41,6 +41,10 @@ internal sealed class ProjectModel : IModuleModel
                 .HasDatabaseName("UX_Project_TenantId_Code")
                 .IsUnique()
                 .HasFilter("[IsDeleted] = 0");
+            entity.HasIndex(project => new { project.TenantId, project.DepartmentId })
+                .HasDatabaseName("UX_Project_TenantId_DefaultDepartment")
+                .IsUnique()
+                .HasFilter("[Type] = 10 AND [Status] IN (1, 2) AND [IsDeleted] = 0");
             entity.HasIndex(project => new { project.TenantId, project.Status }).HasDatabaseName("IX_Project_TenantId_Status");
             entity.HasIndex(project => new { project.TenantId, project.ClientId }).HasDatabaseName("IX_Project_TenantId_Client");
             entity.HasIndex(project => new { project.TenantId, project.ProjectManagerEmployeeId }).HasDatabaseName("IX_Project_TenantId_Manager");

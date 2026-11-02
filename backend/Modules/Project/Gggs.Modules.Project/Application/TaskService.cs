@@ -98,6 +98,7 @@ public sealed record TaskItem(
     int? StoryPoints,
     int Progress,
     bool Billable,
+    bool OpenToTeam,
     double Rank,
     DateTime? CompletedDate,
     bool IsOverdue,
@@ -122,7 +123,8 @@ public sealed record TaskBody(
     decimal? ActualHours,
     int? StoryPoints,
     int? Progress,
-    bool? Billable);
+    bool? Billable,
+    bool? OpenToTeam = null);
 
 /// <summary>Where a task goes on the board: the column and its position in it (0 = top).</summary>
 public sealed record MoveBody(Guid ColumnId, int? Index);
@@ -595,7 +597,8 @@ internal sealed class TaskService(
         return new TaskDetails(
             body.Type, body.ParentTaskId, body.PhaseId, body.MilestoneId, body.RequirementId, body.Title, body.Description, body.AssigneeEmployeeId,
             body.Priority, body.StartDate, body.DueDate, body.EstimatedHours, body.ActualHours, body.StoryPoints, body.Progress ?? existing?.Progress ?? 0,
-            body.Billable ?? existing?.Billable ?? true);
+            body.Billable ?? existing?.Billable ?? true,
+            body.OpenToTeam ?? existing?.OpenToTeam ?? false);
     }
 
     /// <summary>On the team now, or one of the project's managers.</summary>
@@ -714,7 +717,7 @@ internal sealed class TaskService(
                 task.Title, task.Description, task.AssigneeEmployeeId, task.AssigneeEmployeeId is { } assignee ? people.GetValueOrDefault(assignee) : null,
                 task.ReporterEmployeeId, task.ReporterEmployeeId is { } reporter ? people.GetValueOrDefault(reporter) : null, task.Priority,
                 task.ColumnId, column?.Name, column?.Category ?? ColumnCategory.Backlog, task.StartDate, task.DueDate, task.EstimatedHours,
-                task.ActualHours, task.StoryPoints, task.Progress, task.Billable, task.Rank, task.CompletedDate, task.IsOverdue(today),
+                task.ActualHours, task.StoryPoints, task.Progress, task.Billable, task.OpenToTeam, task.Rank, task.CompletedDate, task.IsOverdue(today),
                 children.GetValueOrDefault(task.Id), blocked.GetValueOrDefault(task.Id));
         })];
     }

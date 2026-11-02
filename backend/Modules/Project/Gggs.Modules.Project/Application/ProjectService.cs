@@ -281,10 +281,10 @@ internal sealed class ProjectService(
             rows = rows.Where(project => project.HealthStatus == health);
         }
 
-        if (query.Type is { } type)
-        {
-            rows = rows.Where(project => project.Type == type);
-        }
+        // Default projects are set up under Project settings; asked for by type, they can still be listed.
+        rows = query.Type is { } type
+            ? rows.Where(project => project.Type == type)
+            : rows.Where(project => project.Type != ProjectType.DepartmentDefault);
 
         if (query.ClientId is { } clientId)
         {
@@ -379,6 +379,15 @@ internal sealed class ProjectService(
     {
         ArgumentNullException.ThrowIfNull(body);
         ProjectEntity project = await access.LoadAsync(id, Permissions.Project.Manage, track: true, cancellationToken);
+        if (project.Type == ProjectType.DepartmentDefault && body.Status is ProjectStatus.Active or ProjectStatus.OnHold
+            && await dbContext.Projects.AnyAsync(
+                other => other.Id != id && other.Type == ProjectType.DepartmentDefault && other.DepartmentId == project.DepartmentId
+                    && (other.Status == ProjectStatus.Active || other.Status == ProjectStatus.OnHold),
+                cancellationToken))
+        {
+            throw new DomainRuleException("PROJECT_DEFAULT_TAKEN", "That department already has an open default project.");
+        }
+
         ProjectStatus previous = project.SetStatus(body.Status, await clock.TodayAsync(cancellationToken));
         if (previous != body.Status)
         {
@@ -416,7 +425,7 @@ internal sealed class ProjectService(
     public async Task<PortfolioSummary> SummaryAsync(CancellationToken cancellationToken)
     {
         IReadOnlyCollection<Guid>? visible = await access.VisibleIdsAsync(Permissions.Project.View, cancellationToken);
-        IQueryable<ProjectEntity> projects = dbContext.Projects.AsNoTracking();
+        IQueryable<ProjectEntity> projects = dbContext.Projects.AsNoTracking().Where(project => project.Type != ProjectType.DepartmentDefault);
         if (visible is not null)
         {
             projects = projects.Where(project => visible.Contains(project.Id));
@@ -758,6 +767,16 @@ internal sealed class ProjectService(
 
     private async Task<ProjectProfile> ValidateAsync(ProjectRequest request, ProjectEntity? existing, CancellationToken cancellationToken)
     {
+        if ((request.Type == ProjectType.DepartmentDefault) != (existing?.Type == ProjectType.DepartmentDefault))
+        {
+            throw new DomainRuleException("PROJECT_DEFAULT_TYPE", "Default projects are created under Project settings, and stay default projects.");
+        }
+
+        if (existing?.Type == ProjectType.DepartmentDefault && request.DepartmentId != existing.DepartmentId)
+        {
+            throw new DomainRuleException("PROJECT_DEFAULT_DEPARTMENT", "A default project stays with its department.");
+        }
+
         if (request.ClientId is { } clientId)
         {
             ClientSummary client = await clients.GetAsync(clientId, cancellationToken)

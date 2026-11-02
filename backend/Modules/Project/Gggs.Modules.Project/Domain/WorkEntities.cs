@@ -30,7 +30,8 @@ public sealed record TaskDetails(
     decimal? ActualHours,
     int? StoryPoints,
     int Progress,
-    bool Billable);
+    bool Billable,
+    bool OpenToTeam = false);
 
 /// <summary>
 /// A piece of work (spec §44): an epic, story, task, subtask, bug or change. Where it sits on the
@@ -89,6 +90,9 @@ public sealed class ProjectTask : TenantAggregateRoot
     public int Progress { get; private set; }
 
     public bool Billable { get; private set; }
+
+    /// <summary>Anyone who can book to the project can book to this, assigned or not: stand-ups, training, admin.</summary>
+    public bool OpenToTeam { get; private set; }
 
     /// <summary>Order within the column: lower first. Moves pick a value between neighbours.</summary>
     public double Rank { get; private set; }
@@ -166,6 +170,7 @@ public sealed class ProjectTask : TenantAggregateRoot
         StoryPoints = details.StoryPoints;
         Progress = IsDone ? 100 : details.Progress;
         Billable = details.Billable;
+        OpenToTeam = details.OpenToTeam;
     }
 
     /// <summary>Moves to a column. Arriving in a done column completes the task; leaving one reopens it.</summary>

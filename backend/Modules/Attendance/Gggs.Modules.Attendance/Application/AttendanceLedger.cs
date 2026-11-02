@@ -51,6 +51,16 @@ internal sealed class AttendanceLedger(AppDbContext dbContext, AttendanceService
         return streaks;
     }
 
+    public async Task<IReadOnlyList<AttendedDay>> DaysAsync(Guid employeeId, DateOnly firstDay, DateOnly lastDay, CancellationToken cancellationToken = default)
+    {
+        var rows = await dbContext.AttendanceDays.AsNoTracking()
+            .Where(day => day.EmployeeId == employeeId && day.Date >= firstDay && day.Date <= lastDay)
+            .OrderBy(day => day.Date)
+            .Select(day => new { day.Date, day.Status, day.WorkedMinutes })
+            .ToListAsync(cancellationToken);
+        return [.. rows.Select(row => new AttendedDay(row.Date, row.Status.ToString(), row.WorkedMinutes))];
+    }
+
     public async Task<IReadOnlyDictionary<Guid, decimal>> AbsenceDaysAsync(IEnumerable<Guid> employeeIds, DateOnly firstDay, DateOnly lastDay, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(employeeIds);

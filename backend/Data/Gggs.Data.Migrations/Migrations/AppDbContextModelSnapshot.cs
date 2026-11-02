@@ -12571,6 +12571,11 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasDatabaseName("UX_Project_TenantId_Code")
                         .HasFilter("[IsDeleted] = 0");
 
+                    b.HasIndex("TenantId", "DepartmentId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Project_TenantId_DefaultDepartment")
+                        .HasFilter("[Type] = 10 AND [Status] IN (1, 2) AND [IsDeleted] = 0");
+
                     b.HasIndex("TenantId", "Id")
                         .IsUnique()
                         .HasDatabaseName("UX_Project_TenantId_Id");
@@ -13310,6 +13315,9 @@ namespace Gggs.Data.Migrations.Migrations
 
                     b.Property<int>("Number")
                         .HasColumnType("int");
+
+                    b.Property<bool>("OpenToTeam")
+                        .HasColumnType("bit");
 
                     b.Property<Guid?>("ParentTaskId")
                         .HasColumnType("uniqueidentifier");
@@ -19372,6 +19380,9 @@ namespace Gggs.Data.Migrations.Migrations
 
                     b.Property<DateTime?>("ModifiedDate")
                         .HasColumnType("datetime2(3)");
+
+                    b.Property<bool>("RequireFromEveryone")
+                        .HasColumnType("bit");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()

@@ -261,6 +261,9 @@ public sealed class TimesheetSettings : TenantAggregateRoot
     /// <summary>Nothing on or before this date changes (spec §124 TimesheetLock).</summary>
     public DateOnly? LockedThrough { get; private set; }
 
+    /// <summary>Everyone owes a timesheet, not only people allocated to a project; missing weeks are chased for all of them.</summary>
+    public bool RequireFromEveryone { get; private set; }
+
     public static TimesheetSettings Defaults() => new();
 
     public void Update(TimesheetRules rules)
@@ -281,6 +284,7 @@ public sealed class TimesheetSettings : TenantAggregateRoot
         AllowWeekendEntries = rules.AllowWeekendEntries;
         AllowHolidayEntries = rules.AllowHolidayEntries;
         SubmissionDeadlineDays = rules.SubmissionDeadlineDays;
+        RequireFromEveryone = rules.RequireFromEveryone;
     }
 
     /// <summary>Locks every week ending on or before <paramref name="through"/>. A lock only moves forward.</summary>
@@ -295,7 +299,7 @@ public sealed class TimesheetSettings : TenantAggregateRoot
     }
 
     public TimesheetRules ToRules() => new(
-        StandardHoursPerDay, MinHoursPerDay, MaxHoursPerDay, MinWeeklyHours, EnforceWeeklyMinimum, AllowWeekendEntries, AllowHolidayEntries, SubmissionDeadlineDays, LockedThrough);
+        StandardHoursPerDay, MinHoursPerDay, MaxHoursPerDay, MinWeeklyHours, EnforceWeeklyMinimum, AllowWeekendEntries, AllowHolidayEntries, SubmissionDeadlineDays, LockedThrough, RequireFromEveryone);
 }
 
 public sealed record TimesheetRules(
@@ -307,7 +311,8 @@ public sealed record TimesheetRules(
     bool AllowWeekendEntries,
     bool AllowHolidayEntries,
     int SubmissionDeadlineDays,
-    DateOnly? LockedThrough)
+    DateOnly? LockedThrough,
+    bool RequireFromEveryone = false)
 {
     public static TimesheetRules Default { get; } = TimesheetSettings.Defaults().ToRules();
 }

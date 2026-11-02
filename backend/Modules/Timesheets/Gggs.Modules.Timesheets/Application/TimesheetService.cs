@@ -5,6 +5,7 @@ using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Security;
 using Gggs.Data;
+using Gggs.Modules.Attendance.Contracts;
 using Gggs.Modules.Employee.Contracts;
 using Gggs.Modules.Leave.Contracts;
 using Gggs.Modules.Notification.Contracts;
@@ -20,7 +21,16 @@ namespace Gggs.Modules.Timesheets.Application;
 
 public sealed record EntryItem(Guid Id, DateOnly Date, Guid? ProjectId, string? ProjectCode, Guid? TaskId, string? TaskCode, HourCategory Category, decimal Hours, string? Activity, string? Description);
 
-public sealed record DayItem(DateOnly Date, bool IsWorkingDay, string? Holiday, string? Leave, decimal Hours);
+public sealed record DayItem(
+    DateOnly Date,
+    bool IsWorkingDay,
+    string? Holiday,
+    string? Leave,
+    decimal Hours,
+    decimal LeaveHours,
+    decimal HolidayHours,
+    string? AttendanceStatus,
+    int? WorkedMinutes);
 
 public sealed record TimesheetHeader(
     Guid? Id,
@@ -92,6 +102,31 @@ public sealed record MissingRow(Guid EmployeeId, string? EmployeeName, string? E
 
 public sealed record ProjectHoursRow(Guid EmployeeId, string? EmployeeName, Guid? TaskId, HourCategory Category, decimal Hours, decimal ApprovedHours);
 
+public sealed record BankQuery
+{
+    public DateOnly? From { get; init; }
+
+    public DateOnly? To { get; init; }
+
+    public TimesheetStatus? Status { get; init; }
+
+    public Guid? ProjectId { get; init; }
+}
+
+/// <summary>One project's share of a week in the bank; no project means hours booked to none.</summary>
+public sealed record BankProject(Guid? ProjectId, string? ProjectCode, string? ProjectName, decimal Hours, decimal BillableHours, string? ApproverName);
+
+public sealed record BankWeek(
+    Guid Id,
+    DateOnly WeekStart,
+    DateOnly WeekEnd,
+    TimesheetStatus Status,
+    decimal WorkingHours,
+    decimal LeaveHours,
+    decimal HolidayHours,
+    bool IsLate,
+    IReadOnlyList<BankProject> Projects);
+
 /// <summary>
 /// Timesheets (spec §70-71): a person's week against the projects they are on, checked against the
 /// tenant's rules, submitted through approval, reopened for corrections, and locked by period.
@@ -103,6 +138,7 @@ internal sealed class TimesheetService(
     IProjectPermissions projectPermissions,
     IShiftSchedule shifts,
     ILeaveCalendar leave,
+    IAttendanceLedger attendance,
     IWorkflowStarter workflow,
     INotifier notifier,
     IIntegrationEventPublisher publisher,
@@ -271,6 +307,56 @@ internal sealed class TimesheetService(
         await workflow.WithdrawAsync(SubjectType, timesheet.Id, cancellationToken);
         timesheet.ReturnToDraft();
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>My past weeks, newest first, each split by project (the Timesheet bank). At most a year at a time.</summary>
+    public async Task<IReadOnlyList<BankWeek>> MyBankAsync(BankQuery query, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        Guid me = Me();
+        DateOnly to = query.To ?? await clock.TodayAsync(cancellationToken);
+        DateOnly from = query.From ?? to.AddMonths(-6);
+        if (to < from || to.DayNumber - from.DayNumber > 370)
+        {
+            throw new DomainRuleException("TIMESHEET_BANK_RANGE", "Choose a period of up to a year, ending after it starts.");
+        }
+
+        DateOnly firstWeek = Timesheet.WeekOf(from);
+        DateOnly lastWeek = Timesheet.WeekOf(to);
+        IQueryable<Timesheet> rows = dbContext.Timesheets.AsNoTracking().Where(row => row.EmployeeId == me && row.WeekStart >= firstWeek && row.WeekStart <= lastWeek);
+        if (query.Status is { } status)
+        {
+            rows = rows.Where(row => row.Status == status);
+        }
+
+        List<Timesheet> sheets = await rows.OrderByDescending(row => row.WeekStart).ToListAsync(cancellationToken);
+        List<Guid> sheetIds = [.. sheets.Select(row => row.Id)];
+        ILookup<Guid, TimesheetEntry> entries = (await dbContext.TimesheetEntries.AsNoTracking().Where(row => sheetIds.Contains(row.TimesheetId)).ToListAsync(cancellationToken))
+            .ToLookup(row => row.TimesheetId);
+        if (query.ProjectId is { } projectId)
+        {
+            sheets = [.. sheets.Where(sheet => entries[sheet.Id].Any(entry => entry.ProjectId == projectId))];
+        }
+
+        IReadOnlyDictionary<Guid, ProjectSummary> projectsById = await projects.GetManyAsync(entries.SelectMany(group => group).Select(entry => entry.ProjectId).OfType<Guid>(), cancellationToken);
+        Dictionary<Guid, string> managers = (await employees.GetManyAsync(projectsById.Values.Select(project => project.ProjectManagerEmployeeId).OfType<Guid>(), cancellationToken))
+            .ToDictionary(person => person.Id, person => person.DisplayName);
+        TimesheetRules rules = await RulesAsync(cancellationToken);
+        IReadOnlyList<DayFacts> facts = await FactsAsync(me, firstWeek, lastWeek.AddDays(6), cancellationToken);
+
+        return [.. sheets.Select(sheet =>
+        {
+            List<DayFacts> week = [.. facts.Where(day => day.Date >= sheet.WeekStart && day.Date <= sheet.WeekEnd)];
+            return new BankWeek(
+                sheet.Id, sheet.WeekStart, sheet.WeekEnd, sheet.Status, sheet.TotalHours, week.Sum(day => LeaveHours(day, rules)), week.Sum(day => HolidayHours(day, rules)), sheet.IsLate,
+                [.. entries[sheet.Id].GroupBy(entry => entry.ProjectId).Select(group =>
+                {
+                    ProjectSummary? project = group.Key is { } id ? projectsById.GetValueOrDefault(id) : null;
+                    return new BankProject(
+                        group.Key, project?.Code, project?.Name, group.Sum(entry => entry.Hours), group.Where(entry => entry.Category == HourCategory.Billable).Sum(entry => entry.Hours),
+                        project?.ProjectManagerEmployeeId is { } manager ? managers.GetValueOrDefault(manager) : null);
+                }).OrderBy(row => row.ProjectCode, StringComparer.Ordinal)]);
+        })];
     }
 
     // ----- Others' timesheets -------------------------------------------------------------------
@@ -477,6 +563,12 @@ internal sealed class TimesheetService(
     {
         DateOnly weekEnd = weekStart.AddDays(6);
         HashSet<Guid> allocated = [.. (await projects.AllocationsAsync(scope, weekStart, weekEnd, cancellationToken)).Select(allocation => allocation.EmployeeId)];
+        if ((await RulesAsync(cancellationToken)).RequireFromEveryone)
+        {
+            IEnumerable<Guid> everyone = await employees.ListActiveIdsAsync(null, null, cancellationToken);
+            allocated.UnionWith(scope is null ? everyone : everyone.Where(scope.Contains));
+        }
+
         if (allocated.Count == 0)
         {
             return [];
@@ -487,20 +579,28 @@ internal sealed class TimesheetService(
             .ToDictionaryAsync(row => row.EmployeeId, row => row.Status, cancellationToken);
 
         List<Guid> candidates = [.. allocated.Where(id => !sheets.TryGetValue(id, out TimesheetStatus status) || status is TimesheetStatus.Draft or TimesheetStatus.Rejected)];
-        HashSet<Guid> active = [.. (await employees.GetManyAsync(candidates, cancellationToken)).Where(person => person.Status != "Exited").Select(person => person.Id)];
+        HashSet<Guid> active = [.. (await employees.GetManyAsync(candidates, cancellationToken))
+            .Where(person => person.Status != "Exited" && (person.JoiningDate is null || person.JoiningDate <= weekEnd))
+            .Select(person => person.Id)];
         return [.. candidates.Where(active.Contains).Select(id => (id, sheets.TryGetValue(id, out TimesheetStatus status) ? (TimesheetStatus?)status : null))];
     }
 
-    private async Task<IReadOnlyList<DayFacts>> DaysAsync(Guid employeeId, DateOnly weekStart, CancellationToken cancellationToken)
-    {
-        DateOnly weekEnd = weekStart.AddDays(6);
-        Dictionary<DateOnly, ScheduledDay> schedule = (await shifts.GetAsync([employeeId], weekStart, weekEnd, cancellationToken)).ToDictionary(day => day.Date);
-        IReadOnlyList<HolidayEntry> holidays = (await leave.GetHolidaysAsync([employeeId], weekStart, weekEnd, cancellationToken)).GetValueOrDefault(employeeId) ?? [];
-        IReadOnlyList<LeaveDay> leaveDays = await leave.GetApprovedLeaveAsync([employeeId], weekStart, weekEnd, cancellationToken);
+    private Task<IReadOnlyList<DayFacts>> DaysAsync(Guid employeeId, DateOnly weekStart, CancellationToken cancellationToken)
+        => FactsAsync(employeeId, weekStart, weekStart.AddDays(6), cancellationToken);
 
-        return [.. Enumerable.Range(0, 7).Select(offset =>
+    private static decimal LeaveHours(DayFacts day, TimesheetRules rules) => day.LeaveFraction * rules.StandardHoursPerDay;
+
+    private static decimal HolidayHours(DayFacts day, TimesheetRules rules) => day.IsWorkingDay && day.Holiday is not null ? rules.StandardHoursPerDay : 0;
+
+    private async Task<IReadOnlyList<DayFacts>> FactsAsync(Guid employeeId, DateOnly firstDay, DateOnly lastDay, CancellationToken cancellationToken)
+    {
+        Dictionary<DateOnly, ScheduledDay> schedule = (await shifts.GetAsync([employeeId], firstDay, lastDay, cancellationToken)).ToDictionary(day => day.Date);
+        IReadOnlyList<HolidayEntry> holidays = (await leave.GetHolidaysAsync([employeeId], firstDay, lastDay, cancellationToken)).GetValueOrDefault(employeeId) ?? [];
+        IReadOnlyList<LeaveDay> leaveDays = await leave.GetApprovedLeaveAsync([employeeId], firstDay, lastDay, cancellationToken);
+
+        return [.. Enumerable.Range(0, lastDay.DayNumber - firstDay.DayNumber + 1).Select(offset =>
         {
-            DateOnly date = weekStart.AddDays(offset);
+            DateOnly date = firstDay.AddDays(offset);
             bool working = schedule.TryGetValue(date, out ScheduledDay? day) ? !day.IsWeeklyOff : date.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday);
             string? holiday = holidays.FirstOrDefault(entry => entry.Date == date && !entry.IsOptional)?.Name;
             decimal leaveFraction = Math.Min(1, leaveDays.Where(entry => entry.Date == date).Sum(entry => entry.IsHalfDay ? 0.5m : 1m));
@@ -519,6 +619,7 @@ internal sealed class TimesheetService(
 
         IReadOnlyList<DayFacts> facts = await DaysAsync(employeeId, weekStart, cancellationToken);
         IReadOnlyList<LeaveDay> leaveDays = await leave.GetApprovedLeaveAsync([employeeId], weekStart, weekEnd, cancellationToken);
+        Dictionary<DateOnly, AttendedDay> attended = (await attendance.DaysAsync(employeeId, weekStart, weekEnd, cancellationToken)).ToDictionary(day => day.Date);
         IReadOnlyList<TimesheetTarget> targets = withTargets ? await projects.TimesheetTargetsAsync(employeeId, weekStart, weekEnd, cancellationToken) : [];
 
         // Names for every project and task booked, including ones no longer offered as targets.
@@ -545,7 +646,8 @@ internal sealed class TimesheetService(
                 entry.TaskId is { } task ? taskCodes.GetValueOrDefault(task) : null, entry.Category, entry.Hours, entry.Activity, entry.Description))],
             [.. facts.Select(day => new DayItem(
                 day.Date, day.IsWorkingDay, day.Holiday, leaveDays.FirstOrDefault(entry => entry.Date == day.Date)?.LeaveTypeName,
-                entries.Where(entry => entry.Date == day.Date).Sum(entry => entry.Hours)))],
+                entries.Where(entry => entry.Date == day.Date).Sum(entry => entry.Hours), LeaveHours(day, rules), HolidayHours(day, rules),
+                attended.GetValueOrDefault(day.Date)?.Status, attended.GetValueOrDefault(day.Date)?.WorkedMinutes))],
             targets,
             TimesheetChecks.Check(rules, facts, hours),
             entries.GroupBy(entry => entry.Category.ToString()).ToDictionary(group => group.Key, group => group.Sum(entry => entry.Hours)),

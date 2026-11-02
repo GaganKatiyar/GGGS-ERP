@@ -43,7 +43,7 @@ public interface IProjectDirectory
     /// </summary>
     Task<IReadOnlyList<ProjectAllocation>> AllocationsAsync(IEnumerable<Guid>? employeeIds, DateOnly firstDay, DateOnly lastDay, CancellationToken cancellationToken = default);
 
-    /// <summary>Whether the employee may book time to the project on that day: on the team then, or one of its managers.</summary>
+    /// <summary>Whether the employee may book time to the project on that day: on the team then, one of its managers, or it is their department's default project.</summary>
     Task<bool> IsOnTeamAsync(Guid projectId, Guid employeeId, DateOnly day, CancellationToken cancellationToken = default);
 
     /// <summary>The projects (and their open tasks for this person) an employee can book time to in a window.</summary>
@@ -100,9 +100,10 @@ public sealed record ProjectAllocation(
     decimal? CostRate,
     bool IsActive);
 
-public sealed record TimesheetTask(Guid TaskId, string Code, string Title);
+/// <summary>A task someone can book to; <paramref name="Activity"/> is the epic or story it sits under, which the timesheet groups by.</summary>
+public sealed record TimesheetTask(Guid TaskId, string Code, string Title, string? Activity = null);
 
-public sealed record TimesheetTarget(Guid ProjectId, string ProjectCode, string ProjectName, bool Billable, IReadOnlyList<TimesheetTask> Tasks);
+public sealed record TimesheetTarget(Guid ProjectId, string ProjectCode, string ProjectName, bool Billable, IReadOnlyList<TimesheetTask> Tasks, bool IsDefault = false);
 
 /// <summary>Putting someone on a project, as resource management does when it fills a request.</summary>
 public sealed record StaffingRequest(

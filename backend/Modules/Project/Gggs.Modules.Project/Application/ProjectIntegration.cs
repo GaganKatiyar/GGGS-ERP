@@ -16,7 +16,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Gggs.Modules.Project.Application;
 
 /// <summary>Project lookups for other modules.</summary>
-internal sealed class ProjectDirectory(AppDbContext dbContext) : IProjectDirectory
+internal sealed class ProjectDirectory(AppDbContext dbContext, DefaultProjectService defaults) : IProjectDirectory
 {
     public async Task<IReadOnlyDictionary<Guid, ProjectSummary>> GetManyAsync(IEnumerable<Guid> projectIds, CancellationToken cancellationToken = default)
     {
@@ -78,7 +78,9 @@ internal sealed class ProjectDirectory(AppDbContext dbContext) : IProjectDirecto
             || await dbContext.Projects.AnyAsync(
                 project => project.Id == projectId
                     && (project.ProjectManagerEmployeeId == employeeId || project.DeliveryManagerEmployeeId == employeeId || project.AccountManagerEmployeeId == employeeId),
-                cancellationToken);
+                cancellationToken)
+            || (await dbContext.Projects.AnyAsync(project => project.Id == projectId && project.Type == ProjectType.DepartmentDefault, cancellationToken)
+                && (await defaults.ForEmployeeAsync(employeeId, day, day, cancellationToken)).Contains(projectId));
 
     public async Task<IReadOnlyList<TimesheetTarget>> TimesheetTargetsAsync(Guid employeeId, DateOnly firstDay, DateOnly lastDay, CancellationToken cancellationToken = default)
     {
@@ -93,24 +95,31 @@ internal sealed class ProjectDirectory(AppDbContext dbContext) : IProjectDirecto
             .Select(group => new { group.Key, Billable = group.Any(member => member.Billable) })
             .ToDictionaryAsync(row => row.Key, row => row.Billable, cancellationToken);
 
+        IReadOnlyCollection<Guid> defaultProjects = await defaults.ForEmployeeAsync(employeeId, firstDay, lastDay, cancellationToken);
         List<Domain.Project> projects = await dbContext.Projects.AsNoTracking()
-            .Where(project => memberOf.Contains(project.Id)
-                || project.ProjectManagerEmployeeId == employeeId || project.DeliveryManagerEmployeeId == employeeId)
+            .Where(project => memberOf.Contains(project.Id) || defaultProjects.Contains(project.Id)
+                || project.ProjectManagerEmployeeId == employeeId || project.DeliveryManagerEmployeeId == employeeId || project.AccountManagerEmployeeId == employeeId)
             .Where(project => project.Status == ProjectStatus.Active || project.Status == ProjectStatus.OnHold)
-            .OrderBy(project => project.Code)
+            .OrderBy(project => project.Type == ProjectType.DepartmentDefault)
+            .ThenBy(project => project.Code)
             .ToListAsync(cancellationToken);
         List<Guid> projectIds = [.. projects.Select(project => project.Id)];
         var tasks = await dbContext.ProjectTasks.AsNoTracking()
-            .Where(task => projectIds.Contains(task.ProjectId) && task.AssigneeEmployeeId == employeeId && task.Type != TaskType.Epic
+            .Where(task => projectIds.Contains(task.ProjectId) && (task.AssigneeEmployeeId == employeeId || task.OpenToTeam) && task.Type != TaskType.Epic
                 && (task.CompletedDate == null || task.CompletedDate >= firstDay.ToDateTime(TimeOnly.MinValue)))
             .OrderBy(task => task.Number)
-            .Select(task => new { task.ProjectId, task.Id, task.Code, task.Title })
+            .Select(task => new { task.ProjectId, task.Id, task.Code, task.Title, task.ParentTaskId })
             .ToListAsync(cancellationToken);
+        List<Guid> parentIds = [.. tasks.Select(task => task.ParentTaskId).OfType<Guid>().Distinct()];
+        Dictionary<Guid, string> parents = await dbContext.ProjectTasks.AsNoTracking()
+            .Where(task => parentIds.Contains(task.Id))
+            .ToDictionaryAsync(task => task.Id, task => task.Title, cancellationToken);
 
         return [.. projects.Select(project => new TimesheetTarget(
             project.Id, project.Code, project.Name,
             billable.TryGetValue(project.Id, out bool isBillable) ? isBillable : project.BillingType != ProjectBillingType.NonBillable,
-            [.. tasks.Where(task => task.ProjectId == project.Id).Select(task => new TimesheetTask(task.Id, task.Code, task.Title))]))];
+            [.. tasks.Where(task => task.ProjectId == project.Id).Select(task => new TimesheetTask(task.Id, task.Code, task.Title, task.ParentTaskId is { } parent ? parents.GetValueOrDefault(parent) : null))],
+            project.Type == ProjectType.DepartmentDefault))];
     }
 
     public async Task<IReadOnlyDictionary<Guid, Guid>> TaskProjectsAsync(IEnumerable<Guid> taskIds, CancellationToken cancellationToken = default)
@@ -131,7 +140,7 @@ internal sealed class ProjectDirectory(AppDbContext dbContext) : IProjectDirecto
         }
         else
         {
-            query = query.Where(project => project.Status != ProjectStatus.Cancelled);
+            query = query.Where(project => project.Status != ProjectStatus.Cancelled && project.Type != ProjectType.DepartmentDefault);
         }
 
         List<Domain.Project> projects = await query.OrderBy(project => project.Code).ToListAsync(cancellationToken);
@@ -213,7 +222,7 @@ internal static class ProjectCatalog
 }
 
 /// <summary>Gives the current tenant every catalog project role it lacks, and its health thresholds row.</summary>
-public sealed class ProjectCatalogSeeder(AppDbContext dbContext, ILogger<ProjectCatalogSeeder> logger)
+public sealed class ProjectCatalogSeeder(AppDbContext dbContext, DefaultProjectService defaults, ILogger<ProjectCatalogSeeder> logger)
 {
     public async Task<int> SeedCurrentTenantAsync(CancellationToken cancellationToken = default)
     {
@@ -245,6 +254,8 @@ public sealed class ProjectCatalogSeeder(AppDbContext dbContext, ILogger<Project
         {
             logger.LogInformation("Project catalog seeded: {Added} role(s) added.", added);
         }
+
+        await defaults.EnsureAllAsync(cancellationToken);
 
         return added;
     }
@@ -349,10 +360,29 @@ internal sealed class ProjectHealthSweep(ITenantFanOutScheduler fanOut)
     public Task RunAsync() => fanOut.FanOutAsync<ProjectHealthJob>((job, tenantId) => job.RunAsync(tenantId));
 }
 
-internal sealed class ProjectHealthJob(InsightService insights, ILogger<ProjectHealthJob> logger)
+/// <summary>At start-up: gives every tenant the default projects it lacks, so people in existing organisations can book to them.</summary>
+[PlatformJob("Default projects: fans out one check per active tenant, creating only what is missing.")]
+internal sealed class DefaultProjectSweep(ITenantFanOutScheduler fanOut)
+{
+    public Task RunAsync() => fanOut.FanOutAsync<DefaultProjectJob>((job, tenantId) => job.RunAsync(tenantId));
+}
+
+internal sealed class DefaultProjectJob(DefaultProjectService defaults)
 {
     public async Task RunAsync(Guid tenantId)
     {
+        _ = tenantId;
+        await defaults.EnsureAllAsync(CancellationToken.None);
+    }
+}
+
+internal sealed class ProjectHealthJob(InsightService insights, DefaultProjectService defaults, ILogger<ProjectHealthJob> logger)
+{
+    public async Task RunAsync(Guid tenantId)
+    {
+        // A department opened today has fallen back to its parent's default project until now.
+        await defaults.EnsureAllAsync(CancellationToken.None);
+
         int assessed = await insights.AssessAllAsync(CancellationToken.None);
         if (assessed > 0)
         {
@@ -361,11 +391,14 @@ internal sealed class ProjectHealthJob(InsightService insights, ILogger<ProjectH
     }
 }
 
-internal sealed class ProjectJobRegistration(IRecurringJobManager recurringJobs) : IHostedService
+internal sealed class ProjectJobRegistration(IRecurringJobManager recurringJobs, IBackgroundJobClient backgroundJobs) : IHostedService
 {
     public Task StartAsync(CancellationToken cancellationToken)
     {
         recurringJobs.AddOrUpdate<ProjectHealthSweep>(ProjectHealthSweep.RecurringJobName, sweep => sweep.RunAsync(), "45 2 * * *");
+
+        // Creates only what is missing, so queuing it at every start is harmless.
+        backgroundJobs.Enqueue<DefaultProjectSweep>(sweep => sweep.RunAsync());
         return Task.CompletedTask;
     }
 

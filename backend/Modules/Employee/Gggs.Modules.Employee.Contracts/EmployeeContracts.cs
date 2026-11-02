@@ -76,6 +76,12 @@ public interface IEmployeeDirectory
 
     /// <summary>Ids for employee codes (case-insensitive), for imports that name people by code. Unknown codes are left out.</summary>
     Task<IReadOnlyDictionary<string, Guid>> ResolveCodesAsync(IEnumerable<string> employeeCodes, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The departments the employee sat in at any point in the window, from their employment history,
+    /// so a past week is judged by where they were then. Empty when the history holds nothing for it.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> DepartmentsDuringAsync(Guid employeeId, DateOnly firstDay, DateOnly lastDay, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

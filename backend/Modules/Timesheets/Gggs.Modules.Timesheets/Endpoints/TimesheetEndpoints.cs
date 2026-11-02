@@ -13,6 +13,8 @@ internal static class TimesheetEndpoints
         RouteGroupBuilder me = endpoints.MapGroup("/api/v1/me/timesheets").WithTags("Timesheets");
         me.MapGet("/", async (DateOnly? week, TimesheetService timesheets, CancellationToken ct) => TypedResults.Ok(await timesheets.MyWeekAsync(week, ct)))
             .WithName("MyTimesheetWeek").RequirePermission(Permissions.Self.TimesheetSubmit);
+        me.MapGet("/bank", async ([AsParameters] BankQuery query, TimesheetService timesheets, CancellationToken ct) => TypedResults.Ok(await timesheets.MyBankAsync(query, ct)))
+            .WithName("MyTimesheetBank").RequirePermission(Permissions.Self.TimesheetSubmit);
         me.MapPut("/{week}", async (DateOnly week, WeekBody body, TimesheetService timesheets, CancellationToken ct) => TypedResults.Ok(await timesheets.SaveMyWeekAsync(week, body, ct)))
             .WithName("SaveMyTimesheetWeek").RequirePermission(Permissions.Self.TimesheetSubmit);
         me.MapPost("/{week}/copy-previous", async (DateOnly week, TimesheetService timesheets, CancellationToken ct) => TypedResults.Ok(await timesheets.CopyPreviousWeekAsync(week, ct)))

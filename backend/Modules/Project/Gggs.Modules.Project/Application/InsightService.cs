@@ -66,6 +66,7 @@ internal sealed class InsightService(
         ProjectHealthThresholds thresholds = await projects.ThresholdsAsync(cancellationToken);
         List<ProjectEntity> open = await dbContext.Projects
             .Where(project => project.Status == ProjectStatus.Active || project.Status == ProjectStatus.OnHold)
+            .Where(project => project.Type != ProjectType.DepartmentDefault)
             .ToListAsync(cancellationToken);
 
         foreach (ProjectEntity project in open)

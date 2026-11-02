@@ -37,6 +37,14 @@ internal sealed class EmployeeDirectory(AppDbContext dbContext, EmployeeScope sc
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Guid>> DepartmentsDuringAsync(Guid employeeId, DateOnly firstDay, DateOnly lastDay, CancellationToken cancellationToken = default)
+        => await dbContext.EmploymentRecords
+            .AsNoTracking()
+            .Where(record => record.EmployeeId == employeeId && record.EffectiveFrom <= lastDay && (record.EffectiveTo == null || record.EffectiveTo >= firstDay))
+            .Select(record => record.DepartmentId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
     public async Task<bool> IsActiveAsync(Guid employeeId, CancellationToken cancellationToken = default)
         => await dbContext.Employees.AnyAsync(employee => employee.Id == employeeId && employee.Status != EmployeeStatus.Exited, cancellationToken);
 
