@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { RouterLink } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import { ProjectsApi } from '@gggs/shared/delivery';
-import type { ProjectHealthThresholds, ProjectRole } from '@gggs/shared/models';
+import type { DefaultProjectRow, ProjectHealthThresholds, ProjectRole } from '@gggs/shared/models';
 import { FormDialog, PageHeader, StatusBadge } from '@gggs/shared/ui';
 
 type Thresholds = { -readonly [K in keyof ProjectHealthThresholds]: ProjectHealthThresholds[K] };
@@ -13,15 +13,54 @@ interface ThresholdField {
   readonly step?: number;
 }
 
-/** Project roles (spec §42) and the health thresholds every project is judged by (spec §78). */
+/** Default projects, project roles (spec §42) and the health thresholds every project is judged by (spec §78). */
 @Component({
   selector: 'gggs-project-settings-page',
   imports: [RouterLink, PageHeader, StatusBadge, FormDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <gggs-page-header title="Project settings" subtitle="Roles people play on projects, and how project health is judged.">
+    <gggs-page-header title="Project settings" subtitle="Where each department books its time, the roles people play on projects, and how project health is judged.">
       <a class="btn" routerLink="/projects">Projects</a>
     </gggs-page-header>
+
+    <section class="panel stack settings__defaults">
+      <div class="toolbar">
+        <h2 class="settings__heading">Default projects</h2>
+        <button type="button" class="btn btn--primary btn--sm" [disabled]="busy()" (click)="ensureDefaults()">Create missing</button>
+      </div>
+      <p class="muted settings__hint">
+        Everyone can book time to their department's default project from the day they join, without being allocated to it. A department without its own uses the nearest parent's, then the organisation's. Missing ones are also created overnight.
+      </p>
+      <div class="settings__scroll" tabindex="0" role="region" aria-label="Default projects">
+        <table class="table">
+          <thead>
+            <tr>
+              <th scope="col">Department</th>
+              <th scope="col">Default project</th>
+              <th scope="col">Run by</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of defaults(); track row.departmentId ?? 'organisation') {
+              <tr>
+                <td>{{ row.name }}</td>
+                <td>
+                  @if (row.projectId) {
+                    <a [routerLink]="['/projects', row.projectId]">{{ row.projectCode }} · {{ row.projectName }}</a>
+                    @if (row.isInherited) {
+                      <span class="muted"> (inherited)</span>
+                    }
+                  } @else {
+                    <span class="muted">None yet</span>
+                  }
+                </td>
+                <td>{{ row.managerName ?? '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
 
     <div class="settings">
       <section class="panel stack">
@@ -100,6 +139,14 @@ interface ThresholdField {
       align-items: start;
     }
 
+    .settings__defaults {
+      margin-block-end: var(--gggs-space-3);
+    }
+
+    .settings__scroll {
+      overflow-x: auto;
+    }
+
     .settings__heading {
       margin-inline-end: auto;
       margin-block: 0;
@@ -153,6 +200,7 @@ export class ProjectSettingsPage {
     { key: 'overallRedScore', label: 'Overall red at weighted score', step: 0.1 },
   ];
 
+  protected readonly defaults = signal<readonly DefaultProjectRow[]>([]);
   protected readonly roles = signal<readonly ProjectRole[]>([]);
   protected readonly thresholds = signal<Thresholds | null>(null);
   protected readonly error = signal<string | null>(null);
@@ -168,6 +216,19 @@ export class ProjectSettingsPage {
 
   constructor() {
     void this.load();
+  }
+
+  protected async ensureDefaults(): Promise<void> {
+    this.busy.set(true);
+    this.error.set(null);
+    this.message.set(null);
+    try {
+      this.defaults.set(await this.api.ensureDefaultProjects());
+    } catch (error) {
+      this.error.set(error instanceof ApiError ? error.message : 'The default projects could not be created.');
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   protected setThreshold(key: keyof ProjectHealthThresholds, value: number): void {
@@ -239,7 +300,8 @@ export class ProjectSettingsPage {
 
   private async load(): Promise<void> {
     try {
-      const [roles, thresholds] = await Promise.all([this.api.roles(true), this.api.thresholds()]);
+      const [defaults, roles, thresholds] = await Promise.all([this.api.defaultProjects(), this.api.roles(true), this.api.thresholds()]);
+      this.defaults.set(defaults);
       this.roles.set(roles);
       this.thresholds.set({ ...thresholds });
     } catch (error) {

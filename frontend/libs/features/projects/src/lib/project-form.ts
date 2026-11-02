@@ -188,7 +188,11 @@ export class ProjectForm {
   protected readonly lists = LOOKUP_LISTS;
   protected readonly typeLabels = PROJECT_TYPE_LABELS;
   protected readonly stageLabels = STAGE_LABELS;
-  protected readonly types = Object.keys(PROJECT_TYPE_LABELS) as ProjectType[];
+  protected get types(): ProjectType[] {
+    const all = Object.keys(PROJECT_TYPE_LABELS) as ProjectType[];
+    return this.project()?.type === 'DepartmentDefault' ? all : all.filter((type) => type !== 'DepartmentDefault');
+  }
+
   protected readonly stages = PROJECT_STAGES;
   protected readonly clients = signal<readonly ClientItem[]>([]);
   protected readonly contracts = signal<readonly ContractItem[]>([]);

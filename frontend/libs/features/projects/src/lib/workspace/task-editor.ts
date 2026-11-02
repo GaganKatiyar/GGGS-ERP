@@ -38,6 +38,7 @@ const blank = (type: TaskType): Draft => ({
   storyPoints: null,
   progress: 0,
   billable: true,
+  openToTeam: false,
 });
 
 /**
@@ -155,6 +156,9 @@ const blank = (type: TaskType): Draft => ({
         </label>
         <label class="field">
           <span><input type="checkbox" [checked]="draft().billable ?? true" [disabled]="readOnly()" (change)="patch('billable', $any($event.target).checked)" /> Billable</span>
+        </label>
+        <label class="field">
+          <span><input type="checkbox" [checked]="draft().openToTeam ?? false" [disabled]="readOnly()" (change)="patch('openToTeam', $any($event.target).checked)" /> Anyone on the project can book time to this</span>
         </label>
       </div>
 
@@ -304,6 +308,7 @@ export class TaskEditor {
               storyPoints: task.storyPoints ?? null,
               progress: task.progress,
               billable: task.billable,
+              openToTeam: task.openToTeam,
             }
           : { ...blank('Task'), ...this.defaults() },
       );

@@ -159,7 +159,7 @@ export interface ContractInput {
 
 // ----- Projects ------------------------------------------------------------------------------
 
-export type ProjectType = 'FixedPrice' | 'TimeAndMaterial' | 'Retainer' | 'Internal' | 'RnD' | 'Support' | 'ManagedService' | 'Implementation' | 'Consulting';
+export type ProjectType = 'FixedPrice' | 'TimeAndMaterial' | 'Retainer' | 'Internal' | 'RnD' | 'Support' | 'ManagedService' | 'Implementation' | 'Consulting' | 'DepartmentDefault';
 export type ProjectStage = 'Opportunity' | 'Proposal' | 'Won' | 'Planning' | 'Kickoff' | 'Execution' | 'Testing' | 'Uat' | 'Deployment' | 'Support' | 'Closure';
 export type ProjectStatus = 'Active' | 'OnHold' | 'Completed' | 'Cancelled';
 export type WorkPriority = 'Low' | 'Medium' | 'High' | 'Critical';
@@ -180,6 +180,7 @@ export const PROJECT_TYPE_LABELS: Readonly<Record<ProjectType, string>> = {
   ManagedService: 'Managed service',
   Implementation: 'Implementation',
   Consulting: 'Consulting',
+  DepartmentDefault: 'Department default',
 };
 
 export const STAGE_LABELS: Readonly<Record<ProjectStage, string>> = {
@@ -446,6 +447,7 @@ export interface ProjectTask {
   readonly storyPoints?: number;
   readonly progress: number;
   readonly billable: boolean;
+  readonly openToTeam: boolean;
   readonly rank: number;
   readonly completedDate?: string;
   readonly isOverdue: boolean;
@@ -472,6 +474,20 @@ export interface TaskInput {
   readonly storyPoints?: number | null;
   readonly progress?: number | null;
   readonly billable?: boolean | null;
+  readonly openToTeam?: boolean | null;
+}
+
+/** The organisation or a department, and the default project its people book to. */
+export interface DefaultProjectRow {
+  readonly departmentId?: string;
+  readonly name: string;
+  readonly projectId?: string;
+  readonly projectCode?: string;
+  readonly projectName?: string;
+  /** Its own project is missing or closed, so its people use one from further up the tree. */
+  readonly isInherited: boolean;
+  readonly managerEmployeeId?: string;
+  readonly managerName?: string;
 }
 
 export interface BoardView {

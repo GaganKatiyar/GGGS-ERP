@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import type {
   BoardView,
   BurndownPoint,
+  DefaultProjectRow,
   CalendarEvent,
   ChangeRequest,
   ChangeRequestInput,
@@ -462,6 +463,14 @@ export class ProjectsApi {
 
   async setRoleActive(id: string, active: boolean): Promise<void> {
     await firstValueFrom(this.http.post(`${this.base}/roles/${id}/${active ? 'activate' : 'deactivate'}`, {}));
+  }
+
+  defaultProjects(): Promise<readonly DefaultProjectRow[]> {
+    return firstValueFrom(this.http.get<readonly DefaultProjectRow[]>(`${this.base}/default-projects`));
+  }
+
+  ensureDefaultProjects(): Promise<readonly DefaultProjectRow[]> {
+    return firstValueFrom(this.http.post<readonly DefaultProjectRow[]>(`${this.base}/default-projects/ensure`, {}));
   }
 
   thresholds(): Promise<ProjectHealthThresholds> {

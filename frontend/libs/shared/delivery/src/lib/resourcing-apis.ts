@@ -22,6 +22,7 @@ import type {
   SkillItem,
   SkillProfile,
   SkilledPerson,
+  TimesheetBankWeek,
   TimesheetEntryInput,
   TimesheetIssue,
   TimesheetRow,
@@ -131,6 +132,10 @@ export class TimesheetsApi {
 
   saveWeek(week: string, entries: readonly TimesheetEntryInput[], comment: string | null): Promise<TimesheetView> {
     return firstValueFrom(this.http.put<TimesheetView>(`${this.mine}/${week}`, { entries, comment }));
+  }
+
+  bank(query: { from?: string; to?: string; status?: TimesheetStatus | ''; projectId?: string }): Promise<readonly TimesheetBankWeek[]> {
+    return firstValueFrom(this.http.get<readonly TimesheetBankWeek[]>(`${this.mine}/bank`, { params: params({ ...query }) }));
   }
 
   copyPrevious(week: string): Promise<TimesheetView> {

@@ -2,10 +2,14 @@ import type { Routes } from '@angular/router';
 import { withPermissions } from '@gggs/core/permissions';
 import { MyTimesheetPage } from './my-timesheet-page';
 import { TeamTimesheetsPage } from './team-timesheets-page';
+import { TimesheetBankPage } from './timesheet-bank-page';
 import { TimesheetSettingsPage } from './timesheet-settings-page';
 
 /** Lazily loaded by the shell at `/me/timesheet`. */
-export const MY_TIMESHEET_ROUTES: Routes = [{ path: '', component: MyTimesheetPage, title: 'My timesheet' }];
+export const MY_TIMESHEET_ROUTES: Routes = [
+  { path: '', component: MyTimesheetPage, title: 'My timesheet' },
+  { path: 'bank', component: TimesheetBankPage, title: 'Timesheet bank' },
+];
 
 /** Lazily loaded by the shell at `/team/timesheets`. */
 export const TEAM_TIMESHEETS_ROUTES: Routes = [{ path: '', component: TeamTimesheetsPage, title: 'Team timesheets' }];
