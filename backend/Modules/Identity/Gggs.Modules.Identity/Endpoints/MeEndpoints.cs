@@ -1,7 +1,13 @@
 using System.Security.Claims;
+using Gggs.BuildingBlocks.Application;
+using Gggs.BuildingBlocks.Domain.Exceptions;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Security;
+using Gggs.Data;
+using Gggs.Modules.Identity.Domain.Users;
+using Gggs.Modules.Identity.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.EntityFrameworkCore;
 
 namespace Gggs.Modules.Identity.Endpoints;
 
@@ -77,6 +83,9 @@ public sealed record SessionResponse
     public IReadOnlyList<TenantSummaryResponse> AvailableTenants { get; init; } = [];
 }
 
+/// <summary>A user's own settings; only the time zone so far.</summary>
+public sealed record MyPreferences(string? TimeZone);
+
 /// <summary>What the signed-in user may know about themselves.</summary>
 public static class MeEndpoints
 {
@@ -92,7 +101,47 @@ public static class MeEndpoints
             .WithTags("Me")
             .RequireAuthorization();
 
+        // Personal settings: like the session, a user's own, needing nothing beyond being signed in.
+        endpoints.MapGet("/api/v1/me/preferences", GetPreferencesAsync)
+            .WithName("GetMyPreferences")
+            .WithTags("Me")
+            .RequireAuthorization();
+        endpoints.MapPut("/api/v1/me/preferences", SavePreferencesAsync)
+            .WithName("SaveMyPreferences")
+            .WithTags("Me")
+            .RequireAuthorization();
+
         return endpoints;
+    }
+
+    private static async Task<Results<Ok<MyPreferences>, NotFound>> GetPreferencesAsync(ICurrentUser currentUser, AppDbContext database, CancellationToken cancellationToken)
+    {
+        User? user = await database.Users.AsNoTracking().FirstOrDefaultAsync(candidate => candidate.Id == currentUser.UserId, cancellationToken);
+        return user is null ? TypedResults.NotFound() : TypedResults.Ok(new MyPreferences(user.TimeZone));
+    }
+
+    /// <summary>
+    /// Saves the user's own time zone (an IANA or Windows id this server knows; empty means the
+    /// organisation's). The session picks it up at its next revalidation.
+    /// </summary>
+    private static async Task<Results<Ok<MyPreferences>, NotFound>> SavePreferencesAsync(MyPreferences body, ICurrentUser currentUser, AppDbContext database, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        string? timeZone = string.IsNullOrWhiteSpace(body.TimeZone) ? null : body.TimeZone.Trim();
+        if (timeZone is not null && !TimeZoneInfo.TryFindSystemTimeZoneById(timeZone, out _))
+        {
+            throw new DomainRuleException("TIME_ZONE_UNKNOWN", $"'{timeZone}' is not a time zone this server knows.");
+        }
+
+        User? user = await database.Users.FirstOrDefaultAsync(candidate => candidate.Id == currentUser.UserId, cancellationToken);
+        if (user is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        user.UpdateProfile(user.DisplayName, user.PreferredLocale, timeZone);
+        await database.SaveChangesAsync(cancellationToken);
+        return TypedResults.Ok(new MyPreferences(user.TimeZone));
     }
 
     private static async Task<Ok<SessionResponse>> GetSessionAsync(

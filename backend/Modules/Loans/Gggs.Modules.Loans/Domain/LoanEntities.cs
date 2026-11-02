@@ -474,6 +474,40 @@ public sealed class LoanRepayment : TenantAggregateRoot
     }
 }
 
+/// <summary>
+/// One employee's taxable interest benefit for one payroll month: their concessional loans'
+/// outstanding balance at the gap between the benchmark rate and the rate charged. Raised to payroll
+/// as a perquisite, so it is taxed with salary without being paid.
+/// </summary>
+public sealed class LoanPerquisite : TenantAggregateRoot
+{
+    private LoanPerquisite()
+    {
+    }
+
+    public Guid EmployeeId { get; private set; }
+
+    /// <summary>The first day of the payroll month.</summary>
+    public DateOnly Month { get; private set; }
+
+    /// <summary>What the employee owed on loans that attract the perquisite.</summary>
+    public decimal Outstanding { get; private set; }
+
+    public decimal BenchmarkRate { get; private set; }
+
+    public decimal Amount { get; private set; }
+
+    public static LoanPerquisite For(Guid employeeId, DateOnly month)
+        => new() { EmployeeId = Guard.NotEmpty(employeeId), Month = new DateOnly(month.Year, month.Month, 1) };
+
+    public void Value(decimal outstanding, decimal benchmarkRate, decimal amount)
+    {
+        Outstanding = outstanding;
+        BenchmarkRate = benchmarkRate;
+        Amount = LoanMath.Rupees(Math.Max(0, amount));
+    }
+}
+
 /// <summary>The loan types a tenant starts with.</summary>
 public static class LoanDefaults
 {

@@ -107,7 +107,6 @@ public static class SsoEndpoints
         string next = response switch
         {
             { Succeeded: true } => completion.ReturnUrl,
-            { MfaChallenge: { } challenge } => $"{SignInPage}?mfaChallenge={Uri.EscapeDataString(challenge)}",
             _ => $"{SignInPage}?ssoError={Uri.EscapeDataString(response.ErrorCode ?? SignInErrorCodes.InvalidCredentials)}",
         };
 

@@ -1,6 +1,7 @@
 using System.Globalization;
 using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Domain.Exceptions;
+using Gggs.BuildingBlocks.Files;
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Security;
@@ -9,6 +10,7 @@ using Gggs.Modules.Employee.Contracts;
 using Gggs.Modules.Leave.Contracts;
 using Gggs.Modules.Leave.Domain;
 using Gggs.Modules.Leave.Infrastructure;
+using Gggs.Modules.MasterData.Contracts;
 using Gggs.Modules.Workflow.Contracts;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,7 +25,14 @@ public sealed record LeaveApplication(
     string? Reason,
     Guid? EmployeeId = null);
 
-public sealed record LeavePreview(decimal Days, decimal Available, bool WithinBalance, IReadOnlyList<string> Problems);
+public sealed record LeavePreview(decimal Days, decimal Available, bool WithinBalance, IReadOnlyList<string> Problems, bool DocumentRequired = false);
+
+/// <summary>A supporting document on a request.</summary>
+public sealed record LeaveAttachmentItem(Guid Id, string FileName, string ContentType, long SizeBytes, DateTime UploadedDate);
+
+public sealed record IncomingAttachment(string FileName, long Length, Func<Stream> Open);
+
+public sealed record AttachmentContent(Stream Content, string ContentType, string FileName);
 
 public sealed record LeaveRequestItem(
     Guid Id,
@@ -43,7 +52,8 @@ public sealed record LeaveRequestItem(
     Guid? WorkflowInstanceId,
     DateTime AppliedDate,
     DateTime? DecidedDate,
-    string? CancellationReason);
+    string? CancellationReason,
+    int AttachmentCount = 0);
 
 public sealed record LeaveBalance(
     Guid LeaveTypeId,
@@ -79,8 +89,8 @@ public sealed record LeaveRequestQuery
 }
 
 /// <summary>
-/// Leave requests and balances (spec §20). Every rule a policy sets is checked when applying: the
-/// probation and notice rules, the longest stretch, overlaps, and the balance after other pending
+/// Leave requests and balances (spec §20). Every rule the employee's leave policy sets is checked
+/// when applying (<see cref="LeaveEligibility"/>), then overlaps and the balance after other pending
 /// requests. Approval goes through Workflow; the days leave the balance when it is approved.
 /// </summary>
 internal sealed class LeaveService(
@@ -92,6 +102,9 @@ internal sealed class LeaveService(
     ICurrentUser currentUser,
     ITenantClock clock,
     TimeProvider timeProvider,
+    LeavePlanService plans,
+    IMasterDataLookup lookup,
+    IFileStorage fileStorage,
     IEnumerable<ILeaveApplicationRule> applicationRules)
 {
     public const string SubjectType = "leave.request";
@@ -113,33 +126,194 @@ internal sealed class LeaveService(
     public async Task<LeavePreview> PreviewAsync(LeaveApplication application, bool onBehalf, CancellationToken cancellationToken)
     {
         Guid employeeId = await ResolveEmployeeAsync(application, onBehalf, cancellationToken);
-        (decimal days, decimal available, List<string> problems) = await EvaluateAsync(employeeId, application, onBehalf, excludeRequestId: null, cancellationToken);
-        return new LeavePreview(days, available, days <= available, problems);
+        Evaluation evaluation = await EvaluateAsync(employeeId, application, onBehalf, excludeRequestId: null, cancellationToken);
+        return new LeavePreview(evaluation.Days, evaluation.Available, evaluation.Days <= evaluation.Available, evaluation.Problems, evaluation.DocumentRequired);
     }
 
     public async Task<LeaveRequestItem> ApplyAsync(LeaveApplication application, bool onBehalf, CancellationToken cancellationToken)
     {
         Guid employeeId = await ResolveEmployeeAsync(application, onBehalf, cancellationToken);
-        (decimal days, _, List<string> problems) = await EvaluateAsync(employeeId, application, onBehalf, excludeRequestId: null, cancellationToken);
-
-        if (problems.Count > 0)
-        {
-            throw new DomainRuleException("LEAVE_NOT_ALLOWED", problems[0]) { Context = new Dictionary<string, object?> { ["problems"] = problems } };
-        }
+        Evaluation evaluation = await EvaluateAsync(employeeId, application, onBehalf, excludeRequestId: null, cancellationToken);
+        ThrowIfProblems(evaluation.Problems);
 
         LeaveType type = await dbContext.LeaveTypes.AsNoTracking().FirstAsync(row => row.Id == application.LeaveTypeId, cancellationToken);
         var request = LeaveRequest.Apply(
             employeeId, type.Id, application.StartDate, application.EndDate, application.StartsSecondHalf, application.EndsFirstHalf,
-            days, application.Reason, onBehalf ? currentUser.UserId : null);
+            evaluation.Days, application.Reason, onBehalf ? currentUser.UserId : null, awaitingDocument: evaluation.DocumentRequired, grantsItsDays: evaluation.GrantsItsDays);
         dbContext.LeaveRequests.Add(request);
 
+        // A long request waits as a draft for its supporting document; Submit sends it for approval.
+        if (!evaluation.DocumentRequired)
+        {
+            await StartApprovalAsync(request, type, cancellationToken);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (await ToItemsAsync([request], cancellationToken))[0];
+    }
+
+    /// <summary>The draft has its supporting document: the rules are checked again and it goes for approval.</summary>
+    public async Task<LeaveRequestItem> SubmitAsync(Guid requestId, CancellationToken cancellationToken)
+    {
+        LeaveRequest request = await OwnDraftAsync(requestId, cancellationToken);
+        if (!await dbContext.LeaveRequestAttachments.AnyAsync(attachment => attachment.RequestId == requestId, cancellationToken))
+        {
+            throw new DomainRuleException("LEAVE_DOCUMENT_REQUIRED", "Attach the supporting document before sending the request.");
+        }
+
+        var application = new LeaveApplication(request.LeaveTypeId, request.StartDate, request.EndDate, request.StartsSecondHalf, request.EndsFirstHalf, request.Reason, request.EmployeeId);
+        Evaluation evaluation = await EvaluateAsync(request.EmployeeId, application, request.AppliedByUserId is not null, excludeRequestId: request.Id, cancellationToken);
+        ThrowIfProblems(evaluation.Problems);
+
+        LeaveType type = await dbContext.LeaveTypes.AsNoTracking().FirstAsync(row => row.Id == request.LeaveTypeId, cancellationToken);
+        request.Submit(evaluation.Days);
+        await StartApprovalAsync(request, type, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (await ToItemsAsync([request], cancellationToken))[0];
+    }
+
+    // ----- Supporting documents ----------------------------------------------------------------
+
+    /// <summary>A PDF or a photo of the document, up to 5 MB, judged by its first bytes.</summary>
+    public const long MaxAttachmentBytes = 5 * 1024 * 1024;
+
+    public async Task<LeaveAttachmentItem> AttachAsync(Guid requestId, IncomingAttachment file, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+        LeaveRequest request = await dbContext.LeaveRequests.AsNoTracking().FirstOrDefaultAsync(row => row.Id == requestId, cancellationToken)
+            ?? throw new NotFoundException(nameof(LeaveRequest), requestId);
+        if (!await CanWriteAsync(request, cancellationToken))
+        {
+            throw new NotFoundException(nameof(LeaveRequest), requestId);
+        }
+
+        if (request.Status is not (LeaveRequestStatus.Draft or LeaveRequestStatus.Pending))
+        {
+            throw new DomainRuleException("LEAVE_REQUEST_CLOSED", $"Documents cannot be added to a request that is {request.Status}.");
+        }
+
+        if (file.Length is <= 0 or > MaxAttachmentBytes)
+        {
+            throw new DomainRuleException("LEAVE_DOCUMENT_SIZE", "Attach a file of up to 5 MB.");
+        }
+
+        byte[] head = new byte[8];
+        await using (Stream peek = file.Open())
+        {
+            int read = await peek.ReadAtLeastAsync(head, head.Length, throwOnEndOfStream: false, cancellationToken);
+            head = head[..read];
+        }
+
+        string contentType = SniffDocument(head) ?? throw new DomainRuleException("LEAVE_DOCUMENT_TYPE", "Attach a PDF, JPEG or PNG file.");
+        Guid attachmentId = Guid.CreateVersion7();
+        string fileName = Path.GetFileName(file.FileName);
+        StoredFile stored;
+        await using (Stream content = file.Open())
+        {
+            stored = await fileStorage.SaveAsync(
+                new FileToStore { Content = content, RelativeKey = $"leave/{requestId:N}/{attachmentId:N}", ContentType = contentType },
+                cancellationToken);
+        }
+
+        var attachment = LeaveRequestAttachment.Create(attachmentId, requestId, string.IsNullOrWhiteSpace(fileName) ? "document" : fileName, contentType, stored.SizeBytes, stored.StorageKey);
+        dbContext.LeaveRequestAttachments.Add(attachment);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch
+        {
+            await fileStorage.DeleteAsync(stored.StorageKey, CancellationToken.None);
+            throw;
+        }
+
+        return new LeaveAttachmentItem(attachment.Id, attachment.FileName, attachment.ContentType, attachment.SizeBytes, attachment.CreatedDate == default ? Now : attachment.CreatedDate);
+    }
+
+    public async Task<IReadOnlyList<LeaveAttachmentItem>> AttachmentsAsync(Guid requestId, CancellationToken cancellationToken)
+    {
+        await ReadableAsync(requestId, cancellationToken);
+        return await dbContext.LeaveRequestAttachments.AsNoTracking()
+            .Where(attachment => attachment.RequestId == requestId)
+            .OrderBy(attachment => attachment.CreatedDate)
+            .Select(attachment => new LeaveAttachmentItem(attachment.Id, attachment.FileName, attachment.ContentType, attachment.SizeBytes, attachment.CreatedDate))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<AttachmentContent> OpenAttachmentAsync(Guid requestId, Guid attachmentId, CancellationToken cancellationToken)
+    {
+        await ReadableAsync(requestId, cancellationToken);
+        LeaveRequestAttachment attachment = await dbContext.LeaveRequestAttachments.AsNoTracking()
+            .FirstOrDefaultAsync(row => row.Id == attachmentId && row.RequestId == requestId, cancellationToken)
+            ?? throw new NotFoundException(nameof(LeaveRequestAttachment), attachmentId);
+        return new AttachmentContent(await fileStorage.OpenReadAsync(attachment.StorageKey, cancellationToken), attachment.ContentType, attachment.FileName);
+    }
+
+    /// <summary>The document type its first bytes declare: PDF, JPEG or PNG; anything else is refused.</summary>
+    internal static string? SniffDocument(ReadOnlySpan<byte> head)
+    {
+        if (head.StartsWith("%PDF"u8))
+        {
+            return "application/pdf";
+        }
+
+        if (head.Length >= 3 && head[0] == 0xFF && head[1] == 0xD8 && head[2] == 0xFF)
+        {
+            return "image/jpeg";
+        }
+
+        return head.StartsWith((byte[])[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) ? "image/png" : null;
+    }
+
+    /// <summary>The employee themself, or whoever applied on their behalf.</summary>
+    private async Task<bool> CanWriteAsync(LeaveRequest request, CancellationToken cancellationToken)
+        => request.EmployeeId == currentUser.EmployeeId
+            || (request.AppliedByUserId is not null && request.AppliedByUserId == currentUser.UserId)
+            || await employees.IsInScopeAsync(request.EmployeeId, Permissions.Leave.RequestCreateOnBehalf, cancellationToken);
+
+    /// <summary>The employee, HR and managers who can see the request, and its approvers through Workflow's inbox (they hold leave.request.view for their team).</summary>
+    private async Task ReadableAsync(Guid requestId, CancellationToken cancellationToken)
+    {
+        LeaveRequest request = await dbContext.LeaveRequests.AsNoTracking().FirstOrDefaultAsync(row => row.Id == requestId, cancellationToken)
+            ?? throw new NotFoundException(nameof(LeaveRequest), requestId);
+        if (request.EmployeeId != currentUser.EmployeeId && !await employees.IsInScopeAsync(request.EmployeeId, Permissions.Leave.RequestView, cancellationToken) && !await CanWriteAsync(request, cancellationToken))
+        {
+            throw new NotFoundException(nameof(LeaveRequest), requestId);
+        }
+    }
+
+    private async Task<LeaveRequest> OwnDraftAsync(Guid requestId, CancellationToken cancellationToken)
+    {
+        LeaveRequest request = await dbContext.LeaveRequests.FirstOrDefaultAsync(row => row.Id == requestId, cancellationToken)
+            ?? throw new NotFoundException(nameof(LeaveRequest), requestId);
+        if (!await CanWriteAsync(request, cancellationToken))
+        {
+            throw new NotFoundException(nameof(LeaveRequest), requestId);
+        }
+
+        return request.Status == LeaveRequestStatus.Draft
+            ? request
+            : throw new DomainRuleException("LEAVE_REQUEST_CLOSED", $"This request is already {request.Status}.");
+    }
+
+    private static void ThrowIfProblems(List<string> problems)
+    {
+        if (problems.Count > 0)
+        {
+            throw new DomainRuleException("LEAVE_NOT_ALLOWED", problems[0]) { Context = new Dictionary<string, object?> { ["problems"] = problems } };
+        }
+    }
+
+    private async Task StartApprovalAsync(LeaveRequest request, LeaveType type, CancellationToken cancellationToken)
+    {
+        decimal days = request.Days;
         WorkflowStartResult started = await workflow.StartAsync(
             new WorkflowStartRequest
             {
                 SubjectType = SubjectType,
                 SubjectId = request.Id,
-                Title = $"{type.Name}: {days.ToString("0.#", CultureInfo.InvariantCulture)} day(s) from {application.StartDate:d MMM}",
-                RequesterEmployeeId = employeeId,
+                Title = $"{type.Name}: {days.ToString("0.#", CultureInfo.InvariantCulture)} day(s) from {request.StartDate:d MMM}",
+                RequesterEmployeeId = request.EmployeeId,
                 Link = "/team/leave",
                 Fields = new Dictionary<string, string>
                 {
@@ -158,9 +332,6 @@ internal sealed class LeaveService(
         {
             Approve(request, type);
         }
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-        return (await ToItemsAsync([request], cancellationToken))[0];
     }
 
     /// <summary>Approval came through: the request is approved and its days leave the balance.</summary>
@@ -202,15 +373,21 @@ internal sealed class LeaveService(
             throw new DomainRuleException("LEAVE_ALREADY_STARTED", "Leave that has started can only be cancelled by HR.");
         }
 
-        bool wasApproved = request.Status == LeaveRequestStatus.Approved;
+        LeaveRequestStatus was = request.Status;
         request.Cancel(Now, reason);
 
-        if (wasApproved)
+        if (was == LeaveRequestStatus.Approved)
         {
             dbContext.LeaveLedger.Add(LeaveLedgerEntry.Record(request.EmployeeId, request.LeaveTypeId, today, LedgerKind.Restored, request.Days, request.Id, note: "Leave cancelled"));
+            if (request.GrantsItsDays)
+            {
+                // The days were granted for this request only: they go with it.
+                dbContext.LeaveLedger.Add(LeaveLedgerEntry.Record(request.EmployeeId, request.LeaveTypeId, today, LedgerKind.Grant, -request.Days, request.Id, note: "Grant withdrawn with the request"));
+            }
+
             publisher.Publish(new LeaveCancelledIntegrationEvent(request.Id, request.EmployeeId, request.StartDate, request.EndDate));
         }
-        else
+        else if (was == LeaveRequestStatus.Pending)
         {
             await workflow.WithdrawAsync(SubjectType, request.Id, cancellationToken);
         }
@@ -284,10 +461,10 @@ internal sealed class LeaveService(
     {
         EmployeeSummary person = await employees.GetAsync(employeeId, cancellationToken) ?? throw new NotFoundException("Employee", employeeId);
         DateOnly today = await clock.TodayAsync(cancellationToken);
-        var yearStart = new DateOnly(today.Year, 1, 1);
+        LeavePlan? plan = (await plans.BookAsync([employeeId], cancellationToken)).For(person, today)?.Plan;
+        DateOnly yearStart = LeaveYear.For(plan?.LeaveYearStartMonth ?? 1, today).Start;
 
         List<LeaveType> types = await dbContext.LeaveTypes.AsNoTracking().Where(type => type.IsActive).OrderBy(type => type.Name).ToListAsync(cancellationToken);
-        List<LeavePolicy> policies = await dbContext.LeavePolicies.AsNoTracking().Where(policy => policy.IsActive).ToListAsync(cancellationToken);
 
         var ledger = await dbContext.LeaveLedger.AsNoTracking()
             .Where(entry => entry.EmployeeId == employeeId)
@@ -301,6 +478,12 @@ internal sealed class LeaveService(
             })
             .ToDictionaryAsync(row => row.Key, cancellationToken);
 
+        Dictionary<Guid, int> occurrences = await dbContext.LeaveRequests.AsNoTracking()
+            .Where(request => request.EmployeeId == employeeId && (request.Status == LeaveRequestStatus.Pending || request.Status == LeaveRequestStatus.Approved))
+            .GroupBy(request => request.LeaveTypeId)
+            .Select(group => new { group.Key, Count = group.Count() })
+            .ToDictionaryAsync(row => row.Key, row => row.Count, cancellationToken);
+
         Dictionary<Guid, decimal> pending = await dbContext.LeaveRequests.AsNoTracking()
             .Where(request => request.EmployeeId == employeeId && request.Status == LeaveRequestStatus.Pending)
             .GroupBy(request => request.LeaveTypeId)
@@ -310,17 +493,26 @@ internal sealed class LeaveService(
         var balances = new List<LeaveBalance>();
         foreach (LeaveType type in types)
         {
-            LeavePolicy? policy = PolicyFor(policies, type.Id, person.EmploymentTypeCode);
-            if (policy is null && !ledger.ContainsKey(type.Id))
+            // Only the policy's leave types the person can take, plus any other that still holds days.
+            LeavePlanItem? item = plan?.ItemFor(type.Id);
+            bool eligible = item is not null && (item.Genders.Count == 0 || (person.GenderCode is { } gender && item.Genders.Contains(gender, StringComparer.OrdinalIgnoreCase)));
+            if (!eligible && !ledger.ContainsKey(type.Id))
             {
                 continue;
             }
 
             decimal balance = ledger.TryGetValue(type.Id, out var row) ? row.Balance : 0;
             decimal held = pending.GetValueOrDefault(type.Id);
+            if (item?.GrantPerOccurrence is { } grant)
+            {
+                // Granted each time it is taken: what one more occurrence would give, while any are left.
+                int used = occurrences.GetValueOrDefault(type.Id);
+                balance = item.MaxOccurrencesInEmployment is { } most && used >= most ? 0 : grant;
+                held = 0;
+            }
             balances.Add(new LeaveBalance(
                 type.Id, type.Code, type.Name, type.Color, type.IsPaid, balance, held, balance - held,
-                policy?.AnnualEntitlement ?? 0, row?.Taken ?? 0));
+                item?.AnnualEntitlement ?? 0, row?.Taken ?? 0));
         }
 
         return balances;
@@ -376,7 +568,9 @@ internal sealed class LeaveService(
     /// Days the application takes, the balance available for it, and every rule it breaks. HR
     /// applying on someone's behalf is not held to the notice period.
     /// </summary>
-    private async Task<(decimal Days, decimal Available, List<string> Problems)> EvaluateAsync(
+    private sealed record Evaluation(decimal Days, decimal Available, List<string> Problems, bool DocumentRequired, bool GrantsItsDays);
+
+    private async Task<Evaluation> EvaluateAsync(
         Guid employeeId,
         LeaveApplication application,
         bool onBehalf,
@@ -413,9 +607,10 @@ internal sealed class LeaveService(
         }
 
         EmployeeSummary person = await employees.GetAsync(employeeId, cancellationToken) ?? throw new NotFoundException("Employee", employeeId);
-        List<LeavePolicy> policies = await dbContext.LeavePolicies.AsNoTracking().Where(policy => policy.IsActive && policy.LeaveTypeId == type.Id).ToListAsync(cancellationToken);
-        LeavePolicy policy = PolicyFor(policies, type.Id, person.EmploymentTypeCode)
-            ?? throw new DomainRuleException("LEAVE_NO_POLICY", $"No {type.Name} policy covers this employee.");
+        LeavePlan plan = (await plans.BookAsync([employeeId], cancellationToken)).For(person, application.StartDate)?.Plan
+            ?? throw new DomainRuleException("LEAVE_NO_POLICY", $"No leave policy is assigned to {await EngagementTypeAsync(person, cancellationToken)}. Ask HR to assign one.");
+        LeavePlanItem item = plan.ItemFor(type.Id)
+            ?? throw new DomainRuleException("LEAVE_NOT_IN_POLICY", $"{type.Name} is not part of the leave policy '{plan.Name}'.");
 
         Dictionary<(Guid EmployeeId, DateOnly Day), bool> working = await calendar.WorkingDaysAsync([employeeId], application.StartDate, application.EndDate, cancellationToken);
         List<LeaveCalendarDay> days = [];
@@ -424,33 +619,39 @@ internal sealed class LeaveService(
             days.Add(new LeaveCalendarDay(day, working.GetValueOrDefault((employeeId, day), true)));
         }
 
-        decimal count = LeaveCalculator.CountDays(days, application.StartsSecondHalf, application.EndsFirstHalf, policy.CountSandwichedDays);
+        decimal count = LeaveCalculator.CountDays(days, application.StartsSecondHalf, application.EndsFirstHalf, item.CountSandwichedDays);
         if (count <= 0)
         {
             problems.Add("Those dates fall on weekly offs or holidays; there is nothing to take.");
         }
 
         DateOnly today = await clock.TodayAsync(cancellationToken);
-        bool onProbation = person.ConfirmationDate is null && person.ProbationEndDate is { } probationEnd && probationEnd >= application.StartDate;
-        if (onProbation && !policy.AllowDuringProbation)
-        {
-            problems.Add($"{type.Name} cannot be taken during probation.");
-        }
+        LeaveYear leaveYear = LeaveYear.For(plan.LeaveYearStartMonth, application.StartDate);
+        int occurrences = item.MaxOccurrencesInEmployment is null ? 0 : await dbContext.LeaveRequests.CountAsync(
+            request => request.EmployeeId == employeeId
+                && request.LeaveTypeId == type.Id
+                && request.Id != excludeRequestId
+                && (request.Status == LeaveRequestStatus.Pending || request.Status == LeaveRequestStatus.Approved),
+            cancellationToken);
+        int requestsThisYear = await dbContext.LeaveRequests.CountAsync(
+            request => request.EmployeeId == employeeId
+                && request.LeaveTypeId == type.Id
+                && request.Id != excludeRequestId
+                && (request.Status == LeaveRequestStatus.Pending || request.Status == LeaveRequestStatus.Approved)
+                && request.StartDate >= leaveYear.Start
+                && request.StartDate <= leaveYear.End,
+            cancellationToken);
 
-        if (!onBehalf && policy.MinNoticeDays > 0 && application.StartDate < today.AddDays(policy.MinNoticeDays))
-        {
-            problems.Add($"{type.Name} needs {policy.MinNoticeDays} day(s) of notice.");
-        }
-
-        if (policy.MaxConsecutiveDays is { } longest && count > longest)
-        {
-            problems.Add($"{type.Name} can be taken for at most {longest} day(s) at a time.");
-        }
+        problems.AddRange(LeaveEligibility.Check(
+            type.Name,
+            item.Rules,
+            new LeaveApplicant(person.GenderCode, person.JoiningDate, person.ProbationEndDate, person.ConfirmationDate, person.Status == "OnNotice"),
+            new LeaveAsk(application.StartDate, application.EndDate, count, today, onBehalf, requestsThisYear, occurrences)));
 
         bool overlaps = await dbContext.LeaveRequests.AnyAsync(
             request => request.EmployeeId == employeeId
                 && request.Id != excludeRequestId
-                && (request.Status == LeaveRequestStatus.Pending || request.Status == LeaveRequestStatus.Approved)
+                && (request.Status == LeaveRequestStatus.Draft || request.Status == LeaveRequestStatus.Pending || request.Status == LeaveRequestStatus.Approved)
                 && request.StartDate <= application.EndDate
                 && request.EndDate >= application.StartDate,
             cancellationToken);
@@ -465,12 +666,19 @@ internal sealed class LeaveService(
             .SumAsync(request => request.Days, cancellationToken);
         decimal available = balance - pending;
 
-        if (count > available + policy.MaxNegativeBalance)
+        PlanItemRules rules = item.Rules;
+        if (rules.GrantPerOccurrence is { } grant)
+        {
+            // Granted for the request itself: there is no balance to run out of.
+            available = grant;
+        }
+        else if (count > available + item.MaxNegativeBalance)
         {
             problems.Add($"Not enough {type.Name}: {available.ToString("0.#", CultureInfo.InvariantCulture)} day(s) available.");
         }
 
-        return (count, available, problems);
+        bool documentRequired = rules.DocumentRequiredAboveDays is { } above && count > above;
+        return new Evaluation(count, available, problems, documentRequired, rules.IsPerOccurrence);
     }
 
     private async Task<Guid> ResolveEmployeeAsync(LeaveApplication application, bool onBehalf, CancellationToken cancellationToken)
@@ -491,6 +699,11 @@ internal sealed class LeaveService(
     private void Approve(LeaveRequest request, LeaveType type)
     {
         request.Approve(Now);
+        if (request.GrantsItsDays)
+        {
+            dbContext.LeaveLedger.Add(LeaveLedgerEntry.Record(request.EmployeeId, request.LeaveTypeId, request.StartDate, LedgerKind.Grant, request.Days, request.Id, note: $"{type.Name}: granted for this request"));
+        }
+
         dbContext.LeaveLedger.Add(LeaveLedgerEntry.Record(request.EmployeeId, request.LeaveTypeId, request.StartDate, LedgerKind.Taken, -request.Days, request.Id, note: type.Name));
         publisher.Publish(new LeaveApprovedIntegrationEvent(request.Id, request.EmployeeId, request.StartDate, request.EndDate, request.Days, type.Code));
     }
@@ -523,6 +736,12 @@ internal sealed class LeaveService(
         Dictionary<Guid, LeaveType> types = await dbContext.LeaveTypes.AsNoTracking().Where(type => typeIds.Contains(type.Id)).ToDictionaryAsync(type => type.Id, cancellationToken);
         Dictionary<Guid, string> names = (await employees.GetManyAsync(requests.Select(request => request.EmployeeId), cancellationToken))
             .ToDictionary(person => person.Id, person => person.DisplayName);
+        List<Guid> requestIds = [.. requests.Select(request => request.Id)];
+        Dictionary<Guid, int> attachments = await dbContext.LeaveRequestAttachments.AsNoTracking()
+            .Where(attachment => requestIds.Contains(attachment.RequestId))
+            .GroupBy(attachment => attachment.RequestId)
+            .Select(group => new { group.Key, Count = group.Count() })
+            .ToDictionaryAsync(row => row.Key, row => row.Count, cancellationToken);
 
         return [.. requests.Select(request =>
         {
@@ -545,17 +764,20 @@ internal sealed class LeaveService(
                 request.WorkflowInstanceId,
                 request.CreatedDate == default ? Now : request.CreatedDate,
                 request.DecidedDate,
-                request.CancellationReason);
+                request.CancellationReason,
+                attachments.GetValueOrDefault(request.Id));
         })];
     }
 
-    /// <summary>The employment type's own policy if it has one, else the general one.</summary>
-    internal static LeavePolicy? PolicyFor(IEnumerable<LeavePolicy> policies, Guid leaveTypeId, string? employmentTypeCode)
+    private async Task<string> EngagementTypeAsync(EmployeeSummary person, CancellationToken cancellationToken)
     {
-        List<LeavePolicy> forType = [.. policies.Where(policy => policy.IsActive && policy.LeaveTypeId == leaveTypeId)];
-        return forType.FirstOrDefault(policy => policy.EmploymentTypeCode is not null
-                && string.Equals(policy.EmploymentTypeCode, employmentTypeCode, StringComparison.OrdinalIgnoreCase))
-            ?? forType.FirstOrDefault(policy => policy.EmploymentTypeCode is null);
+        if (string.IsNullOrWhiteSpace(person.EmploymentTypeCode))
+        {
+            return "this employee's engagement type";
+        }
+
+        IReadOnlyDictionary<string, string> labels = await lookup.GetLabelsAsync(LookupLists.EmploymentType, [person.EmploymentTypeCode], cancellationToken);
+        return labels.GetValueOrDefault(person.EmploymentTypeCode) ?? person.EmploymentTypeCode;
     }
 }
 

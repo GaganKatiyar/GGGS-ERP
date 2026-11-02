@@ -1,10 +1,12 @@
 using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Domain.Exceptions;
+using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.Data;
 using Gggs.Modules.Employee.Contracts;
 using Gggs.Modules.MasterData.Contracts;
+using Gggs.Modules.Organization.Contracts;
 using Gggs.Modules.Organization.Domain;
 using Gggs.Modules.Organization.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -443,7 +445,7 @@ public static class OrganizationEndpoints
             .WithName("GetDepartmentTree")
             .RequirePermission(Permissions.Organization.View);
 
-        group.MapPost("/", async (SaveDepartmentRequest body, AppDbContext db, IEmployeeDirectory employees, TimeProvider time, IUnitOfWork unitOfWork, CancellationToken ct) =>
+        group.MapPost("/", async (SaveDepartmentRequest body, AppDbContext db, IEmployeeDirectory employees, IIntegrationEventPublisher publisher, TimeProvider time, IUnitOfWork unitOfWork, CancellationToken ct) =>
             {
                 await OrgEndpointKit.EnsureCodeFreeAsync(db.Departments, body.Code, null, ct);
 
@@ -452,24 +454,27 @@ public static class OrganizationEndpoints
                 await PlaceAsync(department, body, db, employees, ct);
 
                 db.Departments.Add(department);
+                PublishHeadChange(publisher, department.Id, null, department.HeadEmployeeId);
                 await unitOfWork.SaveChangesAsync(ct);
                 return TypedResults.Created($"{Base}/departments/{department.Id}", new { department.Id });
             })
             .WithName("CreateDepartment")
             .RequirePermission(Permissions.Organization.DepartmentManage);
 
-        group.MapPut("/{id:guid}", async (Guid id, SaveDepartmentRequest body, AppDbContext db, IEmployeeDirectory employees, IUnitOfWork unitOfWork, CancellationToken ct) =>
+        group.MapPut("/{id:guid}", async (Guid id, SaveDepartmentRequest body, AppDbContext db, IEmployeeDirectory employees, IIntegrationEventPublisher publisher, IUnitOfWork unitOfWork, CancellationToken ct) =>
             {
                 Department department = await OrgEndpointKit.FindAsync(db.Departments, id, ct);
+                Guid? previousHead = department.HeadEmployeeId;
                 department.Rename(body.Name);
                 await PlaceAsync(department, body, db, employees, ct);
+                PublishHeadChange(publisher, department.Id, previousHead, department.HeadEmployeeId);
                 await unitOfWork.SaveChangesAsync(ct);
                 return TypedResults.NoContent();
             })
             .WithName("UpdateDepartment")
             .RequirePermission(Permissions.Organization.DepartmentManage);
 
-        group.MapPost("/{id:guid}/close", async (Guid id, CloseRequest body, AppDbContext db, IEmployeeDirectory employees, IUnitOfWork unitOfWork, CancellationToken ct) =>
+        group.MapPost("/{id:guid}/close", async (Guid id, CloseRequest body, AppDbContext db, IEmployeeDirectory employees, IIntegrationEventPublisher publisher, IUnitOfWork unitOfWork, CancellationToken ct) =>
             {
                 Department department = await OrgEndpointKit.FindAsync(db.Departments, id, ct);
 
@@ -484,11 +489,22 @@ public static class OrganizationEndpoints
                 }
 
                 department.Close(body.EffectiveTo);
+                // A closed department has nobody heading it any more.
+                PublishHeadChange(publisher, department.Id, department.HeadEmployeeId, null);
                 await unitOfWork.SaveChangesAsync(ct);
                 return TypedResults.NoContent();
             })
             .WithName("CloseDepartment")
             .RequirePermission(Permissions.Organization.DepartmentManage);
+
+        // Published with the change, in the same transaction, so a head is never moved without it.
+        static void PublishHeadChange(IIntegrationEventPublisher publisher, Guid departmentId, Guid? previous, Guid? current)
+        {
+            if (previous != current)
+            {
+                publisher.Publish(new DepartmentHeadChangedIntegrationEvent(departmentId, previous, current));
+            }
+        }
 
         static async Task PlaceAsync(Department department, SaveDepartmentRequest body, AppDbContext db, IEmployeeDirectory employees, CancellationToken ct)
         {

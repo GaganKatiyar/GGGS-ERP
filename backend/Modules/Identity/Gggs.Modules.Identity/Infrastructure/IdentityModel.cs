@@ -1,5 +1,6 @@
 using Gggs.Data;
 using Gggs.Modules.Identity.Domain.PlatformStaff;
+using Gggs.Modules.Identity.Domain.ApiKeys;
 using Gggs.Modules.Identity.Domain.Roles;
 using Gggs.Modules.Identity.Domain.Sso;
 using Gggs.Modules.Identity.Domain.Users;
@@ -34,6 +35,20 @@ internal sealed class IdentityModel : IModuleModel
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
 
+        modelBuilder.Entity<ApiKey>(entity =>
+        {
+            entity.ToTable("ApiKey", Schema);
+            entity.Property(key => key.Name).HasMaxLength(100).IsRequired();
+            entity.Property(key => key.Prefix).HasMaxLength(16).IsRequired();
+            entity.Property(key => key.SecretHash).HasMaxLength(64).IsRequired();
+            entity.HasOne<User>().WithMany().HasForeignKey(key => key.ServiceUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(key => new { key.TenantId, key.Prefix })
+                .HasDatabaseName("UX_ApiKey_TenantId_Prefix")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.Ignore(key => key.DomainEvents);
+        });
+
         modelBuilder.Entity<User>(entity =>
         {
             entity.ToTable("User", Schema);
@@ -45,10 +60,6 @@ internal sealed class IdentityModel : IModuleModel
             entity.Property(user => user.Status).HasConversion<byte>();
             entity.Property(user => user.PreferredLocale).HasMaxLength(10);
             entity.Property(user => user.TimeZone).HasMaxLength(64);
-            entity.Property(user => user.MfaSecret).HasMaxLength(1000);
-            entity.Property(user => user.MfaPendingSecret).HasMaxLength(1000);
-            entity.Property(user => user.MfaRecoveryCodes).HasMaxLength(1000);
-            entity.Ignore(user => user.MfaRecoveryCodesLeft);
 
             // Unique per tenant, not globally: the same person may work for two customers.
             entity.HasIndex(user => new { user.TenantId, user.NormalizedEmail })
@@ -82,6 +93,7 @@ internal sealed class IdentityModel : IModuleModel
         modelBuilder.Entity<Role>(entity =>
         {
             entity.ToTable("Role", Schema);
+            entity.Property(role => role.AutoAssign).HasConversion<byte>();
             entity.Property(role => role.Name).HasMaxLength(100).IsRequired();
             entity.Property(role => role.NormalizedName).HasMaxLength(100).IsRequired();
             entity.Property(role => role.Description).HasMaxLength(500);
@@ -113,17 +125,17 @@ internal sealed class IdentityModel : IModuleModel
             entity.HasIndex(grant => new { grant.TenantId, grant.RoleId })
                 .HasDatabaseName("IX_UserRole_TenantId_RoleId");
 
-            // The same role twice for the same anchor is a duplicate, not a second grant.
+            // The same role twice for the same anchor is a duplicate, not a second grant - among open
+            // grants. An ended grant stays as history, so the role can be given again later.
             entity.HasIndex(grant => new { grant.TenantId, grant.UserId, grant.RoleId, grant.ScopeType, grant.ScopeId })
                 .HasDatabaseName("UX_UserRole_Assignment")
                 .IsUnique()
-                .HasFilter("[IsDeleted] = 0");
+                .HasFilter("[IsDeleted] = 0 AND [ValidTo] IS NULL");
         });
 
         modelBuilder.Entity<PasswordPolicy>(entity =>
         {
             entity.ToTable("PasswordPolicy", Schema);
-            entity.Property(policy => policy.MfaRequirement).HasConversion<byte>();
 
             // One policy per tenant.
             entity.HasIndex(policy => policy.TenantId)
@@ -245,6 +257,8 @@ internal static class IdentityData
         public DbSet<PasswordPolicy> PasswordPolicies => db.Set<PasswordPolicy>();
 
         public DbSet<SsoProvider> SsoProviders => db.Set<SsoProvider>();
+
+        public DbSet<ApiKey> ApiKeys => db.Set<ApiKey>();
 
         /// <summary>
         /// Our own staff. Deliberately not tenant-owned; see <see cref="PlatformStaffMember"/> for why

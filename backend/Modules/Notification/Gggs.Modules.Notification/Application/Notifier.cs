@@ -12,9 +12,21 @@ namespace Gggs.Modules.Notification.Application;
 /// <summary>A default template: what a new tenant starts with.</summary>
 internal sealed record TemplateSeed(string Code, string Name, string Subject, string Body, bool SendInApp, bool SendEmail);
 
-/// <summary>The notifications PeopleOS sends, with their default wording.</summary>
+/// <summary>The notifications Nuts and Bolts sends, with their default wording.</summary>
 internal static class NotificationTemplateCatalog
 {
+    /// <summary>
+    /// Sent whatever someone's preferences say: an account invitation, and notices with legal weight
+    /// that the employee must be shown to have received.
+    /// </summary>
+    public static IReadOnlySet<string> Mandatory { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        NotificationTemplates.UserInvited,
+        NotificationTemplates.ShowCauseIssued,
+        NotificationTemplates.AbsenceNotice,
+        NotificationTemplates.AccountCreated,
+    };
+
     public static IReadOnlyList<TemplateSeed> Defaults { get; } =
     [
         new(NotificationTemplates.WorkflowTaskAssigned, "Approval needed",
@@ -32,9 +44,9 @@ internal static class NotificationTemplateCatalog
         new(NotificationTemplates.WorkflowSentBack, "Request sent back",
             "Changes requested: {{title}}",
             "Hi {{recipientName}}, {{title}} was sent back for changes. Comment: {{comment}}", SendInApp: true, SendEmail: true),
-        new(NotificationTemplates.UserInvited, "Invitation to PeopleOS",
-            "You're invited to PeopleOS",
-            "Hi {{recipientName}}, you have been invited to PeopleOS. Set your password here before {{expires}}: {{invitationLink}}", SendInApp: false, SendEmail: true),
+        new(NotificationTemplates.UserInvited, "Invitation to Nuts and Bolts",
+            "You're invited to Nuts and Bolts",
+            "Hi {{recipientName}}, you have been invited to Nuts and Bolts. Set your password here before {{expires}}: {{invitationLink}}", SendInApp: false, SendEmail: true),
         new(NotificationTemplates.PolicyPublished, "Policy to acknowledge",
             "Please read: {{policyTitle}}",
             "Hi {{recipientName}}, version {{version}} of {{policyTitle}} is now in effect. Please read and acknowledge it.", SendInApp: true, SendEmail: true),
@@ -179,6 +191,9 @@ internal static class NotificationTemplateCatalog
         new(NotificationTemplates.ExitProposed, "Exit due",
             "{{employeeName}}: {{kind}} on {{lastDay}}",
             "Hi {{recipientName}}, {{employeeName}} reaches {{kind}} on {{lastDay}}. A separation has been proposed for you to confirm or decline.", SendInApp: true, SendEmail: true),
+        new(NotificationTemplates.AccountCreated, "Work account created",
+            "Your work account is ready",
+            "Hi {{recipientName}}, your work account is ready. Sign in as {{login}} with the temporary password {{temporaryPassword}}. You will be asked to choose your own the first time.", SendInApp: false, SendEmail: true),
         new(NotificationTemplates.ReportDigest, "Report digest",
             "Your {{period}} {{dashboard}} digest",
             "Hi {{recipientName}}, here are this {{period}}'s {{dashboard}} figures: {{summary}}", SendInApp: true, SendEmail: true),
@@ -199,9 +214,77 @@ internal static partial class TemplateRenderer
 [MessageType("gggs.notification.email-queued")]
 public sealed record EmailQueuedIntegrationEvent(Guid EmailMessageId) : IntegrationEvent;
 
+/// <summary>Raised when a text message is queued; the worker's consumer delivers it.</summary>
+[MessageType("gggs.notification.sms-queued")]
+public sealed record SmsQueuedIntegrationEvent(Guid SmsMessageId) : IntegrationEvent;
+
+/// <summary>
+/// Sends straight away rather than queuing, so the secret is never written down: the record kept is
+/// the same message with the secret masked. A tenant that predates a template gets the catalog's wording.
+/// </summary>
+internal sealed class OneTimeNotices(
+    AppDbContext dbContext,
+    INotificationChannel channel,
+    ITenantMessageSender sender,
+    TimeProvider timeProvider,
+    ILogger<OneTimeNotices> logger) : IOneTimeNotices
+{
+    private const string Mask = "••••••••";
+
+    public async Task<ChannelSendResult> SendAsync(string templateCode, string address, IReadOnlyDictionary<string, string> values, IReadOnlySet<string> secrets, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        ArgumentNullException.ThrowIfNull(secrets);
+
+        string code = templateCode.Trim().ToLowerInvariant();
+        NotificationTemplate? template = await dbContext.NotificationTemplates.AsNoTracking().FirstOrDefaultAsync(row => row.Code == code, cancellationToken);
+        TemplateSeed? seed = NotificationTemplateCatalog.Defaults.FirstOrDefault(row => row.Code == code);
+        string subjectTemplate = template?.Subject ?? seed?.Subject ?? throw new InvalidOperationException($"There is no {code} template.");
+        string bodyTemplate = template?.Body ?? seed!.Body;
+
+        Dictionary<string, string> masked = values.ToDictionary(pair => pair.Key, pair => secrets.Contains(pair.Key) ? Mask : pair.Value, StringComparer.Ordinal);
+        var record = EmailMessage.Queue(address, TemplateRenderer.Render(subjectTemplate, masked), TemplateRenderer.Render(bodyTemplate, masked), code);
+        dbContext.EmailMessages.Add(record);
+
+        string subject = TemplateRenderer.Render(subjectTemplate, values);
+        string body = TemplateRenderer.Render(bodyTemplate, values);
+        ChannelSendResult result;
+        try
+        {
+            result = await sender.SendEmailAsync(address, subject, body, cancellationToken) ?? await SendThroughSystemAsync(address, subject, body, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // By type only: an exception's message could quote what it was given.
+            logger.LogWarning("A one-time email ({Code}) failed: {Type}", code, exception.GetType().Name);
+            result = new ChannelSendResult(false, "The email could not be sent.");
+        }
+
+        if (result.Succeeded)
+        {
+            record.MarkSent(timeProvider.GetUtcNow().UtcDateTime);
+        }
+        else
+        {
+            record.MarkFailed(result.Message);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return result;
+    }
+
+    private async Task<ChannelSendResult> SendThroughSystemAsync(string address, string subject, string body, CancellationToken cancellationToken)
+    {
+        await channel.SendAsync(new OutboundMessage(address, subject, body, Sensitive: true), cancellationToken);
+        return new ChannelSendResult(true, "Sent.");
+    }
+}
+
 internal sealed class Notifier(
     AppDbContext dbContext,
     IEmployeeDirectory employees,
+    IEmployeeSeparations contacts,
+    ITenantMessageSender sender,
     IIntegrationEventPublisher publisher,
     ILogger<Notifier> logger) : INotifier
 {
@@ -225,6 +308,20 @@ internal sealed class Notifier(
         Dictionary<Guid, EmployeeSummary> people = (await employees.GetManyAsync(employeeIds, cancellationToken))
             .ToDictionary(person => person.Id);
 
+        // What each recipient chose for this kind of notification; nobody's choice silences a mandatory one.
+        List<Guid> userIds = [.. request.Recipients.Where(recipient => recipient.UserId is not null).Select(recipient => recipient.UserId!.Value).Distinct()];
+        List<NotificationPreference> preferences = NotificationTemplateCatalog.Mandatory.Contains(code) || (userIds.Count == 0 && employeeIds.Count == 0)
+            ? []
+            : await dbContext.NotificationPreferences.AsNoTracking()
+                .Where(preference => preference.EventCode == code
+                    && (userIds.Contains(preference.UserId) || (preference.EmployeeId != null && employeeIds.Contains(preference.EmployeeId.Value))))
+                .ToListAsync(cancellationToken);
+
+        // Mobile numbers are looked up only when a text message can actually go.
+        IReadOnlyDictionary<Guid, PersonalContact> phones = template.SendSms && employeeIds.Count > 0 && await sender.SendsSmsAsync(cancellationToken)
+            ? await contacts.PersonalContactsAsync(employeeIds, cancellationToken)
+            : new Dictionary<Guid, PersonalContact>();
+
         foreach (NotificationRecipient recipient in request.Recipients.Distinct())
         {
             EmployeeSummary? person = recipient.EmployeeId is { } id ? people.GetValueOrDefault(id) : null;
@@ -235,18 +332,29 @@ internal sealed class Notifier(
 
             string subject = TemplateRenderer.Render(template.Subject, values);
             string body = TemplateRenderer.Render(template.Body, values);
+            NotificationPreference? choice =
+                preferences.FirstOrDefault(preference => recipient.UserId is not null && preference.UserId == recipient.UserId)
+                ?? preferences.FirstOrDefault(preference => recipient.EmployeeId is not null && preference.EmployeeId == recipient.EmployeeId);
 
-            if (template.SendInApp && (recipient.EmployeeId is not null || recipient.UserId is not null))
+            if (template.SendInApp && choice?.InAppEnabled != false && (recipient.EmployeeId is not null || recipient.UserId is not null))
             {
                 dbContext.InAppNotifications.Add(InAppNotification.Create(recipient.EmployeeId, recipient.UserId, code, subject, body, request.Link));
             }
 
             string? address = recipient.Email ?? person?.OfficialEmail;
-            if (template.SendEmail && !string.IsNullOrWhiteSpace(address))
+            if (template.SendEmail && choice?.EmailEnabled != false && !string.IsNullOrWhiteSpace(address))
             {
                 var email = EmailMessage.Queue(address, subject, body, code);
                 dbContext.EmailMessages.Add(email);
                 publisher.Publish(new EmailQueuedIntegrationEvent(email.Id));
+            }
+
+            string? mobile = recipient.EmployeeId is { } phoneOwner ? phones.GetValueOrDefault(phoneOwner)?.MobilePhone : null;
+            if (choice?.SmsEnabled != false && !string.IsNullOrWhiteSpace(mobile))
+            {
+                var sms = SmsMessage.Queue(mobile, body, code);
+                dbContext.SmsMessages.Add(sms);
+                publisher.Publish(new SmsQueuedIntegrationEvent(sms.Id));
             }
         }
     }

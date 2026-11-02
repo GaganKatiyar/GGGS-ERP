@@ -15,7 +15,7 @@ public sealed record PermissionDefinition
     public required string Action { get; init; }
 
     /// <summary>
-    /// Sensitive permissions expose personal or financial data. They require recent MFA (step-up)
+    /// Sensitive permissions expose personal or financial data. They require a recent password entry (step-up)
     /// and every use is written to the sensitive-access audit trail.
     /// </summary>
     public bool IsSensitive { get; init; }

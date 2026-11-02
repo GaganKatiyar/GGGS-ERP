@@ -159,8 +159,71 @@ public interface IIntegrationAdapter
 
     IReadOnlyList<IntegrationOperation> Operations { get; }
 
+    /// <summary>Whether automations may act through it. Off by default: an adapter that produces a file for someone to download, or only reads, has nothing to do unattended.</summary>
+    bool Automatable => false;
+
+    /// <summary>
+    /// The channel it can carry for the tenant's notifications (<see cref="IntegrationChannels"/>), if
+    /// any. Such an adapter has a <c>send</c> operation taking <c>to</c> plus, for email, <c>subject</c>
+    /// and <c>body</c> or, for text messages, <c>text</c>.
+    /// </summary>
+    string? Channel => null;
+
     /// <summary>Checks the settings without changing anything outside.</summary>
     Task<IntegrationResult> TestAsync(IReadOnlyDictionary<string, string> settings, CancellationToken cancellationToken = default);
 
     Task<IntegrationResult> RunAsync(string operation, IReadOnlyDictionary<string, string> settings, IReadOnlyDictionary<string, string> parameters, CancellationToken cancellationToken = default);
+}
+
+/// <summary>The account to make. Holds a temporary password, so it never prints it.</summary>
+public sealed record AccountRequest(string EmployeeCode, string FirstName, string? LastName, string DisplayName, string? PreferredLogin, string TemporaryPassword)
+{
+    public override string ToString() => $"AccountRequest {{ EmployeeCode = {EmployeeCode} }}";
+}
+
+/// <summary>What a directory did. Created is false when it found an account already there: that one keeps its own password.</summary>
+public sealed record AccountOutcome(bool Succeeded, string Message, string? ExternalId = null, string? Login = null, bool Created = false);
+
+/// <summary>An outside directory Nuts and Bolts can make accounts in. It disables them and never deletes them.</summary>
+public interface IAccountAdapter : IIntegrationAdapter
+{
+    /// <summary>Finds the account already carrying the employee code, or makes one. Must leave the password out of its message.</summary>
+    Task<AccountOutcome> CreateAccountAsync(IReadOnlyDictionary<string, string> settings, AccountRequest account, CancellationToken cancellationToken = default);
+
+    Task<IntegrationResult> DisableAccountAsync(IReadOnlyDictionary<string, string> settings, string externalId, CancellationToken cancellationToken = default);
+}
+
+/// <summary>What happened when an operation ran on a saved connection.</summary>
+public sealed record ConnectionRunResult(bool Succeeded, string Message);
+
+/// <summary>A saved connection an automation can act through, as another module may see it: never its settings.</summary>
+public sealed record ConnectionOption(Guid Id, string Name, string AdapterKey, string AdapterName, bool IsActive, IReadOnlyList<IntegrationOperation> Operations, string? Channel = null);
+
+/// <summary>The ways of reaching people an adapter can carry.</summary>
+public static class IntegrationChannels
+{
+    public const string Email = "email";
+
+    /// <summary>Text messages to a phone: SMS or WhatsApp.</summary>
+    public const string Sms = "sms";
+}
+
+/// <summary>
+/// Runs an operation on one of the tenant's saved connections - settings decrypted, the run
+/// logged - for modules that act through connections without seeing their secrets (Studio's
+/// automations). A refusal (switched off, unknown operation, missing parameter) is a failed result,
+/// not an exception, so the caller can record it and try again later.
+/// </summary>
+public interface IIntegrationConnections
+{
+    Task<IReadOnlyList<ConnectionOption>> ListAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>The saved connections to directories that can make accounts.</summary>
+    Task<IReadOnlyList<ConnectionOption>> AccountConnectionsAsync(CancellationToken cancellationToken = default);
+
+    Task<AccountOutcome> CreateAccountAsync(Guid connectionId, AccountRequest account, CancellationToken cancellationToken = default);
+
+    Task<ConnectionRunResult> DisableAccountAsync(Guid connectionId, string externalId, CancellationToken cancellationToken = default);
+
+    Task<ConnectionRunResult> RunAsync(Guid connectionId, string operation, IReadOnlyDictionary<string, string> parameters, CancellationToken cancellationToken = default);
 }

@@ -8,7 +8,7 @@ namespace Gggs.Modules.Ai.Application;
 /// </summary>
 public sealed record AssistantDefinition(string Key, string Title, string Description, string? Permission, IReadOnlyList<string> Tools, string Focus);
 
-/// <summary>The assistants PeopleOS offers.</summary>
+/// <summary>The assistants Nuts and Bolts offers.</summary>
 public static class Assistants
 {
     public static IReadOnlyList<AssistantDefinition> All { get; } =
@@ -49,7 +49,7 @@ public static class Assistants
     {
         ArgumentNullException.ThrowIfNull(assistant);
         return $"""
-            You are the {assistant.Title} in PeopleOS, the HR, project and resource platform of {tenantName}. {assistant.Focus}
+            You are the {assistant.Title} in Nuts and Bolts, the HR, project and resource platform of {tenantName}. {assistant.Focus}
 
             How you work:
             - Answer from the tools. They return only what this person is allowed to see; if a tool says something is not available, say so plainly rather than guessing.

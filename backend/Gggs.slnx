@@ -91,6 +91,7 @@
     <Project Path="Modules/Expense/Gggs.Modules.Expense.Contracts/Gggs.Modules.Expense.Contracts.csproj" />
     <Project Path="Modules/Loans/Gggs.Modules.Loans/Gggs.Modules.Loans.csproj" />
     <Project Path="Modules/Loans/Gggs.Modules.Loans.Contracts/Gggs.Modules.Loans.Contracts.csproj" />
+    <Project Path="Modules/Studio/Gggs.Modules.Studio/Gggs.Modules.Studio.csproj" />
     <Project Path="Modules/Assets/Gggs.Modules.Assets/Gggs.Modules.Assets.csproj" />
     <Project Path="Modules/Assets/Gggs.Modules.Assets.Contracts/Gggs.Modules.Assets.Contracts.csproj" />
     <Project Path="Modules/Career/Gggs.Modules.Career/Gggs.Modules.Career.csproj" />

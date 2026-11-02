@@ -108,10 +108,10 @@ public sealed class IntegrationConnection : TenantAggregateRoot
 
     public string? LastMessage { get; private set; }
 
-    public static IntegrationConnection Create(string adapterKey, string name, string settingsJson)
+    public static IntegrationConnection Create(string adapterKey, string name, string settingsJson, bool active = true)
     {
         var connection = new IntegrationConnection { AdapterKey = Guard.MaxLength(Guard.NotNullOrWhiteSpace(adapterKey), 60) };
-        connection.Update(name, settingsJson, active: true);
+        connection.Update(name, settingsJson, active);
         return connection;
     }
 

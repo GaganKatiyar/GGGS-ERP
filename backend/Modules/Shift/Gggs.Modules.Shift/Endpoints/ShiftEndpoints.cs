@@ -33,8 +33,16 @@ internal static class ShiftEndpoints
         group.MapPost("/{id:guid}/deactivate", async (Guid id, ShiftService shifts, CancellationToken ct) => TypedResults.Ok(await shifts.SetActiveAsync(id, false, ct)))
             .WithName("DeactivateShift").RequirePermission(Permissions.Attendance.ShiftManage);
 
-        group.MapGet("/assignments", async (Guid employeeId, ShiftService shifts, CancellationToken ct) => TypedResults.Ok(await shifts.AssignmentsAsync(employeeId, ct)))
+        // One person's assignments, history included; without a person, everyone's current and upcoming ones.
+        group.MapGet("/assignments", async (Guid? employeeId, ShiftService shifts, CancellationToken ct)
+                => TypedResults.Ok(employeeId is { } id ? await shifts.AssignmentsAsync(id, ct) : await shifts.CurrentAssignmentsAsync(ct)))
             .WithName("ListShiftAssignments").RequirePermission(Permissions.Attendance.RosterManage, Permissions.Attendance.View);
+        group.MapPost("/assignments/{id:guid}/end", async (Guid id, EndAssignmentRequest body, ShiftService shifts, CancellationToken ct) =>
+            {
+                await shifts.EndAssignmentAsync(id, body.ReturnOn, ct);
+                return TypedResults.NoContent();
+            })
+            .WithName("EndShiftAssignment").RequirePermission(Permissions.Attendance.RosterManage);
         group.MapPost("/assignments", async (AssignShiftRequest body, ShiftService shifts, CancellationToken ct) => TypedResults.Ok(new AssignedCount(await shifts.AssignAsync(body, ct))))
             .WithName("AssignShift").RequirePermission(Permissions.Attendance.RosterManage);
 

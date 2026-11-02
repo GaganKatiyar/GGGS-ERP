@@ -120,6 +120,30 @@ internal sealed class EmployeeModel : IModuleModel
             entity.HasIndex(contact => new { contact.TenantId, contact.EmployeeId }).HasDatabaseName("IX_EmergencyContact_TenantId_EmployeeId");
             entity.Ignore(contact => contact.DomainEvents);
         });
+
+        modelBuilder.Entity<EmployeeEducation>(entity =>
+        {
+            entity.ToTable("EmployeeEducation", Schema);
+            entity.Property(education => education.Degree).HasMaxLength(120).IsRequired();
+            entity.Property(education => education.FieldOfStudy).HasMaxLength(120);
+            entity.Property(education => education.Institution).HasMaxLength(200).IsRequired();
+            entity.Property(education => education.Grade).HasMaxLength(32);
+            entity.HasOne<EmployeeEntity>().WithMany().HasForeignKey(education => education.EmployeeId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(education => new { education.TenantId, education.EmployeeId }).HasDatabaseName("IX_EmployeeEducation_TenantId_EmployeeId");
+            entity.Ignore(education => education.DomainEvents);
+        });
+
+        modelBuilder.Entity<EmployeeWorkExperience>(entity =>
+        {
+            entity.ToTable("EmployeeWorkExperience", Schema);
+            entity.Property(experience => experience.Company).HasMaxLength(200).IsRequired();
+            entity.Property(experience => experience.Title).HasMaxLength(120).IsRequired();
+            entity.Property(experience => experience.Location).HasMaxLength(120);
+            entity.Property(experience => experience.Summary).HasMaxLength(1000);
+            entity.HasOne<EmployeeEntity>().WithMany().HasForeignKey(experience => experience.EmployeeId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(experience => new { experience.TenantId, experience.EmployeeId }).HasDatabaseName("IX_EmployeeWorkExperience_TenantId_EmployeeId");
+            entity.Ignore(experience => experience.DomainEvents);
+        });
     }
 
     private static void ConfigureAddress(OwnedNavigationBuilder<EmployeeEntity, HomeAddress> address, string prefix)
@@ -155,5 +179,9 @@ internal static class EmployeeData
         public DbSet<EmployeeDependent> EmployeeDependents => db.Set<EmployeeDependent>();
 
         public DbSet<EmergencyContact> EmergencyContacts => db.Set<EmergencyContact>();
+
+        public DbSet<EmployeeEducation> EmployeeEducation => db.Set<EmployeeEducation>();
+
+        public DbSet<EmployeeWorkExperience> EmployeeWorkExperience => db.Set<EmployeeWorkExperience>();
     }
 }

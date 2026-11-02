@@ -35,9 +35,28 @@ public static class JsonConfiguration
 
         options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         options.Converters.Add(new JsonStringEnumConverter());
+        options.Converters.Add(new UtcDateTimeConverter());
 
         // Absent rather than null: a response full of nulls is mostly noise, and the fields that
         // matter are harder to see in it.
         options.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    }
+}
+
+/// <summary>
+/// Every instant the platform holds is UTC, but one read back from SQL Server has lost that fact:
+/// it arrives with an unspecified kind and would go out with no zone. A client then reads it as its
+/// own local time - five and a half hours out in India. So each goes out marked as the UTC it is;
+/// reading is left as System.Text.Json does it.
+/// </summary>
+internal sealed class UtcDateTimeConverter : JsonConverter<DateTime>
+{
+    public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        => reader.GetDateTime();
+
+    public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(writer);
+        writer.WriteStringValue(value.Kind == DateTimeKind.Local ? value.ToUniversalTime() : DateTime.SpecifyKind(value, DateTimeKind.Utc));
     }
 }

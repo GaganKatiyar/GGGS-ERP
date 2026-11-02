@@ -3,7 +3,7 @@
   <PropertyGroup>
     <RootNamespace>Gggs.Api</RootNamespace>
     <UserSecretsId>gggs-api</UserSecretsId>
-    <Description>PeopleOS: the one web host. Serves the API, the OIDC endpoints, the browser session endpoints and the SPA from a single origin (ADR-12).</Description>
+    <Description>Nuts and Bolts: the one web host. Serves the API, the OIDC endpoints, the browser session endpoints and the SPA from a single origin (ADR-12).</Description>
   </PropertyGroup>
 
   <ItemGroup>

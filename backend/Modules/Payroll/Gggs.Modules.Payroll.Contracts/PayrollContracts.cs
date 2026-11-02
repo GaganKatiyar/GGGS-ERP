@@ -69,6 +69,12 @@ public enum PayrollInputKind
 
     /// <summary>A loan or salary advance paid out with salary (not taxable, not wages).</summary>
     LoanDisbursement = 14,
+
+    /// <summary>The taxable value of a concessional loan (a perquisite): taxed, never paid.</summary>
+    LoanPerquisite = 15,
+
+    /// <summary>Leave paid out at the end of a leave year while employed: fully taxable, unlike encashment at exit.</summary>
+    LeaveEncashmentAnnual = 16,
 }
 
 /// <summary>A one-off amount for a month's payroll, raised by another module (a bonus award, a project incentive).</summary>

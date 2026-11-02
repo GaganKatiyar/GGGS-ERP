@@ -37,4 +37,10 @@ public interface IMasterDataLookup
         string listCode,
         IEnumerable<string> codes,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Every active value of the list, in the tenant's display order: what a screen offers to choose from.</summary>
+    Task<IReadOnlyList<LookupOption>> ValuesAsync(string listCode, CancellationToken cancellationToken = default);
 }
+
+/// <summary>One choosable value of a lookup list.</summary>
+public sealed record LookupOption(string Code, string Label);

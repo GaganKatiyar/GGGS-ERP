@@ -210,10 +210,11 @@ public sealed class HiringTests(PeopleOsApiFactory factory)
 
         // Screened, then interviewed by a panel member who gives feedback from self-service.
         await OkAsync(await admin.PostAsJsonAsync($"/api/v1/recruitment/applications/{applicationId}/move", new { Stage = "Shortlisted", Note = "Strong profile" }, Ct));
+        var slot = new DateTime(2030, 3, 4, 4, 30, 0, DateTimeKind.Utc);
         JsonElement scheduled = await OkAsync(await admin.PostAsJsonAsync($"/api/v1/recruitment/applications/{applicationId}/interviews", new
         {
             Round = "Technical 1",
-            ScheduledAt = DateTime.UtcNow.AddDays(2),
+            ScheduledAt = slot,
             DurationMinutes = 60,
             Mode = "Video",
             Location = "https://meet.example/abc",
@@ -221,6 +222,10 @@ public sealed class HiringTests(PeopleOsApiFactory factory)
         }, Ct));
         scheduled.GetProperty("application").GetProperty("stage").GetString().ShouldBe("Interview");
         Guid interviewId = scheduled.GetProperty("interviews")[0].GetProperty("id").GetGuid();
+
+        // Read back from the database it is still the same moment, and says so: a browser reading it as local would move the interview on each reschedule.
+        JsonElement stored = await admin.GetFromJsonAsync<JsonElement>($"/api/v1/recruitment/applications/{applicationId}", Ct);
+        stored.GetProperty("interviews")[0].GetProperty("scheduledAt").GetString().ShouldBe("2030-03-04T04:30:00Z");
 
         using HttpClient panel = await factory.CreateScopedUserClientAsync(Email("panel"), panelist, (Permissions.Self.InterviewFeedback, DataScope.Own));
         (await panel.GetFromJsonAsync<JsonElement[]>("/api/v1/me/interviews", Ct))!.ShouldContain(row => row.GetProperty("id").GetGuid() == interviewId);

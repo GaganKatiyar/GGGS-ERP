@@ -80,8 +80,7 @@ public sealed class PasswordPolicyTests
             lockoutThreshold: 5,
             lockoutDuration: TimeSpan.FromMinutes(15),
             idleTimeout: TimeSpan.FromMinutes(30),
-            absoluteSessionLifetime: TimeSpan.FromHours(12),
-            mfaRequirement: MfaRequirement.AdministratorsOnly);
+            absoluteSessionLifetime: TimeSpan.FromHours(12));
 
         PasswordValidationResult result = policy.Validate("priya", "Priya Sharma", "priya@acme.com");
 
@@ -102,8 +101,7 @@ public sealed class PasswordPolicyTests
             lockoutThreshold: 5,
             lockoutDuration: TimeSpan.FromMinutes(15),
             idleTimeout: TimeSpan.FromMinutes(30),
-            absoluteSessionLifetime: TimeSpan.FromHours(12),
-            mfaRequirement: MfaRequirement.Off))
+            absoluteSessionLifetime: TimeSpan.FromHours(12)))
             .ErrorCode.ShouldBe("PASSWORD_POLICY_LENGTH_INVALID");
     }
 
@@ -121,8 +119,7 @@ public sealed class PasswordPolicyTests
             lockoutThreshold: 5,
             lockoutDuration: TimeSpan.FromDays(30),
             idleTimeout: TimeSpan.FromMinutes(30),
-            absoluteSessionLifetime: TimeSpan.FromHours(12),
-            mfaRequirement: MfaRequirement.Off))
+            absoluteSessionLifetime: TimeSpan.FromHours(12)))
             .ErrorCode.ShouldBe("PASSWORD_POLICY_LOCKOUT_DURATION_INVALID");
     }
 
@@ -138,8 +135,7 @@ public sealed class PasswordPolicyTests
             lockoutThreshold: 5,
             lockoutDuration: TimeSpan.FromMinutes(15),
             idleTimeout: TimeSpan.FromHours(24),
-            absoluteSessionLifetime: TimeSpan.FromHours(12),
-            mfaRequirement: MfaRequirement.Off))
+            absoluteSessionLifetime: TimeSpan.FromHours(12)))
             .ErrorCode.ShouldBe("PASSWORD_POLICY_SESSION_INVALID");
     }
 

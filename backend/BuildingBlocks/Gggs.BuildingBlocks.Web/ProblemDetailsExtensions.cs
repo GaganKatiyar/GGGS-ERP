@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Gggs.BuildingBlocks.Web;
 
-/// <summary>Problem details that always carry the PeopleOS error envelope.</summary>
+/// <summary>Problem details that always carry the Nuts and Bolts error envelope.</summary>
 public static class ProblemDetailsExtensions
 {
     /// <summary>

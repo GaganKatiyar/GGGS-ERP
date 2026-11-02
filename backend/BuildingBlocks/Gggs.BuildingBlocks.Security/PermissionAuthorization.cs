@@ -89,7 +89,7 @@ public static class AuthorizationFailureReasons
 {
     public const string MissingPermission = "missing_permission";
 
-    /// <summary>Held, but the action needs a recent MFA challenge (§8.3 step-up).</summary>
+    /// <summary>Held, but the action needs a recent password entry (§8.3 step-up).</summary>
     public const string StepUpRequired = "insufficient_user_authentication";
 
     public const string UnknownPermission = "unknown_permission";

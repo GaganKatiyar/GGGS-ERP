@@ -64,6 +64,12 @@ public sealed class BrowserRequestGuard(RequestDelegate next, ILogger<BrowserReq
             logger.LogWarning("Stripped an Authorization header from a request that carries the session cookie.");
         }
 
+        if (SessionCookie.IsPresent(context.Request) && context.Request.Headers.Remove("X-Api-Key"))
+        {
+            // The same rule for API keys: a signed-in browser never borrows a machine account's identity.
+            logger.LogWarning("Stripped an X-Api-Key header from a request that carries the session cookie.");
+        }
+
         if (isBrowserRequest && RequiresCsrfHeader(context.Request)
             && !context.Request.Headers.TryGetValue(CsrfHeaderName, out StringValues _))
         {

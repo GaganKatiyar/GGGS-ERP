@@ -500,7 +500,7 @@ public static class RoleTemplates
                 .. SelfService(),
             ],
 
-            // PeopleOS roles (spec section 9). Grants cover the modules that exist today; each later
+            // Nuts and Bolts roles (spec section 9). Grants cover the modules that exist today; each later
             // milestone extends the role it concerns as its permissions are released. Templates are
             // seeded as editable copies, so a tenant created before that keeps what it was given.
             ["HR_EXECUTIVE"] =
@@ -793,8 +793,8 @@ public static class RoleTemplates
         new("FINANCE_USER", "Finance", "Approves expenses and reviews payroll and project cost reports."),
         new("RECRUITER", "Recruiter", "Runs job postings, candidates, interviews and offers."),
         new("HIRING_MANAGER", "Hiring Manager", "Raises requisitions and evaluates candidates for their department."),
-        new("DEPARTMENT_MANAGER", "Department Head", "Manages their department: approvals, goals and reports."),
-        new("TEAM_LEAD", "Manager", "Approves leave and attendance for their direct reports."),
+        new("DEPARTMENT_MANAGER", "Department Head", "Manages their department: approvals, goals and reports.", AutoAssign: RoleAutoAssign.DepartmentHeads),
+        new("TEAM_LEAD", "Manager", "Approves leave and attendance for their direct reports.", AutoAssign: RoleAutoAssign.PeopleManagers),
         new(EmployeeTemplateCode, "Employee", "Self-service access to their own records.", IsDefaultForNewEmployees: true),
         new("PROJECT_MANAGER", "Project Manager", "Plans and runs projects: team, tasks, milestones, risks."),
         new("DELIVERY_MANAGER", "Delivery Manager", "Oversees delivery, health and margin across a portfolio of projects."),
@@ -1036,7 +1036,8 @@ public sealed record RoleTemplate(
     string Name,
     string Description,
     bool IsAssignedToFirstAdministrator = false,
-    bool IsDefaultForNewEmployees = false)
+    bool IsDefaultForNewEmployees = false,
+    RoleAutoAssign AutoAssign = RoleAutoAssign.None)
 {
     /// <summary>What this role may do, resolved from the catalog above.</summary>
     public IReadOnlyList<PermissionAssignment> Permissions => RoleTemplates.For(Code);

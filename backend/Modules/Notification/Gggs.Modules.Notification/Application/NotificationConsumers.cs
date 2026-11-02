@@ -49,12 +49,16 @@ internal sealed class SeedTemplatesOnTenantProvisioned(NotificationTemplateSeede
 }
 
 /// <summary>
-/// Sends one queued email. A failure is recorded on the message and not retried here: a bad
-/// address or a rejected relay would fail the same way again, and the record says what happened.
+/// Sends one queued email, through the organisation's own connection if it has one and the system's
+/// sender if not. A failure is recorded on the message and not retried here: a bad address or a
+/// rejected relay would fail the same way again, and the record says what happened. Nor does a
+/// failure on the organisation's connection fall back to the system's sender: that would put mail
+/// out under an address the organisation chose not to use.
 /// </summary>
 internal sealed class DeliverQueuedEmail(
     AppDbContext dbContext,
     INotificationChannel channel,
+    ITenantMessageSender sender,
     TimeProvider timeProvider,
     ILogger<DeliverQueuedEmail> logger) : IIntegrationEventConsumer<EmailQueuedIntegrationEvent>
 {
@@ -70,6 +74,21 @@ internal sealed class DeliverQueuedEmail(
 
         try
         {
+            if (await sender.SendEmailAsync(email.ToAddress, email.Subject, email.Body, cancellationToken) is { } own)
+            {
+                if (own.Succeeded)
+                {
+                    email.MarkSent(timeProvider.GetUtcNow().UtcDateTime);
+                }
+                else
+                {
+                    logger.LogWarning("Email {EmailId} via the organisation's connection failed: {Message}", email.Id, own.Message);
+                    email.MarkFailed(own.Message);
+                }
+
+                return;
+            }
+
             await channel.SendAsync(new OutboundMessage(email.ToAddress, email.Subject, email.Body), cancellationToken);
             email.MarkSent(timeProvider.GetUtcNow().UtcDateTime);
         }
@@ -77,6 +96,37 @@ internal sealed class DeliverQueuedEmail(
         {
             logger.LogWarning(exception, "Email {EmailId} via {Channel} failed.", email.Id, channel.Name);
             email.MarkFailed(exception.Message);
+        }
+    }
+}
+
+/// <summary>Sends one queued text message through the organisation's connection. A failure is recorded, as for email.</summary>
+internal sealed class DeliverQueuedSms(
+    AppDbContext dbContext,
+    ITenantMessageSender sender,
+    TimeProvider timeProvider,
+    ILogger<DeliverQueuedSms> logger) : IIntegrationEventConsumer<SmsQueuedIntegrationEvent>
+{
+    public async Task HandleAsync(SmsQueuedIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(integrationEvent);
+
+        SmsMessage? sms = await dbContext.SmsMessages.FirstOrDefaultAsync(message => message.Id == integrationEvent.SmsMessageId, cancellationToken);
+        if (sms is null || sms.Status != SmsStatus.Queued)
+        {
+            return;
+        }
+
+        ChannelSendResult result = await sender.SendSmsAsync(sms.ToNumber, sms.Body, cancellationToken)
+            ?? new ChannelSendResult(false, "No text-message connection is set up any more.");
+        if (result.Succeeded)
+        {
+            sms.MarkSent(timeProvider.GetUtcNow().UtcDateTime);
+        }
+        else
+        {
+            logger.LogWarning("Text message {SmsId} failed: {Message}", sms.Id, result.Message);
+            sms.MarkFailed(result.Message);
         }
     }
 }

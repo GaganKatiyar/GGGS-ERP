@@ -24,7 +24,8 @@ public sealed record ShiftItem(
     int FullDayMinutes,
     IReadOnlyList<DayOfWeek> WeeklyOff,
     bool IsDefault,
-    bool IsActive);
+    bool IsActive,
+    int People = 0);
 
 public sealed record ShiftRequest(
     string Code,
@@ -38,6 +39,9 @@ public sealed record ShiftRequest(
     IReadOnlyList<DayOfWeek> WeeklyOff);
 
 public sealed record AssignmentItem(Guid Id, Guid EmployeeId, string? EmployeeName, Guid ShiftId, string ShiftName, DateOnly EffectiveFrom, DateOnly? EffectiveTo);
+
+/// <summary>Sends someone back to the default shift: <paramref name="ReturnOn"/> is their first day on it.</summary>
+public sealed record EndAssignmentRequest(DateOnly ReturnOn);
 
 public sealed record AssignShiftRequest(IReadOnlyList<Guid> EmployeeIds, Guid ShiftId, DateOnly EffectiveFrom, DateOnly? EffectiveTo);
 
@@ -153,8 +157,30 @@ internal sealed class ShiftService(
 
     // ----- Shifts ------------------------------------------------------------------------------
 
+    /// <summary>Every shift, each with how many current employees work it today: its own assignees, plus everyone else on the default.</summary>
     public async Task<IReadOnlyList<ShiftItem>> ListAsync(CancellationToken cancellationToken)
-        => [.. (await dbContext.Shifts.AsNoTracking().OrderBy(shift => shift.StartTime).ThenBy(shift => shift.Name).ToListAsync(cancellationToken)).Select(ToItem)];
+    {
+        List<WorkShift> shifts = await dbContext.Shifts.AsNoTracking().OrderBy(shift => shift.StartTime).ThenBy(shift => shift.Name).ToListAsync(cancellationToken);
+        DateOnly today = await clock.TodayAsync(cancellationToken);
+        HashSet<Guid> current = [.. await employees.ListActiveIdsAsync(null, null, cancellationToken)];
+
+        var covering = await dbContext.ShiftAssignments.AsNoTracking()
+            .Where(assignment => assignment.EffectiveFrom <= today && (assignment.EffectiveTo == null || assignment.EffectiveTo >= today))
+            .Select(assignment => new { assignment.EmployeeId, assignment.ShiftId })
+            .ToListAsync(cancellationToken);
+
+        Dictionary<Guid, Guid> assigned = covering
+            .Where(row => current.Contains(row.EmployeeId))
+            .GroupBy(row => row.EmployeeId)
+            .ToDictionary(group => group.Key, group => group.First().ShiftId);
+        Dictionary<Guid, int> perShift = assigned.Values.GroupBy(id => id).ToDictionary(group => group.Key, group => group.Count());
+        int onDefault = current.Count - assigned.Count;
+
+        return [.. shifts.Select(shift => ToItem(shift) with
+        {
+            People = perShift.GetValueOrDefault(shift.Id) + (shift.IsDefault && shift.IsActive ? onDefault : 0),
+        })];
+    }
 
     public async Task<ShiftItem> CreateAsync(ShiftRequest request, CancellationToken cancellationToken)
     {
@@ -224,6 +250,50 @@ internal sealed class ShiftService(
     }
 
     // ----- Assignments -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Assignments still running or yet to start, for everyone - the people not on the default shift.
+    /// Ended ones are history and stay on each person's own list.
+    /// </summary>
+    public async Task<IReadOnlyList<AssignmentItem>> CurrentAssignmentsAsync(CancellationToken cancellationToken)
+    {
+        DateOnly today = await clock.TodayAsync(cancellationToken);
+        List<ShiftAssignment> rows = await dbContext.ShiftAssignments.AsNoTracking()
+            .Where(assignment => assignment.EffectiveTo == null || assignment.EffectiveTo >= today)
+            .ToListAsync(cancellationToken);
+
+        Dictionary<Guid, string> shiftNames = await dbContext.Shifts.AsNoTracking().ToDictionaryAsync(shift => shift.Id, shift => shift.Name, cancellationToken);
+        Dictionary<Guid, string> people = (await employees.GetManyAsync([.. rows.Select(row => row.EmployeeId).Distinct()], cancellationToken))
+            .ToDictionary(person => person.Id, person => person.DisplayName);
+
+        return [.. rows
+            .Select(row => new AssignmentItem(row.Id, row.EmployeeId, people.GetValueOrDefault(row.EmployeeId), row.ShiftId, shiftNames.GetValueOrDefault(row.ShiftId) ?? string.Empty, row.EffectiveFrom, row.EffectiveTo))
+            .OrderBy(item => item.EmployeeName, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(item => item.EffectiveFrom)];
+    }
+
+    /// <summary>Puts the person back on the default shift from <paramref name="returnOn"/>: the assignment is cut short, or dropped if it had not started.</summary>
+    public async Task EndAssignmentAsync(Guid id, DateOnly returnOn, CancellationToken cancellationToken)
+    {
+        ShiftAssignment assignment = await dbContext.ShiftAssignments.FirstOrDefaultAsync(candidate => candidate.Id == id, cancellationToken)
+            ?? throw new NotFoundException("ShiftAssignment", id);
+
+        if (assignment.EffectiveTo is { } end && end < returnOn)
+        {
+            throw new DomainRuleException("SHIFT_ASSIGNMENT_ENDED", "That assignment has already ended by then.");
+        }
+
+        if (returnOn <= assignment.EffectiveFrom)
+        {
+            dbContext.ShiftAssignments.Remove(assignment);
+        }
+        else
+        {
+            assignment.EndOn(returnOn.AddDays(-1));
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 
     public async Task<IReadOnlyList<AssignmentItem>> AssignmentsAsync(Guid employeeId, CancellationToken cancellationToken)
     {

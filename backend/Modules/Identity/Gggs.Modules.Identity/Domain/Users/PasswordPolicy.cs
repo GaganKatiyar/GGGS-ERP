@@ -3,17 +3,6 @@ using Gggs.BuildingBlocks.Domain.Primitives;
 
 namespace Gggs.Modules.Identity.Domain.Users;
 
-/// <summary>How much authentication a tenant demands.</summary>
-public enum MfaRequirement
-{
-    Off = 1,
-
-    /// <summary>Required of administrators and anyone holding a sensitive permission.</summary>
-    AdministratorsOnly = 2,
-
-    Everyone = 3,
-}
-
 /// <summary>
 /// A tenant's password and session rules.
 /// <para>
@@ -66,8 +55,6 @@ public sealed class PasswordPolicy : TenantAggregateRoot
     /// <summary>Signed out after this long regardless of activity.</summary>
     public TimeSpan AbsoluteSessionLifetime { get; private set; } = TimeSpan.FromHours(12);
 
-    public MfaRequirement MfaRequirement { get; private set; } = MfaRequirement.AdministratorsOnly;
-
     /// <summary>The policy a tenant starts with.</summary>
     public static PasswordPolicy CreateDefault() => new();
 
@@ -80,8 +67,7 @@ public sealed class PasswordPolicy : TenantAggregateRoot
         int lockoutThreshold,
         TimeSpan lockoutDuration,
         TimeSpan idleTimeout,
-        TimeSpan absoluteSessionLifetime,
-        MfaRequirement mfaRequirement)
+        TimeSpan absoluteSessionLifetime)
     {
         // A floor rather than a free choice: a customer must not be able to configure their way
         // into passwords this platform would be embarrassed to be holding.
@@ -121,7 +107,6 @@ public sealed class PasswordPolicy : TenantAggregateRoot
         LockoutDuration = lockoutDuration;
         IdleTimeout = idleTimeout;
         AbsoluteSessionLifetime = absoluteSessionLifetime;
-        MfaRequirement = mfaRequirement;
     }
 
     /// <summary>

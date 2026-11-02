@@ -107,7 +107,8 @@ public sealed record EmployeeDetail(
     CodedValue? ExitReason,
     CurrentAssignmentView Assignment,
     SensitiveSummary Sensitive,
-    DateOnly? ContractEndDate = null);
+    DateOnly? ContractEndDate = null,
+    Guid? PhotoId = null);
 
 public sealed record StatutoryView(string? Pan, string? Uan, string? EsicNumber, string? NationalId, string? ProfessionalTaxStateCode);
 
@@ -274,6 +275,15 @@ public sealed class EmployeeQueries(
             throw new NotFoundException("Employee", employeeId);
         }
 
+        return await BuildHistoryAsync(employeeId, cancellationToken);
+    }
+
+    /// <summary>The caller's own employment history, under the self-service permission.</summary>
+    public async Task<IReadOnlyList<EmploymentHistoryItem>> SelfHistoryAsync(Guid employeeId, CancellationToken cancellationToken = default)
+        => await BuildHistoryAsync(employeeId, cancellationToken);
+
+    private async Task<IReadOnlyList<EmploymentHistoryItem>> BuildHistoryAsync(Guid employeeId, CancellationToken cancellationToken)
+    {
         List<EmploymentRecord> records = await dbContext.EmploymentRecords
             .AsNoTracking()
             .Where(record => record.EmployeeId == employeeId)
@@ -346,6 +356,8 @@ public sealed class EmployeeQueries(
             Section("organization", "Organization", true, null, null),
             Section("personal", "Personal", true, null, null),
             Section("family", "Family & emergency", true, null, null),
+            Section("education", "Education", true, null, null),
+            Section("experience", "Experience", true, null, null),
             Section("statutory", "Statutory & bank", true, null, null),
             Section("history", "History", true, null, null),
             Section("onboarding", "Onboarding", true, Features.Onboarding, null),
@@ -481,7 +493,8 @@ public sealed class EmployeeQueries(
             new SensitiveSummary(
                 employee.Pan?.Hint, employee.Uan?.Hint, employee.EsicNumber?.Hint, employee.NationalId?.Hint, employee.ProfessionalTaxStateCode,
                 employee.BankName, employee.BankIfsc, employee.BankAccountNumber?.Hint),
-            employee.ContractEndDate);
+            employee.ContractEndDate,
+            employee.PhotoId);
     }
 
     private async Task<Dictionary<Guid, string>> NamesOfAsync(IEnumerable<Guid?> ids, CancellationToken cancellationToken)

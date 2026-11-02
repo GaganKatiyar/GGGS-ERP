@@ -13,7 +13,7 @@ using Gggs.Composition;
 using Gggs.Data;
 
 /*
- * PeopleOS - the background host (ADR-12).
+ * Nuts and Bolts - the background host (ADR-12).
  *
  * A separate process from the API on purpose: background work scales on backlog, the API on request
  * traffic, and running both in one process would let a burst of either starve the other.

@@ -74,7 +74,7 @@ public sealed class OffboardingTemplate : TenantAggregateRoot
             new("Take over the leaver's work", "Confirm you have what you need to carry the work on.", OffboardingOwner.Successor, -3),
             new("Back up mailbox and files", "Archive the mailbox and move shared files to the team drive.", OffboardingOwner.It, -2),
             new("Collect laptop, ID card and access card", null, OffboardingOwner.Admin, 0),
-            new("Disable accounts and VPN", "PeopleOS sign-in is switched off automatically after the last day.", OffboardingOwner.It, 0),
+            new("Disable accounts and VPN", "Nuts and Bolts sign-in is switched off automatically after the last day.", OffboardingOwner.It, 0),
             new("Close corporate card and recover advances", null, OffboardingOwner.Finance, 0, Required: false),
             new("Exit interview and documents", "Relieving letter, experience letter and Form 16 handover.", OffboardingOwner.Hr, 0),
         ]));

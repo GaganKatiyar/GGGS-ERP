@@ -1,3 +1,5 @@
+using Gggs.BuildingBlocks.Messaging;
+
 namespace Gggs.Modules.Organization.Contracts;
 
 /// <summary>The kinds of organization record another module may point at.</summary>
@@ -45,4 +47,14 @@ public interface IOrgStructure
     /// one. Null when no department up the chain names a head. Approval routing uses this.
     /// </summary>
     Task<Guid?> GetDepartmentHeadAsync(Guid departmentId, CancellationToken cancellationToken = default);
+
+    /// <summary>Who heads which open departments: each head's employee id and the departments they head.</summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<Guid>>> DepartmentHeadsAsync(CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// A department gained, lost or changed its head, or closed with one. Identity reacts by moving the
+/// Department Head role when that role is assigned automatically.
+/// </summary>
+[MessageType("gggs.organization.department-head-changed")]
+public sealed record DepartmentHeadChangedIntegrationEvent(Guid DepartmentId, Guid? PreviousHeadEmployeeId, Guid? HeadEmployeeId) : IntegrationEvent;

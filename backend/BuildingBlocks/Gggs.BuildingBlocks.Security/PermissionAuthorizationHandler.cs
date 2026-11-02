@@ -11,7 +11,7 @@ public sealed class SecurityOptions
 {
     public const string SectionName = "Gggs:Security";
 
-    /// <summary>How recently the user must have completed MFA to use a sensitive permission.</summary>
+    /// <summary>How recently the user must have entered their password to use a sensitive permission.</summary>
     public TimeSpan StepUpWindow { get; set; } = TimeSpan.FromMinutes(15);
 
     /// <summary>Turned off only for local development and integration tests.</summary>
@@ -20,7 +20,7 @@ public sealed class SecurityOptions
 
 /// <summary>
 /// Decides whether the caller holds the permissions an endpoint declares, and whether sensitive
-/// ones have a recent enough MFA challenge behind them.
+/// ones have a recent enough sign-in (or password re-entry) behind them.
 /// </summary>
 public sealed class PermissionAuthorizationHandler(
     IPermissionProvider permissionProvider,

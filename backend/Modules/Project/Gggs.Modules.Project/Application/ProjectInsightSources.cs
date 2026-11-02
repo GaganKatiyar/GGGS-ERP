@@ -82,7 +82,12 @@ internal sealed class ProjectCalendar(AppDbContext dbContext, ProjectAccess acce
             .Where(row => row.PlannedDate >= firstDay && row.PlannedDate <= lastDay && row.Status != MilestoneStatus.Cancelled);
         if (context.OnlyMine)
         {
-            Guid? me = currentUser.EmployeeId;
+            // Without an employee record nothing is "mine"; a null id would match unowned milestones.
+            if (currentUser.EmployeeId is not { } me)
+            {
+                return [];
+            }
+
             milestones = milestones.Where(row => row.OwnerEmployeeId == me);
         }
         else if ((await permissions.GetCurrentAsync(cancellationToken)).Has(Permissions.Project.View))

@@ -21,9 +21,12 @@ public sealed class EmployeeModule : IModule
         services.AddScoped<IEmployeeHiring, EmployeeHiring>();
         services.AddScoped<IEmployeePromotions, EmployeePromotions>();
         services.AddScoped<IEmployeeSeparations, EmployeeSeparations>();
+        services.AddScoped<IEmployeeAccounts, EmployeeAccounts>();
         services.AddScoped<EmployeeScope>();
         services.AddScoped<EmployeeService>();
         services.AddScoped<EmployeeQueries>();
+        services.AddScoped<EmployeePhotoService>();
+        services.AddScoped<EmployeeBackgroundService>();
         services.AddScoped<EmployeeImportService>();
         services.AddScoped<IMetricSource, EmployeeMetrics>();
         services.AddScoped<ISearchSource, EmployeeSearch>();

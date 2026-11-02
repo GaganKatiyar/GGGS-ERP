@@ -1,15 +1,20 @@
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Identity.Application.ApiKeys;
 using Gggs.Modules.Identity.Application.Authentication;
+using Gggs.Modules.Identity.Application.Authorization;
 using Gggs.Modules.Identity.Application.PlatformStaff;
 using Gggs.Modules.Identity.Application.Provisioning;
+using Gggs.Modules.Identity.Application.Roles;
 using Gggs.Modules.Identity.Application.Users;
 using Gggs.Modules.Identity.Contracts;
 using Gggs.Modules.Identity.Endpoints;
 using Gggs.Modules.Identity.Infrastructure;
 using Gggs.Modules.Identity.Sessions;
+using Gggs.Modules.Organization.Contracts;
 using Gggs.Modules.Platform.Contracts;
+using Gggs.Modules.Employee.Contracts;
 using Microsoft.AspNetCore.Authentication;
 using OpenIddict.Validation.AspNetCore;
 
@@ -45,16 +50,22 @@ public sealed class IdentityModule : IModule
 
         services.AddScoped<SignInService>();
         services.AddScoped<PasswordSignInService>();
-        services.AddScoped<MfaService>();
+        services.AddScoped<StepUpService>();
         services.AddScoped<SsoService>();
         services.AddHttpClient(SsoService.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(15));
         services.AddScoped<PrincipalRevalidator>();
         services.AddScoped<TenantDiscoveryService>();
         services.AddScoped<ITenantDomainResolver, PlatformTenantDomainResolver>();
         services.AddScoped<UserManagementService>();
+
+        // Roles that follow the org chart; the API syncs after an admin change, the worker on events.
+        services.AddScoped<RoleAutomation>();
+        services.AddScoped<RolePermissionEditor>();
+        services.AddScoped<AccessQueries>();
         services.AddScoped<IUserAccounts, UserAccounts>();
         services.AddScoped<TenantBootstrapService>();
         services.AddScoped<TenantSeedingService>();
+        services.AddScoped<ApiKeyService>();
         services.AddScoped<PlatformStaffSignInService>();
         services.AddScoped<PlatformStaffManagementService>();
 
@@ -90,10 +101,16 @@ public sealed class IdentityModule : IModule
                 // stripped before this runs (see the host's browser request guard), so the two
                 // credentials are never combined.
                 options.ForwardDefaultSelector = httpContext =>
-                    httpContext.Request.Headers.Authorization.Count > 0
-                        ? OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme
-                        : SessionAuthenticationHandler.SchemeName;
+                    httpContext.Request.Headers.ContainsKey(ApiKeyAuthenticationHandler.HeaderName)
+                        ? ApiKeyService.SchemeName
+                        : httpContext.Request.Headers.Authorization.Count > 0
+                            ? OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme
+                            : SessionAuthenticationHandler.SchemeName;
             })
+            .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
+                ApiKeyService.SchemeName,
+                displayName: null,
+                configureOptions: null)
             .AddScheme<AuthenticationSchemeOptions, SessionAuthenticationHandler>(
                 SessionAuthenticationHandler.SchemeName,
                 displayName: null,
@@ -102,6 +119,16 @@ public sealed class IdentityModule : IModule
 
     public void AddBackgroundServices(IServiceCollection services, ModuleContext context)
     {
+        // Automatic roles kept in step by employee and department events, with a nightly sweep
+        // underneath in case an event is missed.
+        services.AddScoped<RoleAutomationSweep>();
+        services.AddScoped<RoleAutomationJob>();
+        services.AddHostedService<RoleAutomationJobRegistration>();
+        services.AddGggsEventConsumer<EmployeeHiredIntegrationEvent, SyncRolesOnHire>();
+        services.AddGggsEventConsumer<EmployeeAssignmentChangedIntegrationEvent, SyncRolesOnAssignmentChange>();
+        services.AddGggsEventConsumer<EmployeeExitedIntegrationEvent, SyncRolesOnExit>();
+        services.AddGggsEventConsumer<DepartmentHeadChangedIntegrationEvent, SyncRolesOnDepartmentHeadChange>();
+
         services.AddOptions<PlatformBootstrapOptions>()
             .Bind(context.Configuration.GetSection(PlatformBootstrapOptions.SectionName));
 
@@ -118,10 +145,11 @@ public sealed class IdentityModule : IModule
         endpoints.MapBrowserSessionEndpoints();
         endpoints.MapTokenEndpoints();
         endpoints.MapMeEndpoints();
-        endpoints.MapMfaEndpoints();
         endpoints.MapSsoEndpoints();
+        endpoints.MapApiKeyEndpoints();
         endpoints.MapUserEndpoints();
         endpoints.MapRoleEndpoints();
+        endpoints.MapAccessEndpoints();
         endpoints.MapTenantBootstrapEndpoints();
         endpoints.MapPlatformStaffEndpoints();
     }

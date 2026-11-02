@@ -12,6 +12,9 @@ public enum ComponentKind
     Deduction = 2,
     EmployerContribution = 3,
     Reimbursement = 4,
+
+    /// <summary>A benefit in kind - taxable income, but no money paid: outside gross, deductions and net.</summary>
+    Perquisite = 5,
 }
 
 /// <summary>How a component's amount is found (spec §21).</summary>

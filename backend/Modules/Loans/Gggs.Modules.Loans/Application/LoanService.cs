@@ -4,6 +4,7 @@ using Gggs.BuildingBlocks.Domain.Exceptions;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Security;
 using Gggs.Data;
+using Gggs.Modules.Compliance.Contracts;
 using Gggs.Modules.Employee.Contracts;
 using Gggs.Modules.Loans.Domain;
 using Gggs.Modules.Loans.Infrastructure;
@@ -109,11 +110,16 @@ internal sealed class LoanService(
     ICurrentUser currentUser,
     ITenantClock clock,
     LoanSeeder seeder,
+    IStatutoryRuleBook rules,
     TimeProvider timeProvider)
 {
     public const string SubjectType = "loans.application";
     public const string InstalmentSource = "loans.instalment";
     public const string DisbursementSource = "loans.disbursement";
+    public const string PerquisiteSource = "loans.perquisite";
+
+    /// <summary>Used when a tenant has no loan perquisite rule yet: SBI's benchmark and the Rule 3(7)(i) threshold.</summary>
+    public static LoanPerquisiteConfig DefaultPerquisite { get; } = new(9.25m, 20_000m);
 
     public static WorkflowSubject Subject { get; } = new(
         SubjectType,
@@ -472,7 +478,65 @@ internal sealed class LoanService(
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        await RaisePerquisitesAsync(today, cancellationToken);
         return due.Count;
+    }
+
+    /// <summary>
+    /// This month's taxable interest benefit for everyone repaying a concessional loan: the balance of
+    /// their loans that are neither exempt nor charged at least the benchmark, at the gap to it -
+    /// nothing while all their loans together are within the exempt amount. Kept up to date until
+    /// payroll pays it. Returns how many people have one.
+    /// </summary>
+    public async Task<int> RaisePerquisitesAsync(DateOnly today, CancellationToken cancellationToken)
+    {
+        DateOnly month = new(today.Year, today.Month, 1);
+        LoanPerquisiteConfig rule = (await rules.ResolveAsync(StatutoryRuleType.LoanPerquisite, null, month, cancellationToken))?.Read<LoanPerquisiteConfig>() ?? DefaultPerquisite;
+        List<Loan> active = await dbContext.Loans.AsNoTracking().Where(row => row.Status == LoanStatus.Active && row.SettlementId == null && row.Outstanding > 0).ToListAsync(cancellationToken);
+        Dictionary<Guid, LoanPerquisite> existing = await dbContext.LoanPerquisites.Where(row => row.Month == month).ToDictionaryAsync(row => row.EmployeeId, cancellationToken);
+        Dictionary<Guid, (decimal Owed, decimal Amount)> owed = active
+            .GroupBy(row => row.EmployeeId)
+            .ToDictionary(
+                group => group.Key,
+                group =>
+                {
+                    // The exemption looks at all loans together; medical loans neither count nor attract it.
+                    List<Loan> taxed = [.. group.Where(row => !row.PerquisiteExempt)];
+                    decimal total = taxed.Sum(row => row.Outstanding);
+                    return (total, total <= rule.ExemptUpTo ? 0 : taxed.Sum(row => LoanMath.Perquisite(row.Outstanding, row.InterestRate, rule.BenchmarkRate)));
+                });
+        int raised = 0;
+        foreach (Guid employeeId in owed.Keys.Union(existing.Keys))
+        {
+            (decimal total, decimal amount) = owed.GetValueOrDefault(employeeId);
+            LoanPerquisite? row = existing.GetValueOrDefault(employeeId);
+            if (amount <= 0)
+            {
+                if (row is { Amount: > 0 } && await payrollInputs.WithdrawAsync(PerquisiteSource, row.Id, cancellationToken))
+                {
+                    row.Value(total, rule.BenchmarkRate, 0);
+                }
+
+                continue;
+            }
+
+            if (row is null)
+            {
+                row = LoanPerquisite.For(employeeId, month);
+                dbContext.LoanPerquisites.Add(row);
+            }
+
+            row.Value(total, rule.BenchmarkRate, amount);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await payrollInputs.AddAsync(
+                new PayrollInputRequest(employeeId, month, PayrollInputKind.LoanPerquisite, row.Amount,
+                    $"Interest benefit on {LoanMath.Rupees(total):N0} of loans at {rule.BenchmarkRate:0.##}%", PerquisiteSource, row.Id),
+                cancellationToken);
+            raised++;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return raised;
     }
 
     /// <summary>A finalized payroll deducted these instalments: the loans' balances come down, and repaid loans close.</summary>

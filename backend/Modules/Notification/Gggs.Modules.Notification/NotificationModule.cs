@@ -25,6 +25,7 @@ public sealed class NotificationModule : IModule
 
         services.AddOptions<NotificationOptions>().Bind(context.Configuration.GetSection(NotificationOptions.SectionName));
         services.AddScoped<INotifier, Notifier>();
+        services.AddScoped<NotificationPreferences>();
         services.AddScoped<NotificationTemplateSeeder>();
     }
 
@@ -46,8 +47,10 @@ public sealed class NotificationModule : IModule
             services.AddScoped<INotificationChannel, LoggingEmailChannel>();
         }
 
+        services.AddScoped<IOneTimeNotices, OneTimeNotices>();
         services.AddGggsEventConsumer<TenantProvisionedIntegrationEvent, SeedTemplatesOnTenantProvisioned>();
         services.AddGggsEventConsumer<EmailQueuedIntegrationEvent, DeliverQueuedEmail>();
+        services.AddGggsEventConsumer<SmsQueuedIntegrationEvent, DeliverQueuedSms>();
         services.AddGggsEventConsumer<WorkflowTaskAssignedIntegrationEvent, NotifyTaskAssigned>();
         services.AddGggsEventConsumer<WorkflowTaskEscalatedIntegrationEvent, NotifyTaskEscalated>();
         services.AddGggsEventConsumer<WorkflowApprovedIntegrationEvent, NotifyRequestApproved>();

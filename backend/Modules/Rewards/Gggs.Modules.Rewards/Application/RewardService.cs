@@ -687,7 +687,7 @@ internal sealed class RewardService(
                 cancellationToken);
         }
 
-        string giver = recognition.GiverEmployeeId is { } giverId ? (await employees.GetAsync(giverId, cancellationToken))?.DisplayName ?? "A colleague" : "PeopleOS";
+        string giver = recognition.GiverEmployeeId is { } giverId ? (await employees.GetAsync(giverId, cancellationToken))?.DisplayName ?? "A colleague" : "Nuts and Bolts";
         await notifier.NotifyAsync(
             new NotificationRequest(
                 NotificationTemplates.Recognized,

@@ -62,6 +62,16 @@ internal sealed class LoanModel : IModuleModel
             entity.Ignore(row => row.DomainEvents);
         });
 
+        modelBuilder.Entity<LoanPerquisite>(entity =>
+        {
+            entity.ToTable("Perquisite", Schema);
+            entity.Property(row => row.Outstanding).HasPrecision(18, 2);
+            entity.Property(row => row.BenchmarkRate).HasPrecision(5, 2);
+            entity.Property(row => row.Amount).HasPrecision(18, 2);
+            entity.HasIndex(row => new { row.TenantId, row.EmployeeId, row.Month }).HasDatabaseName("UX_Perquisite_TenantId_Employee_Month").IsUnique().HasFilter("[IsDeleted] = 0");
+            entity.Ignore(row => row.DomainEvents);
+        });
+
         modelBuilder.Entity<LoanRepayment>(entity =>
         {
             entity.ToTable("Repayment", Schema);
@@ -87,5 +97,7 @@ internal static class LoanData
         public DbSet<LoanInstalment> LoanInstalments => db.Set<LoanInstalment>();
 
         public DbSet<LoanRepayment> LoanRepayments => db.Set<LoanRepayment>();
+
+        public DbSet<LoanPerquisite> LoanPerquisites => db.Set<LoanPerquisite>();
     }
 }

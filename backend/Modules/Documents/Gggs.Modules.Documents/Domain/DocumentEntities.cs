@@ -245,7 +245,7 @@ public enum SignatureStatus
 
 /// <summary>
 /// A request for one employee to sign one version of a document. Handled by a signature provider
-/// (spec §107 e-sign port): the built-in one records a signed acknowledgement in PeopleOS; an
+/// (spec §107 e-sign port): the built-in one records a signed acknowledgement in Nuts and Bolts; an
 /// external e-sign service plugs in behind the same port.
 /// </summary>
 public sealed class DocumentSignature : TenantAggregateRoot

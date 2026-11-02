@@ -209,7 +209,10 @@ public sealed class UserManagementService(
 
         DateOnly today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
 
-        IReadOnlyList<UserRole> existing = await roles.GetGrantsForUserAsync(userId, cancellationToken);
+        // Only the grants made by hand: the org chart's own (automatic) grants are neither ended nor
+        // duplicated by an administrator editing this list.
+        IReadOnlyList<UserRole> grants = await roles.GetGrantsForUserAsync(userId, cancellationToken);
+        List<UserRole> existing = [.. grants.Where(grant => !grant.IsAutomatic)];
 
         // Checked before the change, not after: afterwards there is nobody left to complain to.
         if (existing.Count > 0 && roleIds.Count == 0)
@@ -226,6 +229,16 @@ public sealed class UserManagementService(
 
         foreach (Guid roleId in roleIds.Where(id => !existing.Any(grant => grant.RoleId == id && grant.IsActiveOn(today))))
         {
+            // Ticking a role the org chart already gives them makes that grant the administrator's:
+            // it stays when the org chart changes, instead of a second copy being added beside it.
+            UserRole? automatic = grants.FirstOrDefault(grant =>
+                grant.IsAutomatic && grant.RoleId == roleId && grant.ScopeType is null && grant.ValidTo is null);
+            if (automatic is not null)
+            {
+                automatic.TakeOverByHand();
+                continue;
+            }
+
             Role role = await roles.GetAsync(roleId, cancellationToken)
                 ?? throw new NotFoundException(nameof(Role), roleId);
 

@@ -150,6 +150,14 @@ public sealed class TalentTests(PeopleOsApiFactory factory)
             JsonElement launched = await OkAsync(await admin.PostAsync($"/api/v1/performance/cycles/{cycleId}/launch", null, Ct));
             launched.GetProperty("reviews").GetInt32().ShouldBe(3);
 
+            // The manager's own review has no manager above it; an account with no employee record
+            // must not take that for its own deadline.
+            using (HttpClient outsider = await factory.CreateScopedUserClientAsync(Email("outsider"), null, (Permissions.Self.ProfileView, DataScope.Own)))
+            {
+                JsonElement calendar = await OkAsync(await outsider.GetAsync($"/api/v1/calendar?from={Iso(Today)}&to={Iso(Today.AddDays(20))}", Ct));
+                calendar.GetProperty("entries").EnumerateArray().ShouldNotContain(entry => entry.GetProperty("kind").GetString() == "review");
+            }
+
             Guid reviewId = (await self.GetFromJsonAsync<JsonElement[]>("/api/v1/me/reviews", Ct))!.Single(row => row.GetProperty("cycleId").GetGuid() == cycleId).GetProperty("id").GetGuid();
             (await lead.GetFromJsonAsync<JsonElement[]>("/api/v1/me/reviews/team", Ct))!.ShouldContain(row => row.GetProperty("id").GetGuid() == reviewId);
 

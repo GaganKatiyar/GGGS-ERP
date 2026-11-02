@@ -383,9 +383,17 @@ public sealed class EmployeeService(
         await EnsureManagerAsync(input.ManagerEmployeeId, employeeId, "manager", cancellationToken);
         await EnsureManagerAsync(input.HrbpEmployeeId, employeeId, "HR business partner", cancellationToken, checkCycle: false);
 
+        // A title left blank is the job's name, so the directory reads the same words as the job
+        // catalogue; one typed in is kept as it is.
+        string? designation = string.IsNullOrWhiteSpace(input.Designation) ? null : input.Designation.Trim();
+        if (designation is null && jobId is { } job)
+        {
+            designation = (await orgStructure.GetNamesAsync(OrgUnitKind.Job, [job], cancellationToken)).GetValueOrDefault(job);
+        }
+
         return new Assignment(
             input.LegalEntityId, input.BusinessUnitId, input.DivisionId, departmentId.Value, jobId, input.PositionId, gradeId, locationId,
-            input.ManagerEmployeeId, input.HrbpEmployeeId, input.EmploymentTypeCode, input.WorkModeCode, input.Designation);
+            input.ManagerEmployeeId, input.HrbpEmployeeId, input.EmploymentTypeCode, input.WorkModeCode, designation);
 
         static void Add(List<OrgReference> list, OrgUnitKind kind, Guid? id)
         {
