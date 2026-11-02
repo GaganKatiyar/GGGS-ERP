@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
@@ -7,8 +7,8 @@ import {
   type PasswordSignInResult,
   type SsoOption,
 } from '@gggs/core/auth';
-import { BrandMark, Button, FormField } from '@gggs/shared/ui';
-import { PRODUCT_NAME } from '../product-title-strategy';
+import { Button, FormField } from '@gggs/shared/ui';
+import { SignInShowcase } from './sign-in-showcase';
 
 /**
  * Signing in.
@@ -26,80 +26,196 @@ import { PRODUCT_NAME } from '../product-title-strategy';
  */
 @Component({
   selector: 'gggs-sign-in-page',
-  imports: [BrandMark, ReactiveFormsModule, FormField, Button],
+  imports: [ReactiveFormsModule, FormField, Button, SignInShowcase],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <main class="auth">
-      <form
-        class="auth__card rise-in"
-        [formGroup]="form"
-        (ngSubmit)="submit()"
-        novalidate
-      >
-        <p class="auth__brand"><gggs-brand-mark class="auth__logo" />{{ productName }}</p>
-        <h1 class="auth__title">Sign in</h1>
-
-        <gggs-form-field
-          label="Organisation code"
-          hint="The short code your organisation was given, for example acme."
-          hintId="tenant-hint"
+    <div class="sign-in">
+      <gggs-sign-in-showcase />
+      <main class="sign-in__main">
+        <form
+          class="sign-in__form rise-in"
+          [formGroup]="form"
+          (ngSubmit)="submit()"
+          novalidate
         >
-          <input
-            type="text"
-            formControlName="tenantCode"
-            autocomplete="organization"
-            autocapitalize="none"
-            spellcheck="false"
-            [attr.aria-describedby]="'tenant-hint'"
-            (blur)="loadSingleSignOn()"
-          />
-        </gggs-form-field>
+          <h1 class="sign-in__title">{{ returning ? 'Welcome back' : 'Sign in' }}</h1>
 
-        <gggs-form-field label="Work email" required>
-          <input
-            type="email"
-            formControlName="email"
-            autocomplete="username"
-            autocapitalize="none"
-            spellcheck="false"
-            required
-          />
-        </gggs-form-field>
-
-        <gggs-form-field label="Password" required>
-          <input
-            type="password"
-            formControlName="password"
-            autocomplete="current-password"
-            required
-          />
-        </gggs-form-field>
-
-        @if (message()) {
-          <!-- assertive: a failed sign-in must reach a screen reader immediately, because the
-               person cannot proceed until they have heard it. -->
-          <p class="auth__error" role="alert" aria-live="assertive">
-            {{ message() }}
-          </p>
-        }
-
-        <gggs-button type="submit" [loading]="isBusy()" [fullWidth]="true">
-          {{ isBusy() ? 'Signing in…' : 'Sign in' }}
-        </gggs-button>
-
-        @if (ssoOptions().length) {
-          <p class="sign-in__or">or</p>
-          @for (option of ssoOptions(); track option.key) {
-            <button type="button" class="btn sign-in__sso" (click)="singleSignOn(option)">
-              <i class="pi pi-key" aria-hidden="true"></i> Sign in with {{ option.displayName }}
-            </button>
+          @if (changingTenant()) {
+            <gggs-form-field
+              label="Organisation code"
+              hint="The short code your organisation was given, for example acme."
+              hintId="tenant-hint"
+            >
+              <input
+                #tenantInput
+                type="text"
+                formControlName="tenantCode"
+                autocomplete="organization"
+                autocapitalize="none"
+                spellcheck="false"
+                [attr.aria-describedby]="'tenant-hint'"
+                (blur)="loadSingleSignOn()"
+              />
+            </gggs-form-field>
+          } @else {
+            <div class="sign-in__org">
+              <span>Organisation: <strong>{{ form.controls.tenantCode.value }}</strong></span>
+              <button type="button" class="btn btn--link btn--sm" aria-label="Change organisation" (click)="changeTenant()">Change</button>
+            </div>
           }
-        }
-      </form>
-    </main>
+
+          <gggs-form-field label="Work email" required>
+            <input
+              type="email"
+              formControlName="email"
+              autocomplete="username"
+              autocapitalize="none"
+              spellcheck="false"
+              required
+            />
+          </gggs-form-field>
+
+          <div class="sign-in__password">
+            <gggs-form-field label="Password" required>
+              <input
+                [type]="showPassword() ? 'text' : 'password'"
+                formControlName="password"
+                autocomplete="current-password"
+                required
+              />
+            </gggs-form-field>
+            <button type="button" class="sign-in__eye" [attr.aria-pressed]="showPassword()" aria-label="Show password" (click)="showPassword.set(!showPassword())">
+              {{ showPassword() ? 'Hide' : 'Show' }}
+            </button>
+          </div>
+
+          @if (message()) {
+            <!-- assertive: a failed sign-in must reach a screen reader immediately, because the
+                 person cannot proceed until they have heard it. -->
+            <p class="auth__error" role="alert" aria-live="assertive">
+              {{ message() }}
+            </p>
+          }
+
+          <gggs-button type="submit" [loading]="isBusy()" [fullWidth]="true">
+            {{ isBusy() ? 'Signing in…' : 'Sign in' }}
+          </gggs-button>
+
+          @if (ssoOptions().length) {
+            <p class="sign-in__or">or</p>
+            @for (option of ssoOptions(); track option.key) {
+              <button type="button" class="btn sign-in__sso" (click)="singleSignOn(option)">
+                <i class="pi pi-key" aria-hidden="true"></i> Sign in with {{ option.displayName }}
+              </button>
+            }
+          }
+
+          <p class="sign-in__help">Trouble signing in? Ask your HR team.</p>
+        </form>
+        <p class="sign-in__maker">Powered by GGGS Technologies Pvt Ltd</p>
+      </main>
+    </div>
   `,
-  // The page and card are the shared signed-out layout (.auth in styles/_depth.scss).
   styles: `
+    .sign-in {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+      min-height: 100dvh;
+      background: var(--gggs-color-surface-raised);
+
+      @media (max-width: 60rem) {
+        grid-template-columns: minmax(0, 1fr);
+        align-content: start;
+      }
+    }
+
+    .sign-in__main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--gggs-space-6);
+      min-width: 0;
+      padding: var(--gggs-space-8) var(--gggs-space-6);
+
+      @media (max-width: 60rem) {
+        justify-content: flex-start;
+        padding: var(--gggs-space-6) var(--gggs-space-5);
+      }
+    }
+
+    .sign-in__form {
+      display: flex;
+      flex-direction: column;
+      gap: var(--gggs-space-4);
+      width: 100%;
+      max-width: 22.25rem;
+    }
+
+    .sign-in__title {
+      margin: 0;
+      font-family: var(--gggs-font-family-display);
+      font-size: 1.6rem;
+      font-weight: var(--gggs-font-weight-bold);
+      letter-spacing: -0.02em;
+    }
+
+    .sign-in__org {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--gggs-space-2);
+      min-height: 2.625rem;
+      padding: 0.25rem var(--gggs-space-3);
+      border-radius: var(--gggs-radius-md);
+      background: var(--gggs-color-surface-sunken);
+      overflow-wrap: anywhere;
+    }
+
+    .sign-in__password {
+      position: relative;
+
+      input {
+        padding-inline-end: 3.75rem;
+      }
+    }
+
+    .sign-in__eye {
+      position: absolute;
+      inset-block-end: 0.3rem;
+      inset-inline-end: 0.3rem;
+      height: 1.875rem;
+      padding: 0 var(--gggs-space-2);
+      border: 0;
+      border-radius: var(--gggs-radius-sm);
+      background: transparent;
+      color: var(--gggs-color-text-muted);
+      font: inherit;
+      font-size: var(--gggs-font-size-sm);
+      font-weight: var(--gggs-font-weight-medium);
+      cursor: pointer;
+
+      &:hover {
+        background: var(--gggs-color-surface-hover);
+        color: var(--gggs-color-text);
+      }
+
+      &:focus-visible {
+        outline: var(--gggs-focus-outline);
+      }
+    }
+
+    .sign-in__help,
+    .sign-in__maker {
+      margin: 0;
+      color: var(--gggs-color-text-muted);
+      font-size: var(--gggs-font-size-sm);
+    }
+
+    .sign-in__maker {
+      text-align: center;
+    }
+
     .sign-in__or {
       margin: 0;
       text-align: center;
@@ -113,14 +229,20 @@ import { PRODUCT_NAME } from '../product-title-strategy';
   `,
 })
 export class SignInPage {
-  protected readonly productName = PRODUCT_NAME;
   private readonly session = inject(SessionStore);
   private readonly router = inject(Router);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly injector = inject(Injector);
+  private readonly tenantInput = viewChild<ElementRef<HTMLInputElement>>('tenantInput');
 
   protected readonly isBusy = signal(false);
   protected readonly message = signal<string | null>(null);
   protected readonly ssoOptions = signal<readonly SsoOption[]>([]);
+  protected readonly showPassword = signal(false);
+
+  /** Someone this device has seen before: their organisation is one line, with a way to change it. */
+  protected readonly returning = !!rememberedTenant();
+  protected readonly changingTenant = signal(!this.returning);
 
   protected readonly form = this.formBuilder.nonNullable.group({
     tenantCode: [''],
@@ -140,6 +262,11 @@ export class SignInPage {
       this.form.controls.tenantCode.setValue(remembered);
       void this.loadSingleSignOn();
     }
+  }
+
+  protected changeTenant(): void {
+    this.changingTenant.set(true);
+    afterNextRender(() => this.tenantInput()?.nativeElement.focus(), { injector: this.injector });
   }
 
   protected async loadSingleSignOn(): Promise<void> {
