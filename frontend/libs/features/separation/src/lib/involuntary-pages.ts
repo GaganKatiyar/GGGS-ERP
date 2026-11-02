@@ -7,12 +7,12 @@ import { EmployeeDirectoryApi, EmployeeSelect } from '@gggs/shared/employee-refe
 import { SeparationApi } from '@gggs/shared/experience';
 import type { AbsenceAlert, RetrenchmentResult, ShowCause, ShowCauseOutcome } from '@gggs/shared/models';
 import { humanize } from '@gggs/shared/models';
-import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs } from '@gggs/shared/ui';
+import { EmptyState, FormDialog, localIsoDate, PageHeader, Skeleton, StatusBadge, Tabs } from '@gggs/shared/ui';
 import type { TabItem } from '@gggs/shared/ui';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
-const today = () => new Date().toISOString().slice(0, 10);
-const inDays = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+const today = () => localIsoDate();
+const inDays = (days: number) => localIsoDate(new Date(Date.now() + days * 86_400_000));
 
 /** Show-cause notices: issue, follow the reply and any enquiry, then warn, drop or terminate. */
 @Component({
@@ -57,7 +57,7 @@ const inDays = (days: number) => new Date(Date.now() + days * 86_400_000).toISOS
       <gggs-skeleton [lines]="6" />
     }
 
-    <gggs-form-dialog [(visible)]="issueOpen" title="Issue a show-cause notice" description="The notice is generated as a letter and the employee is asked to reply in PeopleOS." saveLabel="Issue" [busy]="busy()" [error]="formError()" [saveDisabled]="!employee() || !allegation().trim()" (save)="issue()">
+    <gggs-form-dialog [(visible)]="issueOpen" title="Issue a show-cause notice" description="The notice is generated as a letter and the employee is asked to reply in Nuts and Bolts." saveLabel="Issue" [busy]="busy()" [error]="formError()" [saveDisabled]="!employee() || !allegation().trim()" (save)="issue()">
       <div class="stack">
         <label class="field"><span class="field__label">Employee</span><gggs-employee-select [ngModel]="employee()" (ngModelChange)="employee.set($event)" /></label>
         <label class="field"><span class="field__label">What is alleged</span><textarea rows="4" maxlength="2000" [value]="allegation()" (input)="allegation.set($any($event.target).value)"></textarea></label>

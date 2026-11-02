@@ -29,7 +29,7 @@
   &:focus-visible,
   &:focus {
     outline: none;
-    border-color: var(--gggs-color-primary);
+    border-color: var(--gggs-color-focus);
     box-shadow: var(--gggs-focus-ring);
   }
 

@@ -1,5 +1,5 @@
 /**
- * Core HR contracts (M2): master data, organization structure and employees, as the PeopleOS API
+ * Core HR contracts (M2): master data, organization structure and employees, as the Nuts and Bolts API
  * returns them.
  */
 
@@ -179,6 +179,8 @@ export interface EmployeeProfile {
   readonly assignment: EmployeeAssignment;
   readonly sensitive: SensitiveSummary;
   readonly contractEndDate?: string;
+  /** The current profile photo; a new photo gets a new id, so it doubles as the image's cache version. */
+  readonly photoId?: string;
 }
 
 export interface Employee360Section {
@@ -227,6 +229,32 @@ export interface BankDetails {
   readonly accountHolder?: string;
   readonly accountNumber?: string;
 }
+
+/** A qualification on the employee's profile. Years are as the employee gives them; either may be missing. */
+export interface EducationEntry {
+  readonly id: string;
+  readonly degree: string;
+  readonly fieldOfStudy?: string;
+  readonly institution: string;
+  readonly startYear?: number;
+  readonly endYear?: number;
+  readonly grade?: string;
+}
+
+export type EducationInput = Omit<EducationEntry, 'id'>;
+
+/** A job held before joining. No end date means it was still held when the employee joined. */
+export interface WorkExperienceEntry {
+  readonly id: string;
+  readonly company: string;
+  readonly title: string;
+  readonly location?: string;
+  readonly fromDate: string;
+  readonly toDate?: string;
+  readonly summary?: string;
+}
+
+export type WorkExperienceInput = Omit<WorkExperienceEntry, 'id'>;
 
 export interface Dependent {
   readonly id: string;

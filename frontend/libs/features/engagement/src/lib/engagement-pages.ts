@@ -8,11 +8,11 @@ import { EngagementApi } from '@gggs/shared/experience';
 import type { EngagementDashboard, MySurveyItem, OrgUnit, QuestionType, SurveyInput, SurveyItem, SurveyQuestion, SurveyResults, SurveyView } from '@gggs/shared/models';
 import { QUESTION_TYPES } from '@gggs/shared/models';
 import { OrgStructureApi } from '@gggs/shared/org-reference';
-import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
+import { EmptyState, FormDialog, KpiCard, localIsoDate, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
-const today = () => new Date().toISOString().slice(0, 10);
-const inDays = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+const today = () => localIsoDate();
+const inDays = (days: number) => localIsoDate(new Date(Date.now() + days * 86_400_000));
 
 const blankSurvey = (): SurveyInput => ({ title: '', description: null, isAnonymous: true, questions: [], audienceDepartmentIds: [], opensOn: today(), closesOn: inDays(14) });
 

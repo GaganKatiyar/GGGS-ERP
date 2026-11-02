@@ -27,22 +27,23 @@ import { ProductTitleStrategy } from './product-title-strategy';
  * Bridges the `--gggs-color-*` custom properties (styles.scss) into PrimeNG's own token system, so
  * a single source of truth recolors hand-rolled markup and PrimeNG components alike - without this,
  * changing `--gggs-color-primary` (tenant branding) would silently do nothing to PrimeNG components.
- * `primary` reuses Aura's stock `blue` scale, whose 600 step is already our exact primary hex.
+ * `primary` is the GGGS brand red as a full scale (its 600 step is the brand red itself); the colours
+ * buttons and highlights use go through the tokens, so the header's palette picker recolours them.
  */
 const GggsPreset = definePreset(Aura, {
   semantic: {
     primary: {
-      50: '{blue.50}',
-      100: '{blue.100}',
-      200: '{blue.200}',
-      300: '{blue.300}',
-      400: '{blue.400}',
-      500: '{blue.500}',
-      600: '{blue.600}',
-      700: '{blue.700}',
-      800: '{blue.800}',
-      900: '{blue.900}',
-      950: '{blue.950}',
+      50: '#fef0f1',
+      100: '#fde0e2',
+      200: '#fbc5c9',
+      300: '#f79aa1',
+      400: '#f0606b',
+      500: '#e5323f',
+      600: '#d81324',
+      700: '#b00f1d',
+      800: '#920f1b',
+      900: '#79111b',
+      950: '#42050a',
     },
     // Shape and focus follow the design tokens (styles/_tokens.scss), so a PrimeNG dialog, table
     // or tag sits next to hand-rolled markup without looking like it came from another product.
@@ -54,10 +55,11 @@ const GggsPreset = definePreset(Aura, {
       lg: 'var(--gggs-radius-lg)',
       xl: 'var(--gggs-radius-xl)',
     },
+    // Focus is charcoal, not the brand red, so a focused field never looks like an error.
     focusRing: {
       width: '2px',
       style: 'solid',
-      color: 'var(--gggs-color-primary)',
+      color: 'var(--gggs-color-focus)',
       offset: '2px',
       shadow: 'none',
     },
@@ -78,8 +80,9 @@ const GggsPreset = definePreset(Aura, {
         primary: {
           color: 'var(--gggs-color-primary)',
           contrastColor: '#ffffff',
-          hoverColor: '{blue.700}',
-          activeColor: '{blue.800}',
+          hoverColor: 'var(--gggs-color-primary-hover)',
+          // Through the token, not the scale, so the header's palette picker reaches pressed buttons too.
+          activeColor: 'var(--gggs-color-primary-hover)',
         },
         highlight: {
           background: 'var(--gggs-color-primary-subtle)',
@@ -102,7 +105,7 @@ const GggsPreset = definePreset(Aura, {
           background: 'var(--gggs-color-surface-raised)',
           borderColor: 'var(--gggs-color-border-strong)',
           hoverBorderColor: 'var(--gggs-color-text-subtle)',
-          focusBorderColor: 'var(--gggs-color-primary)',
+          focusBorderColor: 'var(--gggs-color-focus)',
           color: 'var(--gggs-color-text)',
           placeholderColor: 'var(--gggs-color-text-subtle)',
         },
@@ -126,9 +129,10 @@ const GggsPreset = definePreset(Aura, {
       dark: {
         primary: {
           color: 'var(--gggs-color-primary)',
-          contrastColor: '#0b1220',
-          hoverColor: '{blue.300}',
-          activeColor: '{blue.200}',
+          contrastColor: 'var(--gggs-color-primary-contrast)',
+          hoverColor: 'var(--gggs-color-primary-hover)',
+          // Through the token, not the scale, so the header's palette picker reaches pressed buttons too.
+          activeColor: 'var(--gggs-color-primary-hover)',
         },
         highlight: {
           background: 'var(--gggs-color-primary-subtle)',
@@ -151,7 +155,7 @@ const GggsPreset = definePreset(Aura, {
           background: 'var(--gggs-color-surface-raised)',
           borderColor: 'var(--gggs-color-border-strong)',
           hoverBorderColor: 'var(--gggs-color-text-subtle)',
-          focusBorderColor: 'var(--gggs-color-primary)',
+          focusBorderColor: 'var(--gggs-color-focus)',
           color: 'var(--gggs-color-text)',
           placeholderColor: 'var(--gggs-color-text-subtle)',
         },

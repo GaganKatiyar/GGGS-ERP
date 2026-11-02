@@ -34,7 +34,7 @@ const ROW = `
     <div class="stack">
       @for (item of items(); track item.id) {
         <div class="xp-row">
-          <span><strong>{{ item.typeName ?? item.ruleName }}</strong> <span class="muted">from {{ item.giverName ?? 'PeopleOS' }}</span></span>
+          <span><strong>{{ item.typeName ?? item.ruleName }}</strong> <span class="muted">from {{ item.giverName ?? 'Nuts and Bolts' }}</span></span>
           <span>{{ item.message }}</span>
           <span class="muted">{{ item.givenOn | date: 'd MMM y' }}</span>
           <span>+{{ item.points }} pts</span>

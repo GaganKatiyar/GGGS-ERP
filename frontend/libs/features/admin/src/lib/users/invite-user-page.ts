@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { SessionStore } from '@gggs/core/auth';
 import { ApiError } from '@gggs/core/http';
+import { PermissionStore } from '@gggs/core/permissions';
 import { PageHeader } from '@gggs/shared/ui';
 import type { InviteUserResult, Role } from '@gggs/shared/models';
 import { AdminApi } from '@gggs/shared/identity';
@@ -45,19 +46,23 @@ import { AdminApi } from '@gggs/shared/identity';
           <input type="text" formControlName="displayName" maxlength="200" required />
         </label>
 
-        <fieldset class="field">
-          <legend class="field__label">Roles</legend>
-          @for (role of roles(); track role.id) {
-            <label class="checkbox">
-              <input
-                type="checkbox"
-                [checked]="isRoleSelected(role.id)"
-                (change)="toggleRole(role.id, $event)"
-              />
-              {{ role.name }}
-            </label>
-          }
-        </fieldset>
+        @if (canChooseRoles) {
+          <fieldset class="field">
+            <legend class="field__label">Roles</legend>
+            @for (role of roles(); track role.id) {
+              <label class="checkbox">
+                <input
+                  type="checkbox"
+                  [checked]="isRoleSelected(role.id)"
+                  (change)="toggleRole(role.id, $event)"
+                />
+                {{ role.name }}
+              </label>
+            }
+          </fieldset>
+        } @else {
+          <p class="hint">The account starts without roles. A tenant administrator decides what it can do.</p>
+        }
 
         @if (errorMessage()) {
           <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ errorMessage() }}</span></p>
@@ -111,6 +116,12 @@ import { AdminApi } from '@gggs/shared/identity';
       font-size: var(--gggs-font-size-base);
     }
 
+    .hint {
+      margin: 0;
+      color: var(--gggs-color-text-muted);
+      font-size: var(--gggs-font-size-sm);
+    }
+
     .checkbox {
       display: flex;
       align-items: center;
@@ -124,6 +135,9 @@ export class InviteUserPage {
   private readonly session = inject(SessionStore);
   private readonly formBuilder = inject(FormBuilder);
 
+  /** Inviting and deciding what an account may do are separate rights (HR invites, admins grant). */
+  protected readonly canChooseRoles = inject(PermissionStore).has('admin.role.view');
+
   protected readonly isSaving = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly result = signal<InviteUserResult | null>(null);
@@ -136,7 +150,9 @@ export class InviteUserPage {
   });
 
   constructor() {
-    void this.loadRoles();
+    if (this.canChooseRoles) {
+      void this.loadRoles();
+    }
   }
 
   protected isRoleSelected(roleId: string): boolean {

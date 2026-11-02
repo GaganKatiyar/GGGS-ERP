@@ -37,13 +37,17 @@ function addressInput(form: AddressForm) {
   return Object.values(result).some((part) => part) ? result : null;
 }
 
-/** Personal and contact details, each edited in its own dialog. */
+/**
+ * Personal and contact details, each edited in its own dialog. A page with its own layout of the
+ * same details (My profile) turns the panels off and opens the dialogs itself.
+ */
 @Component({
   selector: 'gggs-personal-tab',
   imports: [DatePipe, ReactiveFormsModule, HasPermissionDirective, FormDialog, LookupSelect],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let p = profile();
+    @if (panels()) {
     <div class="stack">
       <section class="panel stack">
         <div class="toolbar">
@@ -76,6 +80,7 @@ function addressInput(form: AddressForm) {
         </dl>
       </section>
     </div>
+    }
 
     <gggs-form-dialog [(visible)]="personalOpen" title="Edit personal details" [busy]="busy()" [error]="error()" (save)="savePersonal()">
       <div class="form-grid" [formGroup]="personal">
@@ -191,6 +196,8 @@ export class PersonalTab {
   private readonly api = inject(EmployeeDirectoryApi);
 
   readonly profile = input.required<EmployeeProfile>();
+  /** False to render only the edit dialogs, opened through {@link openPersonal} and {@link openContact}. */
+  readonly panels = input(true);
   readonly changed = output<void>();
 
   protected readonly lists = LOOKUP_LISTS;
@@ -235,7 +242,7 @@ export class PersonalTab {
     return [address.line1, address.line2, address.city, address.stateCode, address.postalCode, address.countryCode].filter(Boolean).join(', ') || '—';
   }
 
-  protected openPersonal(): void {
+  openPersonal(): void {
     const p = this.profile();
     this.personal.reset({
       firstName: p.firstName,
@@ -252,7 +259,7 @@ export class PersonalTab {
     this.personalOpen.set(true);
   }
 
-  protected openContact(): void {
+  openContact(): void {
     const p = this.profile();
     this.contact.setControl('currentAddress', addressForm(p.currentAddress));
     this.contact.setControl('permanentAddress', addressForm(p.permanentAddress));

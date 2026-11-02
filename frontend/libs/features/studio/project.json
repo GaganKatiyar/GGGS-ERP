@@ -1,0 +1,20 @@
+{
+  "name": "feature-studio",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/features/studio/src",
+  "prefix": "gggs",
+  "projectType": "library",
+  "tags": ["type:feature", "scope:studio"],
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "coverage/libs/features/studio"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

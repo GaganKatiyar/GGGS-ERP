@@ -46,6 +46,7 @@ import { AdminApi } from '@gggs/shared/identity';
         <thead>
           <tr>
             <th scope="col">User</th>
+            <th scope="col">Access</th>
             <th scope="col" *gggsHasPermission="'admin.user.manage'">Roles</th>
             <th scope="col" *gggsHasPermission="'admin.user.lock'">Actions</th>
           </tr>
@@ -54,6 +55,9 @@ import { AdminApi } from '@gggs/shared/identity';
           @for (user of result.items; track user.id) {
             <tr>
               <td>{{ user.displayName }} · {{ user.email }}</td>
+              <td>
+                <gggs-button variant="secondary" size="sm" [link]="['/admin/users', user.id, 'access']">View access</gggs-button>
+              </td>
               <td *gggsHasPermission="'admin.user.manage'">
                 <gggs-button
                   variant="secondary"

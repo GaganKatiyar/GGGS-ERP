@@ -5,11 +5,11 @@ import { ApiError } from '@gggs/core/http';
 import { HasPermissionDirective, PermissionStore } from '@gggs/core/permissions';
 import type { AcknowledgementReport, PolicyDetail, PolicyVersion } from '@gggs/shared/models';
 import { POLICY_CATEGORY_LABELS } from '@gggs/shared/models';
-import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge, Tabs, type TabItem } from '@gggs/shared/ui';
+import { EmptyState, FormDialog, KpiCard, localIsoDate, PageHeader, Skeleton, StatusBadge, Tabs, type TabItem } from '@gggs/shared/ui';
 import { PoliciesApi } from './policies-api';
 import { PolicyFields, policyForm, toPolicyInput } from './policy-form';
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => localIsoDate();
 
 /**
  * One policy: the text in effect, the draft being prepared, every earlier version, and - for

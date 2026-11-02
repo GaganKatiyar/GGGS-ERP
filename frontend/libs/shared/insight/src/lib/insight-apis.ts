@@ -1,11 +1,21 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type {
+  AccountConnection,
   AnalyticsArea,
+  Automation,
+  AutomationConnection,
+  AutomationDelivery,
+  AutomationDeliveryStatus,
+  AutomationInput,
+  AutomationTestOutcome,
+  AutomationTrigger,
+  ChannelSendOutcome,
   CalendarScope,
   CalendarView,
   DashboardView,
   DigestFrequency,
+  DirectoryAccount,
   ImportHandlerInfo,
   ImportOutcome,
   ImportRunItem,
@@ -14,6 +24,7 @@ import type {
   IntegrationConnectionInput,
   IntegrationRunItem,
   IntegrationRunOutcome,
+  MessageChannel,
   ReportSubscription,
   SearchResults,
 } from '@gggs/shared/models';
@@ -109,5 +120,80 @@ export class DataHubApi {
 
   runs(connectionId: string | null = null): Promise<readonly IntegrationRunItem[]> {
     return firstValueFrom(this.http.get<readonly IntegrationRunItem[]>('/api/v1/integrations/runs', { params: connectionId ? { connectionId } : {} }));
+  }
+
+  automationTriggers(): Promise<readonly AutomationTrigger[]> {
+    return firstValueFrom(this.http.get<readonly AutomationTrigger[]>('/api/v1/studio/triggers'));
+  }
+
+  automationConnections(): Promise<readonly AutomationConnection[]> {
+    return firstValueFrom(this.http.get<readonly AutomationConnection[]>('/api/v1/studio/connections'));
+  }
+
+  automations(): Promise<readonly Automation[]> {
+    return firstValueFrom(this.http.get<readonly Automation[]>('/api/v1/studio/automations'));
+  }
+
+  saveAutomation(id: string | null, body: AutomationInput): Promise<Automation> {
+    return firstValueFrom(id ? this.http.put<Automation>(`/api/v1/studio/automations/${id}`, body) : this.http.post<Automation>('/api/v1/studio/automations', body));
+  }
+
+  deleteAutomation(id: string): Promise<boolean> {
+    return firstValueFrom(this.http.delete<boolean>(`/api/v1/studio/automations/${id}`));
+  }
+
+  testAutomation(body: AutomationInput): Promise<AutomationTestOutcome> {
+    return firstValueFrom(this.http.post<AutomationTestOutcome>('/api/v1/studio/automations/test', body));
+  }
+
+  automationDeliveries(filter: { readonly automationId?: string | null; readonly status?: AutomationDeliveryStatus | null } = {}): Promise<readonly AutomationDelivery[]> {
+    const params: Record<string, string> = {};
+    if (filter.automationId) {
+      params['automationId'] = filter.automationId;
+    }
+    if (filter.status) {
+      params['status'] = filter.status;
+    }
+    return firstValueFrom(this.http.get<readonly AutomationDelivery[]>('/api/v1/studio/deliveries', { params }));
+  }
+
+  channels(): Promise<readonly MessageChannel[]> {
+    return firstValueFrom(this.http.get<readonly MessageChannel[]>('/api/v1/studio/channels'));
+  }
+
+  setChannel(channel: string, connectionId: string | null): Promise<readonly MessageChannel[]> {
+    return firstValueFrom(this.http.put<readonly MessageChannel[]>(`/api/v1/studio/channels/${encodeURIComponent(channel)}`, { connectionId }));
+  }
+
+  testChannel(channel: string, to: string): Promise<ChannelSendOutcome> {
+    return firstValueFrom(this.http.post<ChannelSendOutcome>(`/api/v1/studio/channels/${encodeURIComponent(channel)}/test`, { to }));
+  }
+
+  accountConnections(): Promise<readonly AccountConnection[]> {
+    return firstValueFrom(this.http.get<readonly AccountConnection[]>('/api/v1/studio/account-connections'));
+  }
+
+  setAccountConnection(connectionId: string, provisionOnHire: boolean, disableOnExit: boolean): Promise<readonly AccountConnection[]> {
+    return firstValueFrom(this.http.put<readonly AccountConnection[]>(`/api/v1/studio/account-connections/${connectionId}`, { provisionOnHire, disableOnExit }));
+  }
+
+  directoryAccounts(employeeId: string | null = null): Promise<readonly DirectoryAccount[]> {
+    return firstValueFrom(this.http.get<readonly DirectoryAccount[]>('/api/v1/studio/accounts', { params: employeeId ? { employeeId } : {} }));
+  }
+
+  requestAccount(employeeId: string, connectionId: string): Promise<DirectoryAccount> {
+    return firstValueFrom(this.http.post<DirectoryAccount>('/api/v1/studio/accounts', { employeeId, connectionId }));
+  }
+
+  disableAccount(id: string): Promise<DirectoryAccount> {
+    return firstValueFrom(this.http.post<DirectoryAccount>(`/api/v1/studio/accounts/${id}/disable`, {}));
+  }
+
+  retryAccount(id: string): Promise<DirectoryAccount> {
+    return firstValueFrom(this.http.post<DirectoryAccount>(`/api/v1/studio/accounts/${id}/retry`, {}));
+  }
+
+  retryDelivery(id: string): Promise<AutomationDelivery> {
+    return firstValueFrom(this.http.post<AutomationDelivery>(`/api/v1/studio/deliveries/${id}/retry`, {}));
   }
 }

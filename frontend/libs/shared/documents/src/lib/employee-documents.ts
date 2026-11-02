@@ -128,7 +128,7 @@ const message = (error: unknown, fallback: string) => (error instanceof Error &&
 
     <gggs-form-dialog [(visible)]="signatureOpen" title="Ask someone to sign" saveLabel="Send request" [busy]="busy()" [error]="error()" (save)="requestSignature()">
       <div class="stack">
-        <p class="muted">They sign in PeopleOS; the time and address are recorded with the signature.</p>
+        <p class="muted">They sign in Nuts and Bolts; the time and address are recorded with the signature.</p>
         <label class="field">
           <span class="field__label">Signer *</span>
           <gggs-employee-select [formControl]="signer" ariaLabel="Signer" />

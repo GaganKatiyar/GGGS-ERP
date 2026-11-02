@@ -13,7 +13,10 @@ import { EmployeeCareer, EmployeeGoals, EmployeeLearning, EmployeePerformance } 
 import { EmployeeAttendance, EmployeeLeave } from '@gggs/shared/time';
 import type { Employee360, Employee360Section } from '@gggs/shared/models';
 import { EmptyState, KpiCard, PageHeader, Skeleton, StatusBadge, Tabs, type TabItem } from '@gggs/shared/ui';
+import { AccountsTab } from './tabs/accounts-tab';
+import { EducationTab } from './tabs/education-tab';
 import { EmploymentTab } from './tabs/employment-tab';
+import { ExperienceTab } from './tabs/experience-tab';
 import { FamilyTab } from './tabs/family-tab';
 import { HistoryTab } from './tabs/history-tab';
 import { PersonalTab } from './tabs/personal-tab';
@@ -26,7 +29,7 @@ import { StatutoryTab } from './tabs/statutory-tab';
  */
 @Component({
   selector: 'gggs-employee-360-page',
-  imports: [DatePipe, RouterLink, PageHeader, KpiCard, StatusBadge, Tabs, Skeleton, EmptyState, EmployeeDocuments, EmployeeAttendance, EmployeeLeave, EmployeeProjects, EmployeeSkills, EmployeeAllocation, EmployeeTimesheets, EmployeePayroll, EmployeeCompensation, EmployeeBenefits, EmployeeLoans, EmployeeOnboarding, EmployeePerformance, EmployeeGoals, EmployeeLearning, EmployeeCareer, EmployeeRewards, EmployeeAssets, EmployeeExpenses, EmployeeHelpdesk, EmploymentTab, PersonalTab, FamilyTab, StatutoryTab, HistoryTab],
+  imports: [DatePipe, RouterLink, PageHeader, KpiCard, StatusBadge, Tabs, Skeleton, EmptyState, AccountsTab, EmployeeDocuments, EmployeeAttendance, EmployeeLeave, EmployeeProjects, EmployeeSkills, EmployeeAllocation, EmployeeTimesheets, EmployeePayroll, EmployeeCompensation, EmployeeBenefits, EmployeeLoans, EmployeeOnboarding, EmployeePerformance, EmployeeGoals, EmployeeLearning, EmployeeCareer, EmployeeRewards, EmployeeAssets, EmployeeExpenses, EmployeeHelpdesk, EmploymentTab, PersonalTab, FamilyTab, EducationTab, ExperienceTab, StatutoryTab, HistoryTab],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (error()) {
@@ -104,6 +107,12 @@ import { StatutoryTab } from './tabs/statutory-tab';
           @case ('family') {
             <gggs-family-tab [employeeId]="p.id" />
           }
+          @case ('education') {
+            <section class="panel"><gggs-education-tab [employeeId]="p.id" [editable]="canEditProfile" /></section>
+          }
+          @case ('experience') {
+            <section class="panel"><gggs-experience-tab [employeeId]="p.id" [editable]="canEditProfile" /></section>
+          }
           @case ('statutory') {
             <gggs-statutory-tab [profile]="p" (changed)="reload()" />
           }
@@ -167,6 +176,9 @@ import { StatutoryTab } from './tabs/statutory-tab';
           @case ('helpdesk') {
             <gggs-employee-helpdesk [employeeId]="p.id" />
           }
+          @case ('accounts') {
+            <gggs-accounts-tab [employeeId]="p.id" />
+          }
           @case ('documents') {
             <gggs-employee-documents [employeeId]="p.id" [canUpload]="canUploadDocuments" [canArchive]="canArchiveDocuments" />
           }
@@ -199,6 +211,7 @@ export class Employee360Page {
   /** Bound from the `tab` query parameter: open on a section, e.g. after generating a letter. */
   readonly tab = input<string | undefined>(undefined);
 
+  protected readonly canEditProfile = this.permissions.has('employee.profile.edit');
   protected readonly canUploadDocuments = this.permissions.has('document.file.upload');
   protected readonly canArchiveDocuments = this.permissions.has('document.file.delete');
 
@@ -208,7 +221,7 @@ export class Employee360Page {
 
   /** Sections the caller may open; history hides without its permission rather than failing. */
   private readonly sections = computed<readonly Employee360Section[]>(() =>
-    (this.data()?.sections ?? []).filter(
+    [...(this.data()?.sections ?? []), ...(this.data() && this.permissions.has('datahub.integration.view') ? [{ key: 'accounts', title: 'Accounts', available: true } as Employee360Section] : [])].filter(
       (section) =>
         (section.key !== 'history' || this.permissions.has('employee.history.view')) &&
         (section.key !== 'documents' || this.permissions.has('document.file.view')) &&

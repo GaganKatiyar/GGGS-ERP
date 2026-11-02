@@ -6,6 +6,8 @@ import { AnalyticsApi, InsightApi, formatMetric } from '@gggs/shared/insight';
 import type { CalendarEntry, Metric } from '@gggs/shared/models';
 import { KpiCard, PageHeader, Tilt, type KpiTrend } from '@gggs/shared/ui';
 import { WorkflowApi } from '@gggs/shared/workflow';
+import { ProfileNudges } from './profile-nudges';
+import { WorkCard } from './work-card';
 
 const iso = (date: Date) => `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}-${`${date.getDate()}`.padStart(2, '0')}`;
 
@@ -30,13 +32,16 @@ const AREA_ICONS: Readonly<Record<string, string>> = {
  */
 @Component({
   selector: 'gggs-dashboard-page',
-  imports: [RouterLink, KpiCard, PageHeader, Tilt],
+  imports: [RouterLink, KpiCard, PageHeader, Tilt, WorkCard, ProfileNudges],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="dashboard">
       <gggs-page-header [title]="'Welcome back, ' + session.displayName()" [subtitle]="today" />
 
       <div class="dashboard__grid">
+        @if (canClockIn) {
+          <gggs-work-card class="rise-in" />
+        }
         @if (canApprove) {
           <a class="dashboard__tile rise-in" routerLink="/approvals">
             <gggs-kpi-card
@@ -68,27 +73,34 @@ const AREA_ICONS: Readonly<Record<string, string>> = {
         <article class="panel rise-in" style="--i: 2">
           <h2 class="panel__title">Quick links</h2>
           <nav class="dashboard__links" aria-label="Quick links">
-            @if (has('self.leave.apply')) {
+            @if (selfService('self.leave.apply')) {
               <a routerLink="/me/leave"><i class="pi pi-calendar-plus" aria-hidden="true"></i>Apply for leave</a>
             }
-            @if (has('self.attendance.punch')) {
+            @if (selfService('self.attendance.punch')) {
               <a routerLink="/me/attendance"><i class="pi pi-clock" aria-hidden="true"></i>Mark attendance</a>
             }
-            @if (has('self.payslip.view')) {
+            @if (selfService('self.payslip.view')) {
               <a routerLink="/me/payslips"><i class="pi pi-file" aria-hidden="true"></i>My payslips</a>
             }
-            @if (has('self.expense-claim.create')) {
+            @if (selfService('self.expense-claim.create')) {
               <a routerLink="/me/expenses"><i class="pi pi-receipt" aria-hidden="true"></i>Claim an expense</a>
             }
-            @if (has('self.ticket.create')) {
+            @if (selfService('self.ticket.create')) {
               <a routerLink="/me/tickets"><i class="pi pi-question-circle" aria-hidden="true"></i>Ask the helpdesk</a>
             }
-            @if (has('self.recognition.give')) {
+            @if (selfService('self.recognition.give')) {
               <a routerLink="/me/rewards"><i class="pi pi-heart" aria-hidden="true"></i>Recognise a colleague</a>
             }
           </nav>
+          @if (!isEmployee) {
+            <p class="muted">Your account is not linked to an employee record, so there is no self-service to link to.</p>
+          }
         </article>
       </div>
+
+      @if (selfService('self.profile.view')) {
+        <gggs-profile-nudges />
+      }
 
       @if (canSeeExecutive) {
         <div class="dashboard__head">
@@ -192,7 +204,10 @@ export class DashboardPage {
   private readonly permissions = inject(PermissionStore);
 
   protected readonly session = inject(SessionStore);
+  protected readonly isEmployee = Boolean(this.session.user()?.employeeId);
   protected readonly canApprove = this.permissions.has('workflow.task.view');
+  /** The clock-in card: an employee who punches, in a tenant whose plan includes Time. */
+  protected readonly canClockIn = this.selfService('self.attendance.punch') && this.permissions.hasFeature('Time');
   protected readonly canSeeExecutive = this.permissions.has('report.executive.view');
   protected readonly approvals = signal<number | null>(null);
   protected readonly upcoming = signal<readonly CalendarEntry[]>([]);
@@ -223,8 +238,9 @@ export class DashboardPage {
     }
   }
 
-  protected has(permission: string): boolean {
-    return this.permissions.has(permission);
+  /** Self-service pages are about the user's own employee record, which some accounts do not have. */
+  protected selfService(permission: string): boolean {
+    return this.isEmployee && this.permissions.has(permission);
   }
 
   protected day(date: string): string {

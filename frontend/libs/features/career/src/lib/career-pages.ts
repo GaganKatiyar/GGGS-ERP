@@ -23,7 +23,7 @@ import { CRITICALITIES, READINESS, TALENT_LEVELS, humanize } from '@gggs/shared/
 import { MoneyPipe } from '@gggs/shared/money';
 import { OrgSelect } from '@gggs/shared/org-reference';
 import { CareerApi } from '@gggs/shared/talent';
-import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
+import { EmptyState, FormDialog, KpiCard, localIsoDate, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
 const split = (value: string) =>
@@ -178,7 +178,7 @@ const blankPromotion = (): PromotionDetailsInput => ({
   proposedGradeId: null,
   proposedPositionId: null,
   proposedAnnualCtc: null,
-  effectiveDate: new Date().toISOString().slice(0, 10),
+  effectiveDate: localIsoDate(),
   justification: '',
 });
 

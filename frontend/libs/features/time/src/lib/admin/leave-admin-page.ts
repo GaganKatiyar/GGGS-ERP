@@ -6,8 +6,8 @@ import { ApiError } from '@gggs/core/http';
 import { HasPermissionDirective, PermissionStore } from '@gggs/core/permissions';
 import { DataTable, DataTableCell, type DataTableColumn, type DataTableQuery } from '@gggs/shared/data-table';
 import { EmployeeSelect } from '@gggs/shared/employee-reference';
-import type { LeaveBalance, LeavePreview, LeaveRequest, LeaveRequestStatus, LeaveType, LedgerEntry, PagedResult } from '@gggs/shared/models';
-import { LeaveApi, todayIso } from '@gggs/shared/time';
+import type { LeaveAttachment, LeaveBalance, LeavePreview, LeaveRequest, LeaveRequestStatus, LeaveType, LedgerEntry, PagedResult } from '@gggs/shared/models';
+import { LeaveApi, leaveAttachmentUrl, todayIso } from '@gggs/shared/time';
 import { EmptyState, FormDialog, PageHeader, StatusBadge, Tabs, type TabItem } from '@gggs/shared/ui';
 
 /**
@@ -21,7 +21,7 @@ import { EmptyState, FormDialog, PageHeader, StatusBadge, Tabs, type TabItem } f
   template: `
     <gggs-page-header title="Leave" subtitle="Requests, balances and adjustments.">
       <div class="toolbar">
-        <a class="btn" routerLink="../policies" *gggsHasPermission="'leave.policy.manage'"><i class="pi pi-book" aria-hidden="true"></i> Types &amp; policies</a>
+        <a class="btn" routerLink="../policies" *gggsHasPermission="'leave.policy.manage'"><i class="pi pi-book" aria-hidden="true"></i> Leave policies</a>
         <a class="btn" routerLink="../holidays" *gggsHasPermission="'leave.holiday.manage'"><i class="pi pi-sun" aria-hidden="true"></i> Holidays</a>
         <button type="button" class="btn btn--primary" *gggsHasPermission="'leave.request.create-on-behalf'" (click)="openApply()">Apply for someone</button>
       </div>
@@ -48,6 +48,18 @@ import { EmptyState, FormDialog, PageHeader, StatusBadge, Tabs, type TabItem } f
             <ng-template gggsCell="leaveTypeName" let-row><span class="leave__dot" [style.background]="row.color" aria-hidden="true"></span> {{ row.leaveTypeName }}</ng-template>
             <ng-template gggsCell="startDate" let-row>{{ row.startDate | date: 'd MMM' }} – {{ row.endDate | date: 'd MMM yyyy' }}</ng-template>
             <ng-template gggsCell="days" let-row>{{ row.days | number: '1.0-1' }}</ng-template>
+            <ng-template gggsCell="reason" let-row>
+              {{ row.reason ?? '' }}
+              @if (row.attachmentCount) {
+                @if (documents()[row.id]; as files) {
+                  @for (file of files; track file.id) {
+                    <a class="leave__doc" [href]="documentUrl(row.id, file.id)" target="_blank" rel="noopener"><i class="pi pi-paperclip" aria-hidden="true"></i> {{ file.fileName }}</a>
+                  }
+                } @else {
+                  <button type="button" class="btn btn--link btn--sm" (click)="showDocuments(row); $event.stopPropagation()"><i class="pi pi-paperclip" aria-hidden="true"></i> Documents ({{ row.attachmentCount }})</button>
+                }
+              }
+            </ng-template>
             <ng-template gggsCell="status" let-row>
               <gggs-status-badge [status]="row.status" />
               @if ((row.status === 'Pending' || row.status === 'Approved') && canCancel) {
@@ -227,7 +239,12 @@ import { EmptyState, FormDialog, PageHeader, StatusBadge, Tabs, type TabItem } f
     }
 
 
-  `,
+  
+    .leave__doc {
+      display: block;
+      font-size: var(--gggs-font-size-sm);
+    }
+`,
 })
 export class LeaveAdminPage {
   private readonly api = inject(LeaveApi);
@@ -288,6 +305,22 @@ export class LeaveAdminPage {
     this.status.set((event.target as HTMLSelectElement).value as LeaveRequestStatus | '');
     this.query = { ...this.query, page: 1 };
     void this.loadRequests();
+  }
+
+  /** Attachments loaded per request on demand, so the list stays one query. */
+  protected readonly documents = signal<Readonly<Record<string, readonly LeaveAttachment[]>>>({});
+
+  protected documentUrl(requestId: string, attachmentId: string): string {
+    return leaveAttachmentUrl(requestId, attachmentId);
+  }
+
+  protected async showDocuments(request: LeaveRequest): Promise<void> {
+    try {
+      const files = await this.api.attachments(request.id);
+      this.documents.update((loaded) => ({ ...loaded, [request.id]: files }));
+    } catch {
+      this.documents.update((loaded) => ({ ...loaded, [request.id]: [] }));
+    }
   }
 
   protected async cancel(request: LeaveRequest): Promise<void> {

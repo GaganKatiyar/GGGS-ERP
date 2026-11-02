@@ -5,7 +5,7 @@ import { ApiError } from '@gggs/core/http';
 import { EmployeeDirectoryApi } from '@gggs/shared/employee-reference';
 import { LookupSelect } from '@gggs/shared/master-data';
 import { LOOKUP_LISTS } from '@gggs/shared/models';
-import { PageHeader } from '@gggs/shared/ui';
+import { localIsoDate, PageHeader } from '@gggs/shared/ui';
 import { AssignmentFields, assignmentForm, toAssignmentInput } from './assignment-fields';
 
 /**
@@ -125,7 +125,7 @@ export class HireEmployeePage {
     officialEmail: new FormControl<string | null>(null, Validators.email),
     personalEmail: new FormControl<string | null>(null, Validators.email),
     mobilePhone: new FormControl<string | null>(null),
-    joiningDate: new FormControl<string | null>(new Date().toISOString().slice(0, 10), Validators.required),
+    joiningDate: new FormControl<string | null>(localIsoDate(), Validators.required),
     probationEndDate: new FormControl<string | null>(null),
     assignment: assignmentForm(),
   });

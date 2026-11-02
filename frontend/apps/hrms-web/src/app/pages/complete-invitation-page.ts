@@ -3,7 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import { AdminApi } from '@gggs/shared/identity';
-import { Button, FormField } from '@gggs/shared/ui';
+import { BrandMark, Button, FormField } from '@gggs/shared/ui';
 import { PRODUCT_NAME } from '../product-title-strategy';
 
 /**
@@ -18,12 +18,12 @@ import { PRODUCT_NAME } from '../product-title-strategy';
  */
 @Component({
   selector: 'gggs-complete-invitation-page',
-  imports: [ReactiveFormsModule, FormField, Button],
+  imports: [BrandMark, ReactiveFormsModule, FormField, Button],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main class="auth">
       <form class="auth__card rise-in" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <p class="auth__brand"><span class="auth__logo" aria-hidden="true">P</span>{{ productName }}</p>
+        <p class="auth__brand"><gggs-brand-mark class="auth__logo" />{{ productName }}</p>
         <h1 class="auth__title">Set your password</h1>
 
         @if (!tenantCode() || !userId() || !token()) {

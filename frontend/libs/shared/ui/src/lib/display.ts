@@ -155,12 +155,12 @@ function fadeToFloor(colour: string): (context: ChartContext) => CanvasGradient 
 
 /** A #rrggbb token with transparency; other colour syntaxes are returned as they are. */
 function withAlpha(colour: string, alpha: number): string {
-  const hex = /^#([0-9a-f]{6})$/i.exec(colour);
+  const hex = /^#([0-9a-f]{6})$/i.exec(colour)?.[1];
   if (!hex) {
     return colour;
   }
 
-  const value = parseInt(hex[1]!, 16);
+  const value = parseInt(hex, 16);
   return `rgba(${value >> 16}, ${(value >> 8) & 255}, ${value & 255}, ${alpha})`;
 }
 
@@ -199,7 +199,7 @@ export class Chart {
   readonly height = input('16rem');
 
   /** Used when the tokens cannot be read (tests, server rendering). */
-  private static readonly fallback = ['#2563eb', '#06b6d4', '#f59e0b', '#16a34a', '#db2777', '#7c3aed', '#dc2626', '#65a30d'];
+  private static readonly fallback = ['#d81324', '#16202b', '#f59e0b', '#15803d', '#ff5a63', '#55677a', '#dc2626', '#65a30d'];
 
   /** Charts draw in rather than appear, unless the user asked for less motion. */
   private readonly animate = typeof window === 'undefined' || typeof window.matchMedia !== 'function' || !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -222,9 +222,9 @@ export class Chart {
     const token = (name: string, fallback: string) => style?.getPropertyValue(name).trim() || fallback;
     return {
       palette: Chart.fallback.map((colour, index) => token(`--gggs-cat-${index + 1}`, colour)),
-      text: token('--gggs-color-text-muted', '#5b6b80'),
-      strong: token('--gggs-color-text', '#172033'),
-      grid: token('--gggs-color-border', '#e2e8f0'),
+      text: token('--gggs-color-text-muted', '#55677a'),
+      strong: token('--gggs-color-text', '#1b2733'),
+      grid: token('--gggs-color-border', '#dde3e9'),
       surface: token('--gggs-color-surface-raised', '#ffffff'),
       font: token('--gggs-font-family', 'system-ui, sans-serif'),
     };

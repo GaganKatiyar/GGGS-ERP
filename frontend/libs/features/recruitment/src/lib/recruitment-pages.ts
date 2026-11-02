@@ -23,11 +23,11 @@ import type {
 } from '@gggs/shared/models';
 import { CANDIDATE_SOURCES, PIPELINE_STAGES, humanize } from '@gggs/shared/models';
 import { MoneyPipe } from '@gggs/shared/money';
-import { Chart, EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge, Tabs } from '@gggs/shared/ui';
+import { Chart, EmptyState, FormDialog, KpiCard, localIsoDate, PageHeader, Skeleton, StatusBadge, Tabs } from '@gggs/shared/ui';
 import type { TabItem } from '@gggs/shared/ui';
 import { CandidateForm, RequisitionForm, errorText, splitList } from './recruitment-forms';
 
-const iso = (date: Date) => date.toISOString().slice(0, 10);
+const iso = (date: Date) => localIsoDate(date);
 
 /** Requisitions (spec §12): the openings recruitment is working on. */
 @Component({

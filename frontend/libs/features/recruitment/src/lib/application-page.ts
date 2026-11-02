@@ -8,7 +8,7 @@ import { RecruitmentApi } from '@gggs/shared/hiring';
 import type { ApplicationStage, ApplicationView, BackgroundCheckItem, BackgroundCheckStatus, InterviewItem, InterviewMode, OfferItem, OfferTermsInput } from '@gggs/shared/models';
 import { BACKGROUND_CHECKS, INTERVIEW_MODES, PIPELINE_STAGES, humanize } from '@gggs/shared/models';
 import { MoneyPipe } from '@gggs/shared/money';
-import { FormDialog, PageHeader, Skeleton, StatusBadge, Timeline } from '@gggs/shared/ui';
+import { FormDialog, localIsoDate, PageHeader, Skeleton, StatusBadge, Timeline } from '@gggs/shared/ui';
 import type { TimelineEntry } from '@gggs/shared/ui';
 import { errorText } from './recruitment-forms';
 
@@ -468,7 +468,7 @@ export class ApplicationPage {
         : {
             annualCtc: view?.candidate.expectedCtc ?? 0,
             currency: '',
-            joiningDate: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10),
+            joiningDate: localIsoDate(new Date(Date.now() + 30 * 86_400_000)),
             designation: view?.application.requisitionTitle ?? '',
             expiresOn: null,
             notes: null,

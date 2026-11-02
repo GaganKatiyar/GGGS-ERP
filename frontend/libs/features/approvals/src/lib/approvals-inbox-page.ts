@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
+import { PermissionStore } from '@gggs/core/permissions';
 import type { PagedResult, WorkflowRequestDetail, WorkflowTask } from '@gggs/shared/models';
 import { Drawer, EmptyState, PageHeader, Skeleton, StatusBadge, Tabs, type TabItem } from '@gggs/shared/ui';
 import { WorkflowApi, type TaskDecision } from '@gggs/shared/workflow';
@@ -19,7 +20,9 @@ import { RequestView } from './request-view';
     <gggs-page-header title="Approvals" subtitle="Requests waiting for your decision.">
       <div class="toolbar">
         <a class="btn" routerLink="requests"><i class="pi pi-send" aria-hidden="true"></i> My requests</a>
-        <a class="btn" routerLink="delegations"><i class="pi pi-arrow-right-arrow-left" aria-hidden="true"></i> Delegations</a>
+        @if (canDelegate) {
+          <a class="btn" routerLink="delegations"><i class="pi pi-arrow-right-arrow-left" aria-hidden="true"></i> Delegations</a>
+        }
       </div>
     </gggs-page-header>
 
@@ -147,6 +150,8 @@ import { RequestView } from './request-view';
 })
 export class ApprovalsInboxPage {
   private readonly api = inject(WorkflowApi);
+  /** Only approvers can hand their approvals to someone else while away. */
+  protected readonly canDelegate = inject(PermissionStore).has('workflow.delegation.manage');
 
   protected readonly tabs: readonly TabItem[] = [
     { key: 'pending', label: 'Waiting for me' },

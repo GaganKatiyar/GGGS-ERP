@@ -8,10 +8,10 @@ import { EmployeeSelect } from '@gggs/shared/employee-reference';
 import { LoansApi, MoneyPipe } from '@gggs/shared/money';
 import type { DisbursementMode, LoanItem, LoanOffer, LoanQuote, LoanStatus, LoanSummary, LoanTypeDetails, LoanTypeItem, LoanView, MyLoans } from '@gggs/shared/models';
 import { LOAN_STATUSES, humanize } from '@gggs/shared/models';
-import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
+import { EmptyState, FormDialog, KpiCard, localIsoDate, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => localIsoDate();
 const num = (value: string): number | null => (value === '' ? null : +value);
 
 /** The month a loan's instalment falls in, as payroll labels it. */

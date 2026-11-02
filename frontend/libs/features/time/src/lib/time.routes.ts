@@ -3,6 +3,9 @@ import { withPermissions } from '@gggs/core/permissions';
 import { AttendanceAdminPage } from './admin/attendance-admin-page';
 import { HolidaysPage } from './admin/holidays-page';
 import { LeaveAdminPage } from './admin/leave-admin-page';
+import { LeavePoliciesPage } from './admin/leave-policies-page';
+import { LeavePolicyAssignmentPage } from './admin/leave-policy-assignment-page';
+import { LeavePolicyEditorPage } from './admin/leave-policy-editor-page';
 import { LeaveSetupPage } from './admin/leave-setup-page';
 import { ShiftsPage } from './admin/shifts-page';
 import { MyAttendancePage } from './me/my-attendance-page';
@@ -29,7 +32,10 @@ export const ATTENDANCE_ROUTES: Routes = [
 export const LEAVE_ROUTES: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'requests' },
   { path: 'requests', component: LeaveAdminPage, title: 'Leave' },
-  { path: 'policies', component: LeaveSetupPage, title: 'Leave types & policies', ...withPermissions(['leave.type.manage', 'leave.policy.manage']) },
+  { path: 'types', component: LeaveSetupPage, title: 'Leave types', ...withPermissions(['leave.type.manage', 'leave.policy.manage']) },
+  { path: 'policies', component: LeavePoliciesPage, title: 'Leave policies', ...withPermissions(['leave.policy.manage']) },
+  { path: 'policies/:id', component: LeavePolicyEditorPage, title: 'Leave policy', ...withPermissions(['leave.policy.manage']) },
+  { path: 'policy-assignment', component: LeavePolicyAssignmentPage, title: 'Leave policy assignment', ...withPermissions(['leave.policy.manage']) },
   { path: 'holidays', component: HolidaysPage, title: 'Holidays', ...withPermissions(['leave.holiday.manage']) },
 ];
 

@@ -20,11 +20,11 @@ import type {
 } from '@gggs/shared/models';
 import { FILING_FREQUENCIES, FILING_KINDS, REGISTRATION_KINDS, STATUTORY_RULE_TYPES, humanize } from '@gggs/shared/models';
 import { ComplianceApi, MoneyPipe } from '@gggs/shared/money';
-import { Drawer, EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge, Tabs } from '@gggs/shared/ui';
+import { Drawer, EmptyState, FormDialog, KpiCard, localIsoDate, PageHeader, Skeleton, StatusBadge, Tabs } from '@gggs/shared/ui';
 import type { TabItem } from '@gggs/shared/ui';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => localIsoDate();
 
 /** A starting configuration for each scheme, so a new rule is edited rather than typed from nothing. */
 const TEMPLATES: Readonly<Record<StatutoryRuleType, unknown>> = {

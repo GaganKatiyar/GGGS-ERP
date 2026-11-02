@@ -1,6 +1,6 @@
 /**
  * Platform services contracts (M3): workflow, notification templates, documents and policies, as
- * the PeopleOS API returns them. Enums travel as their names.
+ * the Nuts and Bolts API returns them. Enums travel as their names.
  */
 
 // ----- Workflow ------------------------------------------------------------------------------
@@ -183,6 +183,7 @@ export interface NotificationTemplate {
   readonly body: string;
   readonly sendInApp: boolean;
   readonly sendEmail: boolean;
+  readonly sendSms: boolean;
   readonly isActive: boolean;
 }
 

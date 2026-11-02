@@ -6,10 +6,10 @@ import { ApiError } from '@gggs/core/http';
 import { PermissionStore } from '@gggs/core/permissions';
 import { EmployeeSelect } from '@gggs/shared/employee-reference';
 import type { Delegation } from '@gggs/shared/models';
-import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
+import { EmptyState, FormDialog, localIsoDate, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
 import { WorkflowApi } from '@gggs/shared/workflow';
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => localIsoDate();
 
 /**
  * "While I am away, my approvals go to her." Tasks assigned during the dates go to the delegate,

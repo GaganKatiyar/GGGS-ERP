@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { SessionStore } from '@gggs/core/auth';
 import { ApiError } from '@gggs/core/http';
 import { DataTable, DataTableCell, type DataTableColumn, type DataTableQuery } from '@gggs/shared/data-table';
 import { ProjectsApi } from '@gggs/shared/delivery';
@@ -26,7 +27,9 @@ import { PageHeader, StatusBadge } from '@gggs/shared/ui';
       <label class="field">
         <span class="field__label">Whose</span>
         <select [value]="mine() ? 'mine' : 'all'" (change)="mine.set($any($event.target).value === 'mine'); reload()">
-          <option value="mine">Assigned to me</option>
+          @if (isEmployee) {
+            <option value="mine">Assigned to me</option>
+          }
           <option value="all">Everyone's I can see</option>
         </select>
       </label>
@@ -86,7 +89,9 @@ export class MyTasksPage {
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly search = signal('');
-  protected readonly mine = signal(true);
+  /** Tasks are assigned to employees, so an account without an employee record has none of its own. */
+  protected readonly isEmployee = Boolean(inject(SessionStore).user()?.employeeId);
+  protected readonly mine = signal(this.isEmployee);
   protected readonly show = signal<'open' | 'overdue' | 'done'>('open');
   private query: DataTableQuery = { page: 1, pageSize: 25 };
   private searchTimer: ReturnType<typeof setTimeout> | undefined;

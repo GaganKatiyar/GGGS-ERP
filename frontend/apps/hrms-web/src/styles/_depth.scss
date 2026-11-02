@@ -95,17 +95,9 @@ button.xp__card {
 }
 
 .auth__logo {
-  display: grid;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: var(--gggs-radius-md);
-  background: var(--gggs-gradient-brand);
-  box-shadow:
-    0 6px 16px -6px color-mix(in srgb, var(--gggs-color-accent-bright) 70%, transparent),
-    inset 0 1px 0 rgb(255 255 255 / 25%);
-  color: #fff;
-  font-weight: var(--gggs-font-weight-bold);
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
 }
 
 .auth__title {

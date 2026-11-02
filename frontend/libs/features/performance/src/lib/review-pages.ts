@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { SessionStore } from '@gggs/core/auth';
 import { PermissionStore } from '@gggs/core/permissions';
 import { EmployeeSelect } from '@gggs/shared/employee-reference';
 import type {
@@ -19,11 +20,11 @@ import type {
 import { CYCLE_TYPES, FEEDBACK_RELATIONSHIPS, RATING_LABELS, humanize } from '@gggs/shared/models';
 import { OrgSelect } from '@gggs/shared/org-reference';
 import { PerformanceApi, ProgressBar } from '@gggs/shared/talent';
-import { Chart, EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge, Tabs } from '@gggs/shared/ui';
+import { Chart, EmptyState, FormDialog, KpiCard, localIsoDate, PageHeader, Skeleton, StatusBadge, Tabs } from '@gggs/shared/ui';
 import type { TabItem } from '@gggs/shared/ui';
 import { errorText } from './goals-pages';
 
-const iso = (date: Date) => date.toISOString().slice(0, 10);
+const iso = (date: Date) => localIsoDate(date);
 const days = (count: number) => iso(new Date(Date.now() + count * 86_400_000));
 const split = (value: string) =>
   value
@@ -809,7 +810,7 @@ export class PipsPage {
           }
         }
       </gggs-page-header>
-      <p><a [routerLink]="p.canManage ? '/performance/pips' : '/me/reviews'">← Back</a></p>
+      <p><a [routerLink]="p.employeeId === myEmployeeId ? '/me/reviews' : '/performance/pips'">← Back</a></p>
       <section class="panel stack">
         <p>{{ p.reason }}</p>
         @if (p.outcome) {
@@ -868,6 +869,9 @@ export class PipsPage {
 })
 export class PipPage {
   private readonly api = inject(PerformanceApi);
+
+  /** The person on the plan goes back to their reviews; anyone else (manager, HR, auditor) to the plans. */
+  protected readonly myEmployeeId = inject(SessionStore).user()?.employeeId;
 
   readonly id = input.required<string>();
 

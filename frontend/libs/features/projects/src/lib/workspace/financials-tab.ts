@@ -7,10 +7,10 @@ import { EmployeeSelect } from '@gggs/shared/employee-reference';
 import type { CostCategory, FinanceCost, FinanceInvoice, FinanceRate, ProjectFinance, ProjectRole } from '@gggs/shared/models';
 import { COST_CATEGORIES, humanize } from '@gggs/shared/models';
 import { MoneyPipe, ProjectFinancialsApi } from '@gggs/shared/money';
-import { Chart, FormDialog, KpiCard, Skeleton, StatusBadge } from '@gggs/shared/ui';
+import { Chart, FormDialog, KpiCard, localIsoDate, Skeleton, StatusBadge } from '@gggs/shared/ui';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => localIsoDate();
 
 type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
 

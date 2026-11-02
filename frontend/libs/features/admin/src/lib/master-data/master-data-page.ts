@@ -7,8 +7,8 @@ import type { LookupList, LookupValue } from '@gggs/shared/models';
 import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
 
 /**
- * Master data (spec §113): the lists behind every dropdown. Lists are fixed by PeopleOS; values in
- * an extensible list can be added, relabelled, reordered and retired by the tenant. Values PeopleOS
+ * Master data (spec §113): the lists behind every dropdown. Lists are fixed by Nuts and Bolts; values in
+ * an extensible list can be added, relabelled, reordered and retired by the tenant. Values Nuts and Bolts
  * ships keep their code - rules elsewhere rely on it - but may still be relabelled or retired.
  */
 @Component({
@@ -16,7 +16,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs
   imports: [ReactiveFormsModule, HasPermissionDirective, PageHeader, FormDialog, EmptyState, Skeleton, StatusBadge],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <gggs-page-header title="Master data" subtitle="The values behind every dropdown in PeopleOS." />
+    <gggs-page-header title="Master data" subtitle="The values behind every dropdown in Nuts and Bolts." />
 
     <div class="master-data">
       <nav class="master-data__lists" aria-label="Lists">
@@ -39,7 +39,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs
             }
           </div>
           @if (!list.tenantExtensible) {
-            <p class="muted">PeopleOS maintains this list. Values can be relabelled or retired but not added.</p>
+            <p class="muted">Nuts and Bolts maintains this list. Values can be relabelled or retired but not added.</p>
           }
           @if (list.parentList) {
             <label class="field master-data__filter">

@@ -8,32 +8,40 @@
  */
 :root {
   /*
-   * Brand and action. Primary is electric blue (Aura's blue 600, see GggsPreset in app.config.ts)
-   * over a navy brand colour; cyan is the accent. `accent` is dark enough to be text on white,
-   * `accent-bright` is for gradients, glows and chart fills only - it fails contrast as text.
+   * Brand and action: the GGGS brand (the company site's palette). Primary is the brand red (the
+   * 600 step of the red scale in GggsPreset, app.config.ts) over a charcoal brand colour; coral is
+   * the accent. `accent` is dark enough to be text on white, `accent-bright` is for gradients,
+   * glows and chart fills only. The primary tint is a shade lighter than the site's #fdecee so red
+   * text on it clears AA with room to spare.
    */
-  --gggs-color-brand: #142b4a;
-  --gggs-color-primary: #2563eb;
-  --gggs-color-primary-hover: #1d4ed8;
-  --gggs-color-primary-subtle: #eaf1fe;
+  --gggs-logo-accent: #d81324;
+  --gggs-logo-ink: #1b2733;
+  --gggs-color-brand: #16202b;
+  --gggs-color-primary: #d81324;
+  --gggs-color-primary-hover: #b00f1d;
+  --gggs-color-primary-subtle: #fef0f1;
   --gggs-color-primary-contrast: #ffffff;
-  --gggs-color-accent: #0e7490;
-  --gggs-color-accent-subtle: #e6f7fb;
-  --gggs-color-accent-bright: #06b6d4;
+  --gggs-color-accent: #b00f1d;
+  --gggs-color-accent-subtle: #fdecee;
+  --gggs-color-accent-bright: #ff5a63;
+  /*
+   * Focus is charcoal, not the brand red: in a form-heavy app a red ring on the field being typed
+   * in reads as a validation error. Red stays for actions, the current page and real errors.
+   */
+  --gggs-color-focus: #16202b;
 
   /* Surfaces and text. */
-  --gggs-color-surface: #f5f7fb;
+  --gggs-color-surface: #f7f9fa;
   --gggs-color-surface-raised: #ffffff;
-  --gggs-color-surface-sunken: #eef2f7;
-  --gggs-color-surface-hover: #f1f4f9;
-  --gggs-color-surface-selected: #eaf1fe;
-  --gggs-color-border: #e2e8f0;
-  --gggs-color-border-strong: #cbd5e1;
-  --gggs-color-text: #172033;
-  /* Muted text sits on the page background too, so it is a step darker than slate 500 (AA). */
-  --gggs-color-text-muted: #5b6b80;
-  --gggs-color-text-subtle: #627085;
-  --gggs-color-overlay: rgb(15 27 46 / 45%);
+  --gggs-color-surface-sunken: #f1f4f7;
+  --gggs-color-surface-hover: #f1f4f7;
+  --gggs-color-surface-selected: #fef0f1;
+  --gggs-color-border: #dde3e9;
+  --gggs-color-border-strong: #c5cfd9;
+  --gggs-color-text: #1b2733;
+  --gggs-color-text-muted: #55677a;
+  --gggs-color-text-subtle: #5d6f82;
+  --gggs-color-overlay: rgb(16 24 31 / 45%);
 
   /* Semantic. "Strong" is text on the matching subtle background; both pass AA together. */
   --gggs-color-info: #0369a1;
@@ -46,24 +54,32 @@
   --gggs-color-danger: #b3261e;
   --gggs-color-danger-hover: #931f18;
   --gggs-color-danger-subtle: #fdecea;
+  /* Behind white text (count badges): the dark theme's danger is a text colour, too light for that. */
+  --gggs-color-danger-fill: #b3261e;
 
-  /* Primary navigation: a deep navy rail, the same in both themes. */
-  --gggs-color-nav-bg: #142b4a;
-  --gggs-color-nav-bg-deep: #0d1d33;
-  --gggs-color-nav-bg-hover: #1c3a61;
-  --gggs-color-nav-text: #c7d2e3;
+  /* Primary navigation: the brand's charcoal rail, the same in both themes, red for where you are. */
+  --gggs-color-nav-bg: #16202b;
+  --gggs-color-nav-bg-deep: #10181f;
+  --gggs-color-nav-bg-hover: #222f3d;
+  --gggs-color-nav-text: #c9d2dc;
   --gggs-color-nav-text-active: #ffffff;
-  --gggs-color-nav-active: #2563eb;
-  --gggs-color-nav-active-deep: #1d4ed8;
-  --gggs-color-nav-border: #1e3858;
+  --gggs-color-nav-icon: #c9d2dc;
+  --gggs-color-nav-active: #d81324;
+  --gggs-color-nav-active-deep: #b00f1d;
+  --gggs-color-nav-border: #243241;
+  /* Text on the active tile, translucent fills on the rail, and the rail's focus outline: white on
+     a dark rail, charcoal on the light one. */
+  --gggs-color-nav-on-active: #ffffff;
+  --gggs-color-nav-overlay: #ffffff;
+  --gggs-color-nav-focus: #ffffff;
 
   /* Categorical palette for charts and calendar kinds - distinguishable, not semantic. */
-  --gggs-cat-1: #2563eb;
-  --gggs-cat-2: #06b6d4;
+  --gggs-cat-1: #d81324;
+  --gggs-cat-2: #16202b;
   --gggs-cat-3: #f59e0b;
-  --gggs-cat-4: #16a34a;
-  --gggs-cat-5: #db2777;
-  --gggs-cat-6: #7c3aed;
+  --gggs-cat-4: #15803d;
+  --gggs-cat-5: #ff5a63;
+  --gggs-cat-6: #55677a;
   --gggs-cat-7: #dc2626;
   --gggs-cat-8: #65a30d;
   --gggs-cat-9: #475569;
@@ -91,15 +107,15 @@
 
   /*
    * Elevation: five levels lit from above, each a tight contact shadow plus a soft ambient one,
-   * tinted navy rather than grey so depth reads as light, not dirt. Resting cards sit at 1, a card
-   * under the pointer at 3, popovers at 4, dialogs at 5. `highlight` is the lit top edge of a
+   * tinted charcoal rather than grey so depth reads as light, not dirt. Resting cards sit at 1, a
+   * card under the pointer at 3, popovers at 4, dialogs at 5. `highlight` is the lit top edge of a
    * raised surface. The xs-lg names are the older scale, kept as aliases.
    */
-  --gggs-shadow-1: 0 1px 2px rgb(20 43 74 / 6%), 0 1px 3px rgb(20 43 74 / 4%);
-  --gggs-shadow-2: 0 1px 2px rgb(20 43 74 / 6%), 0 4px 10px -2px rgb(20 43 74 / 9%);
-  --gggs-shadow-3: 0 2px 4px rgb(20 43 74 / 5%), 0 14px 28px -8px rgb(20 43 74 / 18%);
-  --gggs-shadow-4: 0 4px 8px rgb(20 43 74 / 6%), 0 22px 40px -10px rgb(20 43 74 / 24%);
-  --gggs-shadow-5: 0 8px 16px rgb(20 43 74 / 8%), 0 32px 64px -12px rgb(20 43 74 / 32%);
+  --gggs-shadow-1: 0 1px 2px rgb(22 32 43 / 6%), 0 1px 3px rgb(22 32 43 / 8%);
+  --gggs-shadow-2: 0 1px 2px rgb(22 32 43 / 6%), 0 4px 10px -2px rgb(22 32 43 / 10%);
+  --gggs-shadow-3: 0 2px 4px rgb(22 32 43 / 5%), 0 14px 28px -8px rgb(22 32 43 / 18%);
+  --gggs-shadow-4: 0 4px 8px rgb(22 32 43 / 6%), 0 22px 40px -10px rgb(22 32 43 / 24%);
+  --gggs-shadow-5: 0 8px 16px rgb(22 32 43 / 8%), 0 32px 64px -12px rgb(22 32 43 / 30%);
   --gggs-shadow-highlight: inset 0 1px 0 rgb(255 255 255 / 70%);
   --gggs-shadow-glow: 0 6px 18px -6px color-mix(in srgb, var(--gggs-color-primary) 55%, transparent);
   --gggs-shadow-xs: var(--gggs-shadow-1);
@@ -107,16 +123,17 @@
   --gggs-shadow-md: var(--gggs-shadow-3);
   --gggs-shadow-lg: var(--gggs-shadow-4);
 
-  /* Gradients: accents only (logo, active marks, icon tiles, bars), never behind body text. */
+  /* Gradients: accents only (logo, active marks, icon tiles, bars), never behind body text. The
+     brand gradient is the site's hero: charcoal through a deep red to the brand red. */
   --gggs-gradient-brand: linear-gradient(
     135deg,
     var(--gggs-color-brand) 0%,
-    var(--gggs-color-primary) 58%,
-    var(--gggs-color-accent-bright) 100%
+    color-mix(in srgb, var(--gggs-color-primary) 60%, var(--gggs-color-brand)) 55%,
+    var(--gggs-color-primary) 100%
   );
   --gggs-gradient-primary: linear-gradient(180deg, var(--gggs-color-primary) 0%, var(--gggs-color-primary-hover) 100%);
   --gggs-gradient-accent: linear-gradient(90deg, var(--gggs-color-primary) 0%, var(--gggs-color-accent-bright) 100%);
-  --gggs-gradient-tile: linear-gradient(135deg, var(--gggs-color-primary-subtle) 0%, var(--gggs-color-accent-subtle) 100%);
+  --gggs-gradient-tile: linear-gradient(135deg, var(--gggs-color-primary-subtle) 0%, var(--gggs-color-surface-sunken) 100%);
   --gggs-gradient-nav: linear-gradient(180deg, var(--gggs-color-nav-bg) 0%, var(--gggs-color-nav-bg-deep) 100%);
   --gggs-gradient-wash: radial-gradient(
     ellipse 70% 22rem at 75% -6rem,
@@ -131,6 +148,8 @@
 
   /* Typography. */
   --gggs-font-family: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Headings, as on the company site; body text, figures and controls stay Inter. */
+  --gggs-font-family-display: 'Plus Jakarta Sans Variable', var(--gggs-font-family);
   --gggs-font-family-mono: ui-monospace, 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
   --gggs-font-size-xs: 0.75rem;
   --gggs-font-size-sm: 0.8125rem;
@@ -155,14 +174,15 @@
 
   /* Layout. */
   --gggs-header-height: 3.5rem;
-  --gggs-rail-width: 5.75rem;
-  --gggs-rail-width-compact: 4rem;
-  --gggs-panel-width: 15rem;
+  --gggs-rail-width: 4rem;
+  /* The expanded menu: wide enough for "Compensation & benefits" beside its icon. */
+  --gggs-sidebar-width: 16rem;
+  --gggs-launcher-width: 26rem;
   --gggs-content-max-width: 100rem;
 
   /* Interaction. */
-  --gggs-focus-ring: 0 0 0 3px color-mix(in srgb, var(--gggs-color-primary) 35%, transparent);
-  --gggs-focus-outline: 2px solid var(--gggs-color-primary);
+  --gggs-focus-ring: 0 0 0 3px color-mix(in srgb, var(--gggs-color-focus) 25%, transparent);
+  --gggs-focus-outline: 2px solid var(--gggs-color-focus);
   --gggs-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --gggs-duration-fast: 120ms;
   --gggs-duration: 180ms;
@@ -190,26 +210,32 @@
   color-scheme: light;
 }
 
+/* The company site has no dark theme; this one is derived from it: charcoal surfaces, and the
+   site's coral standing in for the red, which is too dark to read on charcoal. */
 .gggs-dark {
-  --gggs-color-brand: #0b1a2e;
-  --gggs-color-primary: #7aa7ff;
-  --gggs-color-primary-hover: #a3c2ff;
-  --gggs-color-primary-subtle: #182a4d;
-  --gggs-color-primary-contrast: #0b1220;
-  --gggs-color-accent: #22d3ee;
-  --gggs-color-accent-subtle: #0e2a33;
-  --gggs-color-accent-bright: #22d3ee;
+  --gggs-logo-accent: #e8222f;
+  --gggs-logo-ink: #e8edf2;
+  --gggs-color-brand: #0b1117;
+  --gggs-color-primary: #ff5a63;
+  --gggs-color-primary-hover: #ff7a82;
+  --gggs-color-primary-subtle: #2a1a1f;
+  --gggs-color-primary-contrast: #16202b;
+  --gggs-color-accent: #ff7a82;
+  --gggs-color-accent-subtle: #2a1a1f;
+  --gggs-color-accent-bright: #ff5a63;
+  --gggs-color-focus: #c9d2dc;
+  --gggs-focus-ring: 0 0 0 3px color-mix(in srgb, var(--gggs-color-focus) 40%, transparent);
 
-  --gggs-color-surface: #0f1623;
-  --gggs-color-surface-raised: #151c2b;
-  --gggs-color-surface-sunken: #111827;
-  --gggs-color-surface-hover: #1c2536;
-  --gggs-color-surface-selected: #182a4d;
-  --gggs-color-border: #263044;
-  --gggs-color-border-strong: #364157;
-  --gggs-color-text: #e6eaf2;
-  --gggs-color-text-muted: #9ca8bb;
-  --gggs-color-text-subtle: #8892a6;
+  --gggs-color-surface: #10161d;
+  --gggs-color-surface-raised: #16202b;
+  --gggs-color-surface-sunken: #121a23;
+  --gggs-color-surface-hover: #1c2834;
+  --gggs-color-surface-selected: #2a1a1f;
+  --gggs-color-border: #26323f;
+  --gggs-color-border-strong: #364454;
+  --gggs-color-text: #e8edf2;
+  --gggs-color-text-muted: #9aa9b9;
+  --gggs-color-text-subtle: #8a99aa;
   --gggs-color-overlay: rgb(0 0 0 / 60%);
 
   --gggs-color-info: #7cc4ec;
@@ -222,18 +248,19 @@
   --gggs-color-danger: #ff8a80;
   --gggs-color-danger-hover: #ffaaa2;
   --gggs-color-danger-subtle: #3a1a17;
+  --gggs-color-danger-fill: #c62828;
 
-  --gggs-color-nav-bg: #0d1b30;
-  --gggs-color-nav-bg-deep: #08111f;
-  --gggs-color-nav-bg-hover: #182a47;
-  --gggs-color-nav-border: #1a2a44;
+  --gggs-color-nav-bg: #0d141b;
+  --gggs-color-nav-bg-deep: #090e13;
+  --gggs-color-nav-bg-hover: #1a2531;
+  --gggs-color-nav-border: #1c2733;
 
-  --gggs-cat-1: #7aa7ff;
-  --gggs-cat-2: #22d3ee;
+  --gggs-cat-1: #ff5a63;
+  --gggs-cat-2: #c9d2dc;
   --gggs-cat-3: #fbbf24;
   --gggs-cat-4: #4ade80;
   --gggs-cat-5: #f472b6;
-  --gggs-cat-6: #b794f6;
+  --gggs-cat-6: #8a99aa;
   --gggs-cat-7: #f87171;
   --gggs-cat-8: #a3e635;
   --gggs-cat-9: #94a3b8;
@@ -247,8 +274,112 @@
   --gggs-shadow-5: 0 8px 16px rgb(0 0 0 / 36%), 0 32px 64px -12px rgb(0 0 0 / 64%);
   --gggs-shadow-highlight: inset 0 1px 0 rgb(255 255 255 / 5%);
 
-  /* Dark primary is the light blue, with hover lighter still: keep the brighter end on top. */
+  /* Dark primary is the coral, with hover lighter still: keep the brighter end on top. */
   --gggs-gradient-primary: linear-gradient(180deg, var(--gggs-color-primary-hover) 0%, var(--gggs-color-primary) 100%);
 
   color-scheme: dark;
+}
+
+/*
+ * Palettes for the header's theme picker (ThemeStore, libs/core/layout). The GGGS brand above is
+ * the default; a `gggs-palette-*` class on <html> swaps in another, in light and dark alike.
+ */
+
+/* The GGGS brand with a white menu, like the company site's white header. Dark keeps the dark rail. */
+.gggs-palette-brand-light-menu:not(.gggs-dark) {
+  --gggs-color-nav-bg: #ffffff;
+  --gggs-color-nav-bg-deep: #ffffff;
+  --gggs-color-nav-bg-hover: #f1f4f7;
+  --gggs-color-nav-text: #55677a;
+  --gggs-color-nav-text-active: #1b2733;
+  --gggs-color-nav-icon: #55677a;
+  --gggs-color-nav-border: #dde3e9;
+  --gggs-color-nav-overlay: #16202b;
+  --gggs-color-nav-focus: #16202b;
+}
+
+/* Classic: the electric blue, navy and cyan palette Nuts and Bolts had before the GGGS brand. */
+.gggs-palette-classic {
+  --gggs-color-brand: #142b4a;
+  --gggs-color-primary: #2563eb;
+  --gggs-color-primary-hover: #1d4ed8;
+  --gggs-color-primary-subtle: #eaf1fe;
+  --gggs-color-primary-contrast: #ffffff;
+  --gggs-color-accent: #0e7490;
+  --gggs-color-accent-subtle: #e6f7fb;
+  --gggs-color-accent-bright: #06b6d4;
+  --gggs-color-focus: #2563eb;
+
+  --gggs-color-surface: #f5f7fb;
+  --gggs-color-surface-raised: #ffffff;
+  --gggs-color-surface-sunken: #eef2f7;
+  --gggs-color-surface-hover: #f1f4f9;
+  --gggs-color-surface-selected: #eaf1fe;
+  --gggs-color-border: #e2e8f0;
+  --gggs-color-border-strong: #cbd5e1;
+  --gggs-color-text: #172033;
+  --gggs-color-text-muted: #5b6b80;
+  --gggs-color-text-subtle: #627085;
+  --gggs-color-overlay: rgb(15 27 46 / 45%);
+
+  --gggs-color-nav-bg: #142b4a;
+  --gggs-color-nav-bg-deep: #0d1d33;
+  --gggs-color-nav-bg-hover: #1c3a61;
+  --gggs-color-nav-text: #c7d2e3;
+  --gggs-color-nav-icon: #9cc0ff;
+  --gggs-color-nav-active: #2563eb;
+  --gggs-color-nav-active-deep: #1d4ed8;
+  --gggs-color-nav-border: #1e3858;
+
+  --gggs-cat-1: #2563eb;
+  --gggs-cat-2: #06b6d4;
+  --gggs-cat-3: #f59e0b;
+  --gggs-cat-4: #16a34a;
+  --gggs-cat-5: #db2777;
+  --gggs-cat-6: #7c3aed;
+
+  --gggs-gradient-brand: linear-gradient(
+    135deg,
+    var(--gggs-color-brand) 0%,
+    var(--gggs-color-primary) 58%,
+    var(--gggs-color-accent-bright) 100%
+  );
+  --gggs-gradient-tile: linear-gradient(135deg, var(--gggs-color-primary-subtle) 0%, var(--gggs-color-accent-subtle) 100%);
+  --gggs-font-family-display: var(--gggs-font-family);
+}
+
+.gggs-palette-classic.gggs-dark {
+  --gggs-color-brand: #0b1a2e;
+  --gggs-color-primary: #7aa7ff;
+  --gggs-color-primary-hover: #a3c2ff;
+  --gggs-color-primary-subtle: #182a4d;
+  --gggs-color-primary-contrast: #0b1220;
+  --gggs-color-accent: #22d3ee;
+  --gggs-color-accent-subtle: #0e2a33;
+  --gggs-color-accent-bright: #22d3ee;
+  --gggs-color-focus: #7aa7ff;
+
+  --gggs-color-surface: #0f1623;
+  --gggs-color-surface-raised: #151c2b;
+  --gggs-color-surface-sunken: #111827;
+  --gggs-color-surface-hover: #1c2536;
+  --gggs-color-surface-selected: #182a4d;
+  --gggs-color-border: #263044;
+  --gggs-color-border-strong: #364157;
+  --gggs-color-text: #e6eaf2;
+  --gggs-color-text-muted: #9ca8bb;
+  --gggs-color-text-subtle: #8892a6;
+  --gggs-color-overlay: rgb(0 0 0 / 60%);
+
+  --gggs-color-nav-bg: #0d1b30;
+  --gggs-color-nav-bg-deep: #08111f;
+  --gggs-color-nav-bg-hover: #182a47;
+  --gggs-color-nav-border: #1a2a44;
+
+  --gggs-cat-1: #7aa7ff;
+  --gggs-cat-2: #22d3ee;
+  --gggs-cat-3: #fbbf24;
+  --gggs-cat-4: #4ade80;
+  --gggs-cat-5: #f472b6;
+  --gggs-cat-6: #b794f6;
 }

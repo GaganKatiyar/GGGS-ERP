@@ -21,13 +21,13 @@ describe('sparkPaths', () => {
   });
 
   it('runs edge to edge, highest value at the top of the box', () => {
-    const spark = sparkPaths([10, 30, 20])!;
-    expect(spark.line).toBe('M0.00 22.00 L50.00 2.00 L100.00 12.00');
-    expect(spark.area).toBe(`${spark.line} L100 24 L0 24 Z`);
+    const spark = sparkPaths([10, 30, 20]);
+    expect(spark?.line).toBe('M0.00 22.00 L50.00 2.00 L100.00 12.00');
+    expect(spark?.area).toBe(`${spark?.line} L100 24 L0 24 Z`);
   });
 
   it('draws a flat series as a flat line instead of dividing by zero', () => {
-    expect(sparkPaths([4, 4, 4])!.line).toBe('M0.00 22.00 L50.00 22.00 L100.00 22.00');
+    expect(sparkPaths([4, 4, 4])?.line).toBe('M0.00 22.00 L50.00 22.00 L100.00 22.00');
   });
 });
 
@@ -67,7 +67,7 @@ describe('Tilt', () => {
   it('stays still where hover tilting is not allowed (touch, reduced motion, no media queries)', () => {
     const fixture = TestBed.createComponent(TiltHost);
     fixture.detectChanges();
-    const element = (fixture.nativeElement as HTMLElement).querySelector('div')!;
+    const element = (fixture.nativeElement as HTMLElement).querySelector('div') as HTMLElement;
     element.dispatchEvent(Object.assign(new Event('pointermove'), { pointerType: 'mouse', clientX: 90, clientY: 10 }));
     expect(element.style.transform).toBe('');
   });

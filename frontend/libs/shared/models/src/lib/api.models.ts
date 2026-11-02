@@ -30,7 +30,7 @@ export interface FieldError {
 }
 
 /**
- * RFC 9457 problem document carrying the PeopleOS error envelope, as every API error arrives:
+ * RFC 9457 problem document carrying the Nuts and Bolts error envelope, as every API error arrives:
  * `{ success: false, code, message, errors: [{ field, message }], traceId }` alongside the standard
  * `type`, `title`, `status` and `detail`.
  *

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, type OnInit, inject, input, signal 
 import { Router, RouterLink } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import { PageHeader } from '@gggs/shared/ui';
-import type { Role } from '@gggs/shared/models';
+import type { AutomaticRoleGrant, Role } from '@gggs/shared/models';
 import { AdminApi } from '@gggs/shared/identity';
 
 /**
@@ -25,6 +25,24 @@ import { AdminApi } from '@gggs/shared/identity';
     @if (isLoading()) {
       <p>Loading…</p>
     } @else {
+      @if (automatic().length) {
+        <section class="panel automatic" aria-labelledby="automatic-heading">
+          <h2 id="automatic-heading" class="automatic__heading">From the org chart</h2>
+          <p class="checkbox__hint automatic__hint">Given automatically because of who this person manages or heads. They follow the org chart, so they are not edited here.</p>
+          <ul class="automatic__list">
+            @for (grant of automatic(); track grant.roleId + (grant.departmentId ?? '')) {
+              <li>
+                <span class="automatic__tag">Automatic</span>
+                <strong>{{ grant.roleName }}</strong>
+                @if (grant.departmentName) {
+                  <span class="muted">for {{ grant.departmentName }}</span>
+                }
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
       <form (ngSubmit)="submit()" class="panel">
         @for (role of roles(); track role.id) {
           <label class="checkbox">
@@ -66,6 +84,44 @@ import { AdminApi } from '@gggs/shared/identity';
       font-size: var(--gggs-font-size-base);
     }
 
+    .automatic {
+      margin-block-end: var(--gggs-space-4);
+    }
+
+    .automatic__heading {
+      margin: 0;
+      font-size: var(--gggs-font-size-md);
+    }
+
+    .automatic__hint {
+      margin: 0;
+    }
+
+    .automatic__list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--gggs-space-2);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+
+      li {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--gggs-space-2);
+      }
+    }
+
+    .automatic__tag {
+      padding: 0 var(--gggs-space-2);
+      border-radius: var(--gggs-radius-pill);
+      background: var(--gggs-color-primary-subtle);
+      color: var(--gggs-color-primary);
+      font-size: var(--gggs-font-size-xs);
+      font-weight: var(--gggs-font-weight-semibold);
+    }
+
     .checkbox__hint {
       flex-basis: 100%;
       margin-inline-start: var(--gggs-space-6);
@@ -90,6 +146,7 @@ export class UserRolesPage implements OnInit {
   protected readonly isSaving = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly roles = signal<readonly Role[]>([]);
+  protected readonly automatic = signal<readonly AutomaticRoleGrant[]>([]);
   private readonly selectedRoleIds = signal<ReadonlySet<string>>(new Set());
 
   // Not the constructor: the route's :id input is only set once the component is initialised.
@@ -118,12 +175,14 @@ export class UserRolesPage implements OnInit {
     this.isLoading.set(true);
 
     try {
-      const [roles, currentRoleIds] = await Promise.all([
+      const [roles, currentRoleIds, automatic] = await Promise.all([
         this.api.listRoles(),
         this.api.getUserRoles(this.id()),
+        this.api.getAutomaticRoles(this.id()),
       ]);
 
       this.roles.set(roles);
+      this.automatic.set(automatic);
       this.selectedRoleIds.set(new Set(currentRoleIds));
     } finally {
       this.isLoading.set(false);
