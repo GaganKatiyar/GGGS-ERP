@@ -57,7 +57,7 @@ Project, Timesheets, ProjectFinancials, Resources, Client and Contract were deli
 
 | Phase | Scope | Status |
 |---|---|---|
-| **1** | Default projects: one per department and one for the organisation, available to everyone from the day they join with no allocation, so the bench stays true. Timesheet rebuilt: lines grouped by project and activity, tasks open to the whole team, notes by day, a day view, read-only leave, holiday and attendance rows, copy from any week, the Timesheet bank, and an optional rule that everyone submits | Built; browser check pending |
+| **1** | Default projects: one per department and one for the organisation, available to everyone from the day they join with no allocation, so the bench stays true. Timesheet rebuilt: lines grouped by project and activity, tasks open to the whole team, notes by day, a day view, read-only leave, holiday and attendance rows, copy from any week, the Timesheet bank, and an optional rule that everyone submits | Done |
 | **2** | Timesheets approved per project by its manager, with default-project and non-project hours going to the department head or reporting manager | Planned |
 | **3** | Engagement models: fixed price, milestone, T&M, dedicated team, retainer, managed services and outcome-based, each with its own terms and revenue rule; project templates; AI usage as a project cost | Planned |
 | **4** | Billing: invoices with lines built from approved hours and milestones, no double billing, a monthly billing run, credit notes and Tally export. GST filing and e-invoicing stay in the accounting system | Planned |
