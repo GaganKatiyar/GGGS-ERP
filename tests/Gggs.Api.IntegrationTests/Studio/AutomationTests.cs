@@ -33,7 +33,7 @@ public sealed class AutomationTests(PeopleOsApiFactory factory)
         await factory.DeliverEventsAsync();
         await factory.DeliverEventsAsync();
 
-        string[] sent = [.. factory.Recorder.Sent.Select(message => message["text"]).Where(text => text.EndsWith(marker, StringComparison.Ordinal))];
+        string[] sent = [.. factory.Recorder.Sent.Select(message => message.GetValueOrDefault("text") ?? string.Empty).Where(text => text.EndsWith(marker, StringComparison.Ordinal))];
         string text = sent.ShouldHaveSingleItem("only the hire in the chosen department matches, and only once");
         text.ShouldStartWith("Test Person-");
         text.ShouldContain($"joined {departmentName}");
@@ -147,7 +147,7 @@ public sealed class AutomationTests(PeopleOsApiFactory factory)
         JsonElement tested = await OkAsync(await admin.PostAsJsonAsync("/api/v1/studio/automations/test", Body("Test", null, connection, "{{employeeName}} joined {{department}} " + marker), Ct));
         tested.GetProperty("succeeded").GetBoolean().ShouldBeTrue();
         tested.GetProperty("parameters").GetProperty("text").GetString().ShouldBe("Priya Sharma joined Engineering " + marker);
-        factory.Recorder.Sent.ShouldContain(message => message["text"] == "Priya Sharma joined Engineering " + marker);
+        factory.Recorder.Sent.ShouldContain(message => message.GetValueOrDefault("text") == "Priya Sharma joined Engineering " + marker);
     }
 
     [Fact]
