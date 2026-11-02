@@ -293,40 +293,55 @@ interface Column {
 
     .ts__grid {
       width: 100%;
-      min-width: 66rem;
+      min-width: 56rem;
       border-collapse: separate;
       border-spacing: 0;
     }
 
     .ts__grid--day {
-      min-width: 44rem;
+      min-width: 40rem;
     }
 
     .ts__grid thead tr > * {
       position: sticky;
       top: 0;
       z-index: 2;
+      height: 3.5rem;
       background: var(--gggs-color-surface);
     }
 
-    .ts__grid .ts__totals > * {
-      top: 2.75rem;
+    .ts__grid thead .ts__totals > * {
+      top: 3.5rem;
+      height: 2.5rem;
       background: var(--gggs-color-success-subtle);
       font-weight: var(--gggs-font-weight-semibold);
     }
 
+    .ts__grid tbody td,
+    .ts__grid tfoot > tr > * {
+      padding-block: var(--gggs-space-1);
+    }
+
+    .ts__grid tfoot > tr > * {
+      border-block: 0;
+      border-block-start: 1px solid var(--gggs-color-border);
+    }
+
     .ts__what {
-      min-width: 12rem;
+      min-width: 7rem;
     }
 
     .ts__task {
-      min-width: 13rem;
+      min-width: 12rem;
     }
 
     .ts__kind {
       display: block;
       width: 100%;
+      min-height: 0;
+      height: 1.5rem;
       margin-block-start: 2px;
+      padding-block: 0;
       font-size: var(--gggs-font-size-xs);
     }
 
@@ -341,8 +356,13 @@ interface Column {
     }
 
     .ts__day {
-      width: 5.5rem;
+      width: 4.75rem;
+      padding-inline: var(--gggs-space-1);
       font-size: var(--gggs-font-size-sm);
+    }
+
+    .ts__grid td.ts__cell {
+      padding-inline: var(--gggs-space-1);
     }
 
     .ts__day--off {
@@ -366,7 +386,8 @@ interface Column {
     }
 
     .ts__cell input {
-      width: 4rem;
+      width: 3.25rem;
+      padding-inline: var(--gggs-space-1);
     }
 
     .ts__day-note {
