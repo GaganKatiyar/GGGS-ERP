@@ -1,4 +1,4 @@
-# Running PeopleOS locally and signing in
+# Running Nuts and Bolts locally and signing in
 
 A working stack end to end: SQL Server, the API host, the worker host and the Angular dev server,
 with a real tenant and a real tenant-administrator account. No RabbitMQ, no Redis and no Docker
@@ -9,7 +9,7 @@ everything).
 
 The foundation milestone ships the platform itself, not the business modules:
 
-- signing in and out, and the application shell with the PeopleOS navigation;
+- signing in and out, and the application shell with the Nuts and Bolts navigation;
 - Administration: users (invite, complete the invitation from the link it returns,
   enable/disable/unlock, manage roles), roles (create, grant and revoke permissions), tenant
   settings (a raw module/key/JSON editor), and the audit log (`/admin/audit`, with the old/new
@@ -259,15 +259,14 @@ person only when approved. Conversations are deleted after 30 days by the
 `ai-conversation-retention` job at 02:40 (`Gggs:Ai:RetentionDays`). Assistant turns are limited to 12
 a minute per person (`Gggs:RateLimiting:AssistantPerMinute`).
 
-### Sign-in security (M12)
+### Sign-in security
 
-- **Authenticator app:** My Space > Sign-in security sets one up (any TOTP app) and hands out ten
-  recovery codes once. After that, sign-in asks for a code after the password. The organisation's
-  password policy decides who must have one (administrators only by default): such a person is sent
-  to the set-up page after signing in until they do.
+- **Password only.** Two-step sign-in with an authenticator app was removed on 2026-10-29
+  ([ADR-13](../adr/0013-remove-two-step-sign-in.md)); signing in takes the organisation code, email
+  and password, or the organisation's single sign-on.
 - **Step-up:** sensitive actions need an authentication in the last 15 minutes in production
   (`Gggs:Security:EnforceStepUp`, off in development). When it has lapsed, a "Confirm it's you"
-  dialog asks for a code or the password and the action then goes ahead.
+  dialog asks for the password again and the action then goes ahead.
 - **Single sign-on:** Administration > Single sign-on adds an OpenID Connect provider (Entra ID, Okta,
   Google Workspace, Keycloak). Register `https://<your host>/bff/sso/callback` as its redirect URI; set
   `Gggs:Sso:PublicOrigin` when the API is reached through a proxy under another address. The sign-in

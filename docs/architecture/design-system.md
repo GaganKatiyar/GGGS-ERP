@@ -1,6 +1,6 @@
 # Design system
 
-The PeopleOS front end has one design system, defined in global partials and a small set of
+The Nuts and Bolts front end has one design system, defined in global partials and a small set of
 shared components. Screens build from those pieces and do not restyle them. The visual direction
 is called "depth": surfaces float slightly above the page on soft layered shadows and rise
 toward the pointer. Frosted glass is limited to the chrome that floats over content. Gradients
@@ -14,44 +14,75 @@ are used for accents only, and motion is brief and always optional.
 | Element defaults (in `@layer gggs-elements`), focus, reduced motion | `styles/_base.scss` |
 | Buttons, forms, tables, panels, alerts and badges | `styles/_buttons.scss`, `_forms.scss`, `_table.scss`, `_layout.scss`, `_feedback.scss`, `_xp.scss` |
 | Depth helpers: `.elevated`, `.elevated--interactive`, `.glass`, `.rise-in`; the signed-out layout `.auth` (sign-in, invitation) | `styles/_depth.scss` |
-| App shell: rail, flyout, header, module tabs | `styles/_shell.scss` (global, because it exceeds the per-component style budget) |
+| App shell: rail, app launcher, header, module tabs | `styles/_shell.scss` (global, because it exceeds the per-component style budget) |
 | PrimeNG dialogs, drawers, toasts and tags | `styles/_overlays.scss` |
 | PrimeNG preset bridged to the tokens | `apps/hrms-web/src/app/app.config.ts` (`GggsPreset`) |
 | Shared components | `libs/shared/ui` (`gggs-kpi-card`, `gggs-page-header`, `gggs-empty-state`, `gggs-chart`, `gggs-form-dialog`, `gggs-drawer`, `gggsTilt`), `libs/shared/data-table` |
 
 ## Colour
 
+The palette is the GGGS brand, taken from the company site so the two read as one family.
+
 | Token | Light | Dark | Use |
 |---|---|---|---|
-| `--gggs-color-brand` | `#142B4A` navy | `#0B1A2E` | Rail, start of the brand gradient |
-| `--gggs-color-primary` | `#2563EB` electric blue | `#7AA7FF` | Actions, links, the active state |
-| `--gggs-color-accent` | `#0E7490` | `#22D3EE` | Accent text; meets AA on white |
-| `--gggs-color-accent-bright` | `#06B6D4` cyan | `#22D3EE` | Gradients, glows and chart fills only. It fails contrast as text. |
-| `--gggs-color-surface` / `-raised` | `#F5F7FB` / `#FFFFFF` | `#0F1623` / `#151C2B` | Page background / cards |
-| `--gggs-color-text` / `-muted` | `#172033` / `#5B6B80` | `#E6EAF2` / `#9CA8BB` | Body text / secondary text |
-| `--gggs-color-border` | `#E2E8F0` | `#263044` | Hairlines |
+| `--gggs-color-brand` | `#16202B` charcoal | `#0B1117` | Rail, start of the brand gradient |
+| `--gggs-color-primary` | `#D81324` brand red | `#FF5A63` coral | Actions, links, the current page and tab |
+| `--gggs-color-primary-subtle` | `#FEF0F1` | `#2A1A1F` | Selected rows, icon tiles; red text on it passes AA |
+| `--gggs-color-accent` | `#B00F1D` | `#FF7A82` | Accent text; meets AA on white |
+| `--gggs-color-accent-bright` | `#FF5A63` coral | `#FF5A63` | Gradients and chart fills |
+| `--gggs-color-focus` | `#16202B` | `#C9D2DC` | Focus rings and focused field borders |
+| `--gggs-color-surface` / `-raised` | `#F7F9FA` / `#FFFFFF` | `#10161D` / `#16202B` | Page background / cards |
+| `--gggs-color-text` / `-muted` | `#1B2733` / `#55677A` | `#E8EDF2` / `#9AA9B9` | Body text / secondary text |
+| `--gggs-color-border` | `#DDE3E9` | `#26323F` | Hairlines |
 
-Muted text is `#5B6B80` rather than slate 500 (`#64748B`), because muted text also sits on the
-page background, where slate 500 measures 4.4:1 and fails AA. The success, warning and danger
-tokens keep their darker, AA-tuned values for text. The brighter brand shades are used only as
-fills and in chart series.
+**Focus is charcoal, not red.** With red as the action colour, a red ring on the field someone
+is typing in would read as a validation error, so focus uses `--gggs-color-focus`. Red is for
+actions, the current page and real errors. Errors keep their own darker red
+(`--gggs-color-danger`, `#B3261E`) and always come with a message or label, so they are never
+told apart by colour alone.
+
+The success, warning and danger tokens keep their AA-tuned values for text. The site has no dark
+theme, so the dark palette is derived from it: charcoal surfaces, with coral standing in for the
+red, which is too dark to read on charcoal.
+
+**Type.** Headings (`h1`–`h4`, dialog and drawer titles) use the site's Plus Jakarta Sans
+(`--gggs-font-family-display`, self-hosted from `@fontsource-variable/plus-jakarta-sans`). Body
+text, figures and controls stay Inter.
 
 Dark mode is the `.gggs-dark` class on `<html>`. `public/theme-boot.js` applies the saved theme
 before Angular starts, so a dark-theme user never sees a light flash. It is a file rather than an
 inline script because the CSP allows `'self'` only. `ThemeStore` (`libs/core/layout`) takes over
 once the shell loads.
 
+**Palettes.** The palette button in the header (next to the light/dark switch) lets each person
+choose a colour palette. The choice applies at once and is kept per browser in
+`localStorage['gggs-palette']`.
+
+| Palette | Class on `<html>` | Looks like |
+|---|---|---|
+| GGGS brand (default) | none | Charcoal menu, brand red |
+| GGGS brand, light menu | `gggs-palette-brand-light-menu` | White menu with charcoal icons in light mode; the dark menu in dark mode |
+| Classic blue | `gggs-palette-classic` | Navy menu, electric blue, cyan accent; Inter headings |
+
+Each palette is a block of token overrides at the end of `_tokens.scss`, in light and dark. To add
+one, add its key and label to `PALETTES` in `theme.ts`, add a matching `gggs-palette-<key>` block,
+and add the key to `public/theme-boot.js`. Rail and launcher styles take their translucent fills
+and focus outline from `--gggs-color-nav-overlay` and `--gggs-color-nav-focus`, and the text on the
+active tile from `--gggs-color-nav-on-active`. Use these rather than writing white directly, so
+the rail works whether it is dark or light. Charts recolour by themselves, because they re-read
+the tokens when a class on `<html>` changes.
+
 ## Elevation
 
 Elevation comes in five levels. Each level is a tight contact shadow plus a soft ambient one,
-tinted navy. `--gggs-shadow-highlight` is the lit top edge of a raised surface.
+tinted charcoal. `--gggs-shadow-highlight` is the lit top edge of a raised surface.
 
 | Level | Token | Used for |
 |---|---|---|
 | 1 | `--gggs-shadow-1` | Resting cards, panels, tables, buttons |
 | 2 | `--gggs-shadow-2` | A button under the pointer |
 | 3 | `--gggs-shadow-3` | A card under the pointer |
-| 4 | `--gggs-shadow-4` | Popovers, menus, the module flyout, a card being dragged, toasts |
+| 4 | `--gggs-shadow-4` | Popovers, menus, a card being dragged, toasts |
 | 5 | `--gggs-shadow-5` | Dialogs and drawers |
 
 The older names `--gggs-shadow-xs`, `-sm`, `-md` and `-lg` are aliases for levels 1 to 4.
@@ -65,8 +96,8 @@ gets a tint and an accent mark at its edge instead.
 ## Glass
 
 `--gggs-glass-bg`, `--gggs-glass-border`, `--gggs-glass-blur`, or the `.glass` helper. Glass is
-used only for chrome that floats over content: the header, the module tabs, the module flyout,
-and the dimmed mask behind dialogs. It is never used on cards, forms or tables, where the page
+used only for chrome that floats over content: the header, the module tabs and the dimmed mask
+behind dialogs. It is never used on cards, forms or tables, where the page
 showing through would cost legibility.
 
 Do not put glass inside the header. The header has its own `backdrop-filter`, which makes it a
@@ -80,10 +111,10 @@ Every glass surface has an opaque fallback in `@supports not (backdrop-filter: �
 
 | Token | Where |
 |---|---|
-| `--gggs-gradient-brand` (navy → blue → cyan) | Logo |
+| `--gggs-gradient-brand` (charcoal → deep red → red, the site's hero) | Logo, the cover band on My profile |
 | `--gggs-gradient-primary` | Primary button face. In dark mode it runs the other way, so the lighter end is always on top. |
-| `--gggs-gradient-accent` (blue → cyan) | Tab underline, KPI hover edge, progress and breakdown bars |
-| `--gggs-gradient-tile` | Icon tiles on KPI cards and empty states, avatar |
+| `--gggs-gradient-accent` (red → coral) | Tab underline, KPI hover edge, progress and breakdown bars |
+| `--gggs-gradient-tile` | Icon tiles on KPI cards and empty states, avatar (behind initials, when there is no photo) |
 | `--gggs-gradient-nav` | Rail background |
 | `--gggs-gradient-wash` | One faint light at the top of each page, which scrolls away with the content |
 
@@ -116,6 +147,12 @@ Pass `series` and `progress` only when the page already has those figures; never
 number for decoration. The home dashboard takes `series` from a metric's `trend` and the arrow
 from its last two points, coloured by the metric's `higherIsBetter`.
 
+**Profile photos.** An employee's photo shows in a circle with `object-fit: cover`; without one,
+their initials sit on `--gggs-gradient-tile`. The header avatar and My profile read it from
+`MyPhotoStore` (`libs/core/auth`), whose URL carries the photo id, so a new photo is a new URL and
+an old one can be cached for good. My profile frames its large photo in a red ring that throws a
+glow below it. The browser crops a chosen picture to a centred square at 512 px before uploading it.
+
 **`gggsTilt`** tilts an element up to ±3° toward a fine pointer. Each pointer move schedules at most
 one animation frame. It does nothing on touch screens or for users who prefer reduced motion. It
 is for a few hero cards, currently the home dashboard's headline row, and should not be put on
@@ -138,12 +175,67 @@ merged cells, or inputs in its rows (an editable grid). Header cells are skipped
 empty, hold a control, are `.actions`, or carry `data-nosort`. The shared data table sorts on the
 server and is not affected.
 
-## Compact rail
+## Rail and app launcher
 
-The rail can show icons only. The switch is at the foot of the rail, and the choice is kept per
-browser in `localStorage['gggs-rail']`. It applies on desktop only; the phone drawer always shows
-labels. In compact mode the labels stay in the DOM, visually hidden, so every entry keeps its
-accessible name, and each entry's `title` shows the name on hover.
+There are two menus, and each user picks one with the « / » tab on the menu's edge
+(`NavStyleStore`, kept per browser under `gggs-nav-style`):
+
+- **Expanded (the default):** a `--gggs-sidebar-width` sidebar listing every module with its name.
+  A module with pages is a disclosure button that opens them, indented, beneath it. The current
+  module opens by itself and others stay open once opened. Settings lists its pages under category
+  captions (`sectionsOf`). A search at the top filters modules and pages (`filterMenu`). The keys
+  work as in a tree: Up and Down move, Right opens a module or steps into it, Left closes it or
+  steps back up, and Home and End jump to the ends.
+- **Icons:** the rail described below. Resting the pointer on a module's icon, or focusing it, pops
+  its pages out beside the rail after about 150 ms. Right steps into the pop-out, and Escape or
+  Left returns to the icon.
+
+Below 64rem the expanded menu gives way to the rail whatever was chosen, and below 48rem the menu
+is hidden and the header logo opens the launcher. Both menus mark each module's entry page with
+`data-nav-module`, which the role audit crawls. The module tabs under the header stay in both.
+
+The rail shows one icon per module, built from the permission-filtered navigation manifest
+(`navigation.ts`). Each icon opens its module on its first page (`entryRoute`); the module's pages
+are the tabs under the header. The names stay in the DOM, visually hidden, so every icon keeps its
+accessible name, and its `title` shows the name on hover. Arrow keys, Home and End move between
+the icons.
+
+The grid button at the top of the rail, or the logo at the start of the header, opens the app
+launcher. It is the rail opening out: the same charcoal gradient, `--gggs-launcher-width` wide, over
+the rail and a dimmed page (`--gggs-shadow-5`), with every module as a tile and a search. The
+search (`searchNavigation`) matches module names, and from two characters also page names, each
+with its module. Enter opens the first result. It is a modal dialog: focus starts in the search,
+Tab stays inside, and Escape, the back button or a click on the page closes it and returns focus
+to what opened it. On a phone the rail is hidden and the header logo is the way into the launcher,
+which then fills the width.
+
+## Settings
+
+Every master list and setting lives in one group, **Settings**, the last icon on the rail, rather
+than as a tab at the end of each module. Its entries carry a `section` (one of `SETTINGS_SECTIONS`:
+Organization, Time & attendance, Payroll & finance, Hiring & onboarding, Exits, Projects, Lookups,
+Access & security, Platform). The Settings home (`/settings`) shows a card per section with the
+pages the user may open and a search across them; `?section=<key>` scrolls to that card and rings
+it. Inside a page, the tabs are its own section's pages only (`moduleTabs(group, entry)`), and the
+breadcrumb reads Settings / Section / Page. A module that gave pages up names its section in
+`settingsSection`, and its tab strip ends in a gear "Settings" link to that card. Pages keep their
+routes when they move, so links and guards are unchanged. The rail, the launcher and the Settings
+home all read `VisibleNavigation`, so they always agree on what someone can reach.
+
+## Module tabs
+
+A module with many pages, such as My Space, has more tabs than fit across the screen. The row scrolls
+sideways in three ways:
+
+- With the mouse resting within 64px of either end, it glides that way, faster nearer the end, and
+  stops when the pointer moves off the edge.
+- A vertical mouse wheel scrolls it sideways.
+- Touch screens swipe it.
+
+The scrollbar is hidden. Instead, an end with more tabs beyond it fades out. The current page's tab
+is scrolled into view after each navigation. Gliding is mouse-only and is off for people who
+prefer reduced motion; the wheel still works for them. This is the `gggsEdgeScroll` directive
+(`libs/core/layout` `edge-scroll.ts`), which any sideways-scrolling row can reuse.
 
 ## Checks
 
