@@ -50,3 +50,17 @@ A research-backed deepening of the M10 Separation module, delivered in phases:
 | **C** | Involuntary exits: termination with show-cause and enquiry, retrenchment compensation (IR Code), absconding detection from attendance, death with nominee, auto-opened retirement and contract-end cases | Done |
 | **D** | Statutory F&F through payroll: gratuity (4 years 240 days, death waiver, ceiling, tax split), pro-rata bonus, encashment cap, an off-cycle F&F payroll run, EPF/ESI exit columns, F&F and gratuity deadlines. Clawbacks and variable pay are entered as settlement lines; claims and other inputs still waiting are paid by the F&F run; there is no loan module to recover from | Done |
 | **E** | Configurable exit survey (hideable from the manager), attrition analytics, former-employee ("boomerang") flag in Recruitment, AI tools `my_separation_status`, `attrition_insights` and `draft_exit_summary` | Done |
+
+## After Separation v2: complete project management
+
+Project, Timesheets, ProjectFinancials, Resources, Client and Contract were delivered in M5-M7. This work closes what they lack for an IT services company, whose projects run under different commercial models:
+
+| Phase | Scope | Status |
+|---|---|---|
+| **1** | Default projects: one per department and one for the organisation, available to everyone from the day they join with no allocation, so the bench stays true. Timesheet rebuilt: lines grouped by project and activity, tasks open to the whole team, notes by day, a day view, read-only leave, holiday and attendance rows, copy from any week, the Timesheet bank, and an optional rule that everyone submits | Built; browser check pending |
+| **2** | Timesheets approved per project by its manager, with default-project and non-project hours going to the department head or reporting manager | Planned |
+| **3** | Engagement models: fixed price, milestone, T&M, dedicated team, retainer, managed services and outcome-based, each with its own terms and revenue rule; project templates; AI usage as a project cost | Planned |
+| **4** | Billing: invoices with lines built from approved hours and milestones, no double billing, a monthly billing run, credit notes and Tally export. GST filing and e-invoicing stay in the accounting system | Planned |
+| **5** | Managed services: incidents and service requests on the task board, SLA policies and breaches, service credits, monthly SLA reports | Planned |
+| **6** | Daily work: task comments, mentions, attachments and watchers, saved views, bulk edit, Gantt, backlog, team workload | Planned |
+| **7** | Portfolio dashboard, drafting AI assistants, GitHub and Azure DevOps links, outcome pricing, optional client portal | Planned |
