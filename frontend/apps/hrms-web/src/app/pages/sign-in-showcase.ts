@@ -38,7 +38,7 @@ const STEP_MS = 2800;
         </svg>
         {{ productName }}
       </p>
-      <p class="showcase__headline">Every part of your company, working as one.</p>
+      <p class="showcase__headline">One Platform. Every Possibility.</p>
       <div class="showcase__diagram">
         @for (area of areas; track area.name; let index = $index) {
           <div class="showcase__area" [attr.data-slot]="area.slot" [class.showcase__area--lit]="lit() === index" (pointerenter)="point(index)" (pointerleave)="point(null)">
