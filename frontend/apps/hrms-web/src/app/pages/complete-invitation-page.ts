@@ -123,7 +123,7 @@ function describeError(error: unknown): string {
       return 'That invitation is no longer valid. Ask whoever invited you to send a new one.';
     }
 
-    if (error.errorCode === 'PASSWORD_REJECTED') {
+    if (['PASSWORD_REJECTED', 'PASSWORD_BREACHED'].includes(error.errorCode)) {
       // The server's own message already explains exactly which rule failed.
       return error.problem.detail ?? 'That password does not meet the policy. Please choose another.';
     }

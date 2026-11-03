@@ -84,7 +84,7 @@ export class ResetPasswordPage {
     } catch (error) {
       if (error instanceof ApiError && error.errorCode === 'PASSWORD_RESET_INVALID') {
         this.expired.set(true);
-      } else if (error instanceof ApiError && error.errorCode === 'PASSWORD_REJECTED') {
+      } else if (error instanceof ApiError && ['PASSWORD_REJECTED', 'PASSWORD_REUSED', 'PASSWORD_BREACHED'].includes(error.errorCode)) {
         // The server's message says which rule failed.
         this.error.set(error.problem.detail ?? 'That password does not meet the policy. Please choose another.');
       } else {
