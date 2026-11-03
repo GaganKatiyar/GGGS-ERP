@@ -14,6 +14,9 @@ public enum TaskType
     ChangeRequest = 6,
     Incident = 7,
     ServiceRequest = 8,
+
+    /// <summary>AI work whose outcome is not known in advance: a hypothesis, a run, a result.</summary>
+    Experiment = 9,
 }
 
 public sealed record TaskDetails(
@@ -100,6 +103,14 @@ public sealed class ProjectTask : TenantAggregateRoot
     public double Rank { get; private set; }
 
     public DateTime? CompletedDate { get; private set; }
+
+    /// <summary>The key it had in the file it was imported from, which stops the same file bringing it in twice.</summary>
+    public string? ExternalKey { get; private set; }
+
+    /// <summary>The dates it had when the project's baseline was set.</summary>
+    public DateOnly? BaselineStartDate { get; private set; }
+
+    public DateOnly? BaselineDueDate { get; private set; }
 
     public bool IsDone => CompletedDate is not null;
 
@@ -202,6 +213,26 @@ public sealed class ProjectTask : TenantAggregateRoot
 
     public void PlanInto(Guid? sprintId) => SprintId = sprintId;
 
+    /// <summary>New dates, as when a bar is dragged on the timeline.</summary>
+    public void Reschedule(DateOnly? startDate, DateOnly? dueDate)
+    {
+        if (startDate is { } start && dueDate is { } due && due < start)
+        {
+            throw new DomainRuleException("PROJECT_TASK_DATES", "The task is due before it starts.");
+        }
+
+        StartDate = startDate;
+        DueDate = dueDate;
+    }
+
+    public void CaptureBaseline()
+    {
+        BaselineStartDate = StartDate;
+        BaselineDueDate = DueDate;
+    }
+
+    public void MarkImported(string? externalKey) => ExternalKey = string.IsNullOrWhiteSpace(externalKey) ? null : Guard.MaxLength(externalKey.Trim(), 100);
+
     /// <summary>Hands the task to someone else, as when its assignee leaves.</summary>
     public void AssignTo(Guid? employeeId) => AssigneeEmployeeId = employeeId;
 
@@ -219,8 +250,8 @@ public static class TaskHierarchy
         (TaskType.Epic, null) => true,
         (TaskType.Epic, _) => false,
         (TaskType.Story, null or TaskType.Epic) => true,
-        (TaskType.Task or TaskType.Bug or TaskType.ChangeRequest or TaskType.Incident or TaskType.ServiceRequest, null or TaskType.Epic or TaskType.Story) => true,
-        (TaskType.Subtask, TaskType.Story or TaskType.Task or TaskType.Bug or TaskType.ChangeRequest or TaskType.Incident or TaskType.ServiceRequest) => true,
+        (TaskType.Task or TaskType.Bug or TaskType.ChangeRequest or TaskType.Incident or TaskType.ServiceRequest or TaskType.Experiment, null or TaskType.Epic or TaskType.Story) => true,
+        (TaskType.Subtask, TaskType.Story or TaskType.Task or TaskType.Bug or TaskType.ChangeRequest or TaskType.Incident or TaskType.ServiceRequest or TaskType.Experiment) => true,
         _ => false,
     };
 

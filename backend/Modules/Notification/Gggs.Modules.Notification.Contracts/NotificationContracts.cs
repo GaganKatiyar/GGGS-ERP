@@ -76,6 +76,10 @@ public static class NotificationTemplates
     public const string ProjectCapAlert = "project.cap-alert";
 
     public const string ProjectSlaBreached = "project.sla-breached";
+
+    public const string ProjectTaskMentioned = "project.task-mentioned";
+
+    public const string ProjectTaskCommented = "project.task-commented";
     public const string InterviewScheduled = "recruitment.interview-scheduled";
     public const string ReferralUpdate = "recruitment.referral-update";
     public const string OnboardingTaskAssigned = "onboarding.task-assigned";

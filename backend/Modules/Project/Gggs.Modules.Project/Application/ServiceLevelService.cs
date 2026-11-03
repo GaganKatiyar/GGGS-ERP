@@ -214,6 +214,17 @@ internal sealed class ServiceLevelService(
         }
     }
 
+    /// <summary>Someone other than whoever raised it has said something: that is a first response.</summary>
+    public async Task OnCommentAsync(ProjectTask task, Guid authorEmployeeId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(task);
+        if (ServiceTickets.IsTicket(task.Type) && authorEmployeeId != task.ReporterEmployeeId)
+        {
+            TicketSla? sla = await dbContext.TicketSlas.FirstOrDefaultAsync(row => row.TaskId == task.Id, cancellationToken);
+            sla?.Respond(Now);
+        }
+    }
+
     public async Task<ServiceLevelView> RespondAsync(Guid projectId, Guid taskId, CancellationToken cancellationToken)
     {
         await access.EnsureAsync(projectId, Permissions.Project.TaskManage, cancellationToken);

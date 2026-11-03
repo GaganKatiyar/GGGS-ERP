@@ -71,6 +71,9 @@ public enum DocumentOwnerType
 
     /// <summary>Held for a project (spec §55); access follows the project's team.</summary>
     Project = 4,
+
+    /// <summary>Attached to a project's task; access follows that task's project.</summary>
+    ProjectTask = 5,
 }
 
 public enum DocumentSource

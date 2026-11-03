@@ -99,6 +99,11 @@ internal sealed class InsightService(
     {
         ProjectEntity project = await access.LoadAsync(projectId, Permissions.Project.Manage, track: true, cancellationToken);
         project.CaptureBaseline(await projects.EstimatedHoursAsync(projectId, cancellationToken), await clock.TodayAsync(cancellationToken));
+        foreach (ProjectTask task in await dbContext.ProjectTasks.Where(row => row.ProjectId == projectId).ToListAsync(cancellationToken))
+        {
+            task.CaptureBaseline();
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
         return (await BaselineAsync(project, cancellationToken))!;
     }

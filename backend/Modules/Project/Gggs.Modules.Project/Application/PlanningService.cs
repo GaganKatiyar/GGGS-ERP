@@ -93,6 +93,7 @@ internal sealed class PlanningService(
     ProjectAccess access,
     ProjectService projects,
     ServiceLevelService serviceLevels,
+    TaskActivityLog activity,
     ITenantClock clock,
     TimeProvider timeProvider)
 {
@@ -274,6 +275,7 @@ internal sealed class PlanningService(
 
         foreach (ProjectTask task in tasks)
         {
+            TaskState before = TaskState.Of(task);
             task.PlanInto(sprint.Id);
 
             // Pulled from the backlog into a sprint, a task is ready to start.
@@ -282,6 +284,8 @@ internal sealed class PlanningService(
                 task.MoveTo(todo, task.Rank, Now);
                 await serviceLevels.SyncAsync(task, cancellationToken);
             }
+
+            await activity.ChangedAsync(before, task, cancellationToken);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -294,7 +298,9 @@ internal sealed class PlanningService(
         Sprint sprint = await FindSprintAsync(projectId, sprintId, cancellationToken);
         ProjectTask task = await dbContext.ProjectTasks.FirstOrDefaultAsync(row => row.Id == taskId && row.SprintId == sprintId, cancellationToken)
             ?? throw new NotFoundException("Task", taskId);
+        TaskState before = TaskState.Of(task);
         task.PlanInto(null);
+        await activity.ChangedAsync(before, task, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return (await ToSprintItemsAsync([sprint], withProject: false, cancellationToken))[0];
     }

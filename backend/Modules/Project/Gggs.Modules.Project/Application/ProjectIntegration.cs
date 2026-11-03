@@ -222,6 +222,8 @@ internal static class ProjectCatalog
         ("UX", "UI/UX Designer", ["User research", "Interaction design"]),
         ("DE", "Data Engineer", ["Data pipelines", "SQL"]),
         ("AI", "AI Engineer", ["Machine learning", "LLM applications"]),
+        ("MLE", "ML Engineer", ["Model training", "MLOps"]),
+        ("AIQA", "AI QA / Evaluation", ["Model evaluation", "Test design"]),
         ("CONSULTANT", "Consultant", ["Consulting"]),
     ];
 }

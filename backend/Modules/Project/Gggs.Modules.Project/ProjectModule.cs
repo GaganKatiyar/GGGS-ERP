@@ -27,6 +27,9 @@ public sealed class ProjectModule : IModule
         services.AddScoped<ProjectAccess>();
         services.AddScoped<ProjectService>();
         services.AddScoped<ServiceLevelService>();
+        services.AddScoped<TaskActivityLog>();
+        services.AddScoped<TaskCollaborationService>();
+        services.AddScoped<TaskViewsService>();
         services.AddScoped<TaskService>();
         services.AddScoped<PlanningService>();
         services.AddScoped<GovernanceService>();
@@ -39,6 +42,7 @@ public sealed class ProjectModule : IModule
         services.AddScoped<IProjectTasks, ProjectTasks>();
         services.AddScoped<IProjectPermissions, ProjectPermissions>();
         services.AddScoped<IDocumentOwnerAccess, ProjectDocumentAccess>();
+        services.AddScoped<IDocumentOwnerAccess, ProjectTaskDocumentAccess>();
         services.AddWorkflowSubject(GovernanceService.ChangeRequestSubject);
     }
 
