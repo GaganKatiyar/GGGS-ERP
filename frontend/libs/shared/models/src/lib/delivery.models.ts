@@ -456,9 +456,147 @@ export interface ColumnInput {
   readonly wipLimit?: number | null;
 }
 
-export type TaskType = 'Epic' | 'Story' | 'Task' | 'Subtask' | 'Bug' | 'ChangeRequest' | 'Incident' | 'ServiceRequest';
+export type TaskType = 'Epic' | 'Story' | 'Task' | 'Subtask' | 'Bug' | 'ChangeRequest' | 'Incident' | 'ServiceRequest' | 'Experiment';
 
-export const TASK_TYPES: readonly TaskType[] = ['Epic', 'Story', 'Task', 'Subtask', 'Bug', 'ChangeRequest', 'Incident', 'ServiceRequest'];
+export const TASK_TYPES: readonly TaskType[] = ['Epic', 'Story', 'Task', 'Subtask', 'Bug', 'ChangeRequest', 'Incident', 'ServiceRequest', 'Experiment'];
+
+export interface MentionablePerson {
+  readonly employeeId: string;
+  readonly name: string;
+}
+
+export interface TaskComment {
+  readonly id: string;
+  readonly authorEmployeeId: string;
+  readonly authorName?: string;
+  readonly body: string;
+  readonly postedAt: string;
+  readonly editedAt?: string;
+  readonly canEdit: boolean;
+  readonly canDelete: boolean;
+}
+
+export interface ActivityEntry {
+  readonly id: string;
+  readonly field: string;
+  readonly oldValue?: string;
+  readonly newValue?: string;
+  readonly actorName?: string;
+  readonly at: string;
+}
+
+export interface TaskConversationView {
+  readonly comments: readonly TaskComment[];
+  readonly activity: readonly ActivityEntry[];
+  readonly watchers: readonly { readonly employeeId: string; readonly name?: string }[];
+  readonly people: readonly MentionablePerson[];
+  readonly isWatching: boolean;
+  readonly canComment: boolean;
+  readonly canAttach: boolean;
+}
+
+export interface TaskViewFilters {
+  readonly search?: string | null;
+  readonly type?: TaskType | null;
+  readonly assigneeEmployeeId?: string | null;
+  readonly unassigned?: boolean | null;
+  readonly priority?: WorkPriority | null;
+  readonly sprintId?: string | null;
+  readonly backlog?: boolean | null;
+  readonly overdue?: boolean | null;
+  readonly includeDone?: boolean | null;
+}
+
+export interface SavedTaskView {
+  readonly id: string;
+  readonly name: string;
+  readonly filters: TaskViewFilters;
+  readonly isShared: boolean;
+  readonly canDelete: boolean;
+}
+
+export interface BulkTaskInput {
+  readonly taskIds: readonly string[];
+  readonly columnId?: string | null;
+  readonly assigneeEmployeeId?: string | null;
+  readonly clearAssignee?: boolean;
+  readonly priority?: WorkPriority | null;
+  readonly sprintId?: string | null;
+  readonly clearSprint?: boolean;
+  readonly dueDate?: string | null;
+}
+
+export interface TaskImportRow {
+  readonly line: number;
+  readonly key?: string;
+  readonly title: string;
+  readonly type: TaskType;
+  readonly priority: WorkPriority;
+  readonly assigneeName?: string;
+  readonly columnName: string;
+  readonly parentKey?: string;
+  readonly dueDate?: string;
+  readonly alreadyImported: boolean;
+  readonly warnings: readonly string[];
+  readonly errors: readonly string[];
+}
+
+export interface TaskImportPreview {
+  readonly rows: readonly TaskImportRow[];
+  readonly willCreate: number;
+  readonly alreadyImported: number;
+  readonly withErrors: number;
+}
+
+export interface GanttTaskRow {
+  readonly id: string;
+  readonly code: string;
+  readonly title: string;
+  readonly type: TaskType;
+  readonly parentTaskId?: string;
+  readonly assigneeName?: string;
+  readonly startDate?: string;
+  readonly dueDate?: string;
+  readonly baselineStartDate?: string;
+  readonly baselineDueDate?: string;
+  readonly progress: number;
+  readonly isDone: boolean;
+  readonly isOverdue: boolean;
+}
+
+export interface GanttView {
+  readonly projectStart: string;
+  readonly projectEnd: string;
+  readonly baselinedOn?: string;
+  readonly baselineEndDate?: string;
+  readonly today: string;
+  readonly tasks: readonly GanttTaskRow[];
+  readonly dependencies: readonly {
+    readonly id: string;
+    readonly predecessorTaskId: string;
+    readonly successorTaskId: string;
+    readonly type: DependencyType;
+    readonly lagDays: number;
+  }[];
+  readonly milestones: readonly { readonly id: string; readonly name: string; readonly plannedDate: string; readonly actualDate?: string; readonly status: string }[];
+  readonly truncated: boolean;
+  readonly canEdit: boolean;
+}
+
+export interface ProjectWorkload {
+  readonly weeks: readonly string[];
+  readonly people: readonly {
+    readonly employeeId: string;
+    readonly employeeName?: string;
+    readonly openTasks: number;
+    readonly overdue: number;
+    readonly unestimated: number;
+    readonly remainingHours: number;
+    readonly unscheduledHours: number;
+    readonly weeks: readonly { readonly weekStart: string; readonly plannedHours: number; readonly capacityHours: number }[];
+  }[];
+  readonly unassignedTasks: number;
+}
 
 export type SlaWeekday = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 
@@ -559,6 +697,7 @@ export const TASK_TYPE_ICONS: Readonly<Record<TaskType, string>> = {
   ChangeRequest: 'pi pi-arrow-right-arrow-left',
   Incident: 'pi pi-exclamation-triangle',
   ServiceRequest: 'pi pi-inbox',
+  Experiment: 'pi pi-sparkles',
 };
 
 export interface ProjectTask {

@@ -23,7 +23,10 @@ import { SettingsTab } from './settings-tab';
 import { SprintsTab } from './sprints-tab';
 import { TasksTab } from './tasks-tab';
 import { TeamTab } from './team-tab';
+import { BacklogTab } from './backlog-tab';
+import { GanttTab } from './gantt-tab';
 import { ServiceTab } from './service-tab';
+import { WorkloadTab } from './workload-tab';
 import { ProjectTimesheetsTab } from './timesheets-tab';
 
 const TABS: readonly TabItem[] = [
@@ -31,9 +34,12 @@ const TABS: readonly TabItem[] = [
   { key: 'tasks', label: 'Tasks' },
   { key: 'board', label: 'Board' },
   { key: 'service', label: 'Service' },
+  { key: 'backlog', label: 'Backlog' },
   { key: 'sprints', label: 'Sprints' },
+  { key: 'gantt', label: 'Gantt' },
   { key: 'plan', label: 'Phases & milestones' },
   { key: 'team', label: 'Team' },
+  { key: 'workload', label: 'Workload' },
   { key: 'timesheets', label: 'Timesheets' },
   { key: 'requirements', label: 'Requirements' },
   { key: 'changes', label: 'Change requests' },
@@ -54,6 +60,9 @@ const TABS: readonly TabItem[] = [
     PageHeader,
     ProjectTimesheetsTab,
     ServiceTab,
+    BacklogTab,
+    GanttTab,
+    WorkloadTab,
     Tabs,
     StatusBadge,
     Skeleton,
@@ -170,6 +179,15 @@ const TABS: readonly TabItem[] = [
           }
           @case ('service') {
             <gggs-service-tab [projectId]="d.project.id" />
+          }
+          @case ('backlog') {
+            <gggs-backlog-tab [projectId]="d.project.id" />
+          }
+          @case ('gantt') {
+            <gggs-gantt-tab [projectId]="d.project.id" />
+          }
+          @case ('workload') {
+            <gggs-workload-tab [projectId]="d.project.id" />
           }
           @case ('financials') {
             <gggs-financials-tab [projectId]="d.project.id" />

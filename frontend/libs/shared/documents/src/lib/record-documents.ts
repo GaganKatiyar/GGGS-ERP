@@ -119,7 +119,7 @@ const message = (error: unknown, fallback: string) => (error instanceof Error &&
 export class RecordDocuments {
   private readonly api = inject(DocumentsApi);
 
-  readonly ownerType = input.required<'Client' | 'Project'>();
+  readonly ownerType = input.required<'Client' | 'Project' | 'ProjectTask'>();
   readonly ownerId = input.required<string>();
   readonly canUpload = input(false);
 
@@ -146,7 +146,7 @@ export class RecordDocuments {
   });
 
   protected readonly emptyHint = computed(() =>
-    this.ownerType() === 'Project' ? 'Keep the SOW, requirements, designs, test plans and sign-offs here.' : 'Keep signed agreements, NDAs and purchase orders here.',
+    this.ownerType() === 'ProjectTask' ? 'Attach designs, evaluation results and anything else this task needs.' : this.ownerType() === 'Project' ? 'Keep the SOW, requirements, designs, test plans and sign-offs here.' : 'Keep signed agreements, NDAs and purchase orders here.',
   );
 
   constructor() {

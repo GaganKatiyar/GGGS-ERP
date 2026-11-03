@@ -2,7 +2,14 @@ import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type {
   BoardView,
+  BulkTaskInput,
   BurndownPoint,
+  GanttView,
+  ProjectWorkload,
+  SavedTaskView,
+  TaskConversationView,
+  TaskImportPreview,
+  TaskViewFilters,
   ServiceLevelRow,
   ServiceLevelView,
   SlaPolicy,
@@ -60,6 +67,7 @@ import type {
   SprintStatus,
   TaskInput,
   TaskType,
+  WorkPriority,
   TeamMember,
   TeamMemberInput,
   BoardColumn,
@@ -181,6 +189,9 @@ export interface ProjectQuery {
 export interface TaskQuery {
   readonly type?: TaskType | '';
   readonly assigneeEmployeeId?: string | null;
+  readonly unassigned?: boolean;
+  readonly priority?: WorkPriority | '';
+  readonly overdue?: boolean;
   readonly sprintId?: string | null;
   readonly backlog?: boolean;
   readonly milestoneId?: string | null;
@@ -198,6 +209,66 @@ export interface TaskQuery {
 export class ProjectsApi {
   private readonly http = inject(HttpClient);
   private readonly base = '/api/v1/projects';
+
+  // The talk around a task
+  taskConversation(id: string, taskId: string): Promise<TaskConversationView> {
+    return firstValueFrom(this.http.get<TaskConversationView>(`${this.base}/${id}/tasks/${taskId}/conversation`));
+  }
+
+  addTaskComment(id: string, taskId: string, body: string, mentionedEmployeeIds: readonly string[]): Promise<TaskConversationView> {
+    return firstValueFrom(this.http.post<TaskConversationView>(`${this.base}/${id}/tasks/${taskId}/comments`, { body, mentionedEmployeeIds }));
+  }
+
+  editTaskComment(id: string, taskId: string, commentId: string, body: string): Promise<TaskConversationView> {
+    return firstValueFrom(this.http.put<TaskConversationView>(`${this.base}/${id}/tasks/${taskId}/comments/${commentId}`, { body }));
+  }
+
+  deleteTaskComment(id: string, taskId: string, commentId: string): Promise<TaskConversationView> {
+    return firstValueFrom(this.http.delete<TaskConversationView>(`${this.base}/${id}/tasks/${taskId}/comments/${commentId}`));
+  }
+
+  watchTask(id: string, taskId: string, on: boolean): Promise<TaskConversationView> {
+    const url = `${this.base}/${id}/tasks/${taskId}/watch`;
+    return firstValueFrom(on ? this.http.post<TaskConversationView>(url, {}) : this.http.delete<TaskConversationView>(url));
+  }
+
+  // Working on many tasks
+  bulkUpdateTasks(id: string, body: BulkTaskInput): Promise<{ readonly updated: number }> {
+    return firstValueFrom(this.http.post<{ readonly updated: number }>(`${this.base}/${id}/tasks/bulk`, body));
+  }
+
+  previewTaskImport(id: string, csv: string): Promise<TaskImportPreview> {
+    return firstValueFrom(this.http.post<TaskImportPreview>(`${this.base}/${id}/tasks/import/preview`, { csv }));
+  }
+
+  importTasks(id: string, csv: string): Promise<{ readonly created: number }> {
+    return firstValueFrom(this.http.post<{ readonly created: number }>(`${this.base}/${id}/tasks/import`, { csv }));
+  }
+
+  taskViews(id: string): Promise<readonly SavedTaskView[]> {
+    return firstValueFrom(this.http.get<readonly SavedTaskView[]>(`${this.base}/${id}/task-views`));
+  }
+
+  saveTaskView(id: string, name: string, filters: TaskViewFilters, shared: boolean): Promise<readonly SavedTaskView[]> {
+    return firstValueFrom(this.http.post<readonly SavedTaskView[]>(`${this.base}/${id}/task-views`, { name, filters, shared }));
+  }
+
+  deleteTaskView(id: string, viewId: string): Promise<readonly SavedTaskView[]> {
+    return firstValueFrom(this.http.delete<readonly SavedTaskView[]>(`${this.base}/${id}/task-views/${viewId}`));
+  }
+
+  // Seeing the project over time and by person
+  gantt(id: string): Promise<GanttView> {
+    return firstValueFrom(this.http.get<GanttView>(`${this.base}/${id}/gantt`));
+  }
+
+  scheduleTask(id: string, taskId: string, startDate: string | null, dueDate: string | null): Promise<ProjectTask> {
+    return firstValueFrom(this.http.post<ProjectTask>(`${this.base}/${id}/tasks/${taskId}/schedule`, { startDate, dueDate }));
+  }
+
+  workload(id: string): Promise<ProjectWorkload> {
+    return firstValueFrom(this.http.get<ProjectWorkload>(`${this.base}/${id}/workload`));
+  }
 
   // Service levels
   serviceLevels(id: string, month: string): Promise<ServiceLevelView> {

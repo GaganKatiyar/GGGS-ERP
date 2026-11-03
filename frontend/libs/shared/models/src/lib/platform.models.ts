@@ -191,7 +191,7 @@ export interface NotificationTemplate {
 
 export type DocumentCategory = 'Identity' | 'Education' | 'Employment' | 'Letter' | 'Policy' | 'Contract' | 'Other' | 'Project';
 
-export type DocumentOwnerType = 'Employee' | 'Organization' | 'Client' | 'Project';
+export type DocumentOwnerType = 'Employee' | 'Organization' | 'Client' | 'Project' | 'ProjectTask';
 
 export interface DocumentTypeItem {
   readonly id: string;
