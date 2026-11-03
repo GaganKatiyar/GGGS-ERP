@@ -81,7 +81,7 @@ export interface ContactInput {
 // ----- Contracts -----------------------------------------------------------------------------
 
 export type ContractType = 'Msa' | 'Sow' | 'PurchaseOrder' | 'Sla' | 'Retainer' | 'TimeAndMaterial';
-export type BillingModel = 'FixedPrice' | 'TimeAndMaterial' | 'Milestone' | 'Retainer' | 'NonBillable' | 'DedicatedTeam' | 'ManagedService';
+export type BillingModel = 'FixedPrice' | 'TimeAndMaterial' | 'Milestone' | 'Retainer' | 'NonBillable' | 'DedicatedTeam' | 'ManagedService' | 'OutcomeBased';
 export type ContractStatus = 'Draft' | 'PendingApproval' | 'Active' | 'Expired' | 'Terminated';
 
 export const CONTRACT_TYPE_LABELS: Readonly<Record<ContractType, string>> = {
@@ -101,6 +101,7 @@ export const BILLING_MODEL_LABELS: Readonly<Record<BillingModel, string>> = {
   NonBillable: 'Non-billable',
   DedicatedTeam: 'Dedicated team',
   ManagedService: 'Managed service',
+  OutcomeBased: 'Outcome based',
 };
 
 export interface ContractItem {
@@ -485,11 +486,31 @@ export interface ActivityEntry {
   readonly at: string;
 }
 
+export interface CodeLink {
+  readonly provider: string;
+  readonly kind: 'Commit' | 'PullRequest';
+  readonly externalId: string;
+  readonly title: string;
+  readonly url?: string;
+  readonly author?: string;
+  readonly state?: string;
+  readonly occurredAt: string;
+}
+
+export interface CodeLinkSetup {
+  readonly connectionId: string;
+  readonly name: string;
+  readonly adapterKey: string;
+  readonly isActive: boolean;
+  readonly webhookPath: string;
+}
+
 export interface TaskConversationView {
   readonly comments: readonly TaskComment[];
   readonly activity: readonly ActivityEntry[];
   readonly watchers: readonly { readonly employeeId: string; readonly name?: string }[];
   readonly people: readonly MentionablePerson[];
+  readonly codeLinks: readonly CodeLink[];
   readonly isWatching: boolean;
   readonly canComment: boolean;
   readonly canAttach: boolean;

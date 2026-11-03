@@ -372,6 +372,7 @@ export const NAVIGATION: readonly NavItem[] = [
       { label: 'Sprints', icon: 'pi pi-replay', route: '/projects/sprints', permissions: ['project.sprint.view'] },
       { label: 'Change requests', icon: 'pi pi-arrow-right-arrow-left', route: '/projects/change-requests', permissions: ['project.change-request.view'] },
       { label: 'RAID log', icon: 'pi pi-exclamation-triangle', route: '/projects/raid', permissions: ['project.raid.view'] },
+      { label: 'Portfolio', icon: 'pi pi-chart-bar', route: '/projects/portfolio', permissions: ['project.financials.view'], feature: 'ProjectFinancials' },
       { label: 'Financials', icon: 'pi pi-money-bill', route: '/projects/financials', permissions: ['project.financials.view'], feature: 'ProjectFinancials' },
       { label: 'Billing', icon: 'pi pi-file-edit', route: '/projects/billing', permissions: ['project.financials.view'], feature: 'ProjectFinancials' },
       { label: 'Service levels', icon: 'pi pi-stopwatch', route: '/projects/service-levels', permissions: ['project.task.view'] },

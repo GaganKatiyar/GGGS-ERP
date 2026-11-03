@@ -205,6 +205,7 @@ describe('filterNavigation', () => {
       '/projects/sprints',
       '/projects/change-requests',
       '/projects/raid',
+      '/projects/portfolio',
       '/projects/financials',
       '/projects/billing',
       '/projects/service-levels',

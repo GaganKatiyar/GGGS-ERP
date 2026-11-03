@@ -5,6 +5,7 @@ import { ProjectsApi } from '@gggs/shared/delivery';
 import type { DefaultProjectRow, ProjectHealthThresholds, ProjectRole, ProjectTemplate } from '@gggs/shared/models';
 import { BILLING_MODEL_LABELS } from '@gggs/shared/models';
 import { FormDialog, PageHeader, StatusBadge } from '@gggs/shared/ui';
+import { CodeLinkSetupPanel } from './code-link-setup';
 import { activitiesToText, columnsToText, phasesToText, textToActivities, textToColumns, textToPhases } from './template-text';
 
 type Thresholds = { -readonly [K in keyof ProjectHealthThresholds]: ProjectHealthThresholds[K] };
@@ -18,7 +19,7 @@ interface ThresholdField {
 /** Default projects, project roles (spec §42) and the health thresholds every project is judged by (spec §78). */
 @Component({
   selector: 'gggs-project-settings-page',
-  imports: [RouterLink, PageHeader, StatusBadge, FormDialog],
+  imports: [RouterLink, PageHeader, StatusBadge, FormDialog, CodeLinkSetupPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <gggs-page-header title="Project settings" subtitle="Where each department books its time, the roles people play on projects, and how project health is judged.">
@@ -92,6 +93,8 @@ interface ThresholdField {
         </table>
       </div>
     </section>
+
+    <gggs-code-link-setup />
 
     <div class="settings">
       <section class="panel stack">

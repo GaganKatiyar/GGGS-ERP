@@ -9,6 +9,7 @@ import { COST_CATEGORIES, humanize } from '@gggs/shared/models';
 import { MoneyPipe, ProjectFinancialsApi } from '@gggs/shared/money';
 import { Chart, FormDialog, KpiCard, localIsoDate, Skeleton, StatusBadge } from '@gggs/shared/ui';
 import { CreditNoteDialog } from './credit-note-dialog';
+import { OutcomeUnitsPanel } from './outcome-units-panel';
 import { PrepareInvoiceDialog } from './prepare-invoice-dialog';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
@@ -22,7 +23,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
  */
 @Component({
   selector: 'gggs-financials-tab',
-  imports: [DatePipe, DecimalPipe, FormsModule, MoneyPipe, KpiCard, Chart, StatusBadge, Skeleton, FormDialog, EmployeeSelect, PrepareInvoiceDialog, CreditNoteDialog],
+  imports: [DatePipe, DecimalPipe, FormsModule, MoneyPipe, KpiCard, Chart, StatusBadge, Skeleton, FormDialog, EmployeeSelect, PrepareInvoiceDialog, CreditNoteDialog, OutcomeUnitsPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (finance(); as f) {
@@ -38,6 +39,9 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
           }
           @if (f.summary.poBalance !== undefined) {
             <gggs-kpi-card label="PO balance" [value]="f.summary.poBalance | gggsMoney: f.currency" [hint]="f.terms?.poNumber ?? 'after invoices'" />
+          }
+          @if (f.billingType === 'OutcomeBased') {
+            <gggs-kpi-card [label]="'Cost per ' + (f.terms?.unitName || 'unit')" [value]="f.summary.costPerUnit !== undefined ? (f.summary.costPerUnit | gggsMoney: f.currency) : 'None yet'" [hint]="(f.summary.acceptedUnits ?? 0 | number: '1.0-2') + ' accepted'" />
           }
           @if (f.summary.costPerStoryPoint !== undefined) {
             <gggs-kpi-card label="Cost per story point" [value]="f.summary.costPerStoryPoint | gggsMoney: f.currency" [hint]="f.summary.costPerDoneTask !== undefined ? (f.summary.costPerDoneTask | gggsMoney: f.currency) + ' per finished task' : ''" />
@@ -146,6 +150,10 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
             </table>
           </section>
         </div>
+
+        @if (f.billingType === 'OutcomeBased') {
+          <gggs-outcome-units-panel [projectId]="projectId()" [currency]="f.currency" [terms]="f.terms" [canManage]="f.canManage" (changed)="load(projectId())" />
+        }
 
         <section class="panel stack">
           <div class="toolbar">
@@ -307,6 +315,20 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
             <label class="field">
               <span class="field__label">Rate for hours over the bucket</span>
               <input type="number" min="0" [value]="overageRate() ?? ''" (input)="overageRate.set(optionalNumber($any($event.target).value))" />
+            </label>
+          }
+          @if (finance()?.billingType === 'OutcomeBased') {
+            <label class="field">
+              <span class="field__label">What one unit is</span>
+              <input type="text" maxlength="60" placeholder="release" [value]="unitName()" (input)="unitName.set($any($event.target).value)" />
+            </label>
+            <label class="field">
+              <span class="field__label">Price per unit</span>
+              <input type="number" min="0" [value]="unitPrice() ?? ''" (input)="unitPrice.set(optionalNumber($any($event.target).value))" />
+            </label>
+            <label class="field">
+              <span class="field__label">Units the contract expects <span class="muted">(for the forecast)</span></span>
+              <input type="number" min="0" [value]="targetUnits() ?? ''" (input)="targetUnits.set(optionalNumber($any($event.target).value))" />
             </label>
           }
           @if (finance()?.billingType === 'Milestone') {
@@ -546,6 +568,9 @@ export class FinancialsTab {
   protected readonly includedHours = signal<number | null>(null);
   protected readonly rolloverPercent = signal(0);
   protected readonly overageRate = signal<number | null>(null);
+  protected readonly unitName = signal('');
+  protected readonly unitPrice = signal<number | null>(null);
+  protected readonly targetUnits = signal<number | null>(null);
   protected readonly optionalNumber = (value: string): number | null => (value === '' ? null : Number(value));
   protected readonly costLabel = (category: CostCategory): string => (category === 'AiUsage' ? 'AI usage' : category);
   protected readonly humanize = humanize;
@@ -633,6 +658,9 @@ export class FinancialsTab {
     this.includedHours.set(finance.terms?.includedHoursPerMonth ?? null);
     this.rolloverPercent.set(finance.terms?.rolloverPercent ?? 0);
     this.overageRate.set(finance.terms?.overageRate ?? null);
+    this.unitName.set(finance.terms?.unitName ?? '');
+    this.unitPrice.set(finance.terms?.unitPrice ?? null);
+    this.targetUnits.set(finance.terms?.targetUnits ?? null);
     this.milestoneAmounts.set(Object.fromEntries(finance.milestones.filter((milestone) => milestone.amount !== undefined).map((milestone) => [milestone.milestoneId, milestone.amount ?? 0])));
     this.show('terms');
   }
@@ -748,6 +776,9 @@ export class FinancialsTab {
                 includedHoursPerMonth: this.includedHours(),
                 rolloverPercent: this.rolloverPercent(),
                 overageRate: this.overageRate(),
+                unitName: this.unitName().trim() || null,
+                unitPrice: this.unitPrice(),
+                targetUnits: this.targetUnits(),
               },
             }),
           );

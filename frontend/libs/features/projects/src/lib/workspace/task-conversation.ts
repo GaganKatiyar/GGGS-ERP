@@ -6,7 +6,7 @@ import { RecordDocuments } from '@gggs/shared/documents';
 import type { ActivityEntry, TaskComment, TaskConversationView } from '@gggs/shared/models';
 import { describeActivity, insertMention, matchingPeople, mentionAt, mentionedIn } from './mention-text';
 
-type Pane = 'comments' | 'history' | 'files';
+type Pane = 'comments' | 'history' | 'files' | 'code';
 
 /** The talk around a task: comments with @mentions, who is watching, its files and everything that has changed. */
 @Component({
@@ -19,6 +19,7 @@ type Pane = 'comments' | 'history' | 'files';
         <button type="button" role="tab" class="talk__tab" [class.talk__tab--on]="pane() === 'comments'" [attr.aria-selected]="pane() === 'comments'" (click)="pane.set('comments')">Comments ({{ view()?.comments?.length ?? 0 }})</button>
         <button type="button" role="tab" class="talk__tab" [class.talk__tab--on]="pane() === 'history'" [attr.aria-selected]="pane() === 'history'" (click)="pane.set('history')">History</button>
         <button type="button" role="tab" class="talk__tab" [class.talk__tab--on]="pane() === 'files'" [attr.aria-selected]="pane() === 'files'" (click)="pane.set('files')">Files</button>
+        <button type="button" role="tab" class="talk__tab" [class.talk__tab--on]="pane() === 'code'" [attr.aria-selected]="pane() === 'code'" (click)="pane.set('code')">Code ({{ view()?.codeLinks?.length ?? 0 }})</button>
         <span class="talk__spacer"></span>
         @if (view(); as v) {
           <span class="muted talk__small" [title]="watcherNames()">{{ v.watchers.length }} watching</span>
@@ -82,6 +83,21 @@ type Pane = 'comments' | 'history' | 'files';
             <p class="talk__line"><strong>{{ entry.actorName ?? 'Someone' }}</strong> {{ line(entry) }} <span class="muted talk__small">{{ entry.at | date: 'd MMM y, HH:mm' }}</span></p>
           } @empty {
             <p class="muted talk__small">Nothing recorded yet. Changes made from now on appear here.</p>
+          }
+        }
+        @case ('code') {
+          @for (link of view()?.codeLinks ?? []; track link.provider + link.kind + link.externalId) {
+            <p class="talk__line">
+              <i [class]="link.kind === 'PullRequest' ? 'pi pi-arrow-right-arrow-left' : 'pi pi-code'" aria-hidden="true"></i>
+              @if (link.url) {
+                <a [href]="link.url" target="_blank" rel="noopener noreferrer">{{ link.title }}</a>
+              } @else {
+                {{ link.title }}
+              }
+              <span class="muted talk__small">{{ link.kind === 'PullRequest' ? 'Pull request' : 'Commit' }}{{ link.state ? ', ' + link.state : '' }}{{ link.author ? ', ' + link.author : '' }}, {{ link.occurredAt | date: 'd MMM y' }}</span>
+            </p>
+          } @empty {
+            <p class="muted talk__small">Commits and pull requests that name this task's code appear here, once a code host is connected.</p>
           }
         }
         @case ('files') {
@@ -153,6 +169,11 @@ type Pane = 'comments' | 'history' | 'files';
     .talk__line {
       margin: 0;
       padding-block: var(--gggs-space-1);
+    }
+
+    .talk__line a,
+    .talk__line .talk__small {
+      margin-inline-start: var(--gggs-space-1);
     }
 
     .talk__new {

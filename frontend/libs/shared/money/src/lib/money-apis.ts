@@ -13,6 +13,8 @@ import type {
   ComponentItem,
   CostCategory,
   CreditNote,
+  OutcomeUnits,
+  PortfolioDashboard,
   CycleItem,
   DeclarationInput,
   DeclarationRow,
@@ -575,6 +577,22 @@ export class ProjectFinancialsApi {
 
   invoicePaid(id: string, invoiceId: string, paidOn: string): Promise<FinanceInvoice> {
     return firstValueFrom(this.http.post<FinanceInvoice>(`${this.base}/${id}/invoices/${invoiceId}/paid`, { paidOn }));
+  }
+
+  portfolioDashboard(): Promise<PortfolioDashboard> {
+    return firstValueFrom(this.http.get<PortfolioDashboard>(`${this.base}/portfolio/dashboard`));
+  }
+
+  outcomeUnits(id: string): Promise<readonly OutcomeUnits[]> {
+    return firstValueFrom(this.http.get<readonly OutcomeUnits[]>(`${this.base}/${id}/outcome-units`));
+  }
+
+  acceptOutcomeUnits(id: string, body: { acceptedOn: string; quantity: number; reference: string; acceptedBy: string; evidence?: string | null }): Promise<readonly OutcomeUnits[]> {
+    return firstValueFrom(this.http.post<readonly OutcomeUnits[]>(`${this.base}/${id}/outcome-units`, body));
+  }
+
+  removeOutcomeUnits(id: string, unitsId: string): Promise<readonly OutcomeUnits[]> {
+    return firstValueFrom(this.http.delete<readonly OutcomeUnits[]>(`${this.base}/${id}/outcome-units/${unitsId}`));
   }
 
   billingPreview(id: string, from: string, to: string): Promise<BillingPreview> {

@@ -836,7 +836,54 @@ export interface TotalRewards {
 
 export type CostCategory = 'Labour' | 'Vendor' | 'Expense' | 'Infrastructure' | 'Other' | 'AiUsage';
 export type InvoiceStatus = 'Draft' | 'PendingApproval' | 'Sent' | 'Paid' | 'Cancelled';
-export type InvoiceLineKind = 'Hours' | 'Milestone' | 'MonthlyFee' | 'Overage' | 'Seat' | 'Progress' | 'ServiceCredit';
+export type InvoiceLineKind = 'Hours' | 'Milestone' | 'MonthlyFee' | 'Overage' | 'Seat' | 'Progress' | 'ServiceCredit' | 'Outcome';
+
+export interface OutcomeUnits {
+  readonly id: string;
+  readonly acceptedOn: string;
+  readonly quantity: number;
+  readonly unitPrice: number;
+  readonly amount: number;
+  readonly reference: string;
+  readonly acceptedBy: string;
+  readonly evidence?: string;
+  readonly isBilled: boolean;
+}
+
+export interface RollupRow {
+  readonly label: string;
+  readonly projects: number;
+  readonly revenue: number;
+  readonly cost: number;
+  readonly margin: number;
+  readonly marginPercent?: number;
+  readonly forecastRevenue: number;
+  readonly unbilled: number;
+}
+
+export interface CurrencyPortfolio {
+  readonly currency: string;
+  readonly totals: RollupRow;
+  readonly byModel: readonly RollupRow[];
+  readonly byClient: readonly RollupRow[];
+  readonly byDepartment: readonly RollupRow[];
+  readonly forecast: readonly { readonly month: string; readonly revenue: number }[];
+  readonly forecastLater: number;
+  readonly watch: readonly {
+    readonly projectId: string;
+    readonly code: string;
+    readonly name: string;
+    readonly health: string;
+    readonly margin: number;
+    readonly marginPercent?: number;
+    readonly unbilled: number;
+  }[];
+}
+
+export interface PortfolioDashboard {
+  readonly health: { readonly green: number; readonly amber: number; readonly red: number; readonly notAssessed: number };
+  readonly currencies: readonly CurrencyPortfolio[];
+}
 export const COST_CATEGORIES: readonly CostCategory[] = ['Labour', 'Vendor', 'Expense', 'Infrastructure', 'Other'];
 
 /** What an engagement's contract says beyond its value. */
@@ -847,6 +894,9 @@ export interface CommercialTerms {
   readonly includedHoursPerMonth?: number | null;
   readonly rolloverPercent: number;
   readonly overageRate?: number | null;
+  readonly unitName?: string | null;
+  readonly unitPrice?: number | null;
+  readonly targetUnits?: number | null;
 }
 
 /** One month of a retainer or managed service. */
@@ -871,6 +921,8 @@ export interface FinanceSummary {
   readonly unpricedSeats: number;
   readonly costPerDoneTask?: number;
   readonly costPerStoryPoint?: number;
+  readonly acceptedUnits?: number;
+  readonly costPerUnit?: number;
   readonly contractValue: number;
   readonly revenue: number;
   readonly billed: number;

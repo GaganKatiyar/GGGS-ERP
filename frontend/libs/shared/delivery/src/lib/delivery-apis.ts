@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import type {
   BoardView,
   BulkTaskInput,
+  CodeLinkSetup,
   BurndownPoint,
   GanttView,
   ProjectWorkload,
@@ -209,6 +210,10 @@ export interface TaskQuery {
 export class ProjectsApi {
   private readonly http = inject(HttpClient);
   private readonly base = '/api/v1/projects';
+
+  codeLinkSetup(): Promise<readonly CodeLinkSetup[]> {
+    return firstValueFrom(this.http.get<readonly CodeLinkSetup[]>(`${this.base}/code-links/setup`));
+  }
 
   // The talk around a task
   taskConversation(id: string, taskId: string): Promise<TaskConversationView> {
