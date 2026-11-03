@@ -2,19 +2,20 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { ApiError } from '@gggs/core/http';
 import { PreferencesApi } from '@gggs/shared/notifications';
 import { EmptyState, PageHeader, Skeleton, Tabs, type TabItem } from '@gggs/shared/ui';
+import { ChangePasswordPanel } from './change-password-panel';
 import { changedChoices, isSwitchedOff, moduleList, moduleName, toRows, type PreferenceRow } from './preferences-model';
 
 /**
- * My preferences: which notifications reach me by email and in the app, and my time zone. The
- * events are the organisation's active notifications, in its own wording; account and legal
- * notices are always sent and shown locked.
+ * My preferences: which notifications reach me by email and in the app, my time zone and my
+ * password. The events are the organisation's active notifications, in its own wording; account
+ * and legal notices are always sent and shown locked.
  */
 @Component({
   selector: 'gggs-preferences-page',
-  imports: [PageHeader, Skeleton, EmptyState, Tabs],
+  imports: [PageHeader, Skeleton, EmptyState, Tabs, ChangePasswordPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <gggs-page-header title="My preferences" subtitle="Choose how Nuts and Bolts keeps you informed." />
+    <gggs-page-header title="My preferences" subtitle="Your notifications, time zone and password." />
     <gggs-tabs [tabs]="tabs" [(selected)]="tab" />
 
     @if (tab() === 'notifications') {
@@ -106,6 +107,8 @@ import { changedChoices, isSwitchedOff, moduleList, moduleName, toRows, type Pre
           </div>
         }
       }
+    } @else if (tab() === 'password') {
+      <gggs-change-password-panel />
     } @else {
       <section class="elevated zone" aria-labelledby="zone-heading">
         <h2 id="zone-heading">Time zone</h2>
@@ -166,6 +169,7 @@ export class PreferencesPage {
   protected readonly tabs: readonly TabItem[] = [
     { key: 'notifications', label: 'Notifications' },
     { key: 'time', label: 'Date and time' },
+    { key: 'password', label: 'Password' },
   ];
   protected readonly tab = signal('notifications');
   protected readonly loading = signal(true);

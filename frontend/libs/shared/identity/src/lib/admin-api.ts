@@ -129,6 +129,11 @@ export class AdminApi {
     return firstValueFrom(this.http.post<void>('/api/v1/auth/forgot-password', request));
   }
 
+  /** This browser stays signed in; every other sign-in on the account ends. */
+  changeOwnPassword(request: { readonly currentPassword: string; readonly newPassword: string }): Promise<void> {
+    return firstValueFrom(this.http.post<void>('/api/v1/users/me/password', request));
+  }
+
   resetPassword(request: CompleteInvitationRequest): Promise<void> {
     return firstValueFrom(this.http.post<void>('/api/v1/auth/reset-password', request));
   }

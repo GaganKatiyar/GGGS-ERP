@@ -120,7 +120,7 @@ export const appRoutes: Route[] = [
           import('@gggs/features/approvals').then((m) => m.APPROVALS_ROUTES),
       },
       {
-        // The signed-in person's own settings: notification channels and time zone.
+        // The signed-in person's own settings: notification channels, time zone and password.
         path: 'me/preferences',
         ...withPermissions(['notification.inbox.view']),
         loadComponent: () =>
