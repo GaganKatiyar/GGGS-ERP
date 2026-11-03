@@ -141,6 +141,10 @@ public sealed class AccountTests(PeopleOsApiFactory factory)
     {
         using HttpClient admin = await factory.CreateAdminClientAsync();
         (Guid connection, string name) = await NamedConnectionAsync(admin, fail: true);
+
+        // Hires still queued from earlier tests would each get an account on this failing connection,
+        // and a retry pass takes only the 50 that have waited longest, so this one might not be reached.
+        await factory.DeliverEventsAsync();
         await SwitchAsync(admin, connection, onHire: true, onExit: true);
         try
         {
