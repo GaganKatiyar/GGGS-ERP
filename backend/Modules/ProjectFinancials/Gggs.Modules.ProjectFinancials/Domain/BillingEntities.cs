@@ -13,6 +13,9 @@ public enum InvoiceLineKind
     Overage = 4,
     Seat = 5,
     Progress = 6,
+
+    /// <summary>Money given back for SLA breaches, so its amount is negative.</summary>
+    ServiceCredit = 7,
 }
 
 /// <summary>

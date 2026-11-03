@@ -12,6 +12,8 @@ public enum TaskType
     Subtask = 4,
     Bug = 5,
     ChangeRequest = 6,
+    Incident = 7,
+    ServiceRequest = 8,
 }
 
 public sealed record TaskDetails(
@@ -34,7 +36,7 @@ public sealed record TaskDetails(
     bool OpenToTeam = false);
 
 /// <summary>
-/// A piece of work (spec §44): an epic, story, task, subtask, bug or change. Where it sits on the
+/// A piece of work (spec §44): an epic, story, task, subtask, bug, change or service ticket. Where it sits on the
 /// board is its column; its rank orders it within the column.
 /// </summary>
 public sealed class ProjectTask : TenantAggregateRoot
@@ -217,8 +219,8 @@ public static class TaskHierarchy
         (TaskType.Epic, null) => true,
         (TaskType.Epic, _) => false,
         (TaskType.Story, null or TaskType.Epic) => true,
-        (TaskType.Task or TaskType.Bug or TaskType.ChangeRequest, null or TaskType.Epic or TaskType.Story) => true,
-        (TaskType.Subtask, TaskType.Story or TaskType.Task or TaskType.Bug or TaskType.ChangeRequest) => true,
+        (TaskType.Task or TaskType.Bug or TaskType.ChangeRequest or TaskType.Incident or TaskType.ServiceRequest, null or TaskType.Epic or TaskType.Story) => true,
+        (TaskType.Subtask, TaskType.Story or TaskType.Task or TaskType.Bug or TaskType.ChangeRequest or TaskType.Incident or TaskType.ServiceRequest) => true,
         _ => false,
     };
 
@@ -234,6 +236,7 @@ public static class TaskHierarchy
     public static string Describe(TaskType type) => type switch
     {
         TaskType.ChangeRequest => "change request",
+        TaskType.ServiceRequest => "service request",
         _ => type.ToString().ToLowerInvariant(),
     };
 }

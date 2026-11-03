@@ -92,6 +92,7 @@ internal sealed class PlanningService(
     AppDbContext dbContext,
     ProjectAccess access,
     ProjectService projects,
+    ServiceLevelService serviceLevels,
     ITenantClock clock,
     TimeProvider timeProvider)
 {
@@ -279,6 +280,7 @@ internal sealed class PlanningService(
             if (todo is not null && categories.GetValueOrDefault(task.ColumnId) == ColumnCategory.Backlog)
             {
                 task.MoveTo(todo, task.Rank, Now);
+                await serviceLevels.SyncAsync(task, cancellationToken);
             }
         }
 

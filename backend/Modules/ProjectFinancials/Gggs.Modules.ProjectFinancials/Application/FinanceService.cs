@@ -507,6 +507,7 @@ internal sealed class FinanceService(
         ILookup<Guid, ProjectBudgetLine> budgets = (await dbContext.ProjectBudgetLines.AsNoTracking().Where(row => ids.Contains(row.ProjectId)).ToListAsync(cancellationToken)).ToLookup(row => row.ProjectId);
         Dictionary<Guid, ProjectFinanceProfile> profiles = await dbContext.ProjectFinanceProfiles.AsNoTracking().Where(row => ids.Contains(row.ProjectId)).ToDictionaryAsync(row => row.ProjectId, cancellationToken);
         IReadOnlyDictionary<Guid, ContractSummary> contractValues = await contracts.GetManyAsync(facts.Select(fact => fact.ContractId).OfType<Guid>(), cancellationToken);
+        ILookup<Guid, ServiceCreditMonth> credits = (await projects.ServiceCreditsAsync(ids, cancellationToken)).ToLookup(row => row.ProjectId);
 
         return facts.ToDictionary(fact => fact.Id, fact =>
         {
@@ -517,6 +518,7 @@ internal sealed class FinanceService(
                 [.. costs[fact.Id]], [.. invoices[fact.Id]], [.. budgets[fact.Id]], today)
             {
                 Terms = profile?.Terms ?? new CommercialTerms(),
+                ServiceCredits = credits[fact.Id].ToDictionary(row => row.Month, row => row.Percent),
             });
         });
     }

@@ -30,7 +30,8 @@ public sealed record BillingPreview(
     decimal Amount,
     decimal HeldByCap,
     decimal UnpricedHours,
-    IReadOnlyList<string> TypedInvoices);
+    IReadOnlyList<string> TypedInvoices,
+    decimal CreditsWaiting = 0);
 
 public sealed record PrepareInvoiceBody(DateOnly From, DateOnly To, DateOnly? InvoiceDate, DateOnly? DueDate, decimal? TaxAmount);
 
@@ -206,7 +207,7 @@ internal sealed class BillingService(
         foreach (ProjectFinancialFacts fact in facts)
         {
             BillingPreview preview = await PreviewOfAsync(fact, first, last, cancellationToken);
-            if (preview.Lines.Count > 0 || preview.HeldByCap > 0 || preview.UnpricedHours > 0)
+            if (preview.Lines.Count > 0 || preview.HeldByCap > 0 || preview.UnpricedHours > 0 || preview.CreditsWaiting > 0)
             {
                 ready.Add(preview);
             }
@@ -293,7 +294,7 @@ internal sealed class BillingService(
         return new BillingPreview(
             fact.Id, fact.Code, fact.Name, fact.BillingType, fact.Currency, from, to,
             [.. plan.Lines.Select(line => new PlannedLineItem(line.Kind, line.Description, line.Quantity, line.Rate, line.Amount, line.Month))],
-            plan.Amount, plan.HeldByCap, plan.UnpricedHours, typed);
+            plan.Amount, plan.HeldByCap, plan.UnpricedHours, typed, plan.CreditsWaiting);
     }
 
     private async Task<BillingPlan> PlanAsync(ProjectFinancialFacts fact, DateOnly from, DateOnly to, CancellationToken cancellationToken)
@@ -309,6 +310,7 @@ internal sealed class BillingService(
         var input = new FinanceInput(fact, contract, profile?.RetainerMonthlyFee, profile?.MilestoneAmounts ?? new Dictionary<Guid, decimal>(), hours, rates, [], [], [], today)
         {
             Terms = profile?.Terms ?? new CommercialTerms(),
+            ServiceCredits = (await projects.ServiceCreditsAsync([id], cancellationToken)).ToDictionary(row => row.Month, row => row.Percent),
         };
 
         Dictionary<Guid, string> names = (await employees.GetManyAsync(hours.Select(row => row.EmployeeId).Concat(fact.Team.Select(seat => seat.EmployeeId)).Distinct(), cancellationToken))
@@ -334,6 +336,7 @@ internal sealed class BillingService(
             invoices.Sum(row => row.OpenAmount))
         {
             Overage = lines.Where(row => row.Kind == InvoiceLineKind.Overage && row.Month is not null).GroupBy(row => row.Month!.Value).ToDictionary(group => group.Key, group => group.Sum(row => row.Amount)),
+            ServiceCredits = lines.Where(row => row.Kind == InvoiceLineKind.ServiceCredit && row.Month is not null).GroupBy(row => row.Month!.Value).ToDictionary(group => group.Key, group => -group.Sum(row => row.Amount)),
         };
     }
 

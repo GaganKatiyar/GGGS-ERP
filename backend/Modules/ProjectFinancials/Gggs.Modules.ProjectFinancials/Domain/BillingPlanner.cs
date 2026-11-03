@@ -18,6 +18,9 @@ public sealed record PlannedLine(
 public sealed record BillingPlan(IReadOnlyList<PlannedLine> Lines, decimal HeldByCap, decimal UnpricedHours)
 {
     public decimal Amount => Lines.Sum(line => line.Amount);
+
+    /// <summary>Service credits owed that this invoice is too small to carry. They wait for the next one.</summary>
+    public decimal CreditsWaiting { get; init; }
 }
 
 /// <summary>What has already gone on an invoice: entries, and the fees, seats and milestones lines cover.</summary>
@@ -27,6 +30,9 @@ public sealed record AlreadyBilled(IReadOnlySet<Guid> Entries, IReadOnlySet<(Inv
 
     /// <summary>Overage invoiced so far for each month, because hours approved late can add to it.</summary>
     public IReadOnlyDictionary<DateOnly, decimal> Overage { get; init; } = new Dictionary<DateOnly, decimal>();
+
+    /// <summary>Service credit already given for each month, as a positive amount.</summary>
+    public IReadOnlyDictionary<DateOnly, decimal> ServiceCredits { get; init; } = new Dictionary<DateOnly, decimal>();
 }
 
 /// <summary>
@@ -120,7 +126,9 @@ public static class BillingPlanner
     /// <summary>
     /// The monthly fee for each month in the period, which can be billed in advance. Overage only once its
     /// month is over, because until then more hours can still land in it; hours approved after that are billed
-    /// as the difference from what the month has already been charged.
+    /// as the difference from what the month has already been charged. Service credits for any month that has
+    /// ended come off, oldest first, even if the month itself was invoiced long ago; an invoice never goes to
+    /// zero or below to carry one, so what does not fit waits.
     /// </summary>
     private static BillingPlan MonthlyFees(FinanceInput input, DateOnly from, DateOnly to, AlreadyBilled billed)
     {
@@ -154,7 +162,27 @@ public static class BillingPlanner
             }
         }
 
-        return new BillingPlan(lines, 0, 0);
+        decimal total = lines.Sum(line => line.Amount);
+        decimal waiting = 0;
+        foreach ((DateOnly month, decimal percent) in input.ServiceCredits.OrderBy(pair => pair.Key))
+        {
+            decimal due = Math.Round(fee * percent / 100, 2) - billed.ServiceCredits.GetValueOrDefault(month);
+            if (due <= 0 || month.AddMonths(1) > input.Today || month > FirstOf(last))
+            {
+                continue;
+            }
+
+            if (due >= total)
+            {
+                waiting += due;
+                continue;
+            }
+
+            total -= due;
+            lines.Add(new PlannedLine(InvoiceLineKind.ServiceCredit, $"Service credit, {month:MMM yyyy}: {percent:0.##}% of the fee", percent, fee, -due, month));
+        }
+
+        return new BillingPlan(lines, 0, 0) { CreditsWaiting = waiting };
     }
 
     /// <summary>Each seat's share of its monthly rate. A month is billed whole, up to the seat's end, so nothing is left to bill twice.</summary>

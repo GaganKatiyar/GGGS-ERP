@@ -229,6 +229,83 @@ public sealed class BillingTests
         plan.Lines.Single().Kind.ShouldBe(InvoiceLineKind.MonthlyFee, "ten hours rolled in from January cover February's five over");
     }
 
+    // ----- Service credits -------------------------------------------------------------------------
+
+    private static FinanceInput WithCredits(IReadOnlyDictionary<DateOnly, decimal> credits, DateOnly? today = null)
+        => Input(Project("ManagedService"), terms: Bucket, fee: 100000m, today: today) with { ServiceCredits = credits };
+
+    [Fact]
+    public void AServiceCredit_ComesOffTheFee_ForAMonthThatHasEnded()
+    {
+        BillingPlan plan = Plan(WithCredits(new Dictionary<DateOnly, decimal> { [Jan] = 5 }), Jan, JanEnd);
+
+        plan.Lines.Select(line => line.Kind).ShouldBe([InvoiceLineKind.MonthlyFee, InvoiceLineKind.ServiceCredit]);
+        plan.Lines[1].Amount.ShouldBe(-5000m);
+        plan.Amount.ShouldBe(95000m);
+    }
+
+    [Fact]
+    public void AServiceCredit_WaitsUntilItsMonthHasEnded()
+    {
+        BillingPlan plan = Plan(WithCredits(new Dictionary<DateOnly, decimal> { [Jan] = 5 }, new DateOnly(2026, 1, 20)), Jan, JanEnd);
+
+        plan.Lines.Single().Kind.ShouldBe(InvoiceLineKind.MonthlyFee, "more breaches can still land in January");
+    }
+
+    [Fact]
+    public void ACreditForAnEarlierMonth_ComesOffTheNextInvoice()
+    {
+        BillingPlan plan = Plan(WithCredits(new Dictionary<DateOnly, decimal> { [Jan] = 5 }), Feb, FebEnd, BilledLines((InvoiceLineKind.MonthlyFee, Jan, null)));
+
+        plan.Lines.Select(line => line.Month).ShouldBe([Feb, Jan]);
+        plan.Amount.ShouldBe(95000m);
+    }
+
+    [Fact]
+    public void ACreditAlreadyGiven_IsNotGivenAgain_ButALaterBreachAddsTheDifference()
+    {
+        var billed = new AlreadyBilled(new HashSet<Guid>(), new HashSet<(InvoiceLineKind, DateOnly?, Guid?)> { (InvoiceLineKind.MonthlyFee, Jan, null) }, 95000m)
+        {
+            ServiceCredits = new Dictionary<DateOnly, decimal> { [Jan] = 5000m },
+        };
+
+        Plan(WithCredits(new Dictionary<DateOnly, decimal> { [Jan] = 5 }), Feb, FebEnd, billed).Lines.Single().Kind.ShouldBe(InvoiceLineKind.MonthlyFee);
+
+        BillingPlan more = Plan(WithCredits(new Dictionary<DateOnly, decimal> { [Jan] = 8 }), Feb, FebEnd, billed);
+        more.Lines[1].Amount.ShouldBe(-3000m);
+    }
+
+    [Fact]
+    public void WithNothingToCharge_ACreditWaits_RatherThanMakingANegativeInvoice()
+    {
+        var billed = new AlreadyBilled(new HashSet<Guid>(), new HashSet<(InvoiceLineKind, DateOnly?, Guid?)> { (InvoiceLineKind.MonthlyFee, Jan, null) }, 100000m);
+
+        BillingPlan plan = Plan(WithCredits(new Dictionary<DateOnly, decimal> { [Jan] = 5 }), Jan, JanEnd, billed);
+
+        plan.Lines.ShouldBeEmpty();
+        plan.CreditsWaiting.ShouldBe(5000m);
+    }
+
+    [Fact]
+    public void CreditsGoOnOldestFirst_AndWhatDoesNotFitWaits()
+    {
+        var input = Input(Project("ManagedService"), terms: Bucket, fee: 10000m) with { ServiceCredits = new Dictionary<DateOnly, decimal> { [Jan] = 60, [Feb] = 60 } };
+
+        BillingPlan plan = Plan(input, Mar, new DateOnly(2026, 3, 31), BilledLines((InvoiceLineKind.MonthlyFee, Jan, null), (InvoiceLineKind.MonthlyFee, Feb, null)));
+
+        plan.Amount.ShouldBe(4000m, "March's fee less January's credit");
+        plan.CreditsWaiting.ShouldBe(6000m);
+    }
+
+    [Fact]
+    public void Revenue_NetsOffServiceCredits_MonthByMonth()
+    {
+        FinanceSummary summary = FinanceCalculator.Calculate(WithCredits(new Dictionary<DateOnly, decimal> { [Jan] = 5 }, new DateOnly(2026, 1, 20)));
+
+        summary.Revenue.ShouldBe(95000m);
+        summary.RetainerMonths!.Single().Credit.ShouldBe(5000m);
+    }
+
     // ----- Dedicated team -------------------------------------------------------------------------
 
     [Fact]

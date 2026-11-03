@@ -228,7 +228,8 @@ internal sealed class ProjectService(
     IIntegrationEventPublisher publisher,
     ITenantClock clock,
     TimeProvider timeProvider,
-    ProjectTemplateService templates)
+    ProjectTemplateService templates,
+    ServiceLevelService serviceLevels)
 {
     private static readonly Dictionary<string, Expression<Func<ProjectEntity, object?>>> Sortable = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -697,6 +698,7 @@ internal sealed class ProjectService(
                     foreach (ProjectTask task in held)
                     {
                         task.MoveTo(column, task.Rank, Now);
+                        await serviceLevels.SyncAsync(task, cancellationToken);
                     }
                 }
             }

@@ -24,6 +24,7 @@ internal static class ProjectEndpoints
         MapPlanning(group);
         MapGovernance(group);
         MapSettings(group);
+        MapServiceLevels(group);
 
         endpoints.MapGet("/api/v1/project-tasks", async ([AsParameters] PortfolioTaskQuery query, TaskService tasks, CancellationToken ct) => TypedResults.Ok(await tasks.PortfolioAsync(query, ct)))
             .WithTags("Projects").WithName("ListPortfolioTasks").RequirePermission(Permissions.Project.TaskView);
@@ -39,6 +40,34 @@ internal static class ProjectEndpoints
             .WithTags("Projects").WithName("ListMyProjects").RequirePermission(Permissions.Project.View);
 
         return endpoints;
+    }
+
+    private static void MapServiceLevels(RouteGroupBuilder group)
+    {
+        group.MapGet("/service-levels", async ([AsParameters] ServiceLevelQuery query, ServiceLevelService levels, CancellationToken ct) => TypedResults.Ok(await levels.ReportAsync(query, ct)))
+            .WithName("ServiceLevelReport").RequirePermission(Permissions.Project.TaskView);
+        group.MapGet("/service-levels/export", async ([AsParameters] ServiceLevelQuery query, ServiceLevelService levels, CancellationToken ct) =>
+            {
+                ServiceLevelFile file = await levels.ExportAsync(query, ct);
+                return Results.File(file.Content, "text/csv", file.FileName);
+            })
+            .WithName("ExportServiceLevels").RequirePermission(Permissions.Project.TaskView);
+        group.MapGet("/{id:guid}/service-levels", async (Guid id, DateOnly month, ServiceLevelService levels, CancellationToken ct) => TypedResults.Ok(await levels.ViewAsync(id, month, ct)))
+            .WithName("ProjectServiceLevels").RequirePermission(Permissions.Project.TaskView);
+        group.MapPut("/{id:guid}/service-levels/policy", async (Guid id, SlaPolicyDetails body, ServiceLevelService levels, CancellationToken ct) => TypedResults.Ok(await levels.SavePolicyAsync(id, body, ct)))
+            .WithName("SaveProjectSlaPolicy").RequirePermission(Permissions.Project.Manage);
+        group.MapDelete("/{id:guid}/service-levels/policy", async (Guid id, ServiceLevelService levels, CancellationToken ct) =>
+            {
+                await levels.DeletePolicyAsync(id, ct);
+                return TypedResults.NoContent();
+            })
+            .WithName("DeleteProjectSlaPolicy").RequirePermission(Permissions.Project.Manage);
+        group.MapPost("/{id:guid}/tickets/{taskId:guid}/respond", async (Guid id, Guid taskId, ServiceLevelService levels, CancellationToken ct) => TypedResults.Ok(await levels.RespondAsync(id, taskId, ct)))
+            .WithName("RespondToTicket").RequirePermission(Permissions.Project.TaskManage);
+        group.MapPost("/{id:guid}/tickets/{taskId:guid}/exclude", async (Guid id, Guid taskId, ExcludeBody body, ServiceLevelService levels, CancellationToken ct) => TypedResults.Ok(await levels.ExcludeAsync(id, taskId, body, ct)))
+            .WithName("ExcludeTicketBreach").RequirePermission(Permissions.Project.FinancialsManage);
+        group.MapPost("/{id:guid}/tickets/{taskId:guid}/reinstate", async (Guid id, Guid taskId, ServiceLevelService levels, CancellationToken ct) => TypedResults.Ok(await levels.ReinstateAsync(id, taskId, ct)))
+            .WithName("ReinstateTicketBreach").RequirePermission(Permissions.Project.FinancialsManage);
     }
 
     private static void MapProjects(RouteGroupBuilder group)

@@ -26,6 +26,7 @@ public sealed class ProjectModule : IModule
         services.AddScoped<ICalendarSource, ProjectCalendar>();
         services.AddScoped<ProjectAccess>();
         services.AddScoped<ProjectService>();
+        services.AddScoped<ServiceLevelService>();
         services.AddScoped<TaskService>();
         services.AddScoped<PlanningService>();
         services.AddScoped<GovernanceService>();
@@ -43,6 +44,8 @@ public sealed class ProjectModule : IModule
 
     public void AddBackgroundServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<ProjectSlaSweep>();
+        services.AddScoped<ProjectSlaJob>();
         services.AddScoped<ProjectHealthSweep>();
         services.AddScoped<ProjectHealthJob>();
         services.AddScoped<DefaultProjectSweep>();

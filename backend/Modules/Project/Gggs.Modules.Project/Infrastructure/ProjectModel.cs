@@ -99,6 +99,42 @@ internal sealed class ProjectModel : IModuleModel
             entity.Ignore(member => member.DomainEvents);
         });
 
+        modelBuilder.Entity<ProjectSlaPolicy>(entity =>
+        {
+            entity.ToTable("ProjectSlaPolicy", Schema);
+            entity.Property(policy => policy.WorkingDaysJson).IsRequired();
+            entity.Property(policy => policy.TargetsJson).IsRequired();
+            entity.Property(policy => policy.PausedColumnIdsJson).IsRequired();
+            entity.Property(policy => policy.MonthlyCreditCapPercent).HasPrecision(5, 2);
+            entity.HasIndex(policy => new { policy.TenantId, policy.ProjectId })
+                .HasDatabaseName("UX_ProjectSlaPolicy_TenantId_Project")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.Ignore(policy => policy.Calendar);
+            entity.Ignore(policy => policy.Targets);
+            entity.Ignore(policy => policy.PausedColumnIds);
+            entity.Ignore(policy => policy.Details);
+            entity.Ignore(policy => policy.DomainEvents);
+        });
+
+        modelBuilder.Entity<TicketSla>(entity =>
+        {
+            entity.ToTable("TicketSla", Schema);
+            entity.Property(ticket => ticket.Priority).HasConversion<byte>();
+            entity.Property(ticket => ticket.CreditPercent).HasPrecision(5, 2);
+            entity.Property(ticket => ticket.ExcludedReason).HasMaxLength(500);
+            entity.HasIndex(ticket => new { ticket.TenantId, ticket.TaskId })
+                .HasDatabaseName("UX_TicketSla_TenantId_Task")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.HasIndex(ticket => new { ticket.TenantId, ticket.ProjectId }).HasDatabaseName("IX_TicketSla_TenantId_Project");
+            entity.HasIndex(ticket => new { ticket.TenantId, ticket.ResolvedAt, ticket.ResolutionDueAt }).HasDatabaseName("IX_TicketSla_TenantId_Sweep");
+            entity.Ignore(ticket => ticket.IsBreached);
+            entity.Ignore(ticket => ticket.CountsAgainst);
+            entity.Ignore(ticket => ticket.FirstBreachAt);
+            entity.Ignore(ticket => ticket.DomainEvents);
+        });
+
         modelBuilder.Entity<ProjectTemplate>(entity =>
         {
             entity.ToTable("ProjectTemplate", Schema);
@@ -346,6 +382,10 @@ internal static class ProjectData
         public DbSet<ProjectPhase> ProjectPhases => db.Set<ProjectPhase>();
 
         public DbSet<ProjectTemplate> ProjectTemplates => db.Set<ProjectTemplate>();
+
+        public DbSet<ProjectSlaPolicy> ProjectSlaPolicies => db.Set<ProjectSlaPolicy>();
+
+        public DbSet<TicketSla> TicketSlas => db.Set<TicketSla>();
 
         public DbSet<BoardColumn> BoardColumns => db.Set<BoardColumn>();
 

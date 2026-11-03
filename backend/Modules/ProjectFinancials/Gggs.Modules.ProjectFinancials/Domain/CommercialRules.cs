@@ -22,7 +22,10 @@ public sealed record RetainerMonth(
     decimal OverageAmount,
     decimal RollsForwardHours)
 {
-    public decimal Revenue => Fee + OverageAmount;
+    /// <summary>What SLA breaches in the month gave back.</summary>
+    public decimal Credit { get; init; }
+
+    public decimal Revenue => Fee + OverageAmount - Credit;
 }
 
 /// <summary>The commercial rules that differ by engagement model, separate from the calculator so each can be checked alone.</summary>

@@ -175,6 +175,7 @@ internal sealed class TaskService(
     AppDbContext dbContext,
     ProjectAccess access,
     ProjectService projects,
+    ServiceLevelService serviceLevels,
     INotifier notifier,
     ITenantClock clock,
     TimeProvider timeProvider)
@@ -283,6 +284,7 @@ internal sealed class TaskService(
         var task = ProjectTask.Create(projectId, project.NextTaskNumber(), project.Code, details, column, rank, access.Me, Now);
         task.PlanInto(body.SprintId);
         dbContext.ProjectTasks.Add(task);
+        await serviceLevels.SyncAsync(task, cancellationToken);
         await NotifyAssigneeAsync(project, task, previousAssignee: null, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return (await ToItemsAsync([task], cancellationToken))[0];
@@ -305,6 +307,7 @@ internal sealed class TaskService(
             task.MoveTo(column, await NextRankAsync(column.Id, cancellationToken), Now);
         }
 
+        await serviceLevels.SyncAsync(task, cancellationToken);
         Domain.Project project = await dbContext.Projects.AsNoTracking().FirstAsync(row => row.Id == projectId, cancellationToken);
         await NotifyAssigneeAsync(project, task, previousAssignee, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -347,6 +350,7 @@ internal sealed class TaskService(
         }
 
         task.MoveTo(column, rank, Now);
+        await serviceLevels.SyncAsync(task, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return (await ToItemsAsync([task], cancellationToken))[0];
     }
@@ -365,6 +369,7 @@ internal sealed class TaskService(
             .Where(row => row.PredecessorTaskId == taskId || row.SuccessorTaskId == taskId)
             .ToListAsync(cancellationToken);
         dbContext.TaskDependencies.RemoveRange(links);
+        await serviceLevels.EnsureCanRemoveAsync(task, cancellationToken);
         dbContext.ProjectTasks.Remove(task);
         await dbContext.SaveChangesAsync(cancellationToken);
     }

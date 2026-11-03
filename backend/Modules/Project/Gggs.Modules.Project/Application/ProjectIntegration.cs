@@ -16,8 +16,11 @@ using Microsoft.EntityFrameworkCore;
 namespace Gggs.Modules.Project.Application;
 
 /// <summary>Project lookups for other modules.</summary>
-internal sealed class ProjectDirectory(AppDbContext dbContext, DefaultProjectService defaults) : IProjectDirectory
+internal sealed class ProjectDirectory(AppDbContext dbContext, DefaultProjectService defaults, ServiceLevelService serviceLevels) : IProjectDirectory
 {
+    public Task<IReadOnlyList<ServiceCreditMonth>> ServiceCreditsAsync(IEnumerable<Guid> projectIds, CancellationToken cancellationToken = default)
+        => serviceLevels.CreditsAsync(projectIds, cancellationToken);
+
     public async Task<IReadOnlyDictionary<Guid, ProjectSummary>> GetManyAsync(IEnumerable<Guid> projectIds, CancellationToken cancellationToken = default)
     {
         List<Guid> ids = [.. projectIds.Distinct()];
@@ -400,6 +403,7 @@ internal sealed class ProjectJobRegistration(IRecurringJobManager recurringJobs,
 {
     public Task StartAsync(CancellationToken cancellationToken)
     {
+        recurringJobs.AddOrUpdate<ProjectSlaSweep>(ProjectSlaSweep.RecurringJobName, sweep => sweep.RunAsync(), "*/30 * * * *");
         recurringJobs.AddOrUpdate<ProjectHealthSweep>(ProjectHealthSweep.RecurringJobName, sweep => sweep.RunAsync(), "45 2 * * *");
 
         // Creates only what is missing, so queuing it at every start is harmless.

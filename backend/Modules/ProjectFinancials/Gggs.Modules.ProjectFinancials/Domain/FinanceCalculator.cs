@@ -18,6 +18,9 @@ public sealed record FinanceInput(
     decimal HoursPerDay = 8)
 {
     public CommercialTerms Terms { get; init; } = new();
+
+    /// <summary>Share of the monthly fee owed back for SLA breaches, by month.</summary>
+    public IReadOnlyDictionary<DateOnly, decimal> ServiceCredits { get; init; } = new Dictionary<DateOnly, decimal>();
 }
 
 public sealed record PersonLabour(Guid EmployeeId, decimal Hours, decimal BillableHours, decimal Cost, decimal Revenue, decimal? CostRate, decimal? BillingRate);
@@ -187,8 +190,9 @@ public static class FinanceCalculator
                     .GroupBy(row => new DateOnly(row.Date.Year, row.Date.Month, 1))
                     .ToDictionary(group => group.Key, group => group.Sum(row => row.Hours));
                 retainerMonths = last < project.StartDate ? [] : CommercialRules.RetainerMonths(project.StartDate, last, fee, input.Terms, used);
+                retainerMonths = [.. retainerMonths.Select(row => input.ServiceCredits.TryGetValue(row.Month, out decimal percent) ? row with { Credit = Math.Round(fee * percent / 100, 2) } : row)];
                 revenue = retainerMonths.Sum(row => row.Revenue);
-                forecastRevenue = (fee * MonthsBetween(project.StartDate, project.EndDate)) + retainerMonths.Sum(row => row.OverageAmount);
+                forecastRevenue = (fee * MonthsBetween(project.StartDate, project.EndDate)) + retainerMonths.Sum(row => row.OverageAmount - row.Credit);
                 foreach (RetainerMonth row in retainerMonths)
                 {
                     var current = months.GetValueOrDefault(row.Month);

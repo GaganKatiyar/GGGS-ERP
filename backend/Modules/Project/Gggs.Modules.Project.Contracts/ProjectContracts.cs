@@ -30,9 +30,15 @@ public sealed record ProjectMembership(
     bool Billable,
     bool IsActive);
 
+/// <summary>What a project's SLA breaches cost in a month, as a share of its monthly fee.</summary>
+public sealed record ServiceCreditMonth(Guid ProjectId, DateOnly Month, decimal Percent, int Breaches);
+
 /// <summary>Project lookups for resources, timesheets and Employee 360 (ADR-12).</summary>
 public interface IProjectDirectory
 {
+    /// <summary>Service credits owed on these projects, month by month. Excluded breaches are left out, and each month's cap applied.</summary>
+    Task<IReadOnlyList<ServiceCreditMonth>> ServiceCreditsAsync(IEnumerable<Guid> projectIds, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyDictionary<Guid, ProjectSummary>> GetManyAsync(IEnumerable<Guid> projectIds, CancellationToken cancellationToken = default);
 
     /// <summary>Every project the employee has been on, current first.</summary>
