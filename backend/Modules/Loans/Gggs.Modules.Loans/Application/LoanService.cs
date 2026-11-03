@@ -144,6 +144,9 @@ internal sealed class LoanService(
     public async Task<LoanTypeItem> SaveTypeAsync(Guid? id, LoanTypeBody body, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(body);
+
+        // First, or the defaults are never added: seeding only happens while there are no types at all.
+        await seeder.EnsureSeededAsync(cancellationToken);
         string code = body.Details.Code?.Trim().ToUpperInvariant() ?? string.Empty;
         if (await dbContext.LoanTypes.AnyAsync(row => row.Code == code && row.Id != id, cancellationToken))
         {
