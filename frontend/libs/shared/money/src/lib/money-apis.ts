@@ -5,11 +5,14 @@ import type {
   AwardStatus,
   AwardType,
   BandItem,
+  BillingPreview,
+  BillingRun,
   CommercialTerms,
   ComplianceDashboard,
   ComponentInput,
   ComponentItem,
   CostCategory,
+  CreditNote,
   CycleItem,
   DeclarationInput,
   DeclarationRow,
@@ -572,6 +575,36 @@ export class ProjectFinancialsApi {
 
   invoicePaid(id: string, invoiceId: string, paidOn: string): Promise<FinanceInvoice> {
     return firstValueFrom(this.http.post<FinanceInvoice>(`${this.base}/${id}/invoices/${invoiceId}/paid`, { paidOn }));
+  }
+
+  billingPreview(id: string, from: string, to: string): Promise<BillingPreview> {
+    return firstValueFrom(this.http.get<BillingPreview>(`${this.base}/${id}/billing/preview`, { params: { from, to } }));
+  }
+
+  prepareInvoice(id: string, body: { from: string; to: string; invoiceDate?: string | null; dueDate?: string | null; taxAmount?: number | null }): Promise<FinanceInvoice> {
+    return firstValueFrom(this.http.post<FinanceInvoice>(`${this.base}/${id}/invoices/prepare`, body));
+  }
+
+  removeInvoiceLine(id: string, invoiceId: string, lineId: string): Promise<FinanceInvoice> {
+    return firstValueFrom(this.http.delete<FinanceInvoice>(`${this.base}/${id}/invoices/${invoiceId}/lines/${lineId}`));
+  }
+
+  creditInvoice(id: string, invoiceId: string, body: { reason: string; date?: string | null; lineIds?: readonly string[] | null; amount?: number | null; taxAmount?: number | null }): Promise<CreditNote> {
+    return firstValueFrom(this.http.post<CreditNote>(`${this.base}/${id}/invoices/${invoiceId}/credit`, body));
+  }
+
+  creditNotes(id: string): Promise<readonly CreditNote[]> {
+    return firstValueFrom(this.http.get<readonly CreditNote[]>(`${this.base}/${id}/credit-notes`));
+  }
+
+  billingRun(month: string): Promise<BillingRun> {
+    return firstValueFrom(this.http.get<BillingRun>(`${this.base}/billing/run`, { params: { month } }));
+  }
+
+  /** Saves the month's invoices and credit notes, as Tally XML or CSV. */
+  exportInvoices(query: { from: string; to: string; format: 'tally' | 'csv'; company?: string; salesLedger?: string; taxLedger?: string }): Promise<void> {
+    const search = new URLSearchParams(Object.entries(params(query)).map(([key, value]) => [key, String(value)]));
+    return download(this.http, `${this.base}/billing/export?${search.toString()}`, query.format === 'tally' ? 'invoices.xml' : 'invoices.csv');
   }
 }
 

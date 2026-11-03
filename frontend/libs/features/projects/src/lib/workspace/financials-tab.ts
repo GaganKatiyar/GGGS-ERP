@@ -8,6 +8,8 @@ import type { CostCategory, FinanceCost, FinanceInvoice, FinanceRate, ProjectFin
 import { COST_CATEGORIES, humanize } from '@gggs/shared/models';
 import { MoneyPipe, ProjectFinancialsApi } from '@gggs/shared/money';
 import { Chart, FormDialog, KpiCard, localIsoDate, Skeleton, StatusBadge } from '@gggs/shared/ui';
+import { CreditNoteDialog } from './credit-note-dialog';
+import { PrepareInvoiceDialog } from './prepare-invoice-dialog';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
 const today = () => localIsoDate();
@@ -20,7 +22,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
  */
 @Component({
   selector: 'gggs-financials-tab',
-  imports: [DatePipe, DecimalPipe, FormsModule, MoneyPipe, KpiCard, Chart, StatusBadge, Skeleton, FormDialog, EmployeeSelect],
+  imports: [DatePipe, DecimalPipe, FormsModule, MoneyPipe, KpiCard, Chart, StatusBadge, Skeleton, FormDialog, EmployeeSelect, PrepareInvoiceDialog, CreditNoteDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (finance(); as f) {
@@ -148,27 +150,54 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
             <h3 class="fin__heading">Invoices</h3>
             <span class="fin__spacer"></span>
             @if (f.canManage) {
-              <button type="button" class="btn btn--sm" (click)="openInvoice()"><i class="pi pi-plus" aria-hidden="true"></i> Invoice</button>
+              <button type="button" class="btn btn--link btn--sm" (click)="openInvoice()">Enter by hand</button>
+              <button type="button" class="btn btn--sm" (click)="preparing.set(true)"><i class="pi pi-file-edit" aria-hidden="true"></i> Prepare invoice</button>
             }
           </div>
           @for (invoice of f.invoices; track invoice.id) {
             <div class="fin__row">
               <span><strong>{{ invoice.number }}</strong>{{ invoice.milestoneName ? ' · ' + invoice.milestoneName : '' }}</span>
-              <span>{{ invoice.amount | gggsMoney: f.currency }} + tax {{ invoice.taxAmount | gggsMoney: f.currency }}</span>
+              <span>
+                {{ invoice.amount | gggsMoney: f.currency }} + tax {{ invoice.taxAmount | gggsMoney: f.currency }}
+                @if (invoice.creditedAmount > 0) {
+                  <br /><span class="muted">{{ invoice.creditedAmount | gggsMoney: f.currency }} credited</span>
+                }
+              </span>
               <span class="muted" [class.fin__danger]="invoice.isOverdue">{{ invoice.invoiceDate | date: 'd MMM y' }}{{ invoice.dueDate ? ' · due ' + (invoice.dueDate | date: 'd MMM') : '' }}{{ invoice.paidOn ? ' · paid ' + (invoice.paidOn | date: 'd MMM') : '' }}</span>
               <span class="toolbar">
                 <gggs-status-badge [status]="invoice.isOverdue ? 'Overdue' : invoice.status" />
+                @if (invoice.lines?.length) {
+                  <button type="button" class="btn btn--link btn--sm" [attr.aria-expanded]="expanded() === invoice.id" (click)="toggleLines(invoice)">Lines</button>
+                }
                 @if (f.canManage && invoice.status === 'Draft') {
                   <button type="button" class="btn btn--link btn--sm" (click)="invoiceAction(invoice, 'send')">Send</button>
                 }
                 @if (f.canManage && invoice.status === 'Sent') {
                   <button type="button" class="btn btn--link btn--sm" (click)="openPaid(invoice)">Paid</button>
                 }
-                @if (f.canManage && (invoice.status === 'Draft' || invoice.status === 'Sent')) {
+                @if (f.canManage && (invoice.status === 'Sent' || invoice.status === 'Paid') && invoice.amount > invoice.creditedAmount) {
+                  <button type="button" class="btn btn--link btn--sm" (click)="openCredit(invoice)">Credit</button>
+                }
+                @if (f.canManage && invoice.creditedAmount === 0 && (invoice.status === 'Draft' || invoice.status === 'PendingApproval' || invoice.status === 'Sent')) {
                   <button type="button" class="btn btn--link btn--sm" (click)="invoiceAction(invoice, 'cancel')">Cancel</button>
                 }
               </span>
             </div>
+            @if (expanded() === invoice.id) {
+              <div class="fin__lines">
+                @for (line of invoice.lines ?? []; track line.id) {
+                  <div class="fin__line" [class.fin__credited]="line.isCredited">
+                    <span>{{ line.description }}{{ line.isCredited ? ' (credited)' : '' }}</span>
+                    <span class="fin__num">{{ line.amount | gggsMoney: f.currency }}</span>
+                    <span>
+                      @if (f.canManage && invoice.status === 'Draft' && (invoice.lines?.length ?? 0) > 1) {
+                        <button type="button" class="btn btn--link btn--sm" (click)="removeLine(invoice, line.id)">Remove</button>
+                      }
+                    </span>
+                  </div>
+                }
+              </div>
+            }
           } @empty {
             <p class="muted">No invoices yet.</p>
           }
@@ -398,6 +427,8 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
         }
       }
     </gggs-form-dialog>
+    <gggs-prepare-invoice-dialog [(visible)]="preparing" [projectId]="projectId()" (prepared)="load(projectId())" />
+    <gggs-credit-note-dialog [(visible)]="crediting" [projectId]="projectId()" [invoice]="target()" [currency]="finance()?.currency" (credited)="load(projectId())" />
   `,
   styles: `
     /* Money needs room: seven cards on one row cut the figures off. */
@@ -449,6 +480,24 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
       font-size: var(--gggs-font-size-sm);
     }
 
+    .fin__lines {
+      padding: var(--gggs-space-2) var(--gggs-space-3);
+      border-block-end: 1px solid var(--gggs-color-border);
+      font-size: var(--gggs-font-size-sm);
+    }
+
+    .fin__line {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto 5rem;
+      gap: var(--gggs-space-3);
+      align-items: center;
+    }
+
+    .fin__credited {
+      color: var(--gggs-color-text-muted);
+      text-decoration: line-through;
+    }
+
     .fin__grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
@@ -482,6 +531,10 @@ export class FinancialsTab {
   private readonly projects = inject(ProjectsApi);
 
   readonly projectId = input.required<string>();
+
+  protected readonly preparing = signal(false);
+  protected readonly crediting = signal(false);
+  protected readonly expanded = signal<string | null>(null);
 
   protected readonly categories = COST_CATEGORIES;
   protected readonly nonLabour: readonly CostCategory[] = ['Vendor', 'Expense', 'Infrastructure', 'AiUsage', 'Other'];
@@ -634,6 +687,19 @@ export class FinancialsTab {
     this.show('invoice');
   }
 
+  protected toggleLines(invoice: FinanceInvoice): void {
+    this.expanded.update((open) => (open === invoice.id ? null : invoice.id));
+  }
+
+  protected openCredit(invoice: FinanceInvoice): void {
+    this.target.set(invoice);
+    this.crediting.set(true);
+  }
+
+  protected async removeLine(invoice: FinanceInvoice, lineId: string): Promise<void> {
+    await this.act(() => this.api.removeInvoiceLine(this.projectId(), invoice.id, lineId));
+  }
+
   protected openPaid(invoice: FinanceInvoice): void {
     this.target.set(invoice);
     this.date.set(today());
@@ -753,7 +819,7 @@ export class FinancialsTab {
     }
   }
 
-  private async load(projectId: string): Promise<void> {
+  protected async load(projectId: string): Promise<void> {
     try {
       this.finance.set(await this.api.project(projectId));
       this.error.set(null);

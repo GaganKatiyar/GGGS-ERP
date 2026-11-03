@@ -206,6 +206,7 @@ describe('filterNavigation', () => {
       '/projects/change-requests',
       '/projects/raid',
       '/projects/financials',
+      '/projects/billing',
       '/resources',
       '/resources/requests',
       '/resources/calendar',

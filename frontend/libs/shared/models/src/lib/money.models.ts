@@ -835,7 +835,8 @@ export interface TotalRewards {
 // ----- Project financials --------------------------------------------------------------------
 
 export type CostCategory = 'Labour' | 'Vendor' | 'Expense' | 'Infrastructure' | 'Other' | 'AiUsage';
-export type InvoiceStatus = 'Draft' | 'Sent' | 'Paid' | 'Cancelled';
+export type InvoiceStatus = 'Draft' | 'PendingApproval' | 'Sent' | 'Paid' | 'Cancelled';
+export type InvoiceLineKind = 'Hours' | 'Milestone' | 'MonthlyFee' | 'Overage' | 'Seat' | 'Progress';
 export const COST_CATEGORIES: readonly CostCategory[] = ['Labour', 'Vendor', 'Expense', 'Infrastructure', 'Other'];
 
 /** What an engagement's contract says beyond its value. */
@@ -965,6 +966,72 @@ export interface FinanceInvoice {
   readonly milestoneName?: string;
   readonly notes?: string;
   readonly isOverdue: boolean;
+  readonly creditedAmount: number;
+  readonly lines?: readonly FinanceInvoiceLine[];
+}
+
+export interface FinanceInvoiceLine {
+  readonly id: string;
+  readonly kind: InvoiceLineKind;
+  readonly description: string;
+  readonly quantity: number;
+  readonly rate: number;
+  readonly amount: number;
+  readonly month?: string;
+  readonly isCredited: boolean;
+}
+
+export interface BillingPreviewLine {
+  readonly kind: InvoiceLineKind;
+  readonly description: string;
+  readonly quantity: number;
+  readonly rate: number;
+  readonly amount: number;
+  readonly month?: string;
+}
+
+export interface BillingPreview {
+  readonly projectId: string;
+  readonly code: string;
+  readonly name: string;
+  readonly billingType: string;
+  readonly currency: string;
+  readonly from: string;
+  readonly to: string;
+  readonly lines: readonly BillingPreviewLine[];
+  readonly amount: number;
+  readonly heldByCap: number;
+  readonly unpricedHours: number;
+  /** Invoices entered by hand that overlap the period: the app cannot tell what they covered. */
+  readonly typedInvoices: readonly string[];
+}
+
+export interface OverdueInvoice {
+  readonly projectId: string;
+  readonly projectCode: string;
+  readonly invoiceId: string;
+  readonly number: string;
+  readonly dueDate: string;
+  readonly amount: number;
+  readonly currency: string;
+  readonly daysOverdue: number;
+}
+
+export interface BillingRun {
+  readonly month: string;
+  readonly ready: readonly BillingPreview[];
+  readonly overdue: readonly OverdueInvoice[];
+  readonly drafts: number;
+}
+
+export interface CreditNote {
+  readonly id: string;
+  readonly invoiceId: string;
+  readonly number: string;
+  readonly date: string;
+  readonly amount: number;
+  readonly taxAmount: number;
+  readonly reason: string;
 }
 
 export interface ProjectFinance {
