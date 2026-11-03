@@ -146,11 +146,14 @@ public sealed class DefaultProjectTests(PeopleOsApiFactory factory)
     {
         using HttpClient admin = await factory.CreateAdminClientAsync();
         Guid department = await CoreHrApi.DepartmentAsync(admin);
-        Guid projectId = RowFor(await EnsureAsync(admin), department).GetProperty("projectId").GetGuid();
+        JsonElement row = RowFor(await EnsureAsync(admin), department);
+        Guid projectId = row.GetProperty("projectId").GetGuid();
+        string code = row.GetProperty("projectCode").GetString()!;
 
-        (await admin.GetFromJsonAsync<JsonElement>("/api/v1/projects?pageSize=200", Ct)).GetProperty("items").EnumerateArray()
+        // Searched by code: the tests make many departments, and this one may not be on the first page.
+        (await admin.GetFromJsonAsync<JsonElement>($"/api/v1/projects?search={code}&pageSize=200", Ct)).GetProperty("items").EnumerateArray()
             .ShouldNotContain(project => project.GetProperty("id").GetGuid() == projectId);
-        (await admin.GetFromJsonAsync<JsonElement>("/api/v1/projects?type=DepartmentDefault&pageSize=200", Ct)).GetProperty("items").EnumerateArray()
+        (await admin.GetFromJsonAsync<JsonElement>($"/api/v1/projects?type=DepartmentDefault&search={code}&pageSize=200", Ct)).GetProperty("items").EnumerateArray()
             .ShouldContain(project => project.GetProperty("id").GetGuid() == projectId);
 
         HttpResponseMessage byHand = await admin.PostAsJsonAsync("/api/v1/projects", new
