@@ -35,6 +35,17 @@ export const appRoutes: Route[] = [
     title: 'Set your password',
   },
   {
+    // Public: people must be able to read these before they sign in.
+    path: 'privacy',
+    loadComponent: () => import('./pages/privacy-page').then((m) => m.PrivacyPage),
+    title: 'Privacy Policy',
+  },
+  {
+    path: 'terms',
+    loadComponent: () => import('./pages/terms-page').then((m) => m.TermsPage),
+    title: 'Terms of Use',
+  },
+  {
     path: '',
     component: Shell,
     canActivate: [authGuard],

@@ -3,7 +3,7 @@ import { PRODUCT_NAME } from '../product-title-strategy';
 
 /** The parts of the app, one for each point of the logo, clockwise from the top. */
 export const SHOWCASE_AREAS: readonly { readonly name: string; readonly covers: string; readonly slot: string; readonly x: number; readonly y: number }[] = [
-  { name: 'People', covers: 'Records, org chart and exits', slot: 'a', x: 50, y: 16 },
+  { name: 'People', covers: 'Records, org chart and documents', slot: 'a', x: 50, y: 16 },
   { name: 'Time', covers: 'Attendance, leave and timesheets', slot: 'b', x: 79.44, y: 33 },
   { name: 'Payroll', covers: 'Salaries, payslips and compliance', slot: 'c', x: 79.44, y: 67 },
   { name: 'Projects', covers: 'Clients, tasks and resources', slot: 'd', x: 50, y: 84 },
@@ -38,7 +38,7 @@ const STEP_MS = 2800;
         </svg>
         {{ productName }}
       </p>
-      <p class="showcase__headline">The nuts and bolts of running your company, in one place.</p>
+      <p class="showcase__headline">Every part of your company, working as one.</p>
       <div class="showcase__diagram">
         @for (area of areas; track area.name; let index = $index) {
           <div class="showcase__area" [attr.data-slot]="area.slot" [class.showcase__area--lit]="lit() === index" (pointerenter)="point(index)" (pointerleave)="point(null)">
