@@ -226,6 +226,45 @@ internal static class RequesterNotice
 }
 
 /// <summary>Invitations go by email: the invitee cannot sign in to see anything in-app yet.</summary>
+/// <summary>Sends the link at once with its stored copy masked, so the record of the email cannot be used to take over the account.</summary>
+internal sealed class SendPasswordResetLink(IOneTimeNotices notices, IOptions<NotificationOptions> options)
+    : IIntegrationEventConsumer<PasswordResetRequestedIntegrationEvent>
+{
+    public async Task HandleAsync(PasswordResetRequestedIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(integrationEvent);
+
+        string link = string.Concat(
+            options.Value.AppBaseUrl.TrimEnd('/'),
+            "/reset-password?tenantCode=", Uri.EscapeDataString(integrationEvent.TenantCode),
+            "&userId=", integrationEvent.UserId.ToString(),
+            "&token=", Uri.EscapeDataString(integrationEvent.Token));
+
+        await notices.SendAsync(
+            NotificationTemplates.PasswordResetRequested,
+            integrationEvent.Email,
+            new Dictionary<string, string> { ["recipientName"] = integrationEvent.DisplayName, ["resetLink"] = link },
+            new HashSet<string>(StringComparer.Ordinal) { "resetLink" },
+            cancellationToken);
+    }
+}
+
+internal sealed class SendPasswordChangedNotice(IOneTimeNotices notices)
+    : IIntegrationEventConsumer<PasswordResetCompletedIntegrationEvent>
+{
+    public async Task HandleAsync(PasswordResetCompletedIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(integrationEvent);
+
+        await notices.SendAsync(
+            NotificationTemplates.PasswordResetCompleted,
+            integrationEvent.Email,
+            new Dictionary<string, string> { ["recipientName"] = integrationEvent.DisplayName },
+            new HashSet<string>(StringComparer.Ordinal),
+            cancellationToken);
+    }
+}
+
 internal sealed class SendInvitation(INotifier notifier, IOptions<NotificationOptions> options)
     : IIntegrationEventConsumer<UserInvitedIntegrationEvent>
 {

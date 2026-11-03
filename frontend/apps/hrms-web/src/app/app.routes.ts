@@ -35,6 +35,19 @@ export const appRoutes: Route[] = [
     title: 'Set your password',
   },
   {
+    // Outside the shell and the guard: someone here cannot sign in, which is why they came.
+    path: 'forgot-password',
+    loadComponent: () =>
+      import('./pages/forgot-password-page').then((m) => m.ForgotPasswordPage),
+    title: 'Forgot your password?',
+  },
+  {
+    path: 'reset-password',
+    loadComponent: () =>
+      import('./pages/reset-password-page').then((m) => m.ResetPasswordPage),
+    title: 'Choose a new password',
+  },
+  {
     // Public: people must be able to read these before they sign in.
     path: 'privacy',
     loadComponent: () => import('./pages/privacy-page').then((m) => m.PrivacyPage),

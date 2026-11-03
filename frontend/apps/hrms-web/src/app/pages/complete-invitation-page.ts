@@ -3,8 +3,8 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import { AdminApi } from '@gggs/shared/identity';
-import { BrandMark, Button, FormField } from '@gggs/shared/ui';
-import { PRODUCT_NAME } from '../product-title-strategy';
+import { Button, FormField } from '@gggs/shared/ui';
+import { SignedOutLayout } from './signed-out-layout';
 
 /**
  * Setting a password from an invitation link.
@@ -18,12 +18,11 @@ import { PRODUCT_NAME } from '../product-title-strategy';
  */
 @Component({
   selector: 'gggs-complete-invitation-page',
-  imports: [BrandMark, ReactiveFormsModule, FormField, Button],
+  imports: [ReactiveFormsModule, FormField, Button, SignedOutLayout],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <main class="auth">
-      <form class="auth__card rise-in" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <p class="auth__brand"><gggs-brand-mark class="auth__logo" />{{ productName }}</p>
+    <gggs-signed-out-layout>
+      <form class="auth__form rise-in" [formGroup]="form" (ngSubmit)="submit()" novalidate>
         <h1 class="auth__title">Set your password</h1>
 
         @if (!tenantCode() || !userId() || !token()) {
@@ -31,15 +30,20 @@ import { PRODUCT_NAME } from '../product-title-strategy';
             This link is missing something it needs. Ask whoever invited you to send it again.
           </p>
         } @else {
-          <gggs-form-field label="New password" hint="At least 12 characters." required>
-            <input
-              type="password"
-              formControlName="newPassword"
-              autocomplete="new-password"
-              minlength="12"
-              required
-            />
-          </gggs-form-field>
+          <div class="auth__password">
+            <gggs-form-field label="New password" hint="At least 12 characters." required>
+              <input
+                [type]="showPassword() ? 'text' : 'password'"
+                formControlName="newPassword"
+                autocomplete="new-password"
+                minlength="12"
+                required
+              />
+            </gggs-form-field>
+            <button type="button" class="auth__eye auth__eye--hinted" [attr.aria-pressed]="showPassword()" aria-label="Show password" (click)="showPassword.set(!showPassword())">
+              {{ showPassword() ? 'Hide' : 'Show' }}
+            </button>
+          </div>
 
           @if (errorMessage()) {
             <p class="auth__error" role="alert">{{ errorMessage() }}</p>
@@ -61,12 +65,10 @@ import { PRODUCT_NAME } from '../product-title-strategy';
           </gggs-button>
         }
       </form>
-    </main>
+    </gggs-signed-out-layout>
   `,
-  // Styled by the shared signed-out layout (.auth in styles/_depth.scss).
 })
 export class CompleteInvitationPage {
-  protected readonly productName = PRODUCT_NAME;
   private readonly api = inject(AdminApi);
   private readonly formBuilder = inject(FormBuilder);
   private readonly router = inject(Router);
@@ -76,6 +78,7 @@ export class CompleteInvitationPage {
   readonly token = input<string>();
 
   protected readonly isSaving = signal(false);
+  protected readonly showPassword = signal(false);
   protected readonly succeeded = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
 

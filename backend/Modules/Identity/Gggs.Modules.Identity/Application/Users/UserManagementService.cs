@@ -39,6 +39,11 @@ public sealed class UserManagementService(
     /// <summary>How long an invitation stays usable. Long enough for a holiday, short enough to matter.</summary>
     private static readonly TimeSpan InvitationLifetime = TimeSpan.FromDays(3);
 
+    private static readonly TimeSpan PasswordResetLifetime = TimeSpan.FromHours(1);
+
+    /// <summary>Asking again sooner sends nothing, so a stranger cannot fill someone's inbox.</summary>
+    private static readonly TimeSpan PasswordResetResendGap = TimeSpan.FromMinutes(1);
+
     /// <summary>
     /// Invites someone. The returned token is the only copy: it is emailed, and what is stored is
     /// a hash, so a leaked database does not hand over the accounts nobody has signed into yet.
@@ -117,6 +122,59 @@ public sealed class UserManagementService(
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("User {UserId} completed their invitation.", userId);
+    }
+
+    /// <summary>
+    /// Sends a link to choose a new password, if the address belongs to an account that can have one.
+    /// Says nothing either way: the caller is anonymous, and must not learn who has an account.
+    /// </summary>
+    public async Task RequestPasswordResetAsync(string email, CancellationToken cancellationToken = default)
+    {
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
+        User? user = await users.FindByEmailAsync(User.NormalizeEmailForLookup(email), cancellationToken);
+        if (user is null || !user.CanResetPassword)
+        {
+            logger.LogInformation("Password reset requested for an address that cannot have one.");
+            return;
+        }
+
+        if (user.InvitationTokenExpiresDate is { } outstanding && outstanding > now.Add(PasswordResetLifetime - PasswordResetResendGap))
+        {
+            logger.LogInformation("Password reset for user {UserId} not sent: one went out moments ago.", user.Id);
+            return;
+        }
+
+        (string token, string tokenHash) = tokenGenerator.Generate();
+        DateTime expires = now.Add(PasswordResetLifetime);
+        user.SetInvitationToken(tokenHash, expires);
+        publisher.Publish(new PasswordResetRequestedIntegrationEvent(user.Id, user.Email, user.DisplayName, token, expires, tenantContext.Tenant?.Code ?? string.Empty));
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("Password reset link sent to user {UserId}.", user.Id);
+    }
+
+    /// <summary>
+    /// Sets a new password from a reset link. Runs anonymously, the token being the credential, and tells
+    /// the account's owner it happened, so someone who did not ask for it finds out.
+    /// </summary>
+    public async Task CompletePasswordResetAsync(Guid userId, string token, string newPassword, CancellationToken cancellationToken = default)
+    {
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
+        User? user = await users.GetAsync(userId, cancellationToken);
+
+        // One message for a wrong token, an expired one and a used one, as for invitations.
+        if (user is null || !user.CanResetPassword || !user.IsInvitationTokenValid(tokenGenerator.HashFor(token), now))
+        {
+            logger.LogInformation("Password reset refused for user {UserId}: link invalid or expired.", userId);
+            throw new DomainRuleException("PASSWORD_RESET_INVALID", "That link has expired or has already been used.");
+        }
+
+        PasswordPolicy policy = await policies.GetAsync(cancellationToken);
+        await EnsurePasswordIsAcceptableAsync(user, newPassword, policy, cancellationToken);
+
+        user.ResetPassword(passwordHasher.Hash(newPassword), policy, now);
+        publisher.Publish(new PasswordResetCompletedIntegrationEvent(user.Id, user.Email, user.DisplayName));
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("User {UserId} reset their password.", userId);
     }
 
     /// <summary>

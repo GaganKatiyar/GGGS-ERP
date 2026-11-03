@@ -137,6 +137,13 @@ public sealed class User : TenantAggregateRoot
 
     public DateTime? InvitationTokenExpiresDate { get; private set; }
 
+    /// <summary>
+    /// Whether someone can choose a new password from an emailed link: a person's account that already
+    /// has one, and is not disabled. A lockout is no bar, since a lockout is often why they are here.
+    /// An invited account finishes its invitation instead, so a link of one kind can never do the other's job.
+    /// </summary>
+    public bool CanResetPassword => UserType == UserType.TenantUser && PasswordHash is not null && Status is UserStatus.Active or UserStatus.Locked;
+
     /// <summary>Whether this account can sign in at all right now.</summary>
     public bool CanSignIn => Status is UserStatus.Active or UserStatus.Invited;
 
@@ -298,6 +305,21 @@ public sealed class User : TenantAggregateRoot
     /// Changes the password. Rotating the security stamp is the point: whoever prompted the change
     /// - the user, or an administrator after a compromise - expects existing sessions to end.
     /// </summary>
+    /// <summary>
+    /// Sets a new password from a reset link. It lifts any lockout, consumes the link, and through
+    /// <see cref="SetPassword"/> signs the account out everywhere.
+    /// </summary>
+    public void ResetPassword(string passwordHash, PasswordPolicy policy, DateTime now)
+    {
+        Guard.Against(!CanResetPassword, "USER_CANNOT_RESET_PASSWORD", $"A {Status} account cannot reset its password.");
+
+        SetPassword(passwordHash, policy, now);
+        AccessFailedCount = 0;
+        LockoutEndDate = null;
+        Status = UserStatus.Active;
+        ClearInvitationToken();
+    }
+
     public void SetPassword(string passwordHash, PasswordPolicy policy, DateTime now)
     {
         ArgumentNullException.ThrowIfNull(policy);

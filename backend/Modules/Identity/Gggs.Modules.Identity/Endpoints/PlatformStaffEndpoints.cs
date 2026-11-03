@@ -5,6 +5,7 @@ using Gggs.Data;
 using Gggs.Modules.Identity.Application.PlatformStaff;
 using Gggs.Modules.Identity.Domain.PlatformStaff;
 using Gggs.Modules.Identity.Infrastructure;
+using Gggs.Modules.Identity.Sessions;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -143,11 +144,17 @@ public static class PlatformStaffEndpoints
     private static async Task<NoContent> ChangeOwnPasswordAsync(
         ChangePlatformStaffPasswordBody body,
         PlatformStaffManagementService staff,
+        ICurrentUser currentUser,
+        BffSessionStore sessions,
+        HttpContext context,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(body);
 
         await staff.ChangeOwnPasswordAsync(body.CurrentPassword, body.NewPassword, cancellationToken);
+
+        // Someone changing a password may suspect another person has it, so only this browser stays.
+        await sessions.EndAllForUserAsync(currentUser.UserId, context.Features.Get<BffSessionFeature>(), cancellationToken);
         return TypedResults.NoContent();
     }
 

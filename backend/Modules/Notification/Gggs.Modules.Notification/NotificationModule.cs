@@ -57,6 +57,8 @@ public sealed class NotificationModule : IModule
         services.AddGggsEventConsumer<WorkflowRejectedIntegrationEvent, NotifyRequestRejected>();
         services.AddGggsEventConsumer<WorkflowSentBackIntegrationEvent, NotifyRequestSentBack>();
         services.AddGggsEventConsumer<UserInvitedIntegrationEvent, SendInvitation>();
+        services.AddGggsEventConsumer<PasswordResetRequestedIntegrationEvent, SendPasswordResetLink>();
+        services.AddGggsEventConsumer<PasswordResetCompletedIntegrationEvent, SendPasswordChangedNotice>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints) => endpoints.MapNotificationEndpoints();

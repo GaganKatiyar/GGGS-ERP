@@ -136,6 +136,10 @@ applies.
   Sign-in is by password (two-step sign-in was removed later, see ADR-13), sensitive actions ask the
   person to confirm it is them with their password, organisations can add their own OpenID Connect
   provider for single sign-on, and credential endpoints and assistant turns are rate-limited.
+  Forgotten passwords are reset through a one-hour, single-use emailed link, which ends every earlier
+  sign-in on the account; changing your own password ends all but the browser you did it from. The
+  Privacy Policy and Terms of Use are public pages (`/privacy`, `/terms`);
+  their company details are bracketed blanks in `pages/legal-details.ts`, shown highlighted until filled in.
 - The frontend has the Nuts and Bolts shell, a shared UI kit (KPI cards, charts, drawers, form dialogs,
   filter bar, timeline, tabs, an upgraded data table with column chooser and CSV export), and the
   Core HR and administration screens. Unbuilt modules stay hidden in the navigation.

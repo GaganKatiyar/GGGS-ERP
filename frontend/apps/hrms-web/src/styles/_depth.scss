@@ -52,59 +52,85 @@ button.xp__card {
 }
 
 /*
- * Signed-out pages (sign-in, accepting an invitation): one raised card in the brand's light.
- * Outside the shell, so the brand mark is drawn here as it is on the rail.
+ * Forms on the signed-out pages (sign-in, invitation, forgotten password). The page around them is
+ * SignedOutLayout.
  */
-.auth {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100dvh;
-  padding: var(--gggs-space-4);
-  background-color: var(--gggs-color-surface);
-  background-image:
-    radial-gradient(ellipse 60% 50% at 15% 0%, color-mix(in srgb, var(--gggs-color-primary) 14%, transparent), transparent 70%),
-    radial-gradient(ellipse 50% 45% at 90% 100%, color-mix(in srgb, var(--gggs-color-accent-bright) 12%, transparent), transparent 70%);
-}
-
-.auth__card {
+.auth__form {
   display: flex;
   flex-direction: column;
   gap: var(--gggs-space-4);
   width: 100%;
-  max-width: 24rem;
-  padding: var(--gggs-space-8);
-  border: 1px solid var(--gggs-color-border);
-  border-radius: var(--gggs-radius-xl);
-  background: var(--gggs-color-surface-raised);
-  box-shadow: var(--gggs-shadow-4), var(--gggs-shadow-highlight);
-
-  @media (max-width: 30rem) {
-    padding: var(--gggs-space-6);
-  }
-}
-
-.auth__brand {
-  display: flex;
-  align-items: center;
-  gap: var(--gggs-space-2);
-  margin: 0;
-  color: var(--gggs-color-text);
-  font-weight: var(--gggs-font-weight-semibold);
-  letter-spacing: -0.01em;
-}
-
-.auth__logo {
-  flex: none;
-  width: 2.25rem;
-  height: 2.25rem;
+  max-width: 22.25rem;
 }
 
 .auth__title {
   margin: 0;
-  font-size: var(--gggs-font-size-xl);
-  font-weight: var(--gggs-font-weight-semibold);
+  font-family: var(--gggs-font-family-display);
+  font-size: 1.6rem;
+  font-weight: var(--gggs-font-weight-bold);
   letter-spacing: -0.02em;
+}
+
+.auth__org {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gggs-space-2);
+  min-height: 2.625rem;
+  padding: 0.25rem var(--gggs-space-3);
+  border-radius: var(--gggs-radius-md);
+  background: var(--gggs-color-surface-sunken);
+  overflow-wrap: anywhere;
+}
+
+.auth__password {
+  position: relative;
+
+  input {
+    padding-inline-end: 3.75rem;
+  }
+}
+
+.auth__eye {
+  position: absolute;
+  inset-block-end: 0.3rem;
+  inset-inline-end: 0.3rem;
+  height: 1.875rem;
+  padding: 0 var(--gggs-space-2);
+  border: 0;
+  border-radius: var(--gggs-radius-sm);
+  background: transparent;
+  color: var(--gggs-color-text-muted);
+  font: inherit;
+  font-size: var(--gggs-font-size-sm);
+  font-weight: var(--gggs-font-weight-medium);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--gggs-color-surface-hover);
+    color: var(--gggs-color-text);
+  }
+
+  &:focus-visible {
+    outline: var(--gggs-focus-outline);
+  }
+}
+
+/* With a hint under the field, the button sits level with the input and not the hint. */
+.auth__eye--hinted {
+  inset-block-end: 1.85rem;
+}
+
+.auth__forgot {
+  align-self: flex-end;
+  margin-block-start: calc(var(--gggs-space-2) * -1);
+  font-size: var(--gggs-font-size-sm);
+}
+
+.auth__help {
+  margin: 0;
+  color: var(--gggs-color-text-muted);
+  font-size: var(--gggs-font-size-sm);
 }
 
 .auth__note {

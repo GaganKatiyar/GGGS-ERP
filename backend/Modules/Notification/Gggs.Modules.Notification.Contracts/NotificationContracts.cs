@@ -110,4 +110,6 @@ public static class NotificationTemplates
     public const string SettlementOverdue = "separation.settlement-overdue";
     public const string ReportDigest = "insight.report-digest";
     public const string AccountCreated = "identity.account-created";
+    public const string PasswordResetRequested = "identity.password-reset-requested";
+    public const string PasswordResetCompleted = "identity.password-reset-completed";
 }

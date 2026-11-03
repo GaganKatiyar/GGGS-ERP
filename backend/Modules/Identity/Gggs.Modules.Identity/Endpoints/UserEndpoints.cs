@@ -10,6 +10,7 @@ using Gggs.Modules.Identity.Application.Users;
 using Gggs.Modules.Identity.Domain.Roles;
 using Gggs.Modules.Identity.Domain.Users;
 using Gggs.Modules.Identity.Infrastructure;
+using Gggs.Modules.Identity.Sessions;
 using Gggs.Modules.Organization.Contracts;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -48,6 +49,10 @@ public sealed record InviteUserResponse(Guid UserId, string InvitationToken, Dat
 /// </para>
 /// </summary>
 public sealed record CompleteInvitationBody(string TenantCode, Guid UserId, string Token, string NewPassword);
+
+public sealed record ForgotPasswordBody(string? TenantCode, string Email);
+
+public sealed record ResetPasswordBody(string TenantCode, Guid UserId, string Token, string NewPassword);
 
 public sealed record ChangePasswordBody(string CurrentPassword, string NewPassword);
 
@@ -92,6 +97,19 @@ public static class UserEndpoints
         // Anonymous: the invitation token is the credential, and the invitee has no account yet.
         endpoints.MapPost("/api/v1/auth/complete-invitation", CompleteInvitationAsync)
             .WithName("CompleteInvitation")
+            .WithTags("Authentication")
+            .AllowAnonymous()
+            .RequireRateLimiting(RateLimitPolicies.SignIn);
+
+        // Anonymous: the person cannot sign in, which is why they are here.
+        endpoints.MapPost("/api/v1/auth/forgot-password", ForgotPasswordAsync)
+            .WithName("ForgotPassword")
+            .WithTags("Authentication")
+            .AllowAnonymous()
+            .RequireRateLimiting(RateLimitPolicies.SignIn);
+
+        endpoints.MapPost("/api/v1/auth/reset-password", ResetPasswordAsync)
+            .WithName("ResetPassword")
             .WithTags("Authentication")
             .AllowAnonymous()
             .RequireRateLimiting(RateLimitPolicies.SignIn);
@@ -200,14 +218,68 @@ public static class UserEndpoints
         return TypedResults.NoContent();
     }
 
+    /// <summary>Always the same answer, so it cannot be used to find out which customers or people exist.</summary>
+    private static async Task<NoContent> ForgotPasswordAsync(
+        ForgotPasswordBody body,
+        UserManagementService users,
+        TenantDiscoveryService discovery,
+        ITenantContextSetter tenantSetter,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        string email = body.Email?.Trim() ?? string.Empty;
+        if (email.Length == 0)
+        {
+            return TypedResults.NoContent();
+        }
+
+        TenantDiscoveryResult? discovered = await discovery.DiscoverAsync(body.TenantCode, email, cancellationToken);
+        if (discovered is { Tenant.IsOperational: true })
+        {
+            tenantSetter.SetTenant(discovered.Tenant);
+            await users.RequestPasswordResetAsync(email, cancellationToken);
+        }
+
+        return TypedResults.NoContent();
+    }
+
+    private static async Task<NoContent> ResetPasswordAsync(
+        ResetPasswordBody body,
+        UserManagementService users,
+        TenantDiscoveryService discovery,
+        ITenantContextSetter tenantSetter,
+        BffSessionStore sessions,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        TenantDiscoveryResult? discovered = await discovery.DiscoverAsync(body.TenantCode, email: string.Empty, cancellationToken);
+        if (discovered is null || !discovered.Tenant.IsOperational)
+        {
+            throw new DomainRuleException("PASSWORD_RESET_INVALID", "That link has expired or has already been used.");
+        }
+
+        tenantSetter.SetTenant(discovered.Tenant);
+        await users.CompletePasswordResetAsync(body.UserId, body.Token, body.NewPassword, cancellationToken);
+
+        // Someone resetting a password may be shutting out whoever took the account, so nobody stays signed in.
+        await sessions.EndAllForUserAsync(body.UserId, cancellationToken: cancellationToken);
+        return TypedResults.NoContent();
+    }
+
     private static async Task<NoContent> ChangeOwnPasswordAsync(
         ChangePasswordBody body,
         UserManagementService users,
+        ICurrentUser currentUser,
+        BffSessionStore sessions,
+        HttpContext context,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(body);
 
         await users.ChangeOwnPasswordAsync(body.CurrentPassword, body.NewPassword, cancellationToken);
+
+        // Someone changing a password may suspect another person has it, so only this browser stays.
+        await sessions.EndAllForUserAsync(currentUser.UserId, context.Features.Get<BffSessionFeature>(), cancellationToken);
         return TypedResults.NoContent();
     }
 

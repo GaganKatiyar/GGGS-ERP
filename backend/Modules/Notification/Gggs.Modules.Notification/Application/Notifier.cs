@@ -25,6 +25,8 @@ internal static class NotificationTemplateCatalog
         NotificationTemplates.ShowCauseIssued,
         NotificationTemplates.AbsenceNotice,
         NotificationTemplates.AccountCreated,
+        NotificationTemplates.PasswordResetRequested,
+        NotificationTemplates.PasswordResetCompleted,
     };
 
     public static IReadOnlyList<TemplateSeed> Defaults { get; } =
@@ -194,6 +196,12 @@ internal static class NotificationTemplateCatalog
         new(NotificationTemplates.AccountCreated, "Work account created",
             "Your work account is ready",
             "Hi {{recipientName}}, your work account is ready. Sign in as {{login}} with the temporary password {{temporaryPassword}}. You will be asked to choose your own the first time.", SendInApp: false, SendEmail: true),
+        new(NotificationTemplates.PasswordResetRequested, "Password reset link",
+            "Choose a new password",
+            "Hi {{recipientName}}, we received a request to reset your password. This link lets you choose a new one and works for one hour: {{resetLink}} If you did not ask for this, ignore this email and your password stays the same.", SendInApp: false, SendEmail: true),
+        new(NotificationTemplates.PasswordResetCompleted, "Password changed",
+            "Your password was changed",
+            "Hi {{recipientName}}, your password was just changed and you were signed out everywhere. If this was not you, contact your HR team straight away.", SendInApp: false, SendEmail: true),
         new(NotificationTemplates.ReportDigest, "Report digest",
             "Your {{period}} {{dashboard}} digest",
             "Hi {{recipientName}}, here are this {{period}}'s {{dashboard}} figures: {{summary}}", SendInApp: true, SendEmail: true),

@@ -27,6 +27,7 @@ public sealed class BffSessionStore(
     ILogger<BffSessionStore> logger)
 {
     private const string KeyPrefix = "gggs:session:";
+    private const string EndedPrefix = "gggs:sessions-ended:";
 
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
 
@@ -143,6 +144,12 @@ public sealed class BffSessionStore(
             return null;
         }
 
+        if (await WereEndedAsync(session.UserId, session.SignedInAt, cancellationToken))
+        {
+            await RemoveAsync(sessionKey, cancellationToken);
+            return null;
+        }
+
         BffSession touched = session with { LastSeenAt = now };
         await WriteAsync(sessionKey, touched, cancellationToken);
 
@@ -155,6 +162,40 @@ public sealed class BffSessionStore(
         {
             await cache.RemoveAsync(CacheKeyFor(sessionKey), cancellationToken);
         }
+    }
+
+    /// <summary>
+    /// Ends every sign-in a user made before now, on every device, except <paramref name="keep"/> if given.
+    /// <para>
+    /// Session keys are stored hashed and not by user, so they cannot be listed and deleted. The moment
+    /// is recorded instead, and each sign-in compared with it when next used. It is kept as long as the
+    /// oldest of those sign-ins could still be alive, and lives in the same store as the sessions, so
+    /// the two cannot disagree.
+    /// </para>
+    /// </summary>
+    public async Task EndAllForUserAsync(Guid userId, BffSessionFeature? keep = null, CancellationToken cancellationToken = default)
+    {
+        DateTimeOffset now = timeProvider.GetUtcNow();
+
+        // The one to keep goes first, so it is never older than the moment recorded below.
+        if (keep is not null)
+        {
+            await WriteAsync(keep.SessionKey, keep.Session with { SignedInAt = now }, cancellationToken);
+        }
+
+        await cache.SetAsync(
+            EndedPrefix + userId.ToString("N"),
+            JsonSerializer.SerializeToUtf8Bytes(now, SerializerOptions),
+            new DistributedCacheEntryOptions { AbsoluteExpiration = now.Add(_options.AbsoluteTimeout) },
+            cancellationToken);
+    }
+
+    /// <summary>Whether a sign-in made at <paramref name="signedInAt"/> has since been ended by <see cref="EndAllForUserAsync"/>.</summary>
+    public async Task<bool> WereEndedAsync(Guid userId, DateTimeOffset signedInAt, CancellationToken cancellationToken = default)
+    {
+        byte[]? stored = await cache.GetAsync(EndedPrefix + userId.ToString("N"), cancellationToken);
+
+        return stored is not null && signedInAt < JsonSerializer.Deserialize<DateTimeOffset>(stored, SerializerOptions);
     }
 
     private async Task WriteAsync(string sessionKey, BffSession session, CancellationToken cancellationToken)

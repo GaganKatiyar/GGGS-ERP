@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Web;
@@ -5,6 +6,7 @@ using Gggs.Modules.Identity.Application.Authentication;
 using Gggs.Modules.Identity.Application.PlatformStaff;
 using Gggs.Modules.Identity.Domain.PlatformStaff;
 using Gggs.Modules.Identity.Domain.Users;
+using Gggs.Modules.Identity.Sessions;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
@@ -72,6 +74,7 @@ public static class TokenEndpoints
         HttpContext httpContext,
         PasswordSignInService passwordSignIn,
         PrincipalRevalidator revalidator,
+        BffSessionStore sessions,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(httpContext);
@@ -104,6 +107,15 @@ public static class TokenEndpoints
                 OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
 
             if (!authentication.Succeeded || authentication.Principal is null)
+            {
+                return Forbid(Errors.InvalidGrant, "That refresh token is no longer valid.");
+            }
+
+            // Resetting or changing a password ends what came before it. The access token already out runs to its
+            // short lifetime; this stops it being renewed.
+            if (Guid.TryParse(authentication.Principal.FindFirstValue(Claims.Subject), out Guid signedInUser)
+                && long.TryParse(authentication.Principal.FindFirstValue("auth_time"), NumberStyles.Integer, CultureInfo.InvariantCulture, out long signedInAt)
+                && await sessions.WereEndedAsync(signedInUser, DateTimeOffset.FromUnixTimeSeconds(signedInAt), cancellationToken))
             {
                 return Forbid(Errors.InvalidGrant, "That refresh token is no longer valid.");
             }

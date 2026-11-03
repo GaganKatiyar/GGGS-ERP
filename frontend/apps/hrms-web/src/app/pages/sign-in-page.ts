@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import {
   SessionStore,
   safeReturnUrl,
@@ -8,7 +8,8 @@ import {
   type SsoOption,
 } from '@gggs/core/auth';
 import { Button, FormField } from '@gggs/shared/ui';
-import { SignInShowcase } from './sign-in-showcase';
+import { rememberTenant, rememberedTenant } from './remembered-tenant';
+import { SignedOutLayout } from './signed-out-layout';
 
 /**
  * Signing in.
@@ -26,19 +27,17 @@ import { SignInShowcase } from './sign-in-showcase';
  */
 @Component({
   selector: 'gggs-sign-in-page',
-  imports: [ReactiveFormsModule, FormField, Button, SignInShowcase],
+  imports: [ReactiveFormsModule, RouterLink, FormField, Button, SignedOutLayout],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="sign-in">
-      <gggs-sign-in-showcase />
-      <main class="sign-in__main">
+    <gggs-signed-out-layout>
         <form
-          class="sign-in__form rise-in"
+          class="auth__form rise-in"
           [formGroup]="form"
           (ngSubmit)="submit()"
           novalidate
         >
-          <h1 class="sign-in__title">{{ returning ? 'Welcome back' : 'Sign in' }}</h1>
+          <h1 class="auth__title">{{ returning ? 'Welcome back' : 'Sign in' }}</h1>
 
           @if (changingTenant()) {
             <gggs-form-field
@@ -58,7 +57,7 @@ import { SignInShowcase } from './sign-in-showcase';
               />
             </gggs-form-field>
           } @else {
-            <div class="sign-in__org">
+            <div class="auth__org">
               <span>Organisation: <strong>{{ form.controls.tenantCode.value }}</strong></span>
               <button type="button" class="btn btn--link btn--sm" aria-label="Change organisation" (click)="changeTenant()">Change</button>
             </div>
@@ -75,7 +74,7 @@ import { SignInShowcase } from './sign-in-showcase';
             />
           </gggs-form-field>
 
-          <div class="sign-in__password">
+          <div class="auth__password">
             <gggs-form-field label="Password" required>
               <input
                 [type]="showPassword() ? 'text' : 'password'"
@@ -84,10 +83,11 @@ import { SignInShowcase } from './sign-in-showcase';
                 required
               />
             </gggs-form-field>
-            <button type="button" class="sign-in__eye" [attr.aria-pressed]="showPassword()" aria-label="Show password" (click)="showPassword.set(!showPassword())">
+            <button type="button" class="auth__eye" [attr.aria-pressed]="showPassword()" aria-label="Show password" (click)="showPassword.set(!showPassword())">
               {{ showPassword() ? 'Hide' : 'Show' }}
             </button>
           </div>
+          <a class="auth__forgot" routerLink="/forgot-password">Forgot password?</a>
 
           @if (message()) {
             <!-- assertive: a failed sign-in must reach a screen reader immediately, because the
@@ -110,112 +110,11 @@ import { SignInShowcase } from './sign-in-showcase';
             }
           }
 
-          <p class="sign-in__help">Trouble signing in? Ask your HR team.</p>
+          <p class="auth__help">Trouble signing in? Ask your HR team.</p>
         </form>
-        <p class="sign-in__maker">Powered by GGGS Technologies Pvt Ltd</p>
-      </main>
-    </div>
+    </gggs-signed-out-layout>
   `,
   styles: `
-    .sign-in {
-      display: grid;
-      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-      min-height: 100dvh;
-      background: var(--gggs-color-surface-raised);
-
-      @media (max-width: 60rem) {
-        grid-template-columns: minmax(0, 1fr);
-        align-content: start;
-      }
-    }
-
-    .sign-in__main {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: var(--gggs-space-6);
-      min-width: 0;
-      padding: var(--gggs-space-8) var(--gggs-space-6);
-
-      @media (max-width: 60rem) {
-        justify-content: flex-start;
-        padding: var(--gggs-space-6) var(--gggs-space-5);
-      }
-    }
-
-    .sign-in__form {
-      display: flex;
-      flex-direction: column;
-      gap: var(--gggs-space-4);
-      width: 100%;
-      max-width: 22.25rem;
-    }
-
-    .sign-in__title {
-      margin: 0;
-      font-family: var(--gggs-font-family-display);
-      font-size: 1.6rem;
-      font-weight: var(--gggs-font-weight-bold);
-      letter-spacing: -0.02em;
-    }
-
-    .sign-in__org {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--gggs-space-2);
-      min-height: 2.625rem;
-      padding: 0.25rem var(--gggs-space-3);
-      border-radius: var(--gggs-radius-md);
-      background: var(--gggs-color-surface-sunken);
-      overflow-wrap: anywhere;
-    }
-
-    .sign-in__password {
-      position: relative;
-
-      input {
-        padding-inline-end: 3.75rem;
-      }
-    }
-
-    .sign-in__eye {
-      position: absolute;
-      inset-block-end: 0.3rem;
-      inset-inline-end: 0.3rem;
-      height: 1.875rem;
-      padding: 0 var(--gggs-space-2);
-      border: 0;
-      border-radius: var(--gggs-radius-sm);
-      background: transparent;
-      color: var(--gggs-color-text-muted);
-      font: inherit;
-      font-size: var(--gggs-font-size-sm);
-      font-weight: var(--gggs-font-weight-medium);
-      cursor: pointer;
-
-      &:hover {
-        background: var(--gggs-color-surface-hover);
-        color: var(--gggs-color-text);
-      }
-
-      &:focus-visible {
-        outline: var(--gggs-focus-outline);
-      }
-    }
-
-    .sign-in__help,
-    .sign-in__maker {
-      margin: 0;
-      color: var(--gggs-color-text-muted);
-      font-size: var(--gggs-font-size-sm);
-    }
-
-    .sign-in__maker {
-      text-align: center;
-    }
-
     .sign-in__or {
       margin: 0;
       text-align: center;
@@ -285,7 +184,7 @@ export class SignInPage {
 
   protected singleSignOn(option: SsoOption): void {
     const tenant = this.form.controls.tenantCode.value.trim();
-    remember(tenant);
+    rememberTenant(tenant);
     this.session.startSingleSignOn(
       tenant,
       option.key,
@@ -316,7 +215,7 @@ export class SignInPage {
         return;
       }
 
-      remember(tenantCode.trim());
+      rememberTenant(tenantCode.trim());
 
       // The URL the user was originally heading for, read here rather than kept in a store, so a
       // deep link survives the round trip.
@@ -327,27 +226,6 @@ export class SignInPage {
     } finally {
       this.isBusy.set(false);
     }
-  }
-}
-
-const TENANT_KEY = 'gggs.sign-in.tenant';
-
-/** The organisation code, remembered on this device so its sign-in options appear next time. */
-function remember(tenantCode: string): void {
-  try {
-    if (tenantCode) {
-      localStorage.setItem(TENANT_KEY, tenantCode);
-    }
-  } catch {
-    // Storage is blocked: the code is simply typed again next time.
-  }
-}
-
-function rememberedTenant(): string | null {
-  try {
-    return localStorage.getItem(TENANT_KEY);
-  } catch {
-    return null;
   }
 }
 

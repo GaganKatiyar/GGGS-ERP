@@ -124,6 +124,15 @@ export class AdminApi {
     );
   }
 
+  /** Answers the same whether or not the account exists. */
+  forgotPassword(request: { readonly tenantCode?: string; readonly email: string }): Promise<void> {
+    return firstValueFrom(this.http.post<void>('/api/v1/auth/forgot-password', request));
+  }
+
+  resetPassword(request: CompleteInvitationRequest): Promise<void> {
+    return firstValueFrom(this.http.post<void>('/api/v1/auth/reset-password', request));
+  }
+
   completeInvitation(request: CompleteInvitationRequest): Promise<void> {
     return firstValueFrom(
       this.http.post<void>('/api/v1/auth/complete-invitation', request),
