@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, model, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, model, output, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ApiError } from '@gggs/core/http';
 import { ClientsApi, ContractsApi, ProjectsApi, addDaysIso, isoToday } from '@gggs/shared/delivery';
@@ -13,12 +13,16 @@ import type {
   ProjectDetail,
   ProjectItem,
   ProjectStage,
+  ProjectTemplate,
   ProjectType,
   WorkPriority,
 } from '@gggs/shared/models';
-import { LOOKUP_LISTS, PROJECT_STAGES, PROJECT_TYPE_LABELS, STAGE_LABELS } from '@gggs/shared/models';
+import { BILLING_MODEL_LABELS, LOOKUP_LISTS, PROJECT_STAGES, PROJECT_TYPE_LABELS, STAGE_LABELS } from '@gggs/shared/models';
 import { OrgSelect } from '@gggs/shared/org-reference';
 import { FormDialog } from '@gggs/shared/ui';
+
+/** Kinds that say how work is sold rather than what it is: that is the engagement model now. */
+const COMMERCIAL_KINDS: readonly ProjectType[] = ['FixedPrice', 'TimeAndMaterial', 'Retainer', 'ManagedService', 'DepartmentDefault'];
 
 /** Creating or editing a project's master record (spec §39). */
 @Component({
@@ -37,7 +41,26 @@ import { FormDialog } from '@gggs/shared/ui';
           <input type="text" formControlName="name" maxlength="200" />
         </label>
         <label class="field">
-          <span class="field__label">Type</span>
+          <span class="field__label">Engagement model</span>
+          <select formControlName="billingType" (change)="onModel()">
+            @for (model of models; track model) {
+              <option [value]="model">{{ modelLabels[model] }}</option>
+            }
+          </select>
+        </label>
+        @if (!project()) {
+          <label class="field">
+            <span class="field__label">Start from</span>
+            <select formControlName="templateId">
+              <option value="">Nothing: a standard board</option>
+              @for (template of templatesForModel(); track template.id) {
+                <option [value]="template.id">{{ template.name }}</option>
+              }
+            </select>
+          </label>
+        }
+        <label class="field">
+          <span class="field__label">Kind of work</span>
           <select formControlName="type">
             @for (type of types; track type) {
               <option [value]="type">{{ typeLabels[type] }}</option>
@@ -59,7 +82,7 @@ import { FormDialog } from '@gggs/shared/ui';
         </label>
         <label class="field">
           <span class="field__label">Contract</span>
-          <select formControlName="contractId">
+          <select formControlName="contractId" (change)="onContract()">
             <option value="">None</option>
             @for (contract of contracts(); track contract.id) {
               <option [value]="contract.id">{{ contract.number }} - {{ contract.title }}</option>
@@ -130,16 +153,6 @@ import { FormDialog } from '@gggs/shared/ui';
           </select>
         </label>
         <label class="field">
-          <span class="field__label">Billing</span>
-          <select formControlName="billingType">
-            <option value="TimeAndMaterial">Time &amp; material</option>
-            <option value="FixedPrice">Fixed price</option>
-            <option value="Milestone">Milestone</option>
-            <option value="Retainer">Retainer</option>
-            <option value="NonBillable">Non-billable</option>
-          </select>
-        </label>
-        <label class="field">
           <span class="field__label">Currency *</span>
           <gggs-lookup-select [list]="lists.currency" ariaLabel="Currency" formControlName="currency" />
         </label>
@@ -188,9 +201,16 @@ export class ProjectForm {
   protected readonly lists = LOOKUP_LISTS;
   protected readonly typeLabels = PROJECT_TYPE_LABELS;
   protected readonly stageLabels = STAGE_LABELS;
+  protected readonly models = Object.keys(BILLING_MODEL_LABELS) as ProjectBillingType[];
+  protected readonly modelLabels = BILLING_MODEL_LABELS;
+  protected readonly templates = signal<readonly ProjectTemplate[]>([]);
+  private readonly selectedModel = signal<ProjectBillingType>('TimeAndMaterial');
+  protected readonly templatesForModel = computed(() => this.templates().filter((template) => template.billingType === this.selectedModel()));
+
+  /** The kinds of work on offer. How a project is sold is its engagement model, so older commercial kinds show only on projects already using them. */
   protected get types(): ProjectType[] {
-    const all = Object.keys(PROJECT_TYPE_LABELS) as ProjectType[];
-    return this.project()?.type === 'DepartmentDefault' ? all : all.filter((type) => type !== 'DepartmentDefault');
+    const current = this.project()?.type;
+    return (Object.keys(PROJECT_TYPE_LABELS) as ProjectType[]).filter((type) => type === current || !COMMERCIAL_KINDS.includes(type));
   }
 
   protected readonly stages = PROJECT_STAGES;
@@ -202,7 +222,8 @@ export class ProjectForm {
   protected readonly form = new FormGroup({
     code: new FormControl('', { nonNullable: true, validators: Validators.required }),
     name: new FormControl('', { nonNullable: true, validators: Validators.required }),
-    type: new FormControl<ProjectType>('TimeAndMaterial', { nonNullable: true }),
+    templateId: new FormControl<string>('', { nonNullable: true }),
+    type: new FormControl<ProjectType>('Implementation', { nonNullable: true }),
     category: new FormControl<string | null>(null),
     clientId: new FormControl<string>('', { nonNullable: true }),
     contractId: new FormControl<string>('', { nonNullable: true }),
@@ -239,7 +260,8 @@ export class ProjectForm {
       this.form.reset({
         code: project?.code ?? '',
         name: project?.name ?? '',
-        type: project?.type ?? 'TimeAndMaterial',
+        templateId: '',
+        type: project?.type ?? 'Implementation',
         category: project?.category ?? null,
         clientId: project?.clientId ?? '',
         contractId: project?.contractId ?? '',
@@ -270,9 +292,26 @@ export class ProjectForm {
         this.form.controls.code.enable();
       }
 
+      this.onModel();
+      void this.api.templates().then((templates) => this.templates.set(templates), () => this.templates.set([]));
       void this.clientsApi.active().then((clients) => this.clients.set(clients), () => this.clients.set([]));
       void this.loadContracts(this.form.controls.clientId.value);
     });
+  }
+
+  /** A new model has its own starting points, so the one chosen for the last no longer applies. */
+  protected onModel(): void {
+    this.selectedModel.set(this.form.controls.billingType.value);
+    this.form.patchValue({ templateId: '' });
+  }
+
+  /** A contract says how the work is sold, so a project under it starts the same way. */
+  protected onContract(): void {
+    const contract = this.contracts().find((candidate) => candidate.id === this.form.controls.contractId.value);
+    if (contract) {
+      this.form.patchValue({ billingType: contract.billingModel });
+      this.onModel();
+    }
   }
 
   protected onClient(): void {
@@ -291,6 +330,7 @@ export class ProjectForm {
     this.error.set(null);
     try {
       const saved = await this.api.save(this.project()?.id ?? null, {
+        templateId: value.templateId || null,
         code: value.code.trim(),
         name: value.name.trim(),
         type: value.type,

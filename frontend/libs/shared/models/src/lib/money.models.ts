@@ -834,11 +834,41 @@ export interface TotalRewards {
 
 // ----- Project financials --------------------------------------------------------------------
 
-export type CostCategory = 'Labour' | 'Vendor' | 'Expense' | 'Infrastructure' | 'Other';
+export type CostCategory = 'Labour' | 'Vendor' | 'Expense' | 'Infrastructure' | 'Other' | 'AiUsage';
 export type InvoiceStatus = 'Draft' | 'Sent' | 'Paid' | 'Cancelled';
 export const COST_CATEGORIES: readonly CostCategory[] = ['Labour', 'Vendor', 'Expense', 'Infrastructure', 'Other'];
 
+/** What an engagement's contract says beyond its value. */
+export interface CommercialTerms {
+  readonly notToExceed?: number | null;
+  readonly poNumber?: string | null;
+  readonly poValue?: number | null;
+  readonly includedHoursPerMonth?: number | null;
+  readonly rolloverPercent: number;
+  readonly overageRate?: number | null;
+}
+
+/** One month of a retainer or managed service. */
+export interface RetainerMonth {
+  readonly month: string;
+  readonly fee: number;
+  readonly includedHours: number;
+  readonly rolledInHours: number;
+  readonly usedHours: number;
+  readonly overageHours: number;
+  readonly overageAmount: number;
+  readonly rollsForwardHours: number;
+  readonly revenue: number;
+}
+
 export interface FinanceSummary {
+  readonly capUsedPercent?: number;
+  readonly overCapAmount: number;
+  readonly poBalance?: number;
+  readonly retainerMonths?: readonly RetainerMonth[];
+  readonly unpricedSeats: number;
+  readonly costPerDoneTask?: number;
+  readonly costPerStoryPoint?: number;
   readonly contractValue: number;
   readonly revenue: number;
   readonly billed: number;
@@ -954,6 +984,7 @@ export interface ProjectFinance {
   readonly invoices: readonly FinanceInvoice[];
   readonly contractValueOverride?: number;
   readonly retainerMonthlyFee?: number;
+  readonly terms?: CommercialTerms;
   readonly milestones: readonly { readonly milestoneId: string; readonly name: string; readonly plannedDate: string; readonly actualDate?: string; readonly status: string; readonly isBillable: boolean; readonly amount?: number }[];
   readonly trend: readonly { readonly month: string; readonly revenue: number; readonly cost: number; readonly billed: number; readonly collected: number; readonly forecastRevenue: number; readonly forecastCost: number }[];
   readonly canManage: boolean;

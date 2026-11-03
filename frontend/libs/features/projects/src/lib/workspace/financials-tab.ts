@@ -31,10 +31,64 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
           <gggs-kpi-card label="Billed / unbilled" [value]="f.summary.billed | gggsMoney: f.currency" [hint]="(f.summary.unbilled | gggsMoney: f.currency) + ' unbilled'" />
           <gggs-kpi-card label="Actual cost" [value]="f.summary.actualCost | gggsMoney: f.currency" [hint]="'forecast ' + (f.summary.forecastCost | gggsMoney: f.currency)" />
           <gggs-kpi-card label="Budget used" [value]="f.summary.budgetUsedPercent !== undefined ? (f.summary.budgetUsedPercent | number: '1.0-0') + '%' : '—'" [hint]="'of ' + (f.summary.budget | gggsMoney: f.currency)" />
+          @if (f.summary.capUsedPercent !== undefined) {
+            <gggs-kpi-card label="Billing cap used" [value]="(f.summary.capUsedPercent | number: '1.0-0') + '%'" [hint]="f.summary.overCapAmount ? (f.summary.overCapAmount | gggsMoney: f.currency) + ' past the cap' : 'of ' + (f.terms?.notToExceed | gggsMoney: f.currency)" />
+          }
+          @if (f.summary.poBalance !== undefined) {
+            <gggs-kpi-card label="PO balance" [value]="f.summary.poBalance | gggsMoney: f.currency" [hint]="f.terms?.poNumber ?? 'after invoices'" />
+          }
+          @if (f.summary.costPerStoryPoint !== undefined) {
+            <gggs-kpi-card label="Cost per story point" [value]="f.summary.costPerStoryPoint | gggsMoney: f.currency" [hint]="f.summary.costPerDoneTask !== undefined ? (f.summary.costPerDoneTask | gggsMoney: f.currency) + ' per finished task' : ''" />
+          } @else if (f.summary.costPerDoneTask !== undefined) {
+            <gggs-kpi-card label="Cost per finished task" [value]="f.summary.costPerDoneTask | gggsMoney: f.currency" />
+          }
           <gggs-kpi-card label="Gross margin" [value]="f.summary.marginPercent !== undefined ? (f.summary.marginPercent | number: '1.0-1') + '%' : '—'" [hint]="(f.summary.grossMargin | gggsMoney: f.currency) + ' · forecast ' + (f.summary.forecastMarginPercent ?? 0 | number: '1.0-1') + '%'" />
         </div>
         @if (f.summary.unpricedHours) {
           <p class="alert alert--warning">{{ f.summary.unpricedHours }} timesheet line(s) have no cost rate - add a rate card line or a team rate so labour cost is complete.</p>
+        }
+
+        @if (f.summary.overCapAmount) {
+          <p class="alert alert--warning">{{ f.summary.overCapAmount | gggsMoney: f.currency }} of work is past the not-to-exceed amount. It cannot be billed unless the client raises the cap.</p>
+        }
+        @if (f.summary.unpricedSeats) {
+          <p class="alert alert--warning">{{ f.summary.unpricedSeats }} billable person(s) on this dedicated team have no monthly rate, so they earn nothing. Add it on the Team tab.</p>
+        }
+
+        @if (f.summary.retainerMonths?.length && f.terms?.includedHoursPerMonth !== undefined && f.terms?.includedHoursPerMonth !== null) {
+          <section class="panel stack">
+            <h3 class="fin__heading">Hours by month</h3>
+            <div class="fin__scroll" tabindex="0" role="region" aria-label="Hours by month">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th scope="col">Month</th>
+                    <th scope="col" class="fin__num">Included</th>
+                    <th scope="col" class="fin__num">Rolled in</th>
+                    <th scope="col" class="fin__num">Used</th>
+                    <th scope="col" class="fin__num">Over</th>
+                    <th scope="col" class="fin__num">Overage</th>
+                    <th scope="col" class="fin__num">Rolls forward</th>
+                    <th scope="col" class="fin__num">Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of f.summary.retainerMonths; track row.month) {
+                    <tr>
+                      <td>{{ row.month | date: 'MMM y' }}</td>
+                      <td class="fin__num">{{ row.includedHours | number: '1.0-2' }}</td>
+                      <td class="fin__num">{{ row.rolledInHours | number: '1.0-2' }}</td>
+                      <td class="fin__num">{{ row.usedHours | number: '1.0-2' }}</td>
+                      <td class="fin__num">{{ row.overageHours | number: '1.0-2' }}</td>
+                      <td class="fin__num">{{ row.overageAmount | gggsMoney: f.currency }}</td>
+                      <td class="fin__num">{{ row.rollsForwardHours | number: '1.0-2' }}</td>
+                      <td class="fin__num">{{ row.revenue | gggsMoney: f.currency }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
         }
 
         @if (f.summary.months.length) {
@@ -59,7 +113,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
               <tbody>
                 @for (row of f.summary.categories; track row.category) {
                   <tr>
-                    <td>{{ row.category }}</td>
+                    <td>{{ costLabel(row.category) }}</td>
                     <td class="fin__num">{{ row.budget | gggsMoney: f.currency }}</td>
                     <td class="fin__num" [class.fin__danger]="row.budget > 0 && row.actual > row.budget">{{ row.actual | gggsMoney: f.currency }}</td>
                     <td class="fin__num">{{ row.planned | gggsMoney: f.currency }}</td>
@@ -131,7 +185,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
             </div>
             @for (cost of f.costs; track cost.id) {
               <div class="fin__row fin__row--small">
-                <span><strong>{{ cost.description }}</strong><br /><span class="muted">{{ cost.category }}{{ cost.vendor ? ' · ' + cost.vendor : '' }}{{ cost.planned ? ' · committed' : '' }}</span></span>
+                <span><strong>{{ cost.description }}</strong><br /><span class="muted">{{ costLabel(cost.category) }}{{ cost.vendor ? ' · ' + cost.vendor : '' }}{{ cost.planned ? ' · committed' : '' }}</span></span>
                 <span>{{ cost.amount | gggsMoney: f.currency }}</span>
                 <span class="muted">{{ cost.date | date: 'd MMM y' }}</span>
                 <span>
@@ -192,10 +246,36 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
             <span class="field__label">Contract value (overrides the contract's{{ finance()?.contractValueFromContract ? ', ' + (finance()?.contractValueFromContract | gggsMoney) : '' }})</span>
             <input type="number" min="0" [value]="contractValue() ?? ''" (input)="contractValue.set($any($event.target).value === '' ? null : +$any($event.target).value)" />
           </label>
-          @if (finance()?.billingType === 'Retainer') {
+          @if (finance()?.billingType === 'TimeAndMaterial') {
             <label class="field">
-              <span class="field__label">Monthly retainer fee</span>
+              <span class="field__label">Not-to-exceed amount <span class="muted">(revenue stops counting past it)</span></span>
+              <input type="number" min="0" [value]="notToExceed() ?? ''" (input)="notToExceed.set(optionalNumber($any($event.target).value))" />
+            </label>
+          }
+          <label class="field">
+            <span class="field__label">PO number</span>
+            <input type="text" maxlength="100" [value]="poNumber()" (input)="poNumber.set($any($event.target).value)" />
+          </label>
+          <label class="field">
+            <span class="field__label">PO value</span>
+            <input type="number" min="0" [value]="poValue() ?? ''" (input)="poValue.set(optionalNumber($any($event.target).value))" />
+          </label>
+          @if (finance()?.billingType === 'Retainer' || finance()?.billingType === 'ManagedService') {
+            <label class="field">
+              <span class="field__label">Monthly fee</span>
               <input type="number" min="0" [value]="retainer() ?? ''" (input)="retainer.set($any($event.target).value === '' ? null : +$any($event.target).value)" />
+            </label>
+            <label class="field">
+              <span class="field__label">Hours included a month <span class="muted">(blank for no limit)</span></span>
+              <input type="number" min="0" [value]="includedHours() ?? ''" (input)="includedHours.set(optionalNumber($any($event.target).value))" />
+            </label>
+            <label class="field">
+              <span class="field__label">Unused hours that roll into the next month (%)</span>
+              <input type="number" min="0" max="100" [value]="rolloverPercent()" (input)="rolloverPercent.set(+$any($event.target).value)" />
+            </label>
+            <label class="field">
+              <span class="field__label">Rate for hours over the bucket</span>
+              <input type="number" min="0" [value]="overageRate() ?? ''" (input)="overageRate.set(optionalNumber($any($event.target).value))" />
             </label>
           }
           @if (finance()?.billingType === 'Milestone') {
@@ -245,7 +325,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
               <span class="field__label">Category</span>
               <select [value]="costCategory()" (change)="costCategory.set($any($event.target).value)">
                 @for (category of nonLabour; track category) {
-                  <option [value]="category">{{ category }}</option>
+                  <option [value]="category">{{ costLabel(category) }}</option>
                 }
               </select>
             </label>
@@ -320,6 +400,14 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
     </gggs-form-dialog>
   `,
   styles: `
+    .fin__scroll {
+      overflow-x: auto;
+    }
+
+    .fin__num {
+      text-align: end;
+    }
+
     .fin__heading {
       margin: 0;
       font-size: var(--gggs-font-size-md);
@@ -391,7 +479,15 @@ export class FinancialsTab {
   readonly projectId = input.required<string>();
 
   protected readonly categories = COST_CATEGORIES;
-  protected readonly nonLabour: readonly CostCategory[] = ['Vendor', 'Expense', 'Infrastructure', 'Other'];
+  protected readonly nonLabour: readonly CostCategory[] = ['Vendor', 'Expense', 'Infrastructure', 'AiUsage', 'Other'];
+  protected readonly notToExceed = signal<number | null>(null);
+  protected readonly poNumber = signal('');
+  protected readonly poValue = signal<number | null>(null);
+  protected readonly includedHours = signal<number | null>(null);
+  protected readonly rolloverPercent = signal(0);
+  protected readonly overageRate = signal<number | null>(null);
+  protected readonly optionalNumber = (value: string): number | null => (value === '' ? null : Number(value));
+  protected readonly costLabel = (category: CostCategory): string => (category === 'AiUsage' ? 'AI usage' : category);
   protected readonly humanize = humanize;
   protected readonly finance = signal<ProjectFinance | null>(null);
   protected readonly roles = signal<readonly ProjectRole[]>([]);
@@ -471,6 +567,12 @@ export class FinancialsTab {
   protected openTerms(finance: ProjectFinance): void {
     this.contractValue.set(finance.contractValueOverride ?? null);
     this.retainer.set(finance.retainerMonthlyFee ?? null);
+    this.notToExceed.set(finance.terms?.notToExceed ?? null);
+    this.poNumber.set(finance.terms?.poNumber ?? '');
+    this.poValue.set(finance.terms?.poValue ?? null);
+    this.includedHours.set(finance.terms?.includedHoursPerMonth ?? null);
+    this.rolloverPercent.set(finance.terms?.rolloverPercent ?? 0);
+    this.overageRate.set(finance.terms?.overageRate ?? null);
     this.milestoneAmounts.set(Object.fromEntries(finance.milestones.filter((milestone) => milestone.amount !== undefined).map((milestone) => [milestone.milestoneId, milestone.amount ?? 0])));
     this.show('terms');
   }
@@ -562,7 +664,20 @@ export class FinancialsTab {
           );
           break;
         case 'terms':
-          this.finance.set(await this.api.saveProfile(id, { contractValue: this.contractValue(), retainerMonthlyFee: this.retainer(), milestoneAmounts: this.milestoneAmounts() }));
+          this.finance.set(await this.api.saveProfile(id, {
+              contractValue: this.contractValue(),
+              retainerMonthlyFee: this.retainer(),
+              milestoneAmounts: this.milestoneAmounts(),
+              terms: {
+                notToExceed: this.notToExceed(),
+                poNumber: this.poNumber() || null,
+                poValue: this.poValue(),
+                includedHoursPerMonth: this.includedHours(),
+                rolloverPercent: this.rolloverPercent(),
+                overageRate: this.overageRate(),
+              },
+            }),
+          );
           break;
         case 'rate':
           await this.api.saveRate(id, null, {

@@ -62,6 +62,11 @@ import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
                 @if (milestone.actualDate) {
                   · achieved {{ milestone.actualDate | date: 'd MMM' }}
                 }
+                @if (milestone.acceptedOn) {
+                  · accepted by {{ milestone.acceptedBy }} {{ milestone.acceptedOn | date: 'd MMM' }}
+                } @else if (milestone.requiresAcceptance && milestone.status === 'Achieved') {
+                  · <span class="plan__late">waiting for the client to accept</span>
+                }
               </span>
               <gggs-status-badge [status]="milestone.status" />
             </div>
@@ -73,6 +78,9 @@ import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
                 <span class="plan__actions">
                   @if (milestone.status === 'Planned' || milestone.status === 'InProgress') {
                     <button type="button" class="btn btn--link btn--sm" (click)="achieve(milestone)">Achieved</button>
+                  }
+                  @if (milestone.requiresAcceptance && !milestone.acceptedOn && milestone.status !== 'Cancelled') {
+                    <button type="button" class="btn btn--link btn--sm" (click)="askAccept(milestone)">Client accepted</button>
                   }
                   <button type="button" class="btn btn--link btn--sm" (click)="editMilestone(milestone)">Edit</button>
                 </span>
@@ -166,6 +174,9 @@ import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
         <label class="field">
           <span><input type="checkbox" [checked]="milestoneBillable()" (change)="milestoneBillable.set($any($event.target).checked)" /> Invoiced when achieved</span>
         </label>
+        <label class="field">
+          <span><input type="checkbox" [checked]="milestoneAcceptance()" (change)="milestoneAcceptance.set($any($event.target).checked)" /> The client must accept it before it counts as earned</span>
+        </label>
         <label class="field form-grid__full">
           <span class="field__label">Description</span>
           <textarea rows="2" maxlength="2000" [value]="milestoneDescription()" (input)="milestoneDescription.set($any($event.target).value)"></textarea>
@@ -174,6 +185,23 @@ import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
       @if (editingMilestone()) {
         <button type="button" class="btn btn--link btn--sm" (click)="deleteMilestone()">Delete milestone</button>
       }
+    </gggs-form-dialog>
+
+    <gggs-form-dialog [(visible)]="acceptOpen" [title]="'Client acceptance: ' + (accepting()?.name ?? '')" [busy]="busy()" [error]="dialogError()" [saveDisabled]="!acceptedBy().trim()" (save)="saveAcceptance()">
+      <div class="form-grid">
+        <label class="field">
+          <span class="field__label">Accepted by *</span>
+          <input type="text" maxlength="200" placeholder="Who at the client" [value]="acceptedBy()" (input)="acceptedBy.set($any($event.target).value)" />
+        </label>
+        <label class="field">
+          <span class="field__label">On</span>
+          <input type="date" [value]="acceptOn()" (input)="acceptOn.set($any($event.target).value)" />
+        </label>
+        <label class="field form-grid__full">
+          <span class="field__label">Evidence <span class="muted">(a sign-off email, a test report, an AI model's evaluation results)</span></span>
+          <textarea rows="3" maxlength="2000" [value]="acceptEvidence()" (input)="acceptEvidence.set($any($event.target).value)"></textarea>
+        </label>
+      </div>
     </gggs-form-dialog>
   `,
   styles: `
@@ -236,6 +264,12 @@ export class PlanTab {
   readonly canManageMilestones = input(false);
 
   protected readonly humanize = humanize;
+  protected readonly milestoneAcceptance = signal(false);
+  protected readonly acceptOpen = signal(false);
+  protected readonly accepting = signal<Milestone | null>(null);
+  protected readonly acceptedBy = signal('');
+  protected readonly acceptEvidence = signal('');
+  protected readonly acceptOn = signal('');
   protected readonly phaseStatuses: readonly PhaseStatus[] = ['NotStarted', 'InProgress', 'Completed', 'OnHold'];
   protected readonly milestoneStatuses: readonly MilestoneStatus[] = ['Planned', 'InProgress', 'Achieved', 'Cancelled'];
   protected readonly phases = signal<readonly Phase[]>([]);
@@ -323,6 +357,7 @@ export class PlanTab {
     this.milestonePhase.set(milestone?.phaseId ?? '');
     this.milestonePercent.set(milestone?.percentComplete ?? 0);
     this.milestoneBillable.set(milestone?.isBillable ?? false);
+    this.milestoneAcceptance.set(milestone?.requiresAcceptance ?? false);
     this.milestoneDescription.set(milestone?.description ?? '');
     this.milestoneOwner.setValue(milestone?.ownerEmployeeId ?? null);
     this.dialogError.set(null);
@@ -343,6 +378,7 @@ export class PlanTab {
         phaseId: this.milestonePhase() || null,
         percentComplete: this.milestonePercent(),
         isBillable: this.milestoneBillable(),
+        requiresAcceptance: this.milestoneAcceptance(),
         description: this.milestoneDescription() || null,
         ownerEmployeeId: this.milestoneOwner.value,
       });
@@ -358,6 +394,28 @@ export class PlanTab {
         this.milestoneOpen.set(false);
       });
     }
+  }
+
+  protected askAccept(milestone: Milestone): void {
+    this.accepting.set(milestone);
+    this.acceptedBy.set('');
+    this.acceptEvidence.set('');
+    this.acceptOn.set(isoToday());
+    this.dialogError.set(null);
+    this.acceptOpen.set(true);
+  }
+
+  protected async saveAcceptance(): Promise<void> {
+    const milestone = this.accepting();
+    if (!milestone || !this.acceptedBy().trim()) {
+      this.dialogError.set('Say who at the client accepted it.');
+      return;
+    }
+
+    await this.dialog(async () => {
+      await this.api.acceptMilestone(this.projectId(), milestone.id, { on: this.acceptOn() || null, acceptedBy: this.acceptedBy().trim(), evidence: this.acceptEvidence() || null });
+      this.acceptOpen.set(false);
+    });
   }
 
   protected async achieve(milestone: Milestone): Promise<void> {

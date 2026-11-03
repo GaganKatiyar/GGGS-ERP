@@ -81,7 +81,7 @@ export interface ContactInput {
 // ----- Contracts -----------------------------------------------------------------------------
 
 export type ContractType = 'Msa' | 'Sow' | 'PurchaseOrder' | 'Sla' | 'Retainer' | 'TimeAndMaterial';
-export type BillingModel = 'FixedPrice' | 'TimeAndMaterial' | 'Milestone' | 'Retainer' | 'NonBillable';
+export type BillingModel = 'FixedPrice' | 'TimeAndMaterial' | 'Milestone' | 'Retainer' | 'NonBillable' | 'DedicatedTeam' | 'ManagedService';
 export type ContractStatus = 'Draft' | 'PendingApproval' | 'Active' | 'Expired' | 'Terminated';
 
 export const CONTRACT_TYPE_LABELS: Readonly<Record<ContractType, string>> = {
@@ -99,6 +99,8 @@ export const BILLING_MODEL_LABELS: Readonly<Record<BillingModel, string>> = {
   Milestone: 'Milestone',
   Retainer: 'Retainer',
   NonBillable: 'Non-billable',
+  DedicatedTeam: 'Dedicated team',
+  ManagedService: 'Managed service',
 };
 
 export interface ContractItem {
@@ -163,7 +165,55 @@ export type ProjectType = 'FixedPrice' | 'TimeAndMaterial' | 'Retainer' | 'Inter
 export type ProjectStage = 'Opportunity' | 'Proposal' | 'Won' | 'Planning' | 'Kickoff' | 'Execution' | 'Testing' | 'Uat' | 'Deployment' | 'Support' | 'Closure';
 export type ProjectStatus = 'Active' | 'OnHold' | 'Completed' | 'Cancelled';
 export type WorkPriority = 'Low' | 'Medium' | 'High' | 'Critical';
-export type ProjectBillingType = 'FixedPrice' | 'TimeAndMaterial' | 'Milestone' | 'Retainer' | 'NonBillable';
+export type ProjectBillingType = BillingModel;
+
+export type BoardColumnCategory = 'Backlog' | 'Todo' | 'InProgress' | 'Done';
+
+export interface ProjectTemplateColumn {
+  readonly name: string;
+  readonly category: BoardColumnCategory;
+}
+
+export interface ProjectTemplateActivity {
+  readonly name: string;
+  readonly tasks: readonly string[];
+}
+
+/** A starting point for projects under one engagement model. */
+export interface ProjectTemplate {
+  readonly id: string;
+  readonly code: string;
+  readonly name: string;
+  readonly billingType: ProjectBillingType;
+  readonly definition: {
+    readonly phases: readonly string[];
+    readonly columns: readonly ProjectTemplateColumn[];
+    readonly activities: readonly ProjectTemplateActivity[];
+  };
+}
+
+export interface ProjectTemplateInput {
+  readonly name: string;
+  readonly phases: readonly string[];
+  readonly columns: readonly ProjectTemplateColumn[];
+  readonly activities: readonly ProjectTemplateActivity[];
+}
+
+/** The scope baseline, moved by approved change requests, against where the project stands now. */
+export interface ProjectBaseline {
+  readonly baselinedOn: string;
+  readonly baselineEndDate: string;
+  readonly agreedEndDate: string;
+  readonly currentEndDate: string;
+  readonly scheduleVarianceDays: number;
+  readonly baselineHours: number;
+  readonly agreedHours: number;
+  readonly estimatedHours: number;
+  readonly actualHours: number;
+  readonly effortVarianceHours: number;
+  readonly approvedChanges: number;
+  readonly approvedChangeCost: number;
+}
 export type Confidentiality = 'Public' | 'Internal' | 'Confidential' | 'Restricted';
 export type DeliveryMethodology = 'Waterfall' | 'Agile' | 'Hybrid';
 export type HealthRating = 'NotAssessed' | 'Green' | 'Amber' | 'Red';
@@ -259,6 +309,7 @@ export interface ProjectDetail {
 }
 
 export interface ProjectInput {
+  readonly templateId?: string | null;
   readonly code: string;
   readonly name: string;
   readonly type: ProjectType;
@@ -311,6 +362,7 @@ export interface HistoryItem {
 export type TeamMemberStatus = 'Active' | 'Released';
 
 export interface TeamMember {
+  readonly monthlyRate?: number;
   readonly id: string;
   readonly employeeId: string;
   readonly employeeName?: string;
@@ -331,6 +383,7 @@ export interface TeamMember {
 }
 
 export interface TeamMemberInput {
+  readonly monthlyRate?: number | null;
   readonly employeeId: string;
   readonly projectRoleId: string;
   readonly startDate: string;
@@ -551,6 +604,10 @@ export interface RequirementInput {
 export type MilestoneStatus = 'Planned' | 'InProgress' | 'Achieved' | 'Cancelled';
 
 export interface Milestone {
+  readonly requiresAcceptance: boolean;
+  readonly acceptedOn?: string;
+  readonly acceptedBy?: string;
+  readonly acceptanceEvidence?: string;
   readonly id: string;
   readonly projectId: string;
   readonly projectCode?: string;
@@ -579,6 +636,7 @@ export interface MilestoneInput {
   readonly status?: MilestoneStatus | null;
   readonly percentComplete?: number | null;
   readonly isBillable?: boolean | null;
+  readonly requiresAcceptance?: boolean | null;
 }
 
 export type SprintStatus = 'Planned' | 'Active' | 'Completed' | 'Cancelled';
@@ -822,6 +880,7 @@ export interface ProjectDashboard {
     readonly byType: Readonly<Record<string, number>>;
   };
   readonly milestones: readonly Milestone[];
+  readonly baseline?: ProjectBaseline;
   readonly milestonesAchieved: number;
   readonly milestonesTotal: number;
   readonly raid: {

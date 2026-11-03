@@ -4,6 +4,9 @@ import type {
   BoardView,
   BurndownPoint,
   DefaultProjectRow,
+  ProjectBaseline,
+  ProjectTemplate,
+  ProjectTemplateInput,
   CalendarEvent,
   ChangeRequest,
   ChangeRequestInput,
@@ -345,6 +348,22 @@ export class ProjectsApi {
 
   saveMilestone(id: string, milestoneId: string | null, body: MilestoneInput): Promise<Milestone> {
     return firstValueFrom(milestoneId ? this.http.put<Milestone>(`${this.base}/${id}/milestones/${milestoneId}`, body) : this.http.post<Milestone>(`${this.base}/${id}/milestones`, body));
+  }
+
+  acceptMilestone(id: string, milestoneId: string, body: { on?: string | null; acceptedBy: string; evidence?: string | null }): Promise<Milestone> {
+    return firstValueFrom(this.http.post<Milestone>(`${this.base}/${id}/milestones/${milestoneId}/accept`, body));
+  }
+
+  captureBaseline(id: string): Promise<ProjectBaseline> {
+    return firstValueFrom(this.http.post<ProjectBaseline>(`${this.base}/${id}/baseline`, {}));
+  }
+
+  templates(): Promise<readonly ProjectTemplate[]> {
+    return firstValueFrom(this.http.get<readonly ProjectTemplate[]>(`${this.base}/templates`));
+  }
+
+  saveTemplate(id: string, body: ProjectTemplateInput): Promise<ProjectTemplate> {
+    return firstValueFrom(this.http.put<ProjectTemplate>(`${this.base}/templates/${id}`, body));
   }
 
   achieveMilestone(id: string, milestoneId: string, on: string | null): Promise<Milestone> {

@@ -5,6 +5,7 @@ import type {
   AwardStatus,
   AwardType,
   BandItem,
+  CommercialTerms,
   ComplianceDashboard,
   ComponentInput,
   ComponentItem,
@@ -540,7 +541,7 @@ export class ProjectFinancialsApi {
     return firstValueFrom(this.http.put<ProjectFinance>(`${this.base}/${id}/budget`, { lines }));
   }
 
-  saveProfile(id: string, body: { contractValue?: number | null; retainerMonthlyFee?: number | null; milestoneAmounts?: Record<string, number> | null }): Promise<ProjectFinance> {
+  saveProfile(id: string, body: { contractValue?: number | null; retainerMonthlyFee?: number | null; milestoneAmounts?: Record<string, number> | null; terms?: CommercialTerms | null }): Promise<ProjectFinance> {
     return firstValueFrom(this.http.put<ProjectFinance>(`${this.base}/${id}/profile`, body));
   }
 
