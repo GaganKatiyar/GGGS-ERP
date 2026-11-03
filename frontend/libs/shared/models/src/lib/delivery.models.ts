@@ -456,9 +456,99 @@ export interface ColumnInput {
   readonly wipLimit?: number | null;
 }
 
-export type TaskType = 'Epic' | 'Story' | 'Task' | 'Subtask' | 'Bug' | 'ChangeRequest';
+export type TaskType = 'Epic' | 'Story' | 'Task' | 'Subtask' | 'Bug' | 'ChangeRequest' | 'Incident' | 'ServiceRequest';
 
-export const TASK_TYPES: readonly TaskType[] = ['Epic', 'Story', 'Task', 'Subtask', 'Bug', 'ChangeRequest'];
+export const TASK_TYPES: readonly TaskType[] = ['Epic', 'Story', 'Task', 'Subtask', 'Bug', 'ChangeRequest', 'Incident', 'ServiceRequest'];
+
+export type SlaWeekday = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
+
+export interface SlaCalendar {
+  readonly alwaysOn: boolean;
+  readonly dayStart: string;
+  readonly dayEnd: string;
+  readonly workingDays: readonly SlaWeekday[];
+}
+
+export interface SlaTarget {
+  readonly priority: WorkPriority;
+  readonly responseMinutes: number;
+  readonly resolutionMinutes: number;
+  readonly creditPercent: number;
+}
+
+export interface SlaPolicy {
+  readonly calendar: SlaCalendar;
+  readonly targets: readonly SlaTarget[];
+  readonly pausedColumnIds: readonly string[];
+  readonly monthlyCreditCapPercent: number;
+}
+
+export interface SlaTicket {
+  readonly taskId: string;
+  readonly code: string;
+  readonly title: string;
+  readonly type: TaskType;
+  readonly priority: WorkPriority;
+  readonly columnName?: string;
+  readonly assigneeEmployeeId?: string;
+  readonly assigneeName?: string;
+  readonly openedAt: string;
+  readonly responseDueAt: string;
+  readonly resolutionDueAt: string;
+  readonly respondedAt?: string;
+  readonly resolvedAt?: string;
+  readonly isPaused: boolean;
+  readonly responseBreached: boolean;
+  readonly resolutionBreached: boolean;
+  readonly excludedReason?: string;
+}
+
+export interface SlaPriorityLine {
+  readonly priority: WorkPriority;
+  readonly opened: number;
+  readonly resolved: number;
+  readonly responseMeasured: number;
+  readonly responseMet: number;
+  readonly resolutionMeasured: number;
+  readonly resolutionMet: number;
+}
+
+export interface SlaMonthReport {
+  readonly month: string;
+  readonly opened: number;
+  readonly resolved: number;
+  readonly responseMeasured: number;
+  readonly responseMet: number;
+  readonly resolutionMeasured: number;
+  readonly resolutionMet: number;
+  readonly breaches: number;
+  readonly excluded: number;
+  readonly creditPercent: number;
+  readonly priorities: readonly SlaPriorityLine[];
+  readonly responseMetPercent?: number;
+  readonly resolutionMetPercent?: number;
+}
+
+export interface ServiceLevelView {
+  readonly projectId: string;
+  readonly policy?: SlaPolicy;
+  readonly defaults: SlaPolicy;
+  readonly columns: readonly { readonly id: string; readonly name: string }[];
+  readonly tickets: readonly SlaTicket[];
+  readonly report: SlaMonthReport;
+  readonly canManage: boolean;
+  readonly canManageTickets: boolean;
+  readonly canManageCredits: boolean;
+}
+
+export interface ServiceLevelRow {
+  readonly projectId: string;
+  readonly code: string;
+  readonly name: string;
+  readonly clientId?: string;
+  readonly clientName?: string;
+  readonly report: SlaMonthReport;
+}
 
 export const TASK_TYPE_ICONS: Readonly<Record<TaskType, string>> = {
   Epic: 'pi pi-bolt',
@@ -467,6 +557,8 @@ export const TASK_TYPE_ICONS: Readonly<Record<TaskType, string>> = {
   Subtask: 'pi pi-minus',
   Bug: 'pi pi-exclamation-circle',
   ChangeRequest: 'pi pi-arrow-right-arrow-left',
+  Incident: 'pi pi-exclamation-triangle',
+  ServiceRequest: 'pi pi-inbox',
 };
 
 export interface ProjectTask {

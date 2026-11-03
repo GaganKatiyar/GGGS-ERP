@@ -63,6 +63,9 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
           @if (p.heldByCap > 0) {
             <p class="alert alert--warning" role="status"><i class="pi pi-info-circle" aria-hidden="true"></i><span>{{ p.heldByCap | gggsMoney: p.currency }} held back: it would go over the not-to-exceed amount.</span></p>
           }
+          @if (p.creditsWaiting > 0) {
+            <p class="alert alert--warning" role="status"><i class="pi pi-info-circle" aria-hidden="true"></i><span>{{ p.creditsWaiting | gggsMoney: p.currency }} of service credits wait for the next invoice: this one is too small to carry them.</span></p>
+          }
           @if (p.unpricedHours > 0) {
             <p class="alert alert--warning" role="status"><i class="pi pi-info-circle" aria-hidden="true"></i><span>{{ p.unpricedHours }} approved hours left out: those people have no billing rate.</span></p>
           }

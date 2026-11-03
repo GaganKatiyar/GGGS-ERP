@@ -193,6 +193,9 @@ export class BillingPage {
     if (row.heldByCap > 0) {
       notes.push('Some held back by the cap');
     }
+    if (row.creditsWaiting > 0) {
+      notes.push('Service credits waiting');
+    }
     if (row.unpricedHours > 0) {
       notes.push(`${row.unpricedHours} h with no rate`);
     }

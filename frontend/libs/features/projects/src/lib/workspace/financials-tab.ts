@@ -71,6 +71,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
                     <th scope="col" class="fin__num">Over</th>
                     <th scope="col" class="fin__num">Overage</th>
                     <th scope="col" class="fin__num">Rolls forward</th>
+                    <th scope="col" class="fin__num">Service credit</th>
                     <th scope="col" class="fin__num">Revenue</th>
                   </tr>
                 </thead>
@@ -84,6 +85,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
                       <td class="fin__num">{{ row.overageHours | number: '1.0-2' }}</td>
                       <td class="fin__num">{{ row.overageAmount | gggsMoney: f.currency }}</td>
                       <td class="fin__num">{{ row.rollsForwardHours | number: '1.0-2' }}</td>
+                      <td class="fin__num">{{ row.credit | gggsMoney: f.currency }}</td>
                       <td class="fin__num">{{ row.revenue | gggsMoney: f.currency }}</td>
                     </tr>
                   }

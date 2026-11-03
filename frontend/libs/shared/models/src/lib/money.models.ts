@@ -836,7 +836,7 @@ export interface TotalRewards {
 
 export type CostCategory = 'Labour' | 'Vendor' | 'Expense' | 'Infrastructure' | 'Other' | 'AiUsage';
 export type InvoiceStatus = 'Draft' | 'PendingApproval' | 'Sent' | 'Paid' | 'Cancelled';
-export type InvoiceLineKind = 'Hours' | 'Milestone' | 'MonthlyFee' | 'Overage' | 'Seat' | 'Progress';
+export type InvoiceLineKind = 'Hours' | 'Milestone' | 'MonthlyFee' | 'Overage' | 'Seat' | 'Progress' | 'ServiceCredit';
 export const COST_CATEGORIES: readonly CostCategory[] = ['Labour', 'Vendor', 'Expense', 'Infrastructure', 'Other'];
 
 /** What an engagement's contract says beyond its value. */
@@ -859,6 +859,7 @@ export interface RetainerMonth {
   readonly overageHours: number;
   readonly overageAmount: number;
   readonly rollsForwardHours: number;
+  readonly credit: number;
   readonly revenue: number;
 }
 
@@ -1004,6 +1005,8 @@ export interface BillingPreview {
   readonly unpricedHours: number;
   /** Invoices entered by hand that overlap the period: the app cannot tell what they covered. */
   readonly typedInvoices: readonly string[];
+  /** Service credits owed that this invoice is too small to carry. */
+  readonly creditsWaiting: number;
 }
 
 export interface OverdueInvoice {

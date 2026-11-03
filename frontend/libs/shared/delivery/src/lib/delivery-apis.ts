@@ -1,8 +1,11 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type {
   BoardView,
   BurndownPoint,
+  ServiceLevelRow,
+  ServiceLevelView,
+  SlaPolicy,
   DefaultProjectRow,
   ProjectBaseline,
   ProjectTemplate,
@@ -195,6 +198,44 @@ export interface TaskQuery {
 export class ProjectsApi {
   private readonly http = inject(HttpClient);
   private readonly base = '/api/v1/projects';
+
+  // Service levels
+  serviceLevels(id: string, month: string): Promise<ServiceLevelView> {
+    return firstValueFrom(this.http.get<ServiceLevelView>(`${this.base}/${id}/service-levels`, { params: { month } }));
+  }
+
+  saveSlaPolicy(id: string, policy: SlaPolicy): Promise<ServiceLevelView> {
+    return firstValueFrom(this.http.put<ServiceLevelView>(`${this.base}/${id}/service-levels/policy`, policy));
+  }
+
+  respondToTicket(id: string, taskId: string): Promise<ServiceLevelView> {
+    return firstValueFrom(this.http.post<ServiceLevelView>(`${this.base}/${id}/tickets/${taskId}/respond`, {}));
+  }
+
+  excludeTicketBreach(id: string, taskId: string, reason: string): Promise<ServiceLevelView> {
+    return firstValueFrom(this.http.post<ServiceLevelView>(`${this.base}/${id}/tickets/${taskId}/exclude`, { reason }));
+  }
+
+  reinstateTicketBreach(id: string, taskId: string): Promise<ServiceLevelView> {
+    return firstValueFrom(this.http.post<ServiceLevelView>(`${this.base}/${id}/tickets/${taskId}/reinstate`, {}));
+  }
+
+  serviceLevelReport(month: string, clientId: string | null): Promise<readonly ServiceLevelRow[]> {
+    return firstValueFrom(this.http.get<readonly ServiceLevelRow[]>(`${this.base}/service-levels`, { params: params({ month, clientId }) }));
+  }
+
+  /** Saves the month's report as a spreadsheet. Fetched through HttpClient so the session cookie goes with it. */
+  async exportServiceLevels(month: string, clientId: string | null): Promise<void> {
+    const response: HttpResponse<Blob> = await firstValueFrom(
+      this.http.get(`${this.base}/service-levels/export`, { params: params({ month, clientId }), observe: 'response', responseType: 'blob' }),
+    );
+    const href = URL.createObjectURL(response.body ?? new Blob());
+    const link = document.createElement('a');
+    link.href = href;
+    link.download = `service-levels-${month.slice(0, 7)}.csv`;
+    link.click();
+    URL.revokeObjectURL(href);
+  }
 
   // Projects
   list(query: ProjectQuery = {}): Promise<PagedResult<ProjectItem>> {

@@ -272,7 +272,7 @@ export class TaskEditor {
   protected readonly parents = computed(() => {
     const type = this.draft().type;
     const allowed: readonly TaskType[] =
-      type === 'Epic' ? [] : type === 'Story' ? ['Epic'] : type === 'Subtask' ? ['Story', 'Task', 'Bug', 'ChangeRequest'] : ['Epic', 'Story'];
+      type === 'Epic' ? [] : type === 'Story' ? ['Epic'] : type === 'Subtask' ? ['Story', 'Task', 'Bug', 'ChangeRequest', 'Incident', 'ServiceRequest'] : ['Epic', 'Story'];
     return this.candidates().filter((candidate) => allowed.includes(candidate.type) && candidate.id !== this.task()?.id);
   });
 
