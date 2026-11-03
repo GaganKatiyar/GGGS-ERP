@@ -14031,6 +14031,82 @@ namespace Gggs.Data.Migrations.Migrations
                     b.HasAnnotation("Gggs:TenantOwned", true);
                 });
 
+            modelBuilder.Entity("Gggs.Modules.ProjectFinancials.Domain.ProjectBilledHours", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid>("InvoiceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("LineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TimesheetEntryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_ProjectBilledHours_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "InvoiceId")
+                        .HasDatabaseName("IX_ProjectBilledHours_TenantId_Invoice");
+
+                    b.HasIndex("TenantId", "ProjectId")
+                        .HasDatabaseName("IX_ProjectBilledHours_TenantId_Project");
+
+                    b.HasIndex("TenantId", "TimesheetEntryId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_ProjectBilledHours_TenantId_Entry")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("ProjectBilledHours", "pfin");
+
+                    b.HasAnnotation("Gggs:TenantOwned", true);
+                });
+
             modelBuilder.Entity("Gggs.Modules.ProjectFinancials.Domain.ProjectBudgetLine", b =>
                 {
                     b.Property<Guid>("Id")
@@ -14184,6 +14260,93 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasDatabaseName("IX_ProjectCost_TenantId_Project_Date");
 
                     b.ToTable("ProjectCost", "pfin");
+
+                    b.HasAnnotation("Gggs:TenantOwned", true);
+                });
+
+            modelBuilder.Entity("Gggs.Modules.ProjectFinancials.Domain.ProjectCreditNote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid>("InvoiceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("InvoiceId");
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_ProjectCreditNote_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("UX_ProjectCreditNote_TenantId_Number")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("ProjectCreditNote", "pfin");
 
                     b.HasAnnotation("Gggs:TenantOwned", true);
                 });
@@ -14394,6 +14557,10 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2(3)");
 
+                    b.Property<decimal>("CreditedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<Guid?>("DeletedBy")
                         .HasColumnType("uniqueidentifier");
 
@@ -14457,6 +14624,9 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("WorkflowInstanceId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
 
                     SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
@@ -14476,6 +14646,99 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasDatabaseName("IX_ProjectInvoice_TenantId_Project");
 
                     b.ToTable("ProjectInvoice", "pfin");
+
+                    b.HasAnnotation("Gggs:TenantOwned", true);
+                });
+
+            modelBuilder.Entity("Gggs.Modules.ProjectFinancials.Domain.ProjectInvoiceLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("CreditNoteId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<Guid>("InvoiceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<byte>("Kind")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateOnly?>("Month")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Rate")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid?>("ReferenceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("InvoiceId");
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_ProjectInvoiceLine_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "ProjectId", "Kind", "Month")
+                        .HasDatabaseName("IX_ProjectInvoiceLine_TenantId_Project_Kind_Month");
+
+                    b.ToTable("ProjectInvoiceLine", "pfin");
 
                     b.HasAnnotation("Gggs:TenantOwned", true);
                 });
@@ -21905,6 +22168,24 @@ namespace Gggs.Data.Migrations.Migrations
                     b.HasOne("Gggs.Modules.Project.Domain.ProjectTask", null)
                         .WithMany()
                         .HasForeignKey("SuccessorTaskId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Gggs.Modules.ProjectFinancials.Domain.ProjectCreditNote", b =>
+                {
+                    b.HasOne("Gggs.Modules.ProjectFinancials.Domain.ProjectInvoice", null)
+                        .WithMany()
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Gggs.Modules.ProjectFinancials.Domain.ProjectInvoiceLine", b =>
+                {
+                    b.HasOne("Gggs.Modules.ProjectFinancials.Domain.ProjectInvoice", null)
+                        .WithMany()
+                        .HasForeignKey("InvoiceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

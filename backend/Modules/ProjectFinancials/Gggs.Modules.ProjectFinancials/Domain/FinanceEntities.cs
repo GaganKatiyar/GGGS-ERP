@@ -163,6 +163,9 @@ public enum InvoiceStatus
     Sent = 2,
     Paid = 3,
     Cancelled = 4,
+
+    /// <summary>With an approver before it goes out.</summary>
+    PendingApproval = 5,
 }
 
 /// <summary>An invoice raised on the client for the project (spec §75, §125 ProjectInvoice): billed once sent, collected once paid.</summary>
@@ -197,6 +200,14 @@ public sealed class ProjectInvoice : TenantAggregateRoot
 
     public string? Notes { get; private set; }
 
+    /// <summary>What credit notes have taken back.</summary>
+    public decimal CreditedAmount { get; private set; }
+
+    public Guid? WorkflowInstanceId { get; private set; }
+
+    /// <summary>What still stands of the invoice after credit notes.</summary>
+    public decimal OpenAmount => Status == InvoiceStatus.Cancelled ? 0 : Amount - CreditedAmount;
+
     public static ProjectInvoice Raise(Guid projectId, string number, InvoiceDetails details)
     {
         var invoice = new ProjectInvoice { ProjectId = Guard.NotEmpty(projectId), Number = Guard.MaxLength(Guard.NotNullOrWhiteSpace(number).Trim(), 40), Status = InvoiceStatus.Draft };
@@ -207,9 +218,9 @@ public sealed class ProjectInvoice : TenantAggregateRoot
     public void Update(InvoiceDetails details)
     {
         ArgumentNullException.ThrowIfNull(details);
-        if (Status is InvoiceStatus.Paid or InvoiceStatus.Cancelled)
+        if (Status is not (InvoiceStatus.Draft or InvoiceStatus.Sent) || CreditedAmount > 0)
         {
-            throw new DomainRuleException("INVOICE_STATE", $"A {Status.ToString().ToLowerInvariant()} invoice cannot change.");
+            throw new DomainRuleException("INVOICE_STATE", CreditedAmount > 0 ? "An invoice with a credit note cannot change." : $"An invoice that is {Status.ToString().ToLowerInvariant()} cannot change.");
         }
 
         if (details.Amount <= 0 || details.TaxAmount < 0)
@@ -234,12 +245,61 @@ public sealed class ProjectInvoice : TenantAggregateRoot
 
     public void Send()
     {
-        if (Status != InvoiceStatus.Draft)
+        if (Status is not (InvoiceStatus.Draft or InvoiceStatus.PendingApproval))
         {
             throw new DomainRuleException("INVOICE_STATE", "Only a draft invoice can be sent.");
         }
 
         Status = InvoiceStatus.Sent;
+        WorkflowInstanceId = null;
+    }
+
+    public void AwaitApproval(Guid workflowInstanceId)
+    {
+        if (Status != InvoiceStatus.Draft)
+        {
+            throw new DomainRuleException("INVOICE_STATE", "Only a draft invoice goes for approval.");
+        }
+
+        Status = InvoiceStatus.PendingApproval;
+        WorkflowInstanceId = workflowInstanceId;
+    }
+
+    /// <summary>Turned down, or sent back: a draft again.</summary>
+    public void ReturnToDraft()
+    {
+        if (Status == InvoiceStatus.PendingApproval)
+        {
+            Status = InvoiceStatus.Draft;
+            WorkflowInstanceId = null;
+        }
+    }
+
+    /// <summary>The amount follows the lines when one comes off a draft.</summary>
+    public void SetAmount(decimal amount)
+    {
+        if (Status != InvoiceStatus.Draft || amount <= 0)
+        {
+            throw new DomainRuleException("INVOICE_STATE", "Only a draft's amount changes, and it stays above zero.");
+        }
+
+        Amount = Math.Round(amount, 2);
+    }
+
+    /// <summary>Takes back part or all of an invoice that went out. A draft is simply changed or cancelled.</summary>
+    public void Credit(decimal amount)
+    {
+        if (Status is not (InvoiceStatus.Sent or InvoiceStatus.Paid))
+        {
+            throw new DomainRuleException("INVOICE_STATE", "Only an invoice that has gone out takes a credit note; change or cancel a draft.");
+        }
+
+        if (amount <= 0 || Math.Round(amount, 2) > OpenAmount)
+        {
+            throw new DomainRuleException("INVOICE_CREDIT_AMOUNT", $"A credit note on {Number} can be for up to {OpenAmount:0.##}.");
+        }
+
+        CreditedAmount += Math.Round(amount, 2);
     }
 
     public void MarkPaid(DateOnly paidOn)
@@ -255,15 +315,16 @@ public sealed class ProjectInvoice : TenantAggregateRoot
 
     public void Cancel()
     {
-        if (Status == InvoiceStatus.Paid)
+        if (Status == InvoiceStatus.Paid || CreditedAmount > 0)
         {
-            throw new DomainRuleException("INVOICE_STATE", "A paid invoice cannot be cancelled; issue a credit note instead.");
+            throw new DomainRuleException("INVOICE_STATE", "A paid or credited invoice cannot be cancelled; issue a credit note instead.");
         }
 
         Status = InvoiceStatus.Cancelled;
+        WorkflowInstanceId = null;
     }
 
-    public bool IsOverdue(DateOnly today) => Status == InvoiceStatus.Sent && DueDate is { } due && due < today;
+    public bool IsOverdue(DateOnly today) => Status == InvoiceStatus.Sent && OpenAmount > 0 && DueDate is { } due && due < today;
 }
 
 public sealed record InvoiceDetails(DateOnly InvoiceDate, DateOnly? DueDate, DateOnly? PeriodFrom, DateOnly? PeriodTo, decimal Amount, decimal TaxAmount, Guid? MilestoneId, string? Notes);

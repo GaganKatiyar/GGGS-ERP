@@ -54,6 +54,8 @@ internal sealed class FinanceModel : IModuleModel
             entity.Property(invoice => invoice.Status).HasConversion<byte>();
             entity.Property(invoice => invoice.Amount).HasPrecision(18, 2);
             entity.Property(invoice => invoice.TaxAmount).HasPrecision(18, 2);
+            entity.Property(invoice => invoice.CreditedAmount).HasPrecision(18, 2);
+            entity.Ignore(invoice => invoice.OpenAmount);
             entity.Property(invoice => invoice.Notes).HasMaxLength(1000);
             entity.HasIndex(invoice => new { invoice.TenantId, invoice.Number })
                 .HasDatabaseName("UX_ProjectInvoice_TenantId_Number")
@@ -61,6 +63,47 @@ internal sealed class FinanceModel : IModuleModel
                 .HasFilter("[IsDeleted] = 0");
             entity.HasIndex(invoice => new { invoice.TenantId, invoice.ProjectId }).HasDatabaseName("IX_ProjectInvoice_TenantId_Project");
             entity.Ignore(invoice => invoice.DomainEvents);
+        });
+
+        modelBuilder.Entity<ProjectInvoiceLine>(entity =>
+        {
+            entity.ToTable("ProjectInvoiceLine", Schema);
+            entity.Property(line => line.Kind).HasConversion<byte>();
+            entity.Property(line => line.Description).HasMaxLength(300);
+            entity.Property(line => line.Quantity).HasPrecision(18, 2);
+            entity.Property(line => line.Rate).HasPrecision(18, 2);
+            entity.Property(line => line.Amount).HasPrecision(18, 2);
+            entity.HasOne<ProjectInvoice>().WithMany().HasForeignKey(line => line.InvoiceId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(line => new { line.TenantId, line.ProjectId, line.Kind, line.Month }).HasDatabaseName("IX_ProjectInvoiceLine_TenantId_Project_Kind_Month");
+            entity.Ignore(line => line.IsCredited);
+            entity.Ignore(line => line.DomainEvents);
+        });
+
+        modelBuilder.Entity<ProjectBilledHours>(entity =>
+        {
+            entity.ToTable("ProjectBilledHours", Schema);
+            entity.HasIndex(row => new { row.TenantId, row.TimesheetEntryId })
+                .HasDatabaseName("UX_ProjectBilledHours_TenantId_Entry")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.HasIndex(row => new { row.TenantId, row.ProjectId }).HasDatabaseName("IX_ProjectBilledHours_TenantId_Project");
+            entity.HasIndex(row => new { row.TenantId, row.InvoiceId }).HasDatabaseName("IX_ProjectBilledHours_TenantId_Invoice");
+            entity.Ignore(row => row.DomainEvents);
+        });
+
+        modelBuilder.Entity<ProjectCreditNote>(entity =>
+        {
+            entity.ToTable("ProjectCreditNote", Schema);
+            entity.Property(note => note.Number).HasMaxLength(40);
+            entity.Property(note => note.Amount).HasPrecision(18, 2);
+            entity.Property(note => note.TaxAmount).HasPrecision(18, 2);
+            entity.Property(note => note.Reason).HasMaxLength(500);
+            entity.HasOne<ProjectInvoice>().WithMany().HasForeignKey(note => note.InvoiceId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(note => new { note.TenantId, note.Number })
+                .HasDatabaseName("UX_ProjectCreditNote_TenantId_Number")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.Ignore(note => note.DomainEvents);
         });
 
         modelBuilder.Entity<ProjectFinanceProfile>(entity =>
@@ -112,6 +155,12 @@ internal static class FinanceData
         public DbSet<ProjectCost> ProjectCosts => db.Set<ProjectCost>();
 
         public DbSet<ProjectInvoice> ProjectInvoices => db.Set<ProjectInvoice>();
+
+        public DbSet<ProjectInvoiceLine> ProjectInvoiceLines => db.Set<ProjectInvoiceLine>();
+
+        public DbSet<ProjectBilledHours> ProjectBilledHours => db.Set<ProjectBilledHours>();
+
+        public DbSet<ProjectCreditNote> ProjectCreditNotes => db.Set<ProjectCreditNote>();
 
         public DbSet<ProjectFinanceProfile> ProjectFinanceProfiles => db.Set<ProjectFinanceProfile>();
 

@@ -1,6 +1,8 @@
 using System.Globalization;
+using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Domain.Exceptions;
 using Gggs.BuildingBlocks.Jobs;
+using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Security;
 using Gggs.Data;
@@ -11,6 +13,7 @@ using Gggs.Modules.Project.Contracts;
 using Gggs.Modules.ProjectFinancials.Domain;
 using Gggs.Modules.ProjectFinancials.Infrastructure;
 using Gggs.Modules.Timesheets.Contracts;
+using Gggs.Modules.Workflow.Contracts;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 
@@ -68,7 +71,11 @@ public sealed record InvoiceItem(
     Guid? MilestoneId,
     string? MilestoneName,
     string? Notes,
-    bool IsOverdue);
+    bool IsOverdue,
+    decimal CreditedAmount = 0,
+    IReadOnlyList<InvoiceLineItem>? Lines = null);
+
+public sealed record InvoiceLineItem(Guid Id, InvoiceLineKind Kind, string Description, decimal Quantity, decimal Rate, decimal Amount, DateOnly? Month, bool IsCredited);
 
 public sealed record InvoiceBody(string? Number, InvoiceDetails Details);
 
@@ -117,12 +124,22 @@ internal sealed class FinanceService(
     AppDbContext dbContext,
     IProjectDirectory projects,
     IProjectPermissions projectPermissions,
+    IWorkflowStarter workflow,
     IContractDirectory contracts,
     ITimesheetLedger timesheets,
     IEmployeeDirectory employees,
     INotifier notifier,
+    ICurrentUser currentUser,
     ITenantClock clock)
 {
+    public const string InvoiceSubjectType = "project.invoice";
+
+    public static WorkflowSubject InvoiceSubject { get; } = new(
+        InvoiceSubjectType,
+        "Approve an invoice",
+        "project-financials",
+        [new WorkflowSubjectField("amount", "Amount", WorkflowFieldType.Number)]);
+
     public async Task<PortfolioFinance> PortfolioAsync(CancellationToken cancellationToken)
     {
         IReadOnlyCollection<Guid>? visible = await projectPermissions.VisibleIdsAsync(Permissions.Project.FinancialsView, cancellationToken);
@@ -162,6 +179,8 @@ internal sealed class FinanceService(
             .ToDictionary(person => person.Id, person => person.DisplayName);
         List<ProjectInvoice> invoices = await dbContext.ProjectInvoices.AsNoTracking().Where(row => row.ProjectId == projectId).OrderByDescending(row => row.InvoiceDate).ToListAsync(cancellationToken);
         IReadOnlyDictionary<Guid, decimal> milestoneAmounts = profile?.MilestoneAmounts ?? new Dictionary<Guid, decimal>();
+        List<Guid> invoiceIds = [.. invoices.Select(row => row.Id)];
+        ILookup<Guid, ProjectInvoiceLine> lines = (await dbContext.ProjectInvoiceLines.AsNoTracking().Where(row => invoiceIds.Contains(row.InvoiceId)).ToListAsync(cancellationToken)).ToLookup(row => row.InvoiceId);
 
         return new ProjectFinance(
             fact.Id, fact.Code, fact.Name, fact.BillingType, fact.Status, fact.Currency, fact.ProgressPercent, fromContract, summary,
@@ -171,7 +190,7 @@ internal sealed class FinanceService(
                 rate.Id, rate.ProjectRoleId, rate.ProjectRoleId is { } role ? roleNames.GetValueOrDefault(role) : null, rate.EmployeeId,
                 rate.EmployeeId is { } person ? names.GetValueOrDefault(person) : null, rate.BillingRate, rate.CostRate, rate.EffectiveFrom))],
             [.. (await dbContext.ProjectCosts.AsNoTracking().Where(row => row.ProjectId == projectId).OrderByDescending(row => row.Date).ToListAsync(cancellationToken)).Select(Cost)],
-            [.. invoices.Select(invoice => Invoice(invoice, fact, today))],
+            [.. invoices.Select(invoice => Invoice(invoice, fact, today, lines[invoice.Id]))],
             profile?.ContractValue, profile?.RetainerMonthlyFee,
             [.. fact.Milestones.Select(milestone => new MilestoneBilling(
                 milestone.Id, milestone.Name, milestone.PlannedDate, milestone.ActualDate, milestone.Status, milestone.IsBillable, milestoneAmounts.TryGetValue(milestone.Id, out decimal amount) ? amount : null))],
@@ -287,7 +306,10 @@ internal sealed class FinanceService(
         if (invoiceId is { } id)
         {
             invoice = await InvoiceAsync(projectId, id, cancellationToken);
-            invoice.Update(body.Details);
+
+            // An invoice built from the work adds up its lines; only its dates, tax and notes are typed.
+            List<decimal> lineAmounts = await dbContext.ProjectInvoiceLines.Where(row => row.InvoiceId == id).Select(row => row.Amount).ToListAsync(cancellationToken);
+            invoice.Update(lineAmounts.Count > 0 ? body.Details with { Amount = lineAmounts.Sum() } : body.Details);
         }
         else
         {
@@ -309,7 +331,33 @@ internal sealed class FinanceService(
     {
         await EnsureAsync(projectId, Permissions.Project.FinancialsManage, cancellationToken);
         ProjectInvoice invoice = await InvoiceAsync(projectId, invoiceId, cancellationToken);
-        invoice.Send();
+        if (invoice.Status != InvoiceStatus.Draft)
+        {
+            throw new DomainRuleException("INVOICE_STATE", "Only a draft invoice can be sent.");
+        }
+
+        await workflow.WithdrawAsync(InvoiceSubjectType, invoice.Id, cancellationToken);
+        WorkflowStartResult started = await workflow.StartAsync(
+            new WorkflowStartRequest
+            {
+                SubjectType = InvoiceSubjectType,
+                SubjectId = invoice.Id,
+                Title = $"Invoice {invoice.Number} ({invoice.Amount:N0})",
+                RequesterEmployeeId = currentUser.EmployeeId,
+                Link = $"/projects/{projectId}?tab=financials",
+                Fields = new Dictionary<string, string> { ["amount"] = invoice.Amount.ToString(CultureInfo.InvariantCulture) },
+            },
+            cancellationToken);
+
+        if (started.Outcome == WorkflowStartOutcome.Pending)
+        {
+            invoice.AwaitApproval(started.InstanceId!.Value);
+        }
+        else
+        {
+            invoice.Send();
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
         return await InvoiceItemAsync(invoice, cancellationToken);
     }
@@ -328,8 +376,31 @@ internal sealed class FinanceService(
         await EnsureAsync(projectId, Permissions.Project.FinancialsManage, cancellationToken);
         ProjectInvoice invoice = await InvoiceAsync(projectId, invoiceId, cancellationToken);
         invoice.Cancel();
+        await workflow.WithdrawAsync(InvoiceSubjectType, invoice.Id, cancellationToken);
+
+        // What it billed is free to go on another invoice.
+        dbContext.ProjectBilledHours.RemoveRange(await dbContext.ProjectBilledHours.Where(row => row.InvoiceId == invoiceId).ToListAsync(cancellationToken));
         await dbContext.SaveChangesAsync(cancellationToken);
         return await InvoiceItemAsync(invoice, cancellationToken);
+    }
+
+    /// <summary>The outcome of an invoice's approval: on its way, or back to a draft.</summary>
+    public async Task ApplyInvoiceDecisionAsync(Guid invoiceId, bool approved, CancellationToken cancellationToken)
+    {
+        ProjectInvoice? invoice = await dbContext.ProjectInvoices.FirstOrDefaultAsync(row => row.Id == invoiceId, cancellationToken);
+        if (invoice?.Status != InvoiceStatus.PendingApproval)
+        {
+            return;
+        }
+
+        if (approved)
+        {
+            invoice.Send();
+        }
+        else
+        {
+            invoice.ReturnToDraft();
+        }
     }
 
     // ----- Nightly snapshot and budget alerts ---------------------------------------------------
@@ -470,11 +541,11 @@ internal sealed class FinanceService(
         return profile;
     }
 
-    private async Task<ProjectInvoice> InvoiceAsync(Guid projectId, Guid invoiceId, CancellationToken cancellationToken)
+    internal async Task<ProjectInvoice> InvoiceAsync(Guid projectId, Guid invoiceId, CancellationToken cancellationToken)
         => await dbContext.ProjectInvoices.FirstOrDefaultAsync(row => row.Id == invoiceId && row.ProjectId == projectId, cancellationToken)
             ?? throw new NotFoundException(nameof(ProjectInvoice), invoiceId);
 
-    private async Task<string> NextNumberAsync(DateOnly date, CancellationToken cancellationToken)
+    internal async Task<string> NextNumberAsync(DateOnly date, CancellationToken cancellationToken)
     {
         string prefix = $"INV-{date.Year}-";
         List<string> numbers = await dbContext.ProjectInvoices.IgnoreQueryFilters([Gggs.BuildingBlocks.Persistence.QueryFilters.SoftDelete]).Where(row => row.Number.StartsWith(prefix)).Select(row => row.Number).ToListAsync(cancellationToken);
@@ -482,17 +553,56 @@ internal sealed class FinanceService(
         return $"{prefix}{next:0000}";
     }
 
-    private async Task<InvoiceItem> InvoiceItemAsync(ProjectInvoice invoice, CancellationToken cancellationToken)
+    internal async Task<InvoiceItem> InvoiceItemAsync(ProjectInvoice invoice, CancellationToken cancellationToken)
     {
         ProjectFinancialFacts? fact = await projects.FinancialFactsAsync([invoice.ProjectId], cancellationToken) is [var found, ..] ? found : null;
-        return Invoice(invoice, fact, await clock.TodayAsync(cancellationToken));
+        List<ProjectInvoiceLine> lines = await dbContext.ProjectInvoiceLines.AsNoTracking().Where(row => row.InvoiceId == invoice.Id).ToListAsync(cancellationToken);
+        return Invoice(invoice, fact, await clock.TodayAsync(cancellationToken), lines);
     }
 
-    private static InvoiceItem Invoice(ProjectInvoice invoice, ProjectFinancialFacts? fact, DateOnly today) => new(
+    private static InvoiceItem Invoice(ProjectInvoice invoice, ProjectFinancialFacts? fact, DateOnly today, IEnumerable<ProjectInvoiceLine> lines) => new(
         invoice.Id, invoice.Number, invoice.InvoiceDate, invoice.DueDate, invoice.PeriodFrom, invoice.PeriodTo, invoice.Amount, invoice.TaxAmount, invoice.Status, invoice.PaidOn,
-        invoice.MilestoneId, invoice.MilestoneId is { } milestone ? fact?.Milestones.FirstOrDefault(row => row.Id == milestone)?.Name : null, invoice.Notes, invoice.IsOverdue(today));
+        invoice.MilestoneId, invoice.MilestoneId is { } milestone ? fact?.Milestones.FirstOrDefault(row => row.Id == milestone)?.Name : null, invoice.Notes, invoice.IsOverdue(today), invoice.CreditedAmount,
+        [.. lines.OrderBy(line => line.Kind).ThenBy(line => line.Month).ThenBy(line => line.Description, StringComparer.CurrentCulture)
+            .Select(line => new InvoiceLineItem(line.Id, line.Kind, line.Description, line.Quantity, line.Rate, line.Amount, line.Month, line.IsCredited))]);
 
     private static CostItem Cost(ProjectCost cost) => new(cost.Id, cost.Category, cost.Date, cost.Amount, cost.Vendor, cost.Description, cost.Reference, cost.Planned);
+}
+
+internal sealed class SendInvoiceOnApproval(FinanceService finance) : IIntegrationEventConsumer<WorkflowApprovedIntegrationEvent>
+{
+    public async Task HandleAsync(WorkflowApprovedIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(integrationEvent);
+        if (integrationEvent.SubjectType == FinanceService.InvoiceSubjectType)
+        {
+            await finance.ApplyInvoiceDecisionAsync(integrationEvent.SubjectId, approved: true, cancellationToken);
+        }
+    }
+}
+
+internal sealed class ReturnInvoiceOnRejection(FinanceService finance) : IIntegrationEventConsumer<WorkflowRejectedIntegrationEvent>
+{
+    public async Task HandleAsync(WorkflowRejectedIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(integrationEvent);
+        if (integrationEvent.SubjectType == FinanceService.InvoiceSubjectType)
+        {
+            await finance.ApplyInvoiceDecisionAsync(integrationEvent.SubjectId, approved: false, cancellationToken);
+        }
+    }
+}
+
+internal sealed class ReturnInvoiceOnSendBack(FinanceService finance) : IIntegrationEventConsumer<WorkflowSentBackIntegrationEvent>
+{
+    public async Task HandleAsync(WorkflowSentBackIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(integrationEvent);
+        if (integrationEvent.SubjectType == FinanceService.InvoiceSubjectType)
+        {
+            await finance.ApplyInvoiceDecisionAsync(integrationEvent.SubjectId, approved: false, cancellationToken);
+        }
+    }
 }
 
 /// <summary>Fans the nightly project financial snapshot out to every tenant.</summary>

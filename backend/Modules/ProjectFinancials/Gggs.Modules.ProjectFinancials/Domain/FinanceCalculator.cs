@@ -124,7 +124,7 @@ public static class FinanceCalculator
         {
             DateOnly month = new(invoice.InvoiceDate.Year, invoice.InvoiceDate.Month, 1);
             var current = months.GetValueOrDefault(month);
-            months[month] = (current.Hours, current.Labour, current.Other, current.Revenue, current.Billed + invoice.Amount);
+            months[month] = (current.Hours, current.Labour, current.Other, current.Revenue, current.Billed + invoice.OpenAmount);
         }
 
         decimal labour = people.Values.Sum(person => person.Cost);
@@ -222,8 +222,8 @@ public static class FinanceCalculator
                 break;
         }
 
-        decimal billed = billedInvoices.Sum(invoice => invoice.Amount);
-        decimal collected = input.Invoices.Where(invoice => invoice.Status == InvoiceStatus.Paid).Sum(invoice => invoice.Amount);
+        decimal billed = billedInvoices.Sum(invoice => invoice.OpenAmount);
+        decimal collected = input.Invoices.Where(invoice => invoice.Status == InvoiceStatus.Paid).Sum(invoice => invoice.OpenAmount);
         decimal budget = input.Budget.Count > 0 ? input.Budget.Sum(line => line.Amount) : project.CostBudget ?? project.Budget ?? 0;
         decimal actual = labour + other;
         decimal planned = input.Costs.Where(cost => cost.Planned || cost.Date > today).Sum(cost => cost.Amount);

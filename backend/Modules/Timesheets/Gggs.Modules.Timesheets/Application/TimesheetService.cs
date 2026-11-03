@@ -188,6 +188,7 @@ internal sealed class TimesheetService(
     IShiftSchedule shifts,
     ILeaveCalendar leave,
     IAttendanceLedger attendance,
+    IBilledHours billedHours,
     IWorkflowStarter workflow,
     INotifier notifier,
     IIntegrationEventPublisher publisher,
@@ -615,6 +616,13 @@ internal sealed class TimesheetService(
         DateOnly? lockedThrough = (await RulesAsync(cancellationToken)).LockedThrough;
         List<TimesheetEntry> entries = await dbContext.TimesheetEntries.AsNoTracking().Where(row => row.TimesheetId == id).ToListAsync(cancellationToken);
 
+        // Hours on an invoice stay put: the client has been charged for them.
+        IEnumerable<TimesheetEntry> reopening = shares.Count == 0 ? entries : entries.Where(entry => chosen.Any(share => share.Id == entry.ApprovalId));
+        if (await billedHours.AnyBilledAsync(reopening.Select(entry => entry.Id), cancellationToken))
+        {
+            throw new DomainRuleException("TIMESHEET_HOURS_BILLED", "Some of these hours are on an invoice. Cancel or credit it before reopening them.");
+        }
+
         // A week approved before approval went by project has no shares, and reopens whole.
         if (shares.Count == 0)
         {
@@ -986,7 +994,7 @@ internal static class BookedHours
            let approved = share != null ? share.Status == ApprovalStatus.Approved : sheet.Status == TimesheetStatus.Approved
            let submitted = share != null ? share.Status == ApprovalStatus.Submitted : sheet.Status == TimesheetStatus.Submitted
            where approved || (!approvedOnly && submitted)
-           select new LoggedHours(entry.EmployeeId, entry.ProjectId, entry.TaskId, entry.Date, entry.Category, entry.Hours, approved);
+           select new LoggedHours(entry.EmployeeId, entry.ProjectId, entry.TaskId, entry.Date, entry.Category, entry.Hours, approved, entry.Id);
 }
 
 /// <summary>Booked hours for utilization, project financials and payroll.</summary>
