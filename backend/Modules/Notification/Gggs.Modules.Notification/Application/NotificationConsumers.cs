@@ -1,3 +1,4 @@
+using Gggs.BuildingBlocks.Jobs;
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.Data;
 using Gggs.Modules.Identity.Contracts;
@@ -6,7 +7,9 @@ using Gggs.Modules.Notification.Domain;
 using Gggs.Modules.Notification.Infrastructure;
 using Gggs.Modules.Platform.Contracts;
 using Gggs.Modules.Workflow.Contracts;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Gggs.Modules.Notification.Application;
@@ -39,6 +42,38 @@ public sealed class NotificationTemplateSeeder(AppDbContext dbContext, ILogger<N
         logger.LogInformation("Notification templates seeded: {Added} added.", added);
         return added;
     }
+}
+
+/// <summary>
+/// Fans template seeding out to every tenant each hour. Templates added in a release otherwise reach only
+/// organisations set up after it, and the notifier skips a missing template without a word.
+/// </summary>
+[PlatformJob("Notification templates: fans out one seeding pass per active tenant.")]
+internal sealed class NotificationTemplateSweep(ITenantFanOutScheduler fanOut)
+{
+    public const string RecurringJobName = "notification-templates";
+
+    public Task RunAsync() => fanOut.FanOutAsync<NotificationTemplateJob>((job, tenantId) => job.RunAsync(tenantId));
+}
+
+internal sealed class NotificationTemplateJob(NotificationTemplateSeeder seeder)
+{
+    public async Task RunAsync(Guid tenantId)
+    {
+        _ = tenantId;
+        await seeder.SeedCurrentTenantAsync(CancellationToken.None);
+    }
+}
+
+internal sealed class NotificationTemplateJobRegistration(IRecurringJobManager recurringJobs) : IHostedService
+{
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+        recurringJobs.AddOrUpdate<NotificationTemplateSweep>(NotificationTemplateSweep.RecurringJobName, sweep => sweep.RunAsync(), "5 * * * *");
+        return Task.CompletedTask;
+    }
+
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }
 
 internal sealed class SeedTemplatesOnTenantProvisioned(NotificationTemplateSeeder seeder)

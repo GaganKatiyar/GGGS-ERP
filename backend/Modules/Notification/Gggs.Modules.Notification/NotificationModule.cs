@@ -48,6 +48,9 @@ public sealed class NotificationModule : IModule
         }
 
         services.AddScoped<IOneTimeNotices, OneTimeNotices>();
+        services.AddScoped<NotificationTemplateSweep>();
+        services.AddScoped<NotificationTemplateJob>();
+        services.AddHostedService<NotificationTemplateJobRegistration>();
         services.AddGggsEventConsumer<TenantProvisionedIntegrationEvent, SeedTemplatesOnTenantProvisioned>();
         services.AddGggsEventConsumer<EmailQueuedIntegrationEvent, DeliverQueuedEmail>();
         services.AddGggsEventConsumer<SmsQueuedIntegrationEvent, DeliverQueuedSms>();

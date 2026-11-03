@@ -359,7 +359,6 @@ internal sealed class HelpdeskService(
             ticket.Close(now);
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
         foreach ((Ticket ticket, string kind) in breaches)
         {
             Guid? to = ticket.AssigneeEmployeeId ?? owners.GetValueOrDefault(ticket.CategoryId);
@@ -381,6 +380,8 @@ internal sealed class HelpdeskService(
             }
         }
 
+        // Last, because notifications commit with the caller's save.
+        await dbContext.SaveChangesAsync(cancellationToken);
         return (breaches.Count, stale.Count);
     }
 
