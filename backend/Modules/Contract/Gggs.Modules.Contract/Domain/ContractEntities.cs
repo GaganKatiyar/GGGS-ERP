@@ -24,6 +24,7 @@ public enum BillingModel
     NonBillable = 5,
     DedicatedTeam = 6,
     ManagedService = 7,
+    OutcomeBased = 8,
 }
 
 public enum ContractStatus

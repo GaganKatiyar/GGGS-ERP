@@ -24,6 +24,7 @@ public sealed record TaskConversation(
     IReadOnlyList<ActivityItem> Activity,
     IReadOnlyList<WatcherItem> Watchers,
     IReadOnlyList<MentionablePerson> People,
+    IReadOnlyList<CodeLinkItem> CodeLinks,
     bool IsWatching,
     bool CanComment,
     bool CanAttach);
@@ -82,6 +83,7 @@ internal sealed class TaskCollaborationService(
     AppDbContext dbContext,
     ProjectAccess access,
     ServiceLevelService serviceLevels,
+    CodeLinkService codeLinks,
     IEmployeeDirectory employees,
     INotifier notifier,
     TimeProvider timeProvider)
@@ -112,6 +114,7 @@ internal sealed class TaskCollaborationService(
             [.. activity.Select(row => new ActivityItem(row.Id, row.Field, row.OldValue, row.NewValue, row.ActorEmployeeId is { } actor ? names.GetValueOrDefault(actor) : null, row.At))],
             [.. watchers.Select(id => new WatcherItem(id, names.GetValueOrDefault(id)))],
             [.. mentionable.Select(person => new MentionablePerson(person.Id, person.DisplayName)).OrderBy(person => person.Name, StringComparer.CurrentCulture)],
+            await codeLinks.ForTaskAsync(taskId, cancellationToken),
             access.Me is { } me && watchers.Contains(me),
             access.Me is not null && canTake,
             canTake);

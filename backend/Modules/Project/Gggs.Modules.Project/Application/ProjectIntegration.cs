@@ -111,7 +111,7 @@ internal sealed class ProjectDirectory(AppDbContext dbContext, DefaultProjectSer
             .Where(task => projectIds.Contains(task.ProjectId) && (task.AssigneeEmployeeId == employeeId || task.OpenToTeam) && task.Type != TaskType.Epic
                 && (task.CompletedDate == null || task.CompletedDate >= firstDay.ToDateTime(TimeOnly.MinValue)))
             .OrderBy(task => task.Number)
-            .Select(task => new { task.ProjectId, task.Id, task.Code, task.Title, task.ParentTaskId })
+            .Select(task => new { task.ProjectId, task.Id, task.Code, task.Title, task.ParentTaskId, Assigned = task.AssigneeEmployeeId == employeeId })
             .ToListAsync(cancellationToken);
         List<Guid> parentIds = [.. tasks.Select(task => task.ParentTaskId).OfType<Guid>().Distinct()];
         Dictionary<Guid, string> parents = await dbContext.ProjectTasks.AsNoTracking()
@@ -121,7 +121,7 @@ internal sealed class ProjectDirectory(AppDbContext dbContext, DefaultProjectSer
         return [.. projects.Select(project => new TimesheetTarget(
             project.Id, project.Code, project.Name,
             billable.TryGetValue(project.Id, out bool isBillable) ? isBillable : project.BillingType != ProjectBillingType.NonBillable,
-            [.. tasks.Where(task => task.ProjectId == project.Id).Select(task => new TimesheetTask(task.Id, task.Code, task.Title, task.ParentTaskId is { } parent ? parents.GetValueOrDefault(parent) : null))],
+            [.. tasks.Where(task => task.ProjectId == project.Id).Select(task => new TimesheetTask(task.Id, task.Code, task.Title, task.ParentTaskId is { } parent ? parents.GetValueOrDefault(parent) : null, task.Assigned))],
             project.Type == ProjectType.DepartmentDefault))];
     }
 
@@ -180,7 +180,8 @@ internal sealed class ProjectDirectory(AppDbContext dbContext, DefaultProjectSer
                     row.RoleName, row.member.AllocationPercent, row.member.StartDate, row.member.EndDate, row.member.Billable, row.member.BillingRate,
                     row.member.CostRate, row.member.Status == TeamMemberStatus.Active, row.member.MonthlyRate))],
                 tasks.Count(task => task.ProjectId == project.Id && task.Done && task.Type != TaskType.Epic && task.Type != TaskType.Story),
-                tasks.Where(task => task.ProjectId == project.Id && task.Done && task.Type != TaskType.Epic).Sum(task => task.StoryPoints ?? 0));
+                tasks.Where(task => task.ProjectId == project.Id && task.Done && task.Type != TaskType.Epic).Sum(task => task.StoryPoints ?? 0),
+                project.HealthStatus.ToString());
         })];
     }
 }

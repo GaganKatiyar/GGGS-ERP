@@ -67,6 +67,9 @@ public enum ProjectBillingType
 
     /// <summary>A monthly fee under an SLA, with an optional bucket of hours.</summary>
     ManagedService = 7,
+
+    /// <summary>A price per agreed unit of outcome, earned when the client accepts it.</summary>
+    OutcomeBased = 8,
 }
 
 public enum Confidentiality

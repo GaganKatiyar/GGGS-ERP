@@ -99,6 +99,23 @@ internal sealed class ProjectModel : IModuleModel
             entity.Ignore(member => member.DomainEvents);
         });
 
+        modelBuilder.Entity<TaskCodeLink>(entity =>
+        {
+            entity.ToTable("TaskCodeLink", Schema);
+            entity.Property(link => link.Provider).HasMaxLength(32).IsRequired();
+            entity.Property(link => link.Kind).HasConversion<byte>();
+            entity.Property(link => link.ExternalId).HasMaxLength(200).IsRequired();
+            entity.Property(link => link.Title).HasMaxLength(300).IsRequired();
+            entity.Property(link => link.Url).HasMaxLength(1000);
+            entity.Property(link => link.Author).HasMaxLength(200);
+            entity.Property(link => link.State).HasMaxLength(32);
+            entity.HasIndex(link => new { link.TenantId, link.TaskId, link.Provider, link.Kind, link.ExternalId })
+                .HasDatabaseName("UX_TaskCodeLink_TenantId_Task_External")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.Ignore(link => link.DomainEvents);
+        });
+
         modelBuilder.Entity<TaskComment>(entity =>
         {
             entity.ToTable("TaskComment", Schema);
@@ -426,6 +443,8 @@ internal static class ProjectData
         public DbSet<ProjectPhase> ProjectPhases => db.Set<ProjectPhase>();
 
         public DbSet<ProjectTemplate> ProjectTemplates => db.Set<ProjectTemplate>();
+
+        public DbSet<TaskCodeLink> TaskCodeLinks => db.Set<TaskCodeLink>();
 
         public DbSet<TaskComment> TaskComments => db.Set<TaskComment>();
 

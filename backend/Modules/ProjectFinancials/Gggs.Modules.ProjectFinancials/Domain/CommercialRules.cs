@@ -9,7 +9,10 @@ public sealed record CommercialTerms(
     decimal? PoValue = null,
     decimal? IncludedHoursPerMonth = null,
     int RolloverPercent = 0,
-    decimal? OverageRate = null);
+    decimal? OverageRate = null,
+    string? UnitName = null,
+    decimal? UnitPrice = null,
+    decimal? TargetUnits = null);
 
 /// <summary>One month of a retainer or managed service: what was included, what was used, and what ran over.</summary>
 public sealed record RetainerMonth(

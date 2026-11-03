@@ -54,6 +54,19 @@ public sealed record WorkloadRow(
 
 public sealed record WorkloadView(IReadOnlyList<DateOnly> Weeks, IReadOnlyList<WorkloadRow> People, int UnassignedTasks);
 
+public sealed record WeekTask(string Code, string Title, string? AssigneeName, DateOnly? DueDate);
+
+public sealed record WeekMilestone(string Name, DateOnly PlannedDate, string Status);
+
+public sealed record WeekFacts(
+    DateOnly From,
+    DateOnly To,
+    IReadOnlyList<WeekTask> Finished,
+    IReadOnlyList<WeekTask> Late,
+    IReadOnlyList<WeekTask> DueSoon,
+    IReadOnlyList<WeekMilestone> MilestonesSoon,
+    int OpenTasks);
+
 public sealed record ImportBody(string Csv);
 
 public sealed record ImportPreviewRow(
@@ -73,6 +86,34 @@ public sealed record ImportPreviewRow(
 public sealed record ImportPreview(IReadOnlyList<ImportPreviewRow> Rows, int WillCreate, int AlreadyImported, int WithErrors);
 
 public sealed record ImportResult(int Created, int AlreadyImported, int WithErrors);
+
+/// <summary>Turns the codes people and assistants use into ids, within one project.</summary>
+internal sealed class GovernanceProjectLookup(AppDbContext dbContext)
+{
+    public async Task<Guid?> TaskByCodeAsync(Guid projectId, string? code, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return null;
+        }
+
+        string wanted = code.Trim();
+        return await dbContext.ProjectTasks.AsNoTracking().Where(row => row.ProjectId == projectId && row.Code == wanted).Select(row => (Guid?)row.Id).FirstOrDefaultAsync(cancellationToken)
+            ?? throw new DomainRuleException("AI_TASKS", $"There is no task {wanted} on this project.");
+    }
+
+    public async Task<Guid?> RequirementByCodeAsync(Guid projectId, string? code, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return null;
+        }
+
+        string wanted = code.Trim();
+        return await dbContext.Requirements.AsNoTracking().Where(row => row.ProjectId == projectId && row.Code == wanted).Select(row => (Guid?)row.Id).FirstOrDefaultAsync(cancellationToken)
+            ?? throw new DomainRuleException("AI_TASKS", $"There is no requirement {wanted} on this project.");
+    }
+}
 
 /// <summary>The project seen over time and by person, and tasks brought in from a file.</summary>
 internal sealed class TaskViewsService(
@@ -153,6 +194,65 @@ internal sealed class TaskViewsService(
             .OrderBy(row => row.EmployeeName, StringComparer.CurrentCulture)];
 
         return new WorkloadView([.. Enumerable.Range(0, count).Select(index => first.AddDays(index * 7))], rows, open.Count(row => row.AssigneeEmployeeId is null));
+    }
+
+    /// <summary>The last seven days and the next fourteen, for a status report.</summary>
+    public async Task<WeekFacts> WeekFactsAsync(Guid projectId, CancellationToken cancellationToken)
+    {
+        await access.EnsureAsync(projectId, Permissions.Project.TaskView, cancellationToken);
+        DateOnly today = await clock.TodayAsync(cancellationToken);
+        DateTime weekAgo = Now.AddDays(-7);
+        List<ProjectTask> tasks = await dbContext.ProjectTasks.AsNoTracking()
+            .Where(row => row.ProjectId == projectId && row.Type != TaskType.Epic && (row.CompletedDate == null || row.CompletedDate >= weekAgo))
+            .ToListAsync(cancellationToken);
+        Dictionary<Guid, string> names = (await employees.GetManyAsync(tasks.Select(row => row.AssigneeEmployeeId).OfType<Guid>().Distinct(), cancellationToken))
+            .ToDictionary(person => person.Id, person => person.DisplayName);
+        WeekTask Item(ProjectTask task) => new(task.Code, task.Title, task.AssigneeEmployeeId is { } assignee ? names.GetValueOrDefault(assignee) : null, task.DueDate);
+        List<ProjectTask> open = [.. tasks.Where(row => !row.IsDone)];
+        DateOnly horizon = today.AddDays(14);
+        List<ProjectMilestone> milestones = await dbContext.ProjectMilestones.AsNoTracking()
+            .Where(row => row.ProjectId == projectId && row.PlannedDate <= horizon && row.PlannedDate >= today.AddDays(-14))
+            .OrderBy(row => row.PlannedDate)
+            .ToListAsync(cancellationToken);
+
+        return new WeekFacts(
+            today.AddDays(-7),
+            today,
+            [.. tasks.Where(row => row.IsDone).Take(30).Select(Item)],
+            [.. open.Where(row => row.IsOverdue(today)).OrderBy(row => row.DueDate).Take(30).Select(Item)],
+            [.. open.Where(row => row.DueDate >= today && row.DueDate <= horizon).OrderBy(row => row.DueDate).Take(30).Select(Item)],
+            [.. milestones.Select(row => new WeekMilestone(row.Name, row.PlannedDate, row.Status.ToString()))],
+            open.Count);
+    }
+
+    /// <summary>What in the project's data needs attention, by the rules in <see cref="RiskSignals"/>.</summary>
+    public async Task<IReadOnlyList<RiskSignal>> RiskSignalsAsync(Guid projectId, CancellationToken cancellationToken)
+    {
+        await access.EnsureAsync(projectId, Permissions.Project.TaskView, cancellationToken);
+        Domain.Project project = await dbContext.Projects.AsNoTracking().FirstAsync(row => row.Id == projectId, cancellationToken);
+        DateOnly today = await clock.TodayAsync(cancellationToken);
+        List<ProjectTask> open = await dbContext.ProjectTasks.AsNoTracking()
+            .Where(row => row.ProjectId == projectId && row.CompletedDate == null && row.Type != TaskType.Epic)
+            .ToListAsync(cancellationToken);
+        List<ProjectMilestone> milestones = await dbContext.ProjectMilestones.AsNoTracking().Where(row => row.ProjectId == projectId).ToListAsync(cancellationToken);
+        WorkloadView workload = await WorkloadAsync(projectId, 2, cancellationToken);
+        List<TaskDependency> links = await dbContext.TaskDependencies.AsNoTracking().Where(row => row.ProjectId == projectId).ToListAsync(cancellationToken);
+        Dictionary<Guid, ProjectTask> byId = open.ToDictionary(row => row.Id);
+        int broken = links.Count(link => byId.TryGetValue(link.PredecessorTaskId, out ProjectTask? before) && byId.TryGetValue(link.SuccessorTaskId, out ProjectTask? after)
+            && link.Type == DependencyType.FinishToStart && after.StartDate < before.DueDate?.AddDays(link.LagDays));
+        DateTime monthStart = new DateOnly(today.Year, today.Month, 1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        int breaches = await dbContext.TicketSlas.AsNoTracking()
+            .CountAsync(row => row.ProjectId == projectId && row.ExcludedReason == null && (row.ResponseBreachedAt >= monthStart || row.ResolutionBreachedAt >= monthStart), cancellationToken);
+
+        return RiskSignals.From(new RiskInput(
+            today,
+            [.. open.Select(row => new RiskTask(row.Code, row.Title, row.AssigneeEmployeeId, row.StartDate, row.DueDate, row.EstimatedHours, row.MilestoneId))],
+            [.. milestones.Select(row => new RiskMilestone(row.Id, row.Name, row.PlannedDate, row.ActualDate is not null))],
+            [.. workload.People.Select(person => new RiskPerson(person.EmployeeName ?? "Someone", person.Weeks.Sum(week => week.PlannedHours), person.Weeks.Sum(week => week.CapacityHours)))],
+            project.EndDate,
+            project.BaselineEndDate,
+            broken,
+            breaches));
     }
 
     public async Task<ImportPreview> PreviewImportAsync(Guid projectId, ImportBody body, CancellationToken cancellationToken)

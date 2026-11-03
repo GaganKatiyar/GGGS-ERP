@@ -316,19 +316,41 @@ internal sealed class TaskService(
         ArgumentNullException.ThrowIfNull(body);
         await access.EnsureAsync(projectId, Permissions.Project.TaskManage, cancellationToken);
         Domain.Project project = await dbContext.Projects.FirstAsync(row => row.Id == projectId, cancellationToken);
+        ProjectTask task = await AddAsync(project, body, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (await ToItemsAsync([task], cancellationToken))[0];
+    }
 
-        TaskDetails details = await ValidateAsync(projectId, body, existing: null, cancellationToken);
-        BoardColumn column = await ColumnForNewTaskAsync(projectId, body, cancellationToken);
-        double rank = await NextRankAsync(column.Id, cancellationToken);
+    /// <summary>Creates several tasks together: all of them or, if one is refused, none.</summary>
+    public async Task<IReadOnlyList<TaskItem>> CreateManyAsync(Guid projectId, IReadOnlyList<TaskBody> bodies, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(bodies);
+        await access.EnsureAsync(projectId, Permissions.Project.TaskManage, cancellationToken);
+        Domain.Project project = await dbContext.Projects.FirstAsync(row => row.Id == projectId, cancellationToken);
+        List<ProjectTask> tasks = [];
+        foreach (TaskBody body in bodies)
+        {
+            tasks.Add(await AddAsync(project, body, cancellationToken));
+        }
 
-        var task = ProjectTask.Create(projectId, project.NextTaskNumber(), project.Code, details, column, rank, access.Me, Now);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await ToItemsAsync(tasks, cancellationToken);
+    }
+
+    private async Task<ProjectTask> AddAsync(Domain.Project project, TaskBody body, CancellationToken cancellationToken)
+    {
+        TaskDetails details = await ValidateAsync(project.Id, body, existing: null, cancellationToken);
+        BoardColumn column = await ColumnForNewTaskAsync(project.Id, body, cancellationToken);
+        double rank = _ranks.TryGetValue(column.Id, out double last) ? last + 1000 : await NextRankAsync(column.Id, cancellationToken);
+        _ranks[column.Id] = rank;
+
+        var task = ProjectTask.Create(project.Id, project.NextTaskNumber(), project.Code, details, column, rank, access.Me, Now);
         task.PlanInto(body.SprintId);
         dbContext.ProjectTasks.Add(task);
         activity.Created(task, TaskFields.Created);
         await serviceLevels.SyncAsync(task, cancellationToken);
         await NotifyAssigneeAsync(project, task, previousAssignee: null, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
-        return (await ToItemsAsync([task], cancellationToken))[0];
+        return task;
     }
 
     public async Task<TaskItem> UpdateAsync(Guid projectId, Guid taskId, TaskBody body, CancellationToken cancellationToken)

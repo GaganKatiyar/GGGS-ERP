@@ -69,6 +69,14 @@ public sealed class ProjectFinancialsModule : IModule
             })
             .WithName("DeleteProjectCost").RequirePermission(Permissions.Project.FinancialsManage);
 
+        group.MapGet("/portfolio/dashboard", async (FinanceService finance, CancellationToken ct) => TypedResults.Ok(await finance.PortfolioDashboardAsync(ct)))
+            .WithName("PortfolioDashboard").RequirePermission(Permissions.Project.FinancialsView);
+        group.MapGet("/{projectId:guid}/outcome-units", async (Guid projectId, FinanceService finance, CancellationToken ct) => TypedResults.Ok(await finance.OutcomeUnitsAsync(projectId, ct)))
+            .WithName("ProjectOutcomeUnits").RequirePermission(Permissions.Project.FinancialsView);
+        group.MapPost("/{projectId:guid}/outcome-units", async (Guid projectId, OutcomeUnitsBody body, FinanceService finance, CancellationToken ct) => TypedResults.Ok(await finance.AcceptOutcomeUnitsAsync(projectId, body, ct)))
+            .WithName("AcceptOutcomeUnits").RequirePermission(Permissions.Project.FinancialsManage);
+        group.MapDelete("/{projectId:guid}/outcome-units/{unitsId:guid}", async (Guid projectId, Guid unitsId, FinanceService finance, CancellationToken ct) => TypedResults.Ok(await finance.RemoveOutcomeUnitsAsync(projectId, unitsId, ct)))
+            .WithName("RemoveOutcomeUnits").RequirePermission(Permissions.Project.FinancialsManage);
         group.MapGet("/billing/run", async (DateOnly month, BillingService billing, CancellationToken ct) => TypedResults.Ok(await billing.RunAsync(month, ct)))
             .WithName("BillingRun").RequirePermission(Permissions.Project.FinancialsView);
         group.MapGet("/billing/export", async ([AsParameters] ExportQuery query, BillingService billing, CancellationToken ct) =>

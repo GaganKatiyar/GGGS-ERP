@@ -214,8 +214,20 @@ public static class IntegrationChannels
 /// automations). A refusal (switched off, unknown operation, missing parameter) is a failed result,
 /// not an exception, so the caller can record it and try again later.
 /// </summary>
+/// <summary>What an inbound webhook needs of a connection to check who sent it. Never returned to a browser.</summary>
+public sealed record InboundConnection(string AdapterKey, string Secret)
+{
+    public override string ToString() => $"InboundConnection {{ AdapterKey = {AdapterKey} }}";
+}
+
 public interface IIntegrationConnections
 {
+    /// <summary>The active connection and its secret, for a module verifying what an outside system sent; null if there is none.</summary>
+    Task<InboundConnection?> InboundAsync(Guid connectionId, CancellationToken cancellationToken = default);
+
+    /// <summary>The saved connections to these adapters, whether or not automations can use them.</summary>
+    Task<IReadOnlyList<ConnectionOption>> ConnectionsToAsync(IReadOnlyCollection<string> adapterKeys, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<ConnectionOption>> ListAsync(CancellationToken cancellationToken = default);
 
     /// <summary>The saved connections to directories that can make accounts.</summary>

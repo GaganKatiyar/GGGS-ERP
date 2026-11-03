@@ -510,6 +510,10 @@ public sealed record RunBody(string Operation, IReadOnlyDictionary<string, strin
 /// <summary>Studio's way into connections: <see cref="IntegrationService.RunAsync"/>, with refusals as failed results.</summary>
 internal sealed class IntegrationConnections(IntegrationService integrations) : IIntegrationConnections
 {
+    public Task<InboundConnection?> InboundAsync(Guid connectionId, CancellationToken cancellationToken = default) => integrations.InboundAsync(connectionId, cancellationToken);
+
+    public Task<IReadOnlyList<ConnectionOption>> ConnectionsToAsync(IReadOnlyCollection<string> adapterKeys, CancellationToken cancellationToken = default) => integrations.ConnectionsToAsync(adapterKeys, cancellationToken);
+
     public Task<IReadOnlyList<ConnectionOption>> ListAsync(CancellationToken cancellationToken = default) => integrations.OptionsAsync(cancellationToken);
 
     public Task<IReadOnlyList<ConnectionOption>> AccountConnectionsAsync(CancellationToken cancellationToken = default) => integrations.AccountOptionsAsync(cancellationToken);
@@ -569,6 +573,12 @@ internal sealed class IntegrationService(
         return [.. rows.Select(row => (Row: row, Adapter: adapters.FirstOrDefault(candidate => string.Equals(candidate.Key, row.AdapterKey, StringComparison.OrdinalIgnoreCase))))
             .Where(pair => pair.Adapter is { Automatable: true })
             .Select(pair => new ConnectionOption(pair.Row.Id, pair.Row.Name, pair.Row.AdapterKey, pair.Adapter!.Name, pair.Row.IsActive, pair.Adapter.Operations, pair.Adapter.Channel))];
+    }
+
+    public async Task<IReadOnlyList<ConnectionOption>> ConnectionsToAsync(IReadOnlyCollection<string> adapterKeys, CancellationToken cancellationToken)
+    {
+        List<IntegrationConnection> rows = await dbContext.IntegrationConnections.AsNoTracking().Where(row => adapterKeys.Contains(row.AdapterKey)).OrderBy(row => row.Name).ToListAsync(cancellationToken);
+        return [.. rows.Select(row => (Row: row, Adapter: Adapter(row.AdapterKey))).Select(pair => new ConnectionOption(pair.Row.Id, pair.Row.Name, pair.Row.AdapterKey, pair.Adapter.Name, pair.Row.IsActive, pair.Adapter.Operations))];
     }
 
     public async Task<IReadOnlyList<ConnectionOption>> AccountOptionsAsync(CancellationToken cancellationToken)
@@ -769,6 +779,12 @@ internal sealed class IntegrationService(
 
     private IIntegrationAdapter Adapter(string key)
         => adapters.FirstOrDefault(adapter => string.Equals(adapter.Key, key, StringComparison.OrdinalIgnoreCase)) ?? throw new DomainRuleException("INTEGRATION_ADAPTER", $"There is no {key} integration.");
+
+    public async Task<InboundConnection?> InboundAsync(Guid connectionId, CancellationToken cancellationToken)
+    {
+        IntegrationConnection? connection = await dbContext.IntegrationConnections.AsNoTracking().FirstOrDefaultAsync(row => row.Id == connectionId && row.IsActive, cancellationToken);
+        return connection is not null && Revealed(connection).GetValueOrDefault("secret") is { Length: > 0 } secret ? new InboundConnection(connection.AdapterKey, secret) : null;
+    }
 
     private Dictionary<string, string> Revealed(IntegrationConnection connection)
         => Stored(connection).ToDictionary(

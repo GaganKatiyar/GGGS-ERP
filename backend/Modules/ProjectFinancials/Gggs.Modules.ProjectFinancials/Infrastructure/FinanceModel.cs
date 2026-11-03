@@ -79,6 +79,19 @@ internal sealed class FinanceModel : IModuleModel
             entity.Ignore(line => line.DomainEvents);
         });
 
+        modelBuilder.Entity<ProjectOutcomeUnits>(entity =>
+        {
+            entity.ToTable("ProjectOutcomeUnits", Schema);
+            entity.Property(units => units.Quantity).HasPrecision(18, 2);
+            entity.Property(units => units.UnitPrice).HasPrecision(18, 2);
+            entity.Property(units => units.Reference).HasMaxLength(200);
+            entity.Property(units => units.AcceptedBy).HasMaxLength(200);
+            entity.Property(units => units.Evidence).HasMaxLength(1000);
+            entity.HasIndex(units => new { units.TenantId, units.ProjectId, units.AcceptedOn }).HasDatabaseName("IX_ProjectOutcomeUnits_TenantId_Project_Date");
+            entity.Ignore(units => units.Amount);
+            entity.Ignore(units => units.DomainEvents);
+        });
+
         modelBuilder.Entity<ProjectBilledHours>(entity =>
         {
             entity.ToTable("ProjectBilledHours", Schema);
@@ -112,6 +125,9 @@ internal sealed class FinanceModel : IModuleModel
             entity.Property(profile => profile.ContractValue).HasPrecision(18, 2);
             entity.Property(profile => profile.RetainerMonthlyFee).HasPrecision(18, 2);
             entity.Property(profile => profile.NotToExceed).HasPrecision(18, 2);
+            entity.Property(profile => profile.UnitName).HasMaxLength(60);
+            entity.Property(profile => profile.UnitPrice).HasPrecision(18, 2);
+            entity.Property(profile => profile.TargetUnits).HasPrecision(18, 2);
             entity.Property(profile => profile.PoNumber).HasMaxLength(100);
             entity.Property(profile => profile.PoValue).HasPrecision(18, 2);
             entity.Property(profile => profile.IncludedHoursPerMonth).HasPrecision(8, 2);
@@ -159,6 +175,8 @@ internal static class FinanceData
         public DbSet<ProjectInvoiceLine> ProjectInvoiceLines => db.Set<ProjectInvoiceLine>();
 
         public DbSet<ProjectBilledHours> ProjectBilledHours => db.Set<ProjectBilledHours>();
+
+        public DbSet<ProjectOutcomeUnits> ProjectOutcomeUnits => db.Set<ProjectOutcomeUnits>();
 
         public DbSet<ProjectCreditNote> ProjectCreditNotes => db.Set<ProjectCreditNote>();
 

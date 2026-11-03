@@ -15,6 +15,7 @@
     <ProjectReference Include="..\..\..\Data\Gggs.Data\Gggs.Data.csproj" />
     <ProjectReference Include="..\..\Insight\Gggs.Modules.Insight.Contracts\Gggs.Modules.Insight.Contracts.csproj" />
     <ProjectReference Include="..\..\Client\Gggs.Modules.Client.Contracts\Gggs.Modules.Client.Contracts.csproj" />
+    <ProjectReference Include="..\..\Organization\Gggs.Modules.Organization.Contracts\Gggs.Modules.Organization.Contracts.csproj" />
     <ProjectReference Include="..\..\Contract\Gggs.Modules.Contract.Contracts\Gggs.Modules.Contract.Contracts.csproj" />
     <ProjectReference Include="..\..\Workflow\Gggs.Modules.Workflow.Contracts\Gggs.Modules.Workflow.Contracts.csproj" />
     <ProjectReference Include="..\..\Employee\Gggs.Modules.Employee.Contracts\Gggs.Modules.Employee.Contracts.csproj" />

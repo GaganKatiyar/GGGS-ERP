@@ -16,6 +16,55 @@ public enum InvoiceLineKind
 
     /// <summary>Money given back for SLA breaches, so its amount is negative.</summary>
     ServiceCredit = 7,
+
+    /// <summary>Units of outcome the client has accepted.</summary>
+    Outcome = 8,
+}
+
+/// <summary>Units of outcome the client accepted, at the price then in force. Accepted is what earns: delivered is not enough.</summary>
+public sealed class ProjectOutcomeUnits : TenantAggregateRoot
+{
+    private ProjectOutcomeUnits()
+    {
+        Reference = null!;
+        AcceptedBy = null!;
+    }
+
+    public Guid ProjectId { get; private set; }
+
+    public DateOnly AcceptedOn { get; private set; }
+
+    public decimal Quantity { get; private set; }
+
+    public decimal UnitPrice { get; private set; }
+
+    /// <summary>What was accepted: "Release 4.2", "March tickets".</summary>
+    public string Reference { get; private set; }
+
+    public string AcceptedBy { get; private set; }
+
+    public string? Evidence { get; private set; }
+
+    public decimal Amount => Math.Round(Quantity * UnitPrice, 2);
+
+    public static ProjectOutcomeUnits Accept(Guid projectId, DateOnly acceptedOn, decimal quantity, decimal unitPrice, string reference, string acceptedBy, string? evidence)
+    {
+        if (quantity <= 0 || unitPrice <= 0)
+        {
+            throw new DomainRuleException("OUTCOME_UNITS", "Record at least some units, at a price above zero.");
+        }
+
+        return new ProjectOutcomeUnits
+        {
+            ProjectId = Guard.NotEmpty(projectId),
+            AcceptedOn = acceptedOn,
+            Quantity = quantity,
+            UnitPrice = unitPrice,
+            Reference = Guard.MaxLength(Guard.NotNullOrWhiteSpace(reference).Trim(), 200),
+            AcceptedBy = Guard.MaxLength(Guard.NotNullOrWhiteSpace(acceptedBy).Trim(), 200),
+            Evidence = string.IsNullOrWhiteSpace(evidence) ? null : Guard.MaxLength(evidence.Trim(), 1000),
+        };
+    }
 }
 
 /// <summary>

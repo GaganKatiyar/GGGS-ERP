@@ -1,5 +1,6 @@
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Ai.Contracts;
 using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Timesheets.Application;
 using Gggs.Modules.Timesheets.Contracts;
@@ -18,6 +19,7 @@ public sealed class TimesheetsModule : IModule
         services.AddScoped<IMetricSource, TimesheetMetrics>();
         services.AddScoped<TimesheetService>();
         services.AddScoped<ITimesheetLedger, TimesheetLedger>();
+        services.AddScoped<IAiTool, DraftMyTimesheetTool>();
         services.AddWorkflowSubject(TimesheetService.Subject);
     }
 

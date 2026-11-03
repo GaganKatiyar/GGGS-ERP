@@ -21,6 +21,9 @@ public static class RateLimitPolicies
 
     /// <summary>Assistant turns, per signed-in user: each one costs model tokens.</summary>
     public const string Assistant = "assistant";
+
+    /// <summary>Webhooks from outside systems, per client address: generous, since one busy push can send many.</summary>
+    public const string Webhook = "webhook";
 }
 
 public sealed class RateLimitOptions
@@ -30,6 +33,8 @@ public sealed class RateLimitOptions
     public int SignInPerMinute { get; set; } = 20;
 
     public int AssistantPerMinute { get; set; } = 12;
+
+    public int WebhookPerMinute { get; set; } = 300;
 
     /// <summary>Calls one API key may make a minute, so a runaway integration cannot crowd out people.</summary>
     public int ApiKeyPerMinute { get; set; } = 600;
@@ -64,6 +69,10 @@ public static class RateLimitingExtensions
             options.AddPolicy(RateLimitPolicies.SignIn, http => RateLimitPartition.GetFixedWindowLimiter(
                 $"ip:{http.Connection.RemoteIpAddress}",
                 _ => Window(Limits(http).SignInPerMinute)));
+
+            options.AddPolicy(RateLimitPolicies.Webhook, http => RateLimitPartition.GetFixedWindowLimiter(
+                $"ip:{http.Connection.RemoteIpAddress}",
+                _ => Window(Limits(http).WebhookPerMinute)));
 
             options.AddPolicy(RateLimitPolicies.Assistant, http => RateLimitPartition.GetFixedWindowLimiter(
                 http.User.FindFirstValue("sub") is { } user ? $"user:{user}" : $"ip:{http.Connection.RemoteIpAddress}",

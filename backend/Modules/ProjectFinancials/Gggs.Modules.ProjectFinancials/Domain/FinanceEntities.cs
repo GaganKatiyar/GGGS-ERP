@@ -368,10 +368,18 @@ public sealed class ProjectFinanceProfile : TenantAggregateRoot
     /// <summary>What an hour beyond the bucket is billed at.</summary>
     public decimal? OverageRate { get; private set; }
 
+    /// <summary>What one unit of outcome is, on outcome pricing: a release, a ticket resolved, a module delivered.</summary>
+    public string? UnitName { get; private set; }
+
+    public decimal? UnitPrice { get; private set; }
+
+    /// <summary>How many units the contract expects, which is what the forecast goes by.</summary>
+    public decimal? TargetUnits { get; private set; }
+
     /// <summary>The highest cap threshold (75, 90, 100) already alerted, so each goes out once.</summary>
     public int CapAlertedPercent { get; private set; }
 
-    public CommercialTerms Terms => new(NotToExceed, PoNumber, PoValue, IncludedHoursPerMonth, RolloverPercent, OverageRate);
+    public CommercialTerms Terms => new(NotToExceed, PoNumber, PoValue, IncludedHoursPerMonth, RolloverPercent, OverageRate, UnitName, UnitPrice, TargetUnits);
 
     public IReadOnlyDictionary<Guid, decimal> MilestoneAmounts
         => System.Text.Json.JsonSerializer.Deserialize<Dictionary<Guid, decimal>>(MilestoneAmountsJson) ?? [];
@@ -382,7 +390,7 @@ public sealed class ProjectFinanceProfile : TenantAggregateRoot
     {
         CommercialTerms next = terms ?? new CommercialTerms();
         if (contractValue < 0 || retainerMonthlyFee < 0 || (milestoneAmounts?.Values.Any(amount => amount < 0) ?? false)
-            || next.NotToExceed < 0 || next.PoValue < 0 || next.IncludedHoursPerMonth < 0 || next.OverageRate < 0)
+            || next.NotToExceed < 0 || next.PoValue < 0 || next.IncludedHoursPerMonth < 0 || next.OverageRate < 0 || next.UnitPrice < 0 || next.TargetUnits < 0)
         {
             throw new DomainRuleException("PROFILE_AMOUNTS", "Amounts cannot be negative.");
         }
@@ -403,6 +411,9 @@ public sealed class ProjectFinanceProfile : TenantAggregateRoot
         IncludedHoursPerMonth = next.IncludedHoursPerMonth;
         RolloverPercent = next.RolloverPercent;
         OverageRate = next.OverageRate;
+        UnitName = string.IsNullOrWhiteSpace(next.UnitName) ? null : Guard.MaxLength(next.UnitName.Trim(), 60);
+        UnitPrice = next.UnitPrice;
+        TargetUnits = next.TargetUnits;
 
         ContractValue = contractValue;
         RetainerMonthlyFee = retainerMonthlyFee;

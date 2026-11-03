@@ -30,6 +30,14 @@ public sealed class ProjectModule : IModule
         services.AddScoped<TaskActivityLog>();
         services.AddScoped<TaskCollaborationService>();
         services.AddScoped<TaskViewsService>();
+        services.AddScoped<CodeLinkService>();
+        services.AddScoped<GovernanceProjectLookup>();
+        services.AddScoped<IIntegrationAdapter, GitHubAdapter>();
+        services.AddScoped<IIntegrationAdapter, AzureDevOpsAdapter>();
+        services.AddScoped<IAiTool, ProjectWeekTool>();
+        services.AddScoped<IAiTool, ProjectRiskSignalsTool>();
+        services.AddScoped<IAiTool, DraftTaskBreakdownTool>();
+        services.AddScoped<IAiTool, RaiseProjectRiskTool>();
         services.AddScoped<TaskService>();
         services.AddScoped<PlanningService>();
         services.AddScoped<GovernanceService>();

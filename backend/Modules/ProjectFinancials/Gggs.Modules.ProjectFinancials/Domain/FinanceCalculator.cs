@@ -21,6 +21,9 @@ public sealed record FinanceInput(
 
     /// <summary>Share of the monthly fee owed back for SLA breaches, by month.</summary>
     public IReadOnlyDictionary<DateOnly, decimal> ServiceCredits { get; init; } = new Dictionary<DateOnly, decimal>();
+
+    /// <summary>Units of outcome the client has accepted, on outcome pricing.</summary>
+    public IReadOnlyList<ProjectOutcomeUnits> OutcomeUnits { get; init; } = [];
 }
 
 public sealed record PersonLabour(Guid EmployeeId, decimal Hours, decimal BillableHours, decimal Cost, decimal Revenue, decimal? CostRate, decimal? BillingRate);
@@ -56,6 +59,12 @@ public sealed record FinanceSummary(
     IReadOnlyList<MonthFinance> Months,
     IReadOnlyList<CategoryFinance> Categories)
 {
+    /// <summary>Units of outcome accepted so far.</summary>
+    public decimal AcceptedUnits { get; init; }
+
+    /// <summary>What each accepted unit has cost to deliver, which is the figure outcome pricing lives or dies by.</summary>
+    public decimal? CostPerUnit { get; init; }
+
     /// <summary>Earned revenue against a T&amp;M cap, which can pass 100 to show how far over the work went.</summary>
     public decimal? CapUsedPercent { get; init; }
 
@@ -201,6 +210,18 @@ public static class FinanceCalculator
 
                 break;
 
+            case "OutcomeBased":
+                revenue = input.OutcomeUnits.Sum(units => units.Amount);
+                forecastRevenue = Math.Max(revenue, (input.Terms.UnitPrice ?? 0) * (input.Terms.TargetUnits ?? 0));
+                foreach (ProjectOutcomeUnits units in input.OutcomeUnits)
+                {
+                    var month = new DateOnly(units.AcceptedOn.Year, units.AcceptedOn.Month, 1);
+                    var current = months.GetValueOrDefault(month);
+                    months[month] = (current.Hours, current.Labour, current.Other, current.Revenue + units.Amount, current.Billed);
+                }
+
+                break;
+
             case "DedicatedTeam":
                 revenue = 0;
                 forecastRevenue = 0;
@@ -257,6 +278,8 @@ public static class FinanceCalculator
             RetainerMonths = retainerMonths,
             UnpricedSeats = unpricedSeats,
             CostPerDoneTask = project.DoneTasks > 0 ? Math.Round(actual / project.DoneTasks, 2) : null,
+            AcceptedUnits = input.OutcomeUnits.Sum(units => units.Quantity),
+            CostPerUnit = input.OutcomeUnits.Sum(units => units.Quantity) is > 0 and var accepted ? Math.Round(actual / accepted, 2) : null,
             CostPerStoryPoint = project.DoneStoryPoints > 0 ? Math.Round(actual / project.DoneStoryPoints, 2) : null,
         };
     }

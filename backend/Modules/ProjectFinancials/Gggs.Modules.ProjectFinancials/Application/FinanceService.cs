@@ -6,9 +6,11 @@ using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Security;
 using Gggs.Data;
+using Gggs.Modules.Client.Contracts;
 using Gggs.Modules.Contract.Contracts;
 using Gggs.Modules.Employee.Contracts;
 using Gggs.Modules.Notification.Contracts;
+using Gggs.Modules.Organization.Contracts;
 using Gggs.Modules.Project.Contracts;
 using Gggs.Modules.ProjectFinancials.Domain;
 using Gggs.Modules.ProjectFinancials.Infrastructure;
@@ -87,6 +89,10 @@ public sealed record BudgetBody(IReadOnlyList<BudgetLineItem> Lines);
 
 public sealed record MilestoneBilling(Guid MilestoneId, string Name, DateOnly PlannedDate, DateOnly? ActualDate, string Status, bool IsBillable, decimal? Amount);
 
+public sealed record OutcomeUnitsBody(DateOnly AcceptedOn, decimal Quantity, string Reference, string AcceptedBy, string? Evidence);
+
+public sealed record OutcomeUnitsItem(Guid Id, DateOnly AcceptedOn, decimal Quantity, decimal UnitPrice, decimal Amount, string Reference, string AcceptedBy, string? Evidence, bool IsBilled);
+
 public sealed record ProfileBody(decimal? ContractValue, decimal? RetainerMonthlyFee, IReadOnlyDictionary<Guid, decimal>? MilestoneAmounts, CommercialTerms? Terms = null);
 
 public sealed record TrendItem(DateOnly Month, decimal Revenue, decimal Cost, decimal Billed, decimal Collected, decimal ForecastRevenue, decimal ForecastCost);
@@ -126,6 +132,8 @@ internal sealed class FinanceService(
     IProjectPermissions projectPermissions,
     IWorkflowStarter workflow,
     IContractDirectory contracts,
+    IClientDirectory clients,
+    IOrgStructure orgStructure,
     ITimesheetLedger timesheets,
     IEmployeeDirectory employees,
     INotifier notifier,
@@ -139,6 +147,79 @@ internal sealed class FinanceService(
         "Approve an invoice",
         "project-financials",
         [new WorkflowSubjectField("amount", "Amount", WorkflowFieldType.Number)]);
+
+    /// <summary>The portfolio by engagement model, client and department, for the projects the caller can see. Each currency stands alone.</summary>
+    public async Task<PortfolioDashboard> PortfolioDashboardAsync(CancellationToken cancellationToken)
+    {
+        IReadOnlyCollection<Guid>? visible = await projectPermissions.VisibleIdsAsync(Permissions.Project.FinancialsView, cancellationToken);
+        IReadOnlyList<ProjectFinancialFacts> facts = await projects.FinancialFactsAsync(visible, cancellationToken);
+        facts = [.. facts.Where(fact => fact.Status != "Cancelled")];
+        DateOnly today = await clock.TodayAsync(cancellationToken);
+        IReadOnlyDictionary<Guid, FinanceSummary> summaries = await SummariesAsync(facts, today, cancellationToken);
+        IReadOnlyDictionary<Guid, ClientSummary> clientNames = await clients.GetManyAsync(facts.Select(fact => fact.ClientId).OfType<Guid>().Distinct(), cancellationToken);
+        IReadOnlyDictionary<Guid, string> departmentNames = await orgStructure.GetNamesAsync(OrgUnitKind.Department, facts.Select(fact => fact.DepartmentId).OfType<Guid>().Distinct(), cancellationToken);
+
+        return PortfolioRollup.Build(
+            [.. facts.Select(fact =>
+            {
+                FinanceSummary summary = summaries[fact.Id];
+                return new PortfolioProject(
+                    fact.Id, fact.Code, fact.Name, fact.Currency, fact.BillingType,
+                    fact.ClientId is { } client ? clientNames.GetValueOrDefault(client)?.Name : null,
+                    fact.DepartmentId is { } department ? departmentNames.GetValueOrDefault(department) : null,
+                    fact.HealthStatus ?? "NotAssessed",
+                    summary.Revenue, summary.ActualCost, summary.ForecastRevenue, summary.Billed, summary.Unbilled, fact.EndDate);
+            })],
+            today);
+    }
+
+    public async Task<IReadOnlyList<OutcomeUnitsItem>> OutcomeUnitsAsync(Guid projectId, CancellationToken cancellationToken)
+    {
+        await EnsureAsync(projectId, Permissions.Project.FinancialsView, cancellationToken);
+        List<ProjectOutcomeUnits> rows = await dbContext.ProjectOutcomeUnits.AsNoTracking().Where(row => row.ProjectId == projectId).OrderByDescending(row => row.AcceptedOn).ToListAsync(cancellationToken);
+        HashSet<Guid> billed = await BilledOutcomesAsync(projectId, cancellationToken);
+        return [.. rows.Select(row => new OutcomeUnitsItem(row.Id, row.AcceptedOn, row.Quantity, row.UnitPrice, row.Amount, row.Reference, row.AcceptedBy, row.Evidence, billed.Contains(row.Id)))];
+    }
+
+    /// <summary>Records units the client accepted, at today's price: changing the price later leaves what was accepted alone.</summary>
+    public async Task<IReadOnlyList<OutcomeUnitsItem>> AcceptOutcomeUnitsAsync(Guid projectId, OutcomeUnitsBody body, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        await EnsureAsync(projectId, Permissions.Project.FinancialsManage, cancellationToken);
+        ProjectFinanceProfile? profile = await dbContext.ProjectFinanceProfiles.AsNoTracking().FirstOrDefaultAsync(row => row.ProjectId == projectId, cancellationToken);
+        if (profile?.UnitPrice is not { } price)
+        {
+            throw new DomainRuleException("OUTCOME_PRICE", "Set the price per unit in the commercial terms first.");
+        }
+
+        dbContext.ProjectOutcomeUnits.Add(ProjectOutcomeUnits.Accept(projectId, body.AcceptedOn, body.Quantity, price, body.Reference, body.AcceptedBy, body.Evidence));
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await OutcomeUnitsAsync(projectId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<OutcomeUnitsItem>> RemoveOutcomeUnitsAsync(Guid projectId, Guid unitsId, CancellationToken cancellationToken)
+    {
+        await EnsureAsync(projectId, Permissions.Project.FinancialsManage, cancellationToken);
+        ProjectOutcomeUnits units = await dbContext.ProjectOutcomeUnits.FirstOrDefaultAsync(row => row.Id == unitsId && row.ProjectId == projectId, cancellationToken)
+            ?? throw new NotFoundException(nameof(ProjectOutcomeUnits), unitsId);
+        if ((await BilledOutcomesAsync(projectId, cancellationToken)).Contains(unitsId))
+        {
+            throw new DomainRuleException("OUTCOME_BILLED", "Those units are on an invoice. Cancel or credit it first.");
+        }
+
+        dbContext.ProjectOutcomeUnits.Remove(units);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await OutcomeUnitsAsync(projectId, cancellationToken);
+    }
+
+    private async Task<HashSet<Guid>> BilledOutcomesAsync(Guid projectId, CancellationToken cancellationToken)
+    {
+        List<Guid> live = await dbContext.ProjectInvoices.AsNoTracking().Where(row => row.ProjectId == projectId && row.Status != InvoiceStatus.Cancelled).Select(row => row.Id).ToListAsync(cancellationToken);
+        return [.. await dbContext.ProjectInvoiceLines.AsNoTracking()
+            .Where(row => live.Contains(row.InvoiceId) && row.Kind == InvoiceLineKind.Outcome && row.CreditNoteId == null && row.ReferenceId != null)
+            .Select(row => row.ReferenceId!.Value)
+            .ToListAsync(cancellationToken)];
+    }
 
     public async Task<PortfolioFinance> PortfolioAsync(CancellationToken cancellationToken)
     {
@@ -508,6 +589,7 @@ internal sealed class FinanceService(
         Dictionary<Guid, ProjectFinanceProfile> profiles = await dbContext.ProjectFinanceProfiles.AsNoTracking().Where(row => ids.Contains(row.ProjectId)).ToDictionaryAsync(row => row.ProjectId, cancellationToken);
         IReadOnlyDictionary<Guid, ContractSummary> contractValues = await contracts.GetManyAsync(facts.Select(fact => fact.ContractId).OfType<Guid>(), cancellationToken);
         ILookup<Guid, ServiceCreditMonth> credits = (await projects.ServiceCreditsAsync(ids, cancellationToken)).ToLookup(row => row.ProjectId);
+        ILookup<Guid, ProjectOutcomeUnits> outcomes = (await dbContext.ProjectOutcomeUnits.AsNoTracking().Where(row => ids.Contains(row.ProjectId)).ToListAsync(cancellationToken)).ToLookup(row => row.ProjectId);
 
         return facts.ToDictionary(fact => fact.Id, fact =>
         {
@@ -519,6 +601,7 @@ internal sealed class FinanceService(
             {
                 Terms = profile?.Terms ?? new CommercialTerms(),
                 ServiceCredits = credits[fact.Id].ToDictionary(row => row.Month, row => row.Percent),
+                OutcomeUnits = [.. outcomes[fact.Id]],
             });
         });
     }

@@ -311,6 +311,7 @@ internal sealed class BillingService(
         {
             Terms = profile?.Terms ?? new CommercialTerms(),
             ServiceCredits = (await projects.ServiceCreditsAsync([id], cancellationToken)).ToDictionary(row => row.Month, row => row.Percent),
+            OutcomeUnits = await dbContext.ProjectOutcomeUnits.AsNoTracking().Where(row => row.ProjectId == id).ToListAsync(cancellationToken),
         };
 
         Dictionary<Guid, string> names = (await employees.GetManyAsync(hours.Select(row => row.EmployeeId).Concat(fact.Team.Select(seat => seat.EmployeeId)).Distinct(), cancellationToken))

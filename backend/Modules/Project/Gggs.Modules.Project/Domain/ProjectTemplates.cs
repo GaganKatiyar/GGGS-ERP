@@ -96,6 +96,7 @@ public static class ProjectTemplateCatalog
         ProjectTemplate.Create("MILESTONE", "Milestone delivery", ProjectBillingType.Milestone, new TemplateDefinition(["Discovery", "Design", "Build", "Test", "UAT", "Go-live"], Delivery, [Meetings, Management])),
         ProjectTemplate.Create("TIME_MATERIAL", "Time and material", ProjectBillingType.TimeAndMaterial, new TemplateDefinition(["Onboarding", "Delivery", "Handover"], Delivery, [Meetings, Management])),
         ProjectTemplate.Create("DEDICATED_TEAM", "Dedicated team", ProjectBillingType.DedicatedTeam, new TemplateDefinition(["Onboarding", "Delivery"], Delivery, [Meetings, Management])),
+        ProjectTemplate.Create("OUTCOME", "Outcome based", ProjectBillingType.OutcomeBased, new TemplateDefinition(["Discovery", "Delivery", "Acceptance"], Delivery, [Meetings, Management])),
         ProjectTemplate.Create("RETAINER", "Retainer", ProjectBillingType.Retainer, new TemplateDefinition(["Onboarding", "Ongoing"], Delivery, [Meetings, Management])),
         ProjectTemplate.Create("MANAGED_SERVICE", "Managed service", ProjectBillingType.ManagedService, new TemplateDefinition(["Transition", "Steady state"], Support, [Meetings, new("Service management", ["Monitoring", "Service reviews"])])),
     ];

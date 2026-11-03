@@ -90,7 +90,8 @@ public sealed record ProjectFinancialFacts(
     IReadOnlyList<MilestoneFact> Milestones,
     IReadOnlyList<ProjectAllocation> Team,
     int DoneTasks = 0,
-    int DoneStoryPoints = 0);
+    int DoneStoryPoints = 0,
+    string? HealthStatus = null);
 
 public sealed record ProjectAllocation(
     Guid MemberId,
@@ -111,7 +112,7 @@ public sealed record ProjectAllocation(
     decimal? MonthlyRate = null);
 
 /// <summary>A task someone can book to; <paramref name="Activity"/> is the epic or story it sits under, which the timesheet groups by.</summary>
-public sealed record TimesheetTask(Guid TaskId, string Code, string Title, string? Activity = null);
+public sealed record TimesheetTask(Guid TaskId, string Code, string Title, string? Activity = null, bool Assigned = false);
 
 public sealed record TimesheetTarget(Guid ProjectId, string ProjectCode, string ProjectName, bool Billable, IReadOnlyList<TimesheetTask> Tasks, bool IsDefault = false);
 

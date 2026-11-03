@@ -27,6 +27,12 @@ internal static class ProjectEndpoints
         MapServiceLevels(group);
         MapTaskCollaboration(group);
 
+        // Public: the signature is the credential, because a code host has no account here.
+        endpoints.MapPost("/api/v1/webhooks/git/{tenantCode}/{connectionId:guid}", (string tenantCode, Guid connectionId, HttpRequest request, CodeLinkService links, CancellationToken ct) => links.ReceiveAsync(tenantCode, connectionId, request, ct))
+            .WithTags("Projects").WithName("GitWebhook").AllowAnonymous().DisableAntiforgery().RequireRateLimiting(RateLimitPolicies.Webhook);
+        group.MapGet("/code-links/setup", async (CodeLinkService links, CancellationToken ct) => TypedResults.Ok(await links.SetupAsync(ct)))
+            .WithName("CodeLinkSetup").RequirePermission(Permissions.Project.SettingsManage);
+
         endpoints.MapGet("/api/v1/project-tasks", async ([AsParameters] PortfolioTaskQuery query, TaskService tasks, CancellationToken ct) => TypedResults.Ok(await tasks.PortfolioAsync(query, ct)))
             .WithTags("Projects").WithName("ListPortfolioTasks").RequirePermission(Permissions.Project.TaskView);
         endpoints.MapGet("/api/v1/project-risks", async (Guid? projectId, GovernanceService governance, CancellationToken ct) =>

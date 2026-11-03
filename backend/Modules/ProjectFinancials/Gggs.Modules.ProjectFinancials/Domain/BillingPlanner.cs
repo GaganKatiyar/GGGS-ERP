@@ -54,6 +54,7 @@ public static class BillingPlanner
             "Milestone" => Milestones(input, billed),
             "Retainer" or "ManagedService" => MonthlyFees(input, from, to, billed),
             "DedicatedTeam" => Seats(input, from, to, billed, nameOf),
+            "OutcomeBased" => Outcomes(input, to, billed),
             _ => new BillingPlan([], 0, 0),
         };
     }
@@ -99,6 +100,19 @@ public static class BillingPlanner
                 EntryIds: pair.Value.Entries))],
             held,
             unpriced);
+    }
+
+    /// <summary>Accepted units not yet invoiced, up to the end of the period.</summary>
+    private static BillingPlan Outcomes(FinanceInput input, DateOnly to, AlreadyBilled billed)
+    {
+        string unit = input.Terms.UnitName ?? "unit";
+        return new(
+            [.. input.OutcomeUnits
+                .Where(units => units.AcceptedOn <= to && !billed.Lines.Contains((InvoiceLineKind.Outcome, null, units.Id)))
+                .OrderBy(units => units.AcceptedOn)
+                .Select(units => new PlannedLine(InvoiceLineKind.Outcome, $"{units.Reference}: {units.Quantity:0.##} {unit} at {units.UnitPrice:0.##}", units.Quantity, units.UnitPrice, units.Amount, ReferenceId: units.Id))],
+            0,
+            0);
     }
 
     /// <summary>The contract value earned so far by progress, less what has already been invoiced.</summary>
