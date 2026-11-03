@@ -1,11 +1,11 @@
 /**
  * Platform services contracts (M3): workflow, notification templates, documents and policies, as
- * the PeopleOS API returns them. Enums travel as their names.
+ * the Nuts and Bolts API returns them. Enums travel as their names.
  */
 
 // ----- Workflow ------------------------------------------------------------------------------
 
-export type ApproverKind = 'ReportingManager' | 'SkipLevelManager' | 'DepartmentHead' | 'HrBusinessPartner' | 'Employee';
+export type ApproverKind = 'ReportingManager' | 'SkipLevelManager' | 'DepartmentHead' | 'HrBusinessPartner' | 'Employee' | 'SubjectOwner';
 
 export type StageMode = 'All' | 'Any';
 
@@ -183,6 +183,7 @@ export interface NotificationTemplate {
   readonly body: string;
   readonly sendInApp: boolean;
   readonly sendEmail: boolean;
+  readonly sendSms: boolean;
   readonly isActive: boolean;
 }
 
@@ -190,7 +191,7 @@ export interface NotificationTemplate {
 
 export type DocumentCategory = 'Identity' | 'Education' | 'Employment' | 'Letter' | 'Policy' | 'Contract' | 'Other' | 'Project';
 
-export type DocumentOwnerType = 'Employee' | 'Organization' | 'Client' | 'Project';
+export type DocumentOwnerType = 'Employee' | 'Organization' | 'Client' | 'Project' | 'ProjectTask';
 
 export interface DocumentTypeItem {
   readonly id: string;
@@ -408,4 +409,5 @@ export const APPROVER_KIND_LABELS: Readonly<Record<ApproverKind, string>> = {
   DepartmentHead: 'Department head',
   HrBusinessPartner: 'HR business partner',
   Employee: 'A named person',
+  SubjectOwner: "The record's owner (a timesheet's project manager)",
 };

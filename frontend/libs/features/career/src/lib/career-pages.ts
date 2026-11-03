@@ -23,7 +23,7 @@ import { CRITICALITIES, READINESS, TALENT_LEVELS, humanize } from '@gggs/shared/
 import { MoneyPipe } from '@gggs/shared/money';
 import { OrgSelect } from '@gggs/shared/org-reference';
 import { CareerApi } from '@gggs/shared/talent';
-import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
+import { EmptyState, FormDialog, KpiCard, localIsoDate, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
 const split = (value: string) =>
@@ -178,7 +178,7 @@ const blankPromotion = (): PromotionDetailsInput => ({
   proposedGradeId: null,
   proposedPositionId: null,
   proposedAnnualCtc: null,
-  effectiveDate: new Date().toISOString().slice(0, 10),
+  effectiveDate: localIsoDate(),
   justification: '',
 });
 
@@ -567,7 +567,7 @@ export class SuccessionPage {
       </label>
     </section>
     @if (view(); as v) {
-      <div class="car__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="People" [value]="v.people.length" />
         <gggs-kpi-card label="Not yet assessed" [value]="v.unassessed" />
         <gggs-kpi-card label="No released rating" [value]="v.unrated" />
@@ -717,7 +717,7 @@ export class TalentReviewPage {
   template: `
     <gggs-page-header title="My career" subtitle="Your path, your next step and what it takes." />
     @if (mine(); as m) {
-      <div class="car__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="Role" [value]="m.designation ?? '—'" [hint]="(m.jobName ?? '') + (m.gradeName ? ' · ' + m.gradeName : '')" />
         <gggs-kpi-card label="Latest rating" [value]="m.latestRating ? m.latestRating.rating + ' / 5' : '—'" [hint]="m.latestRating ? m.latestRating.label + ' · ' + m.latestRating.cycleName : 'No released review yet'" />
         <gggs-kpi-card label="With us since" [value]="m.joiningDate ? (m.joiningDate | date: 'MMM y') : '—'" />

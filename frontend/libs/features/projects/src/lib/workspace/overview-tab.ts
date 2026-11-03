@@ -84,6 +84,30 @@ interface Dimension {
           </section>
 
           <section class="panel stack">
+            <div class="toolbar">
+              <h2 class="overview__heading overview__grow">Scope baseline</h2>
+              @if (can().manage) {
+                <button type="button" class="btn btn--link btn--sm" [disabled]="busy()" (click)="captureBaseline()">{{ d.baseline ? 'Set again' : 'Set baseline' }}</button>
+              }
+            </div>
+            @if (d.baseline; as b) {
+              <div class="overview__row">
+                <span>End date</span>
+                <span class="muted">agreed {{ b.agreedEndDate | date: 'd MMM y' }}, now {{ b.currentEndDate | date: 'd MMM y' }}</span>
+                <strong [class.overview__late]="b.scheduleVarianceDays > 0">{{ b.scheduleVarianceDays > 0 ? '+' : '' }}{{ b.scheduleVarianceDays }} days</strong>
+              </div>
+              <div class="overview__row">
+                <span>Effort</span>
+                <span class="muted">agreed {{ b.agreedHours | number: '1.0-0' }} h, spent {{ b.actualHours | number: '1.0-0' }} h</span>
+                <strong [class.overview__late]="b.effortVarianceHours > 0">{{ b.effortVarianceHours > 0 ? '+' : '' }}{{ b.effortVarianceHours | number: '1.0-0' }} h</strong>
+              </div>
+              <p class="muted overview__note">Set {{ b.baselinedOn | date: 'd MMM y' }}, ending {{ b.baselineEndDate | date: 'd MMM y' }} with {{ b.baselineHours | number: '1.0-0' }} h. {{ b.approvedChanges }} approved change(s) since{{ b.approvedChangeCost ? ', costing ' + (b.approvedChangeCost | number: '1.0-0') : '' }}.</p>
+            } @else {
+              <p class="muted">Set when the project reaches kick-off, so scope changes and overruns can be measured against what was agreed.</p>
+            }
+          </section>
+
+          <section class="panel stack">
             <h2 class="overview__heading">Plan</h2>
             @for (phase of d.phases; track phase.id) {
               <div class="overview__phase">
@@ -170,6 +194,15 @@ interface Dimension {
       color: var(--gggs-color-danger);
     }
 
+    .overview__grow {
+      flex: 1;
+    }
+
+    .overview__note {
+      margin: 0;
+      font-size: var(--gggs-font-size-sm);
+    }
+
     .overview__phase {
       display: flex;
       flex-direction: column;
@@ -208,6 +241,19 @@ export class OverviewTab {
   protected readonly dashboard = signal<ProjectDashboard | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly busy = signal(false);
+
+  protected async captureBaseline(): Promise<void> {
+    this.busy.set(true);
+    this.error.set(null);
+    try {
+      const baseline = await this.api.captureBaseline(this.projectId());
+      this.dashboard.update((current) => (current ? { ...current, baseline } : current));
+    } catch (error) {
+      this.error.set(error instanceof ApiError ? error.message : 'The baseline could not be set.');
+    } finally {
+      this.busy.set(false);
+    }
+  }
 
   protected readonly dimensions = computed<readonly Dimension[]>(() => {
     const health = this.dashboard()?.health.current;

@@ -1,10 +1,10 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Pipe, type PipeTransform, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import type { EmployeeSalaryView, EnrollmentItem, PayslipDocument, PayslipItem, TotalRewards } from '@gggs/shared/models';
+import type { EmployeeSalaryView, EnrollmentItem, LoanItem, PayslipDocument, PayslipItem, TotalRewards } from '@gggs/shared/models';
 import { humanize } from '@gggs/shared/models';
 import { EmptyState, KpiCard, StatusBadge } from '@gggs/shared/ui';
-import { BenefitsApi, CompensationApi, PayrollApi } from './money-apis';
+import { BenefitsApi, CompensationApi, LoansApi, PayrollApi } from './money-apis';
 
 const formatters = new Map<string, Intl.NumberFormat>();
 
@@ -395,6 +395,48 @@ export class EmployeeBenefits {
       this.api.forEmployee(this.employeeId()).then(
         (enrollments) => this.enrollments.set(enrollments),
         (error: unknown) => this.error.set(message(error, 'Benefits could not be loaded.')),
+      );
+    });
+  }
+}
+
+/** Employee 360 loans tab: every loan and advance, what is still owed and the next deduction. */
+@Component({
+  selector: 'gggs-employee-loans',
+  imports: [RouterLink, MoneyPipe, StatusBadge, EmptyState],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <div class="stack">
+      @for (loan of loans(); track loan.id) {
+        <a class="money-row" [routerLink]="['/loans', loan.id]">
+          <strong>{{ loan.typeName }} <span class="muted">{{ loan.number }}</span></strong>
+          <span>{{ loan.principal | gggsMoney }} · {{ loan.emi | gggsMoney }} × {{ loan.tenureMonths }}</span>
+          <span class="muted">{{ loan.status === 'Active' ? (loan.outstanding | gggsMoney) + ' outstanding' + (loan.settlementId ? ' · recovered at exit' : '') : '' }}</span>
+          <gggs-status-badge [status]="loan.status" />
+        </a>
+      } @empty {
+        <gggs-empty-state icon="pi pi-money-bill" title="No loans or advances" />
+      }
+      @if (error()) {
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
+      }
+    </div>
+  `,
+  styleUrl: './money-ui.css',
+})
+export class EmployeeLoans {
+  private readonly api = inject(LoansApi);
+
+  readonly employeeId = input.required<string>();
+
+  protected readonly loans = signal<readonly LoanItem[]>([]);
+  protected readonly error = signal<string | null>(null);
+
+  constructor() {
+    effect(() => {
+      this.api.list({ employeeId: this.employeeId() }).then(
+        (loans) => this.loans.set(loans),
+        (error: unknown) => this.error.set(message(error, 'Loans could not be loaded.')),
       );
     });
   }

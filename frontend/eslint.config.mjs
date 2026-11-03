@@ -100,10 +100,12 @@ export default [
                 'scope:helpdesk',
                 'scope:assets',
                 'scope:expenses',
+                'scope:loans',
                 'scope:separation',
                 'scope:analytics',
                 'scope:calendar',
                 'scope:data-hub',
+                'scope:studio',
                 'scope:assistant',
                 'scope:security',
                 'scope:time',
@@ -182,6 +184,10 @@ export default [
               onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:assistant'],
             },
             {
+              sourceTag: 'scope:studio',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:studio'],
+            },
+            {
               sourceTag: 'scope:data-hub',
               onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:data-hub'],
             },
@@ -200,6 +206,10 @@ export default [
             {
               sourceTag: 'scope:expenses',
               onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:expenses'],
+            },
+            {
+              sourceTag: 'scope:loans',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:loans'],
             },
             {
               sourceTag: 'scope:assets',

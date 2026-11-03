@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { SessionStore } from '@gggs/core/auth';
 import { ApiError } from '@gggs/core/http';
+import { PermissionStore } from '@gggs/core/permissions';
 import { PageHeader } from '@gggs/shared/ui';
 import type { InviteUserResult, Role } from '@gggs/shared/models';
 import { AdminApi } from '@gggs/shared/identity';
@@ -45,19 +46,23 @@ import { AdminApi } from '@gggs/shared/identity';
           <input type="text" formControlName="displayName" maxlength="200" required />
         </label>
 
-        <fieldset class="field">
-          <legend class="field__label">Roles</legend>
-          @for (role of roles(); track role.id) {
-            <label class="checkbox">
-              <input
-                type="checkbox"
-                [checked]="isRoleSelected(role.id)"
-                (change)="toggleRole(role.id, $event)"
-              />
-              {{ role.name }}
-            </label>
-          }
-        </fieldset>
+        @if (canChooseRoles) {
+          <fieldset class="field">
+            <legend class="field__label">Roles</legend>
+            @for (role of roles(); track role.id) {
+              <label class="checkbox">
+                <input
+                  type="checkbox"
+                  [checked]="isRoleSelected(role.id)"
+                  (change)="toggleRole(role.id, $event)"
+                />
+                {{ role.name }}
+              </label>
+            }
+          </fieldset>
+        } @else {
+          <p class="hint">The account starts without roles. A tenant administrator decides what it can do.</p>
+        }
 
         @if (errorMessage()) {
           <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ errorMessage() }}</span></p>
@@ -73,33 +78,29 @@ import { AdminApi } from '@gggs/shared/identity';
     .panel {
       display: flex;
       flex-direction: column;
-      gap: 1rem;
-      padding: 1rem;
+      gap: var(--gggs-space-4);
       max-width: 32rem;
-      border: 1px solid var(--gggs-color-border);
-      border-radius: 0.5rem;
-      background: var(--gggs-color-surface-raised);
     }
 
     .panel__heading {
       margin: 0;
-      font-size: 1rem;
+      font-size: var(--gggs-font-size-md);
     }
 
     .link {
       display: block;
-      padding: 0.5rem;
+      padding: var(--gggs-space-2);
       word-break: break-all;
       background: var(--gggs-color-surface);
-      border-radius: 0.375rem;
-      font-size: 0.8125rem;
+      border-radius: var(--gggs-radius-sm);
+      font-size: var(--gggs-font-size-sm);
     }
 
     .field {
       display: flex;
       flex-direction: column;
-      gap: 0.25rem;
-      font-size: 0.875rem;
+      gap: var(--gggs-space-1);
+      font-size: var(--gggs-font-size-base);
       border: none;
       padding: 0;
       margin: 0;
@@ -112,37 +113,20 @@ import { AdminApi } from '@gggs/shared/identity';
     .field__error {
       margin: 0;
       color: var(--gggs-color-danger);
-      font-size: 0.875rem;
+      font-size: var(--gggs-font-size-base);
+    }
+
+    .hint {
+      margin: 0;
+      color: var(--gggs-color-text-muted);
+      font-size: var(--gggs-font-size-sm);
     }
 
     .checkbox {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: var(--gggs-space-2);
       font-weight: 400;
-    }
-
-    .btn {
-      align-self: flex-start;
-      padding: 0.5rem 1rem;
-      font-weight: 600;
-      border-radius: 0.375rem;
-      border: 1px solid var(--gggs-color-border);
-      background: var(--gggs-color-surface-raised);
-      text-decoration: none;
-      color: inherit;
-      cursor: pointer;
-    }
-
-    .btn--primary {
-      background: var(--gggs-color-primary);
-      border-color: transparent;
-      color: var(--gggs-color-primary-contrast);
-    }
-
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
     }
   `,
 })
@@ -150,6 +134,9 @@ export class InviteUserPage {
   private readonly api = inject(AdminApi);
   private readonly session = inject(SessionStore);
   private readonly formBuilder = inject(FormBuilder);
+
+  /** Inviting and deciding what an account may do are separate rights (HR invites, admins grant). */
+  protected readonly canChooseRoles = inject(PermissionStore).has('admin.role.view');
 
   protected readonly isSaving = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
@@ -163,7 +150,9 @@ export class InviteUserPage {
   });
 
   constructor() {
-    void this.loadRoles();
+    if (this.canChooseRoles) {
+      void this.loadRoles();
+    }
   }
 
   protected isRoleSelected(roleId: string): boolean {

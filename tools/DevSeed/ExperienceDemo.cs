@@ -8,6 +8,7 @@ using Gggs.Modules.Expense.Application;
 using Gggs.Modules.Expense.Domain;
 using Gggs.Modules.Helpdesk.Domain;
 using Gggs.Modules.Identity.Application.Provisioning;
+using Gggs.Modules.Identity.Application.Roles;
 using Gggs.Modules.Identity.Application.Users;
 using Gggs.Modules.Identity.Domain.Roles;
 using Gggs.Modules.Identity.Domain.Users;
@@ -395,6 +396,15 @@ internal static class ExperienceDemo
             }
 
             added += role.Permissions.Count - before;
+
+            // Manager and Department Head follow the org chart, as a new tenant's do. (The migration
+            // that introduced this cannot reach a dev database's roles through row-level security.)
+            RoleAutoAssign autoAssign = RoleTemplates.Definitions.FirstOrDefault(template => template.Code == code)?.AutoAssign ?? RoleAutoAssign.None;
+            if (autoAssign != RoleAutoAssign.None && role.AutoAssign == RoleAutoAssign.None)
+            {
+                role.SetAutoAssign(autoAssign);
+                added++;
+            }
         }
 
         if (added > 0)
@@ -408,5 +418,8 @@ internal static class ExperienceDemo
         }
 
         Console.WriteLine($"Experience roles: {added} permission(s) added from the templates.");
+
+        int automatic = await scope.GetRequiredService<RoleAutomation>().SyncAsync();
+        Console.WriteLine($"Automatic roles: {automatic} grant(s) changed to follow the org chart.");
     }
 }

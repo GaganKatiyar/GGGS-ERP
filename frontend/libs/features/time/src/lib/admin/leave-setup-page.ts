@@ -1,43 +1,24 @@
-import { DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import { HasPermissionDirective } from '@gggs/core/permissions';
-import { LookupSelect } from '@gggs/shared/master-data';
-import type { LeavePolicy, LeavePolicyInput, LeaveType } from '@gggs/shared/models';
-import { LOOKUP_LISTS } from '@gggs/shared/models';
+import type { LeaveType } from '@gggs/shared/models';
 import { LeaveApi } from '@gggs/shared/time';
 import { FormDialog, PageHeader, StatusBadge } from '@gggs/shared/ui';
 
-type PolicyDraft = { -readonly [K in keyof LeavePolicyInput]: LeavePolicyInput[K] };
-
-const blankPolicy = (typeId: string): PolicyDraft => ({
-  leaveTypeId: typeId,
-  employmentTypeCode: undefined,
-  annualEntitlement: 12,
-  accrual: 'Monthly',
-  carryForwardLimit: 0,
-  allowDuringProbation: true,
-  maxNegativeBalance: 0,
-  maxConsecutiveDays: undefined,
-  minNoticeDays: 0,
-  countSandwichedDays: false,
-});
-
 /**
- * Leave types and the rules each follows (spec §20): entitlement and accrual, carry-forward,
- * probation, notice, the longest stretch, negative balances and the sandwich rule.
+ * The leave types master (spec §20): the kinds of leave that exist, paid or not, in half days or
+ * whole. The rules each follows live in leave policies, which HR assigns per engagement type.
  */
 @Component({
   selector: 'gggs-leave-setup-page',
-  imports: [DecimalPipe, ReactiveFormsModule, RouterLink, HasPermissionDirective, PageHeader, StatusBadge, FormDialog, LookupSelect],
+  imports: [RouterLink, HasPermissionDirective, PageHeader, StatusBadge, FormDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <gggs-page-header title="Leave types & policies" subtitle="What kinds of leave exist, and the rules each follows.">
+    <gggs-page-header title="Leave types" subtitle="The kinds of leave that exist. Their rules are set in leave policies.">
       <div class="toolbar">
-        <button type="button" class="btn" (click)="openAccrual()">Run accrual</button>
-        <a class="btn" routerLink="../requests">Back to leave</a>
+        <a class="btn" routerLink="../policies">Leave policies</a>
+        <button type="button" class="btn" *gggsHasPermission="'leave.policy.manage'" (click)="openAccrual()">Run accrual</button>
       </div>
     </gggs-page-header>
 
@@ -74,44 +55,6 @@ const blankPolicy = (typeId: string): PolicyDraft => ({
         </table>
       </section>
 
-      <section class="panel stack">
-        <div class="toolbar">
-          <h2 class="setup__heading">Policies</h2>
-          <button type="button" class="btn btn--primary btn--sm" (click)="openPolicy(null)">Add policy</button>
-        </div>
-        <p class="muted setup__hint">The most specific active policy applies: an employment type's own, else the one for everyone.</p>
-        <table class="table grid">
-          <thead>
-            <tr>
-              <th scope="col">Type</th>
-              <th scope="col">For</th>
-              <th scope="col">Per year</th>
-              <th scope="col">Accrual</th>
-              <th scope="col">Carry forward</th>
-              <th scope="col">Rules</th>
-              <th scope="col">Status</th>
-              <th scope="col"><span class="grid__hidden">Actions</span></th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (policy of policies(); track policy.id) {
-              <tr>
-                <td>{{ policy.leaveTypeName }}</td>
-                <td>{{ policy.employmentTypeCode ?? 'Everyone' }}</td>
-                <td>{{ policy.annualEntitlement | number: '1.0-2' }}</td>
-                <td>{{ policy.accrual }}</td>
-                <td>{{ policy.carryForwardLimit === null || policy.carryForwardLimit === undefined ? 'All' : (policy.carryForwardLimit | number: '1.0-2') }}</td>
-                <td class="setup__rules">{{ rules(policy) }}</td>
-                <td><gggs-status-badge [status]="policy.isActive ? 'Active' : 'Inactive'" /></td>
-                <td class="grid__actions">
-                  <button type="button" class="btn btn--link btn--sm" (click)="openPolicy(policy)">Edit</button>
-                  <button type="button" class="btn btn--link btn--sm" (click)="togglePolicy(policy)">{{ policy.isActive ? 'Retire' : 'Restore' }}</button>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </section>
       @if (message()) {
         <p class="setup__message" role="status">{{ message() }}</p>
       }
@@ -143,60 +86,9 @@ const blankPolicy = (typeId: string): PolicyDraft => ({
       </div>
     </gggs-form-dialog>
 
-    <gggs-form-dialog [(visible)]="policyOpen" [title]="editingPolicy() ? 'Edit policy' : 'Add policy'" size="lg" [busy]="busy()" [error]="dialogError()" (save)="savePolicy()">
-      <div class="form-grid">
-        <label class="field">
-          <span class="field__label">Leave type *</span>
-          <select [disabled]="!!editingPolicy()" [value]="policy().leaveTypeId" (change)="patch('leaveTypeId', $any($event.target).value)">
-            @for (type of types(); track type.id) {
-              <option [value]="type.id">{{ type.name }}</option>
-            }
-          </select>
-        </label>
-        <label class="field">
-          <span class="field__label">For employment type</span>
-          <gggs-lookup-select [list]="lists.employmentType" placeholder="Everyone" ariaLabel="Employment type" [formControl]="employmentType" />
-        </label>
-        <label class="field">
-          <span class="field__label">Days per year *</span>
-          <input type="number" min="0" max="366" step="0.5" [value]="policy().annualEntitlement" (input)="patch('annualEntitlement', +$any($event.target).value)" />
-        </label>
-        <label class="field">
-          <span class="field__label">Accrual</span>
-          <select [value]="policy().accrual" (change)="patch('accrual', $any($event.target).value)">
-            <option value="Monthly">A twelfth each month</option>
-            <option value="Yearly">All at the start of the year</option>
-            <option value="None">Granted by hand</option>
-          </select>
-        </label>
-        <label class="field">
-          <span class="field__label">Carry forward up to <span class="muted">(empty: all)</span></span>
-          <input type="number" min="0" step="0.5" [value]="policy().carryForwardLimit ?? ''" (input)="patch('carryForwardLimit', numberOrNull($any($event.target).value))" />
-        </label>
-        <label class="field">
-          <span class="field__label">May go negative by</span>
-          <input type="number" min="0" step="0.5" [value]="policy().maxNegativeBalance" (input)="patch('maxNegativeBalance', +$any($event.target).value)" />
-        </label>
-        <label class="field">
-          <span class="field__label">Longest stretch (days) <span class="muted">(empty: no limit)</span></span>
-          <input type="number" min="1" [value]="policy().maxConsecutiveDays ?? ''" (input)="patch('maxConsecutiveDays', numberOrNull($any($event.target).value))" />
-        </label>
-        <label class="field">
-          <span class="field__label">Notice (days)</span>
-          <input type="number" min="0" [value]="policy().minNoticeDays" (input)="patch('minNoticeDays', +$any($event.target).value)" />
-        </label>
-        <label class="field">
-          <span><input type="checkbox" [checked]="policy().allowDuringProbation" (change)="patch('allowDuringProbation', $any($event.target).checked)" /> Allowed during probation</span>
-        </label>
-        <label class="field">
-          <span><input type="checkbox" [checked]="policy().countSandwichedDays" (change)="patch('countSandwichedDays', $any($event.target).checked)" /> Sandwich rule: count weekends and holidays between leave days</span>
-        </label>
-      </div>
-    </gggs-form-dialog>
-
     <gggs-form-dialog [(visible)]="accrualOpen" title="Run accrual" saveLabel="Run" [busy]="busy()" [error]="dialogError()" (save)="runAccrual()">
       <div class="stack">
-        <p class="muted">Accrual runs by itself on the first of each month. Running a month again adds nothing that was already credited.</p>
+        <p class="muted">Accrual runs by itself on the first of each month, by each employee's leave policy. Running a month again adds nothing that was already credited.</p>
         <label class="field">
           <span class="field__label">Month</span>
           <input type="month" [value]="accrualMonth()" (input)="accrualMonth.set($any($event.target).value)" />
@@ -211,11 +103,6 @@ const blankPolicy = (typeId: string): PolicyDraft => ({
       font-size: var(--gggs-font-size-md);
     }
 
-    .setup__hint {
-      margin: 0;
-      font-size: var(--gggs-font-size-sm);
-    }
-
     .setup__dot {
       display: inline-block;
       width: 0.6rem;
@@ -223,15 +110,9 @@ const blankPolicy = (typeId: string): PolicyDraft => ({
       border-radius: 50%;
     }
 
-    .setup__rules {
-      font-size: var(--gggs-font-size-sm);
-    }
-
     .setup__message {
       color: var(--gggs-color-success);
     }
-
-
 
     .grid__actions {
       white-space: nowrap;
@@ -249,9 +130,7 @@ const blankPolicy = (typeId: string): PolicyDraft => ({
 export class LeaveSetupPage {
   private readonly api = inject(LeaveApi);
 
-  protected readonly lists = LOOKUP_LISTS;
   protected readonly types = signal<readonly LeaveType[]>([]);
-  protected readonly policies = signal<readonly LeavePolicy[]>([]);
   protected readonly error = signal<string | null>(null);
   protected readonly message = signal<string | null>(null);
   protected readonly busy = signal(false);
@@ -265,44 +144,11 @@ export class LeaveSetupPage {
   protected readonly typePaid = signal(true);
   protected readonly typeHalf = signal(true);
 
-  protected readonly policyOpen = signal(false);
-  protected readonly editingPolicy = signal<LeavePolicy | null>(null);
-  protected readonly policy = signal<PolicyDraft>(blankPolicy(''));
-  protected readonly employmentType = new FormControl<string | null>(null);
-
   protected readonly accrualOpen = signal(false);
   protected readonly accrualMonth = signal(new Date().toISOString().slice(0, 7));
 
   constructor() {
     void this.load();
-  }
-
-  protected rules(policy: LeavePolicy): string {
-    const parts: string[] = [];
-    if (!policy.allowDuringProbation) {
-      parts.push('not in probation');
-    }
-    if (policy.minNoticeDays) {
-      parts.push(`${policy.minNoticeDays}d notice`);
-    }
-    if (policy.maxConsecutiveDays) {
-      parts.push(`max ${policy.maxConsecutiveDays}d at a time`);
-    }
-    if (policy.maxNegativeBalance) {
-      parts.push(`can go ${policy.maxNegativeBalance}d negative`);
-    }
-    if (policy.countSandwichedDays) {
-      parts.push('sandwich rule');
-    }
-    return parts.join(', ') || '—';
-  }
-
-  protected numberOrNull(value: string): number | undefined {
-    return value === '' ? undefined : Number(value);
-  }
-
-  protected patch<K extends keyof PolicyDraft>(field: K, value: PolicyDraft[K]): void {
-    this.policy.update((draft) => ({ ...draft, [field]: value }));
   }
 
   protected openType(type: LeaveType | null): void {
@@ -335,26 +181,6 @@ export class LeaveSetupPage {
 
   protected async toggleType(type: LeaveType): Promise<void> {
     await this.inPage(() => this.api.setTypeActive(type.id, !type.isActive));
-  }
-
-  protected openPolicy(policy: LeavePolicy | null): void {
-    this.editingPolicy.set(policy);
-    this.policy.set(policy ? { ...policy } : blankPolicy(this.types()[0]?.id ?? ''));
-    this.employmentType.setValue(policy?.employmentTypeCode ?? null);
-    this.dialogError.set(null);
-    this.policyOpen.set(true);
-  }
-
-  protected async savePolicy(): Promise<void> {
-    const draft: LeavePolicyInput = { ...this.policy(), employmentTypeCode: this.employmentType.value ?? undefined };
-    await this.inDialog(async () => {
-      await this.api.savePolicy(this.editingPolicy()?.id ?? null, draft);
-      this.policyOpen.set(false);
-    });
-  }
-
-  protected async togglePolicy(policy: LeavePolicy): Promise<void> {
-    await this.inPage(() => this.api.setPolicyActive(policy.id, !policy.isActive));
   }
 
   protected openAccrual(): void {
@@ -396,11 +222,9 @@ export class LeaveSetupPage {
 
   private async load(): Promise<void> {
     try {
-      const [types, policies] = await Promise.all([this.api.types(true), this.api.policies()]);
-      this.types.set(types);
-      this.policies.set(policies);
+      this.types.set(await this.api.types(true));
     } catch (error) {
-      this.error.set(error instanceof ApiError ? error.message : 'Leave setup could not be loaded.');
+      this.error.set(error instanceof ApiError ? error.message : 'Leave types could not be loaded.');
     }
   }
 }

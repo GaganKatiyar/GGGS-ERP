@@ -5,10 +5,16 @@ import type {
   AwardStatus,
   AwardType,
   BandItem,
+  BillingPreview,
+  BillingRun,
+  CommercialTerms,
   ComplianceDashboard,
   ComponentInput,
   ComponentItem,
   CostCategory,
+  CreditNote,
+  OutcomeUnits,
+  PortfolioDashboard,
   CycleItem,
   DeclarationInput,
   DeclarationRow,
@@ -28,6 +34,16 @@ import type {
   GrantItem,
   InputItem,
   ItemStatus,
+  LoanApplication,
+  LoanItem,
+  LoanQuote,
+  LoanStatus,
+  LoanSummary,
+  LoanTypeDetails,
+  LoanTypeItem,
+  LoanView,
+  MyLoans,
+  DisbursementMode,
   MyBenefits,
   ObligationItem,
   PagedResult,
@@ -530,7 +546,7 @@ export class ProjectFinancialsApi {
     return firstValueFrom(this.http.put<ProjectFinance>(`${this.base}/${id}/budget`, { lines }));
   }
 
-  saveProfile(id: string, body: { contractValue?: number | null; retainerMonthlyFee?: number | null; milestoneAmounts?: Record<string, number> | null }): Promise<ProjectFinance> {
+  saveProfile(id: string, body: { contractValue?: number | null; retainerMonthlyFee?: number | null; milestoneAmounts?: Record<string, number> | null; terms?: CommercialTerms | null }): Promise<ProjectFinance> {
     return firstValueFrom(this.http.put<ProjectFinance>(`${this.base}/${id}/profile`, body));
   }
 
@@ -561,5 +577,111 @@ export class ProjectFinancialsApi {
 
   invoicePaid(id: string, invoiceId: string, paidOn: string): Promise<FinanceInvoice> {
     return firstValueFrom(this.http.post<FinanceInvoice>(`${this.base}/${id}/invoices/${invoiceId}/paid`, { paidOn }));
+  }
+
+  portfolioDashboard(): Promise<PortfolioDashboard> {
+    return firstValueFrom(this.http.get<PortfolioDashboard>(`${this.base}/portfolio/dashboard`));
+  }
+
+  outcomeUnits(id: string): Promise<readonly OutcomeUnits[]> {
+    return firstValueFrom(this.http.get<readonly OutcomeUnits[]>(`${this.base}/${id}/outcome-units`));
+  }
+
+  acceptOutcomeUnits(id: string, body: { acceptedOn: string; quantity: number; reference: string; acceptedBy: string; evidence?: string | null }): Promise<readonly OutcomeUnits[]> {
+    return firstValueFrom(this.http.post<readonly OutcomeUnits[]>(`${this.base}/${id}/outcome-units`, body));
+  }
+
+  removeOutcomeUnits(id: string, unitsId: string): Promise<readonly OutcomeUnits[]> {
+    return firstValueFrom(this.http.delete<readonly OutcomeUnits[]>(`${this.base}/${id}/outcome-units/${unitsId}`));
+  }
+
+  billingPreview(id: string, from: string, to: string): Promise<BillingPreview> {
+    return firstValueFrom(this.http.get<BillingPreview>(`${this.base}/${id}/billing/preview`, { params: { from, to } }));
+  }
+
+  prepareInvoice(id: string, body: { from: string; to: string; invoiceDate?: string | null; dueDate?: string | null; taxAmount?: number | null }): Promise<FinanceInvoice> {
+    return firstValueFrom(this.http.post<FinanceInvoice>(`${this.base}/${id}/invoices/prepare`, body));
+  }
+
+  removeInvoiceLine(id: string, invoiceId: string, lineId: string): Promise<FinanceInvoice> {
+    return firstValueFrom(this.http.delete<FinanceInvoice>(`${this.base}/${id}/invoices/${invoiceId}/lines/${lineId}`));
+  }
+
+  creditInvoice(id: string, invoiceId: string, body: { reason: string; date?: string | null; lineIds?: readonly string[] | null; amount?: number | null; taxAmount?: number | null }): Promise<CreditNote> {
+    return firstValueFrom(this.http.post<CreditNote>(`${this.base}/${id}/invoices/${invoiceId}/credit`, body));
+  }
+
+  creditNotes(id: string): Promise<readonly CreditNote[]> {
+    return firstValueFrom(this.http.get<readonly CreditNote[]>(`${this.base}/${id}/credit-notes`));
+  }
+
+  billingRun(month: string): Promise<BillingRun> {
+    return firstValueFrom(this.http.get<BillingRun>(`${this.base}/billing/run`, { params: { month } }));
+  }
+
+  /** Saves the month's invoices and credit notes, as Tally XML or CSV. */
+  exportInvoices(query: { from: string; to: string; format: 'tally' | 'csv'; company?: string; salesLedger?: string; taxLedger?: string }): Promise<void> {
+    const search = new URLSearchParams(Object.entries(params(query)).map(([key, value]) => [key, String(value)]));
+    return download(this.http, `${this.base}/billing/export?${search.toString()}`, query.format === 'tally' ? 'invoices.xml' : 'invoices.csv');
+  }
+}
+
+/** Employee loans and salary advances (`/api/v1/loans`) and one's own (`/api/v1/me/loans`). */
+@Injectable({ providedIn: 'root' })
+export class LoansApi {
+  private readonly http = inject(HttpClient);
+  private readonly base = '/api/v1/loans';
+
+  types(): Promise<readonly LoanTypeItem[]> {
+    return firstValueFrom(this.http.get<readonly LoanTypeItem[]>(`${this.base}/types`));
+  }
+
+  saveType(id: string | null, details: LoanTypeDetails, isActive: boolean): Promise<LoanTypeItem> {
+    const body = { details, isActive };
+    return firstValueFrom(id ? this.http.put<LoanTypeItem>(`${this.base}/types/${id}`, body) : this.http.post<LoanTypeItem>(`${this.base}/types`, body));
+  }
+
+  summary(): Promise<LoanSummary> {
+    return firstValueFrom(this.http.get<LoanSummary>(`${this.base}/summary`));
+  }
+
+  list(query: { status?: LoanStatus | null; employeeId?: string | null } = {}): Promise<readonly LoanItem[]> {
+    return firstValueFrom(this.http.get<readonly LoanItem[]>(this.base, { params: params(query) }));
+  }
+
+  get(id: string): Promise<LoanView> {
+    return firstValueFrom(this.http.get<LoanView>(`${this.base}/${id}`));
+  }
+
+  applyFor(body: LoanApplication): Promise<LoanView> {
+    return firstValueFrom(this.http.post<LoanView>(this.base, body));
+  }
+
+  disburse(id: string, body: { mode: DisbursementMode; reference?: string | null; disbursedOn?: string | null; firstEmiMonth?: string | null }): Promise<LoanView> {
+    return firstValueFrom(this.http.post<LoanView>(`${this.base}/${id}/disburse`, body));
+  }
+
+  prepay(id: string, body: { amount: number; date?: string | null; reference?: string | null; note?: string | null }): Promise<LoanView> {
+    return firstValueFrom(this.http.post<LoanView>(`${this.base}/${id}/prepay`, body));
+  }
+
+  writeOff(id: string, reason: string): Promise<LoanView> {
+    return firstValueFrom(this.http.post<LoanView>(`${this.base}/${id}/write-off`, { reason }));
+  }
+
+  cancel(id: string): Promise<LoanView> {
+    return firstValueFrom(this.http.post<LoanView>(`${this.base}/${id}/cancel`, {}));
+  }
+
+  mine(): Promise<MyLoans> {
+    return firstValueFrom(this.http.get<MyLoans>('/api/v1/me/loans'));
+  }
+
+  quote(body: { typeId: string; amount: number; tenureMonths: number }): Promise<LoanQuote> {
+    return firstValueFrom(this.http.post<LoanQuote>('/api/v1/me/loans/quote', body));
+  }
+
+  apply(body: LoanApplication): Promise<LoanView> {
+    return firstValueFrom(this.http.post<LoanView>('/api/v1/me/loans', body));
   }
 }

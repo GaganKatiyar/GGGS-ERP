@@ -629,7 +629,7 @@ public static class PayCalculator
         }
 
         // TDS on the projected year.
-        decimal taxable = pay.Where(line => line.Kind == ComponentKind.Earning && line.Taxable).Sum(line => line.Amount);
+        decimal taxable = pay.Where(line => line.Kind is ComponentKind.Earning or ComponentKind.Perquisite && line.Taxable).Sum(line => line.Amount);
         TaxComputation? tax = null;
         if (Use(context.Rules.IncomeTax, applied)?.Read<IncomeTaxConfig>() is { } taxConfig)
         {
@@ -710,7 +710,7 @@ public static class PayCalculator
             return new PayLine(rule.Code, rule.Name, rule.Kind, Money.Rupees(input.Sum(line => line.Amount)), rule.Taxable, Note: string.Join("; ", input.Select(line => line.Description).Distinct()));
         })];
         Dictionary<string, int> order = context.Inputs.GroupBy(input => input.Component.Code).ToDictionary(group => group.Key, group => group.First().Component.Order, StringComparer.OrdinalIgnoreCase);
-        decimal taxable = pay.Where(line => line.Kind == ComponentKind.Earning && line.Taxable).Sum(line => line.Amount);
+        decimal taxable = pay.Where(line => line.Kind is ComponentKind.Earning or ComponentKind.Perquisite && line.Taxable).Sum(line => line.Amount);
         TaxComputation? tax = null;
         if (taxable > 0 && Use(context.Rules.IncomeTax, applied)?.Read<IncomeTaxConfig>() is { } taxConfig)
         {

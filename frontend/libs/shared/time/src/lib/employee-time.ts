@@ -1,6 +1,6 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
-import type { AttendanceDay, LeaveBalance, LeaveRequest } from '@gggs/shared/models';
+import type { AttendanceDay, LeaveBalance, LeaveRequest, ResolvedLeavePolicy } from '@gggs/shared/models';
 import { formatMinutes, shortTime } from '@gggs/shared/models';
 import { EmptyState, KpiCard, StatusBadge } from '@gggs/shared/ui';
 import { AttendanceApi, LeaveApi, addDays, todayIso } from './time-apis';
@@ -91,6 +91,13 @@ export class EmployeeAttendance {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="stack">
+      <p class="e-leave__policy">
+        @if (policy(); as plan) {
+          Leave policy: <strong>{{ plan.name }}</strong> · leave year {{ plan.leaveYear }}{{ plan.source === 'Exception' ? ' · exception for this employee' : '' }}
+        } @else if (policyLoaded()) {
+          <span class="muted">No leave policy is assigned to this employee's engagement type.</span>
+        }
+      </p>
       <div class="e-leave__balances">
         @for (balance of balances(); track balance.leaveTypeId) {
           <div class="panel e-leave__balance" [style.border-inline-start-color]="balance.color">
@@ -117,6 +124,10 @@ export class EmployeeAttendance {
     </div>
   `,
   styles: `
+    .e-leave__policy {
+      margin: 0;
+    }
+
     .e-leave__balances {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
@@ -155,6 +166,8 @@ export class EmployeeLeave {
 
   protected readonly balances = signal<readonly LeaveBalance[]>([]);
   protected readonly requests = signal<readonly LeaveRequest[]>([]);
+  protected readonly policy = signal<ResolvedLeavePolicy | null>(null);
+  protected readonly policyLoaded = signal(false);
   protected readonly error = signal<string | null>(null);
 
   constructor() {
@@ -170,6 +183,14 @@ export class EmployeeLeave {
           this.requests.set(requests.items);
         },
         (error: unknown) => this.error.set(error instanceof Error ? error.message : 'Leave could not be loaded.'),
+      );
+      // Quietly nothing for a viewer who may see balances but not policies.
+      this.api.resolve(employeeId).then(
+        (policy) => {
+          this.policy.set(policy);
+          this.policyLoaded.set(true);
+        },
+        () => this.policyLoaded.set(false),
       );
     });
   }

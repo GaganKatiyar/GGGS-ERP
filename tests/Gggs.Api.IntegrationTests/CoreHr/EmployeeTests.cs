@@ -30,6 +30,33 @@ public sealed class EmployeeTests(PeopleOsApiFactory factory)
     }
 
     [Fact]
+    public async Task ADesignationLeftBlank_IsTheJobsName_AndOneTypedInIsKept()
+    {
+        using HttpClient admin = await factory.CreateAdminClientAsync();
+        Guid department = await CoreHrApi.DepartmentAsync(admin);
+        Guid job = await CoreHrApi.CreateAsync(admin, "/api/v1/organizations/jobs", new { Code = CoreHrApi.Unique("JOB"), Name = "Platform Engineer II", JobFamilyCode = "ENGINEERING" });
+
+        async Task<string?> HireAsync(string? designation)
+        {
+            HttpResponseMessage response = await admin.PostAsJsonAsync("/api/v1/employees", new
+            {
+                FirstName = "Title",
+                LastName = CoreHrApi.Unique("Test"),
+                JoiningDate = "2024-01-15",
+                Assignment = new { DepartmentId = department, JobId = job, EmploymentTypeCode = "FULL_TIME", WorkModeCode = "HYBRID", Designation = designation },
+            }, Ct);
+            response.StatusCode.ShouldBe(HttpStatusCode.Created, await response.Content.ReadAsStringAsync(Ct));
+            Guid id = (await response.Content.ReadFromJsonAsync<JsonElement>(Ct)).GetProperty("id").GetGuid();
+            JsonElement assignment = (await admin.GetFromJsonAsync<JsonElement>($"/api/v1/employees/{id}", Ct)).GetProperty("assignment");
+            return assignment.TryGetProperty("designation", out JsonElement title) ? title.GetString() : null;
+        }
+
+        (await HireAsync(null)).ShouldBe("Platform Engineer II");
+        (await HireAsync("   ")).ShouldBe("Platform Engineer II");
+        (await HireAsync("Staff engineer, payments")).ShouldBe("Staff engineer, payments");
+    }
+
+    [Fact]
     public async Task ATransfer_ClosesTheOldRecordTheDayBeforeAndOpensANewOne()
     {
         using HttpClient admin = await factory.CreateAdminClientAsync();

@@ -245,8 +245,11 @@ public sealed class Employee : TenantAggregateRoot
 
     public string? BloodGroupCode { get; private set; }
 
-    /// <summary>A document in the Documents module (M3).</summary>
-    public Guid? PhotoDocumentId { get; private set; }
+    /// <summary>
+    /// The current profile photo, a file in tenant storage under the employee (see
+    /// <c>EmployeePhotoService</c>). A new photo gets a new id, so the id doubles as a cache version.
+    /// </summary>
+    public Guid? PhotoId { get; private set; }
 
     // ----- Contact -----
 
@@ -511,6 +514,10 @@ public sealed class Employee : TenantAggregateRoot
     }
 
     public void LinkUser(Guid userId) => UserId = Guard.NotEmpty(userId);
+
+    public void SetPhoto(Guid photoId) => PhotoId = Guard.NotEmpty(photoId);
+
+    public void RemovePhoto() => PhotoId = null;
 
     public EmployeeDependent AddDependent(string fullName, string relationshipCode, DateOnly? dateOfBirth, string? genderCode)
     {

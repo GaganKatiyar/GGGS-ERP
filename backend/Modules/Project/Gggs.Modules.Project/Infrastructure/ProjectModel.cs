@@ -29,6 +29,7 @@ internal sealed class ProjectModel : IModuleModel
             entity.Property(project => project.Budget).HasPrecision(18, 2);
             entity.Property(project => project.RevenueTarget).HasPrecision(18, 2);
             entity.Property(project => project.CostBudget).HasPrecision(18, 2);
+            entity.Property(project => project.BaselineHours).HasPrecision(10, 2);
             entity.Property(project => project.Type).HasConversion<byte>();
             entity.Property(project => project.Stage).HasConversion<byte>();
             entity.Property(project => project.Status).HasConversion<byte>();
@@ -41,6 +42,10 @@ internal sealed class ProjectModel : IModuleModel
                 .HasDatabaseName("UX_Project_TenantId_Code")
                 .IsUnique()
                 .HasFilter("[IsDeleted] = 0");
+            entity.HasIndex(project => new { project.TenantId, project.DepartmentId })
+                .HasDatabaseName("UX_Project_TenantId_DefaultDepartment")
+                .IsUnique()
+                .HasFilter("[Type] = 10 AND [Status] IN (1, 2) AND [IsDeleted] = 0");
             entity.HasIndex(project => new { project.TenantId, project.Status }).HasDatabaseName("IX_Project_TenantId_Status");
             entity.HasIndex(project => new { project.TenantId, project.ClientId }).HasDatabaseName("IX_Project_TenantId_Client");
             entity.HasIndex(project => new { project.TenantId, project.ProjectManagerEmployeeId }).HasDatabaseName("IX_Project_TenantId_Manager");
@@ -94,6 +99,113 @@ internal sealed class ProjectModel : IModuleModel
             entity.Ignore(member => member.DomainEvents);
         });
 
+        modelBuilder.Entity<TaskCodeLink>(entity =>
+        {
+            entity.ToTable("TaskCodeLink", Schema);
+            entity.Property(link => link.Provider).HasMaxLength(32).IsRequired();
+            entity.Property(link => link.Kind).HasConversion<byte>();
+            entity.Property(link => link.ExternalId).HasMaxLength(200).IsRequired();
+            entity.Property(link => link.Title).HasMaxLength(300).IsRequired();
+            entity.Property(link => link.Url).HasMaxLength(1000);
+            entity.Property(link => link.Author).HasMaxLength(200);
+            entity.Property(link => link.State).HasMaxLength(32);
+            entity.HasIndex(link => new { link.TenantId, link.TaskId, link.Provider, link.Kind, link.ExternalId })
+                .HasDatabaseName("UX_TaskCodeLink_TenantId_Task_External")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.Ignore(link => link.DomainEvents);
+        });
+
+        modelBuilder.Entity<TaskComment>(entity =>
+        {
+            entity.ToTable("TaskComment", Schema);
+            entity.Property(comment => comment.Body).HasMaxLength(4000).IsRequired();
+            entity.HasIndex(comment => new { comment.TenantId, comment.TaskId }).HasDatabaseName("IX_TaskComment_TenantId_Task");
+            entity.Ignore(comment => comment.DomainEvents);
+        });
+
+        modelBuilder.Entity<TaskWatcher>(entity =>
+        {
+            entity.ToTable("TaskWatcher", Schema);
+            entity.HasIndex(watcher => new { watcher.TenantId, watcher.TaskId, watcher.EmployeeId })
+                .HasDatabaseName("UX_TaskWatcher_TenantId_Task_Employee")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.Ignore(watcher => watcher.DomainEvents);
+        });
+
+        modelBuilder.Entity<TaskActivity>(entity =>
+        {
+            entity.ToTable("TaskActivity", Schema);
+            entity.Property(activity => activity.Field).HasMaxLength(32).IsRequired();
+            entity.Property(activity => activity.OldValue).HasMaxLength(300);
+            entity.Property(activity => activity.NewValue).HasMaxLength(300);
+            entity.HasIndex(activity => new { activity.TenantId, activity.TaskId, activity.At }).HasDatabaseName("IX_TaskActivity_TenantId_Task_At");
+            entity.Ignore(activity => activity.DomainEvents);
+        });
+
+        modelBuilder.Entity<TaskSavedView>(entity =>
+        {
+            entity.ToTable("TaskSavedView", Schema);
+            entity.Property(view => view.Name).HasMaxLength(100).IsRequired();
+            entity.Property(view => view.FiltersJson).IsRequired();
+            entity.HasIndex(view => new { view.TenantId, view.ProjectId, view.OwnerEmployeeId }).HasDatabaseName("IX_TaskSavedView_TenantId_Project_Owner");
+            entity.Ignore(view => view.Filters);
+            entity.Ignore(view => view.IsShared);
+            entity.Ignore(view => view.DomainEvents);
+        });
+
+        modelBuilder.Entity<ProjectSlaPolicy>(entity =>
+        {
+            entity.ToTable("ProjectSlaPolicy", Schema);
+            entity.Property(policy => policy.WorkingDaysJson).IsRequired();
+            entity.Property(policy => policy.TargetsJson).IsRequired();
+            entity.Property(policy => policy.PausedColumnIdsJson).IsRequired();
+            entity.Property(policy => policy.MonthlyCreditCapPercent).HasPrecision(5, 2);
+            entity.HasIndex(policy => new { policy.TenantId, policy.ProjectId })
+                .HasDatabaseName("UX_ProjectSlaPolicy_TenantId_Project")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.Ignore(policy => policy.Calendar);
+            entity.Ignore(policy => policy.Targets);
+            entity.Ignore(policy => policy.PausedColumnIds);
+            entity.Ignore(policy => policy.Details);
+            entity.Ignore(policy => policy.DomainEvents);
+        });
+
+        modelBuilder.Entity<TicketSla>(entity =>
+        {
+            entity.ToTable("TicketSla", Schema);
+            entity.Property(ticket => ticket.Priority).HasConversion<byte>();
+            entity.Property(ticket => ticket.CreditPercent).HasPrecision(5, 2);
+            entity.Property(ticket => ticket.ExcludedReason).HasMaxLength(500);
+            entity.HasIndex(ticket => new { ticket.TenantId, ticket.TaskId })
+                .HasDatabaseName("UX_TicketSla_TenantId_Task")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.HasIndex(ticket => new { ticket.TenantId, ticket.ProjectId }).HasDatabaseName("IX_TicketSla_TenantId_Project");
+            entity.HasIndex(ticket => new { ticket.TenantId, ticket.ResolvedAt, ticket.ResolutionDueAt }).HasDatabaseName("IX_TicketSla_TenantId_Sweep");
+            entity.Ignore(ticket => ticket.IsBreached);
+            entity.Ignore(ticket => ticket.CountsAgainst);
+            entity.Ignore(ticket => ticket.FirstBreachAt);
+            entity.Ignore(ticket => ticket.DomainEvents);
+        });
+
+        modelBuilder.Entity<ProjectTemplate>(entity =>
+        {
+            entity.ToTable("ProjectTemplate", Schema);
+            entity.Property(template => template.Code).HasMaxLength(32).IsRequired();
+            entity.Property(template => template.Name).HasMaxLength(100).IsRequired();
+            entity.Property(template => template.BillingType).HasConversion<byte>();
+            entity.Property(template => template.DefinitionJson).IsRequired();
+            entity.HasIndex(template => new { template.TenantId, template.Code })
+                .HasDatabaseName("UX_ProjectTemplate_TenantId_Code")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.Ignore(template => template.Definition);
+            entity.Ignore(template => template.DomainEvents);
+        });
+
         modelBuilder.Entity<ProjectPhase>(entity =>
         {
             entity.ToTable("ProjectPhase", Schema);
@@ -115,6 +227,11 @@ internal sealed class ProjectModel : IModuleModel
 
         modelBuilder.Entity<ProjectTask>(entity =>
         {
+            entity.Property(task => task.ExternalKey).HasMaxLength(100);
+            entity.HasIndex(task => new { task.TenantId, task.ProjectId, task.ExternalKey })
+                .HasDatabaseName("UX_ProjectTask_TenantId_Project_ExternalKey")
+                .IsUnique()
+                .HasFilter("[ExternalKey] IS NOT NULL AND [IsDeleted] = 0");
             entity.ToTable("ProjectTask", Schema);
             entity.Property(task => task.Code).HasMaxLength(32).IsRequired();
             entity.Property(task => task.Title).HasMaxLength(300).IsRequired();
@@ -158,6 +275,8 @@ internal sealed class ProjectModel : IModuleModel
         modelBuilder.Entity<ProjectMilestone>(entity =>
         {
             entity.ToTable("ProjectMilestone", Schema);
+            entity.Property(milestone => milestone.AcceptedBy).HasMaxLength(200);
+            entity.Property(milestone => milestone.AcceptanceEvidence).HasMaxLength(2000);
             entity.Property(milestone => milestone.Name).HasMaxLength(200).IsRequired();
             entity.Property(milestone => milestone.Description).HasMaxLength(2000);
             entity.Property(milestone => milestone.Status).HasConversion<byte>();
@@ -322,6 +441,22 @@ internal static class ProjectData
         public DbSet<ProjectTeamMember> ProjectTeamMembers => db.Set<ProjectTeamMember>();
 
         public DbSet<ProjectPhase> ProjectPhases => db.Set<ProjectPhase>();
+
+        public DbSet<ProjectTemplate> ProjectTemplates => db.Set<ProjectTemplate>();
+
+        public DbSet<TaskCodeLink> TaskCodeLinks => db.Set<TaskCodeLink>();
+
+        public DbSet<TaskComment> TaskComments => db.Set<TaskComment>();
+
+        public DbSet<TaskWatcher> TaskWatchers => db.Set<TaskWatcher>();
+
+        public DbSet<TaskActivity> TaskActivities => db.Set<TaskActivity>();
+
+        public DbSet<TaskSavedView> TaskSavedViews => db.Set<TaskSavedView>();
+
+        public DbSet<ProjectSlaPolicy> ProjectSlaPolicies => db.Set<ProjectSlaPolicy>();
+
+        public DbSet<TicketSla> TicketSlas => db.Set<TicketSla>();
 
         public DbSet<BoardColumn> BoardColumns => db.Set<BoardColumn>();
 

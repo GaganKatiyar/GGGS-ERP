@@ -15,9 +15,9 @@ public sealed class NotificationOptions
     /// <summary><c>Log</c> (development: written to the log, never sent) or <c>Smtp</c>.</summary>
     public string EmailProvider { get; set; } = "Log";
 
-    public string FromAddress { get; set; } = "no-reply@peopleos.local";
+    public string FromAddress { get; set; } = "no-reply@nutsandbolts.local";
 
-    public string FromName { get; set; } = "PeopleOS";
+    public string FromName { get; set; } = "Nuts and Bolts";
 
     public SmtpSettings Smtp { get; set; } = new();
 }
@@ -35,7 +35,8 @@ public sealed class SmtpSettings
     public string? Password { get; set; }
 }
 
-internal sealed record OutboundMessage(string To, string Subject, string Body);
+/// <summary>A message on its way out. A sensitive one holds a secret, so nothing may write its body anywhere.</summary>
+internal sealed record OutboundMessage(string To, string Subject, string Body, bool Sensitive = false);
 
 /// <summary>
 /// One way of reaching people (spec §108). Email ships now; SMS, WhatsApp and push are further
@@ -55,6 +56,12 @@ internal sealed class LoggingEmailChannel(ILogger<LoggingEmailChannel> logger) :
 
     public Task SendAsync(OutboundMessage message, CancellationToken cancellationToken)
     {
+        if (message.Sensitive)
+        {
+            logger.LogInformation("Email (not sent; EmailProvider=Log) to {To}: its content is sensitive and is not logged.", message.To);
+            return Task.CompletedTask;
+        }
+
         logger.LogInformation("Email (not sent; EmailProvider=Log) to {To}: {Subject}\n{Body}", message.To, message.Subject, message.Body);
         return Task.CompletedTask;
     }

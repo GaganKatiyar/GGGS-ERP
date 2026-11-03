@@ -8,7 +8,7 @@ import { PageHeader, Skeleton } from '@gggs/shared/ui';
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
 
 type NumberRule = 'standardHoursPerDay' | 'minHoursPerDay' | 'maxHoursPerDay' | 'minWeeklyHours' | 'submissionDeadlineDays';
-type FlagRule = 'enforceWeeklyMinimum' | 'allowWeekendEntries' | 'allowHolidayEntries';
+type FlagRule = 'enforceWeeklyMinimum' | 'allowWeekendEntries' | 'allowHolidayEntries' | 'requireFromEveryone';
 
 /**
  * Timesheet settings (spec §73): the hours rules every week is checked against, and the period
@@ -109,6 +109,7 @@ export class TimesheetSettingsPage {
     { key: 'enforceWeeklyMinimum', label: 'Block submitting a week below the expected hours' },
     { key: 'allowWeekendEntries', label: 'Allow hours on weekends' },
     { key: 'allowHolidayEntries', label: 'Allow hours on holidays' },
+    { key: 'requireFromEveryone', label: 'Everyone must submit a timesheet, including people not on a project' },
   ];
 
   protected readonly rules = signal<TimesheetRules | null>(null);

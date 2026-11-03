@@ -210,10 +210,11 @@ public sealed class HiringTests(PeopleOsApiFactory factory)
 
         // Screened, then interviewed by a panel member who gives feedback from self-service.
         await OkAsync(await admin.PostAsJsonAsync($"/api/v1/recruitment/applications/{applicationId}/move", new { Stage = "Shortlisted", Note = "Strong profile" }, Ct));
+        var slot = new DateTime(2030, 3, 4, 4, 30, 0, DateTimeKind.Utc);
         JsonElement scheduled = await OkAsync(await admin.PostAsJsonAsync($"/api/v1/recruitment/applications/{applicationId}/interviews", new
         {
             Round = "Technical 1",
-            ScheduledAt = DateTime.UtcNow.AddDays(2),
+            ScheduledAt = slot,
             DurationMinutes = 60,
             Mode = "Video",
             Location = "https://meet.example/abc",
@@ -221,6 +222,10 @@ public sealed class HiringTests(PeopleOsApiFactory factory)
         }, Ct));
         scheduled.GetProperty("application").GetProperty("stage").GetString().ShouldBe("Interview");
         Guid interviewId = scheduled.GetProperty("interviews")[0].GetProperty("id").GetGuid();
+
+        // Read back from the database it is still the same moment, and says so: a browser reading it as local would move the interview on each reschedule.
+        JsonElement stored = await admin.GetFromJsonAsync<JsonElement>($"/api/v1/recruitment/applications/{applicationId}", Ct);
+        stored.GetProperty("interviews")[0].GetProperty("scheduledAt").GetString().ShouldBe("2030-03-04T04:30:00Z");
 
         using HttpClient panel = await factory.CreateScopedUserClientAsync(Email("panel"), panelist, (Permissions.Self.InterviewFeedback, DataScope.Own));
         (await panel.GetFromJsonAsync<JsonElement[]>("/api/v1/me/interviews", Ct))!.ShouldContain(row => row.GetProperty("id").GetGuid() == interviewId);
@@ -286,6 +291,40 @@ public sealed class HiringTests(PeopleOsApiFactory factory)
         analytics.GetProperty("hires").GetInt32().ShouldBeGreaterThanOrEqualTo(1);
         analytics.GetProperty("offersAccepted").GetInt32().ShouldBeGreaterThanOrEqualTo(1);
         analytics.GetProperty("sources").EnumerateArray().ShouldContain(row => row.GetProperty("source").GetString() == "Referral" && row.GetProperty("hired").GetInt32() >= 1);
+    }
+
+    [Fact]
+    public async Task The_panel_hears_when_an_interview_is_scheduled_and_when_it_changes()
+    {
+        using HttpClient admin = await factory.CreateAdminClientAsync();
+        Guid department = await CoreHrApi.DepartmentAsync(admin);
+        Guid manager = await CoreHrApi.HireAsync(admin, department);
+        Guid panelist = await CoreHrApi.HireAsync(admin, department);
+        Guid joiner = await CoreHrApi.HireAsync(admin, department);
+        Guid requisitionId = (await OkAsync(await admin.PostAsJsonAsync("/api/v1/recruitment/requisitions", Requisition(department, hiringManager: manager), Ct))).GetProperty("id").GetGuid();
+        string candidate = CoreHrApi.Unique("Asha");
+        await OkAsync(await admin.PostAsJsonAsync("/api/v1/recruitment/candidates", new { Details = Candidate(candidate), Source = "Direct", RequisitionId = requisitionId }, Ct));
+        Guid applicationId = (await admin.GetFromJsonAsync<JsonElement[]>($"/api/v1/recruitment/applications?requisitionId={requisitionId}", Ct))!.ShouldHaveSingleItem().GetProperty("id").GetGuid();
+        object Interview(params Guid[] panel) => new
+        {
+            Round = "Technical 1",
+            ScheduledAt = new DateTime(2030, 3, 4, 4, 30, 0, DateTimeKind.Utc),
+            DurationMinutes = 60,
+            Mode = "Video",
+            Location = "https://meet.example/abc",
+            Panel = panel,
+        };
+
+        JsonElement scheduled = await OkAsync(await admin.PostAsJsonAsync($"/api/v1/recruitment/applications/{applicationId}/interviews", Interview(panelist), Ct));
+        Guid interviewId = scheduled.GetProperty("interviews")[0].GetProperty("id").GetGuid();
+        using HttpClient first = await PersonAsync(factory, panelist);
+        string inbox = (await first.GetFromJsonAsync<JsonElement>("/api/v1/notifications", Ct)).ToString();
+        inbox.ShouldContain(candidate);
+        inbox.ShouldContain($"/me/interviews/{interviewId}");
+
+        await OkAsync(await admin.PutAsJsonAsync($"/api/v1/recruitment/interviews/{interviewId}", Interview(panelist, joiner), Ct));
+        using HttpClient second = await PersonAsync(factory, joiner);
+        (await second.GetFromJsonAsync<JsonElement>("/api/v1/notifications", Ct)).ToString().ShouldContain(candidate);
     }
 
     [Fact]

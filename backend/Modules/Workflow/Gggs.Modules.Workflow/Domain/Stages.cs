@@ -13,6 +13,9 @@ public enum ApproverKind
     DepartmentHead = 3,
     HrBusinessPartner = 4,
     Employee = 5,
+
+    /// <summary>Whoever the module says owns the record, such as a timesheet's project manager.</summary>
+    SubjectOwner = 6,
 }
 
 /// <summary>How several approvers in one stage decide: everyone, or the first to answer.</summary>

@@ -71,6 +71,9 @@ public enum DocumentOwnerType
 
     /// <summary>Held for a project (spec §55); access follows the project's team.</summary>
     Project = 4,
+
+    /// <summary>Attached to a project's task; access follows that task's project.</summary>
+    ProjectTask = 5,
 }
 
 public enum DocumentSource
@@ -245,7 +248,7 @@ public enum SignatureStatus
 
 /// <summary>
 /// A request for one employee to sign one version of a document. Handled by a signature provider
-/// (spec §107 e-sign port): the built-in one records a signed acknowledgement in PeopleOS; an
+/// (spec §107 e-sign port): the built-in one records a signed acknowledgement in Nuts and Bolts; an
 /// external e-sign service plugs in behind the same port.
 /// </summary>
 public sealed class DocumentSignature : TenantAggregateRoot

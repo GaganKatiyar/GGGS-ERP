@@ -5,11 +5,11 @@ import { HasPermissionDirective } from '@gggs/core/permissions';
 import { DataTable, DataTableCell, type DataTableColumn } from '@gggs/shared/data-table';
 import type { PagedResult, PolicyItem } from '@gggs/shared/models';
 import { POLICY_CATEGORY_LABELS } from '@gggs/shared/models';
-import { EmptyState, FormDialog, PageHeader, StatusBadge } from '@gggs/shared/ui';
+import { EmptyState, FormDialog, localIsoDate, PageHeader, StatusBadge } from '@gggs/shared/ui';
 import { PoliciesApi } from './policies-api';
 import { PolicyFields, policyForm, toPolicyInput } from './policy-form';
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => localIsoDate();
 
 /** Every company policy, with the version in effect and any draft in progress. */
 @Component({

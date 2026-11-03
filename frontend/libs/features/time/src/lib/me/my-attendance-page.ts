@@ -292,8 +292,11 @@ const FIXABLE = new Set(['Absent', 'MissingPunch', 'HalfDay']);
       border-radius: var(--gggs-radius-md);
     }
 
+    /* Quieter than a working day but still readable: muted text on the sunken surface passes AA,
+       where fading the whole tile did not. */
     .shifts__day--off {
-      opacity: 0.6;
+      background: var(--gggs-color-surface-sunken);
+      color: var(--gggs-color-text-muted);
     }
   `,
 })

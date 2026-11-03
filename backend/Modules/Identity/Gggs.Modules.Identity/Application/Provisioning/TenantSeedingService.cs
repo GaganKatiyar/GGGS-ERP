@@ -50,6 +50,7 @@ public sealed class TenantSeedingService(
             }
 
             Role role = Role.Create(template.Name, template.Description, isSystem: true, templateCode: template.Code);
+            role.SetAutoAssign(template.AutoAssign);
 
             if (template.Permissions.Count == 0)
             {

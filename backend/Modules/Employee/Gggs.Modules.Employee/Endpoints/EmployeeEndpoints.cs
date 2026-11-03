@@ -221,6 +221,70 @@ public static class EmployeeEndpoints
             .WithName("GetMyEmployeeRecord")
             .RequirePermission(Permissions.Self.ProfileView);
 
+        MapPhotoEndpoints(endpoints, group);
+        EmployeeBackgroundEndpoints.MapEmployeeBackgroundEndpoints(endpoints, group);
+
         return endpoints;
+    }
+
+    /// <summary>
+    /// Profile photos. Image tags fetch them with the session cookie, so the routes take a <c>v</c>
+    /// query (the photo id): a request naming the current photo may be cached for good, because a new
+    /// photo gets a new id and so a new URL.
+    /// </summary>
+    private static void MapPhotoEndpoints(IEndpointRouteBuilder endpoints, RouteGroupBuilder group)
+    {
+        RouteGroupBuilder me = endpoints.MapGroup("/api/v1/me/employee").WithTags("Me");
+
+        me.MapGet("/avatar", async Task<Results<Ok<PhotoInfo>, NotFound>> (ICurrentUser user, EmployeePhotoService photos, CancellationToken ct)
+                => user.EmployeeId is { } employeeId ? TypedResults.Ok(await photos.GetInfoAsync(employeeId, ct)) : TypedResults.NotFound())
+            .WithName("GetMyPhotoInfo")
+            .RequirePermission(Permissions.Self.ProfileView);
+
+        me.MapGet("/photo", async (Guid? v, HttpContext http, ICurrentUser user, EmployeePhotoService photos, CancellationToken ct)
+                => user.EmployeeId is { } employeeId ? Photo(http, v, await photos.OpenOwnAsync(employeeId, ct)) : TypedResults.NotFound())
+            .WithName("GetMyPhoto")
+            .RequirePermission(Permissions.Self.ProfileView);
+
+        me.MapPut("/photo", async Task<Results<Ok<PhotoInfo>, NotFound>> (IFormFile file, ICurrentUser user, EmployeePhotoService photos, CancellationToken ct) =>
+            {
+                ArgumentNullException.ThrowIfNull(file);
+                return user.EmployeeId is { } employeeId
+                    ? TypedResults.Ok(await photos.ReplaceAsync(employeeId, new IncomingPhoto(file.Length, file.OpenReadStream), ct))
+                    : TypedResults.NotFound();
+            })
+            .WithName("ReplaceMyPhoto")
+            .RequirePermission(Permissions.Self.ProfileEdit)
+            .DisableAntiforgery(); // Guarded by the X-CSRF header check (BrowserRequestGuard), as every cookie write is.
+
+        me.MapDelete("/photo", async Task<Results<NoContent, NotFound>> (ICurrentUser user, EmployeePhotoService photos, CancellationToken ct) =>
+            {
+                if (user.EmployeeId is not { } employeeId)
+                {
+                    return TypedResults.NotFound();
+                }
+
+                await photos.RemoveAsync(employeeId, ct);
+                return TypedResults.NoContent();
+            })
+            .WithName("RemoveMyPhoto")
+            .RequirePermission(Permissions.Self.ProfileEdit);
+
+        group.MapGet("/{id:guid}/photo", async (Guid id, Guid? v, HttpContext http, EmployeePhotoService photos, CancellationToken ct)
+                => Photo(http, v, await photos.OpenAsync(id, ct)))
+            .WithName("GetEmployeePhoto")
+            .RequirePermission(Permissions.Employee.View);
+    }
+
+    private static IResult Photo(HttpContext http, Guid? version, PhotoContent? photo)
+    {
+        if (photo is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        // Private: a photo is personal data and must never sit in a shared cache.
+        http.Response.Headers.CacheControl = version == photo.PhotoId ? "private, max-age=31536000, immutable" : "private, no-cache";
+        return TypedResults.File(photo.Content, photo.ContentType, entityTag: new Microsoft.Net.Http.Headers.EntityTagHeaderValue($"\"{photo.PhotoId:N}\""));
     }
 }

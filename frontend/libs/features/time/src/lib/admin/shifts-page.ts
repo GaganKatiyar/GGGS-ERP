@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import { HasPermissionDirective, PermissionStore } from '@gggs/core/permissions';
 import { EmployeeSelect } from '@gggs/shared/employee-reference';
-import type { RosterRow, ScheduledDay, ShiftSwap, Weekday, WorkShift } from '@gggs/shared/models';
+import type { RosterRow, ScheduledDay, ShiftAssignment, ShiftSwap, Weekday, WorkShift } from '@gggs/shared/models';
 import { WEEKDAYS, shortTime } from '@gggs/shared/models';
 import { OrgSelect } from '@gggs/shared/org-reference';
 import { ShiftsApi, addDays, todayIso } from '@gggs/shared/time';
@@ -31,7 +31,13 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
         @case ('shifts') {
           <section class="panel stack">
             <div class="toolbar">
-              <p class="muted shifts__hint">People without an assignment work the default shift. Without any shift, PeopleOS assumes 09:00–18:00, weekends off.</p>
+              <p class="muted shifts__hint">
+                @if (defaultShift(); as fallback) {
+                  Everyone without a shift of their own works <strong>{{ fallback.name }}</strong> ({{ shortTime(fallback.startTime) }}–{{ shortTime(fallback.endTime) }}). Give people another shift on the Assignments tab.
+                } @else {
+                  No shift yet: Nuts and Bolts assumes 09:00–18:00, weekends off. The first shift you add becomes everyone's default.
+                }
+              </p>
               <button type="button" class="btn btn--primary btn--sm" *gggsHasPermission="'attendance.shift.manage'" (click)="openShift(null)">Add shift</button>
             </div>
             @if (shifts().length === 0) {
@@ -46,6 +52,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
                     <th scope="col">Grace</th>
                     <th scope="col">Half / full day</th>
                     <th scope="col">Days off</th>
+                    <th scope="col" class="shifts__number">People</th>
                     <th scope="col">Status</th>
                     <th scope="col"><span class="grid__hidden">Actions</span></th>
                   </tr>
@@ -59,6 +66,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
                       <td>{{ shift.graceMinutes }}m</td>
                       <td>{{ shift.halfDayMinutes / 60 }}h / {{ shift.fullDayMinutes / 60 }}h</td>
                       <td>{{ shortDays(shift.weeklyOff) }}</td>
+                      <td class="shifts__number">{{ shift.people }}</td>
                       <td><gggs-status-badge [status]="shift.isActive ? 'Active' : 'Inactive'" /></td>
                       <td class="grid__actions" *gggsHasPermission="'attendance.shift.manage'">
                         <button type="button" class="btn btn--link btn--sm" (click)="openShift(shift)">Edit</button>
@@ -76,6 +84,58 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
             }
           </section>
         }
+        @case ('assignments') {
+          <section class="panel toolbar roster__filters">
+            <label class="field roster__department">
+              <span class="field__label">Shift</span>
+              <select [value]="assignmentFilter()" (change)="assignmentFilter.set($any($event.target).value)">
+                <option value="">All shifts</option>
+                @for (shift of shifts(); track shift.id) {
+                  <option [value]="shift.id">{{ shift.name }}</option>
+                }
+              </select>
+            </label>
+            <button type="button" class="btn btn--primary" *gggsHasPermission="'attendance.roster.manage'" (click)="openAssign()">Assign shift</button>
+          </section>
+          @if (loadingAssignments()) {
+            <gggs-skeleton [lines]="5" />
+          } @else if (filteredAssignments().length === 0) {
+            <gggs-empty-state
+              icon="pi pi-users"
+              [title]="assignmentFilter() ? 'Nobody has this shift as their own' : 'Everyone works the default shift'"
+              [description]="emptyAssignmentsHint()"
+            />
+          } @else {
+            <section class="panel">
+              <table class="table grid">
+                <thead>
+                  <tr>
+                    <th scope="col">Employee</th>
+                    <th scope="col">Shift</th>
+                    <th scope="col">From</th>
+                    <th scope="col">Until</th>
+                    <th scope="col"><span class="grid__hidden">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of filteredAssignments(); track row.id) {
+                    <tr>
+                      <td>{{ row.employeeName ?? 'Former employee' }}</td>
+                      <td>{{ row.shiftName }}</td>
+                      <td>{{ row.effectiveFrom | date: 'd MMM y' }}</td>
+                      <td>{{ row.effectiveTo ? (row.effectiveTo | date: 'd MMM y') : 'Ongoing' }}</td>
+                      <td class="grid__actions">
+                        @if (canRoster) {
+                          <button type="button" class="btn btn--link btn--sm" (click)="openEnd(row)">Back to default</button>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </section>
+          }
+        }
         @case ('roster') {
           <section class="panel toolbar roster__filters">
             <label class="field">
@@ -83,14 +143,12 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
               <input type="date" [value]="weekStart()" (change)="setWeek($event)" />
             </label>
             <label class="field roster__department">
-              <span class="field__label">Department *</span>
-              <gggs-org-select kind="departments" placeholder="Choose a department" ariaLabel="Department" [formControl]="department" />
+              <span class="field__label">Department</span>
+              <gggs-org-select kind="departments" placeholder="All departments" ariaLabel="Department" [formControl]="department" />
             </label>
             <button type="button" class="btn btn--primary" *gggsHasPermission="'attendance.roster.manage'" (click)="openAssign()">Assign shift</button>
           </section>
-          @if (!department.value) {
-            <gggs-empty-state icon="pi pi-table" title="Choose a department" description="The roster shows one department's week." />
-          } @else if (loadingRoster()) {
+          @if (loadingRoster()) {
             <gggs-skeleton [lines]="6" />
           } @else {
             <section class="panel roster__scroll">
@@ -214,10 +272,27 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
             }
           </select>
         </label>
-        <label class="field form-grid__full">
-          <span class="field__label">Who</span>
-          <gggs-employee-select ariaLabel="Employee" placeholder="One person - or leave empty for the whole department" [formControl]="assignEmployee" />
-        </label>
+        <fieldset class="weekdays form-grid__full">
+          <legend>Who</legend>
+          @for (option of assignTargets; track option.key) {
+            <label class="weekdays__day">
+              <input type="radio" name="assignWho" [value]="option.key" [checked]="assignWho() === option.key" (change)="assignWho.set(option.key)" /> {{ option.label }}
+            </label>
+          }
+        </fieldset>
+        @if (assignWho() === 'person') {
+          <label class="field form-grid__full">
+            <span class="field__label">Employee *</span>
+            <gggs-employee-select ariaLabel="Employee" placeholder="Choose a person" [formControl]="assignEmployee" />
+          </label>
+        } @else if (assignWho() === 'department') {
+          <label class="field form-grid__full">
+            <span class="field__label">Department *</span>
+            <gggs-org-select kind="departments" placeholder="Choose a department" ariaLabel="Department to assign" [formControl]="assignDepartment" />
+          </label>
+        } @else {
+          <p class="muted form-grid__full shifts__hint">Every current employee gets this shift from the start date. To make it the shift for everyone without one, use Make default on the Shifts tab instead.</p>
+        }
         <label class="field">
           <span class="field__label">From *</span>
           <input type="date" [value]="assignFrom()" (input)="assignFrom.set($any($event.target).value)" />
@@ -227,6 +302,18 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
           <input type="date" [value]="assignTo()" (input)="assignTo.set($any($event.target).value)" />
         </label>
       </div>
+    </gggs-form-dialog>
+
+    <gggs-form-dialog [(visible)]="endOpen" title="Back to the default shift" saveLabel="Confirm" [busy]="busy()" [error]="dialogError()" (save)="endAssignment()">
+      @if (ending(); as row) {
+        <div class="stack">
+          <p class="shifts__hint">{{ endSummary() }}</p>
+          <label class="field">
+            <span class="field__label">First day on the default shift *</span>
+            <input type="date" [min]="row.effectiveFrom" [value]="endOn()" (input)="endOn.set($any($event.target).value)" />
+          </label>
+        </div>
+      }
     </gggs-form-dialog>
 
     <gggs-form-dialog [(visible)]="overrideOpen" [title]="overrideTitle()" [busy]="busy()" [error]="dialogError()" (save)="saveOverride()">
@@ -265,6 +352,10 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
       background: var(--gggs-color-primary-subtle);
       color: var(--gggs-color-primary);
       font-size: var(--gggs-font-size-xs);
+    }
+
+    .shifts__number {
+      text-align: end;
     }
 
     .shifts__message {
@@ -344,6 +435,7 @@ export class ShiftsPage {
   protected readonly weekdays = WEEKDAYS;
   protected readonly tabs: readonly TabItem[] = [
     { key: 'shifts', label: 'Shifts' },
+    { key: 'assignments', label: 'Assignments' },
     { key: 'roster', label: 'Roster' },
     { key: 'swaps', label: 'Swaps' },
   ];
@@ -377,7 +469,35 @@ export class ShiftsPage {
 
   protected readonly assignOpen = signal(false);
   protected readonly assignShift = signal('');
+  protected readonly assignTargets = [
+    { key: 'person', label: 'One person' },
+    { key: 'department', label: 'A department' },
+    { key: 'everyone', label: 'Everyone' },
+  ] as const;
+  protected readonly assignWho = signal<'person' | 'department' | 'everyone'>('person');
   protected readonly assignEmployee = new FormControl<string | null>(null);
+  protected readonly assignDepartment = new FormControl<string | null>(null);
+
+  protected readonly assignments = signal<readonly ShiftAssignment[]>([]);
+  protected readonly loadingAssignments = signal(false);
+  protected readonly assignmentFilter = signal('');
+  protected readonly filteredAssignments = computed(() => {
+    const shift = this.assignmentFilter();
+    return shift ? this.assignments().filter((row) => row.shiftId === shift) : this.assignments();
+  });
+  protected readonly emptyAssignmentsHint = computed(() => {
+    const fallback = this.defaultShift();
+    return (fallback ? `People without an assignment work ${fallback.name}. ` : '') + 'Assign a shift to give someone different hours.';
+  });
+
+  protected readonly endOpen = signal(false);
+  protected readonly ending = signal<ShiftAssignment | null>(null);
+  protected readonly endOn = signal(todayIso());
+  protected readonly endSummary = computed(() => {
+    const row = this.ending();
+    const fallback = this.defaultShift();
+    return row ? `${row.employeeName ?? 'This person'} stops working ${row.shiftName} and works ${fallback ? fallback.name : 'the default hours'} again.` : '';
+  });
   protected readonly assignFrom = signal(todayIso());
   protected readonly assignTo = signal('');
 
@@ -387,6 +507,7 @@ export class ShiftsPage {
   protected readonly overrideReason = signal('');
 
   protected readonly activeShifts = computed(() => this.shifts().filter((shift) => shift.isActive));
+  protected readonly defaultShift = computed(() => this.shifts().find((shift) => shift.isDefault && shift.isActive) ?? null);
   protected readonly weekDays = computed(() => Array.from({ length: 7 }, (_, offset) => addDays(this.weekStart(), offset)));
   protected readonly overrideTitle = computed(() => {
     const target = this.overrideTarget();
@@ -407,6 +528,8 @@ export class ShiftsPage {
     this.message.set(null);
     if (this.tab() === 'roster') {
       void this.loadRoster();
+    } else if (this.tab() === 'assignments') {
+      void this.loadAssignments();
     } else if (this.tab() === 'swaps') {
       void this.api.swaps().then((swaps) => this.swaps.set(swaps), (error: unknown) => this.fail(error));
     }
@@ -478,7 +601,9 @@ export class ShiftsPage {
 
   protected openAssign(): void {
     this.assignShift.set(this.activeShifts()[0]?.id ?? '');
+    this.assignWho.set('person');
     this.assignEmployee.setValue(null);
+    this.assignDepartment.setValue(this.tab() === 'roster' ? this.department.value : null);
     this.assignFrom.set(todayIso());
     this.assignTo.set('');
     this.dialogError.set(null);
@@ -486,17 +611,46 @@ export class ShiftsPage {
   }
 
   protected async assign(): Promise<void> {
-    const employee = this.assignEmployee.value;
-    const people = employee ? [employee] : this.roster().map((row) => row.employeeId);
-    if (!this.assignShift() || people.length === 0) {
-      this.dialogError.set('Choose a shift, and a person or a department with people in it.');
+    const who = this.assignWho();
+    if (!this.assignShift() || (who === 'person' && !this.assignEmployee.value) || (who === 'department' && !this.assignDepartment.value)) {
+      this.dialogError.set(who === 'department' ? 'Choose a shift and a department.' : who === 'person' ? 'Choose a shift and a person.' : 'Choose a shift.');
       return;
     }
     await this.inDialog(async () => {
+      // A department or everyone: the current people in it, as the roster lists them today.
+      const people =
+        who === 'person'
+          ? [this.assignEmployee.value!]
+          : (await this.api.roster(todayIso(), todayIso(), who === 'department' ? this.assignDepartment.value : null)).map((row) => row.employeeId);
+      if (people.length === 0) {
+        throw new Error('Nobody to assign.');
+      }
       const result = await this.api.assign({ employeeIds: people, shiftId: this.assignShift(), effectiveFrom: this.assignFrom(), effectiveTo: this.assignTo() || null });
       this.assignOpen.set(false);
-      this.message.set(`${result.assigned} people assigned.`);
-      await this.loadRoster();
+      this.message.set(`${result.assigned} ${result.assigned === 1 ? 'person' : 'people'} assigned.`);
+      await this.refreshAfterAssignment();
+    }, 'That department has nobody in it yet.');
+  }
+
+  protected openEnd(row: ShiftAssignment): void {
+    this.ending.set(row);
+    const today = todayIso();
+    this.endOn.set(row.effectiveFrom > today ? row.effectiveFrom : today);
+    this.dialogError.set(null);
+    this.endOpen.set(true);
+  }
+
+  protected async endAssignment(): Promise<void> {
+    const row = this.ending();
+    if (!row || !this.endOn()) {
+      this.dialogError.set('Choose the first day on the default shift.');
+      return;
+    }
+    await this.inDialog(async () => {
+      await this.api.endAssignment(row.id, this.endOn());
+      this.endOpen.set(false);
+      this.message.set(`${row.employeeName ?? 'They'} will be back on the default shift from ${this.endOn()}.`);
+      await this.refreshAfterAssignment();
     });
   }
 
@@ -545,12 +699,25 @@ export class ShiftsPage {
     }
   }
 
-  private async loadRoster(): Promise<void> {
-    const department = this.department.value;
-    if (!department) {
-      this.roster.set([]);
-      return;
+  /** Counts on the Shifts tab, the Assignments list and the roster all change with an assignment. */
+  private async refreshAfterAssignment(): Promise<void> {
+    await Promise.all([this.loadShifts(), this.loadAssignments(), this.tab() === 'roster' ? this.loadRoster() : Promise.resolve()]);
+  }
+
+  private async loadAssignments(): Promise<void> {
+    this.loadingAssignments.set(true);
+    try {
+      this.assignments.set(await this.api.assignments());
+    } catch (error) {
+      this.fail(error);
+    } finally {
+      this.loadingAssignments.set(false);
     }
+  }
+
+  private async loadRoster(): Promise<void> {
+    // No department: everyone's week.
+    const department = this.department.value;
     this.loadingRoster.set(true);
     try {
       this.roster.set(await this.api.roster(this.weekStart(), addDays(this.weekStart(), 6), department));
@@ -561,13 +728,13 @@ export class ShiftsPage {
     }
   }
 
-  private async inDialog(call: () => Promise<void>): Promise<void> {
+  private async inDialog(call: () => Promise<void>, fallback = 'That did not work. Try again.'): Promise<void> {
     this.busy.set(true);
     this.dialogError.set(null);
     try {
       await call();
     } catch (error) {
-      this.dialogError.set(error instanceof ApiError ? error.message : 'That did not work. Try again.');
+      this.dialogError.set(error instanceof ApiError ? error.message : fallback);
     } finally {
       this.busy.set(false);
     }

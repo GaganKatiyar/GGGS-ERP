@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import { AdminApi } from '@gggs/shared/identity';
 import { Button, FormField } from '@gggs/shared/ui';
+import { SignedOutLayout } from './signed-out-layout';
 
 /**
  * Setting a password from an invitation link.
@@ -17,34 +18,39 @@ import { Button, FormField } from '@gggs/shared/ui';
  */
 @Component({
   selector: 'gggs-complete-invitation-page',
-  imports: [ReactiveFormsModule, FormField, Button],
+  imports: [ReactiveFormsModule, FormField, Button, SignedOutLayout],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <main class="page">
-      <form class="card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <h1 class="card__title">Set your password</h1>
+    <gggs-signed-out-layout>
+      <form class="auth__form rise-in" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <h1 class="auth__title">Set your password</h1>
 
         @if (!tenantCode() || !userId() || !token()) {
-          <p class="card__error" role="alert">
+          <p class="auth__error" role="alert">
             This link is missing something it needs. Ask whoever invited you to send it again.
           </p>
         } @else {
-          <gggs-form-field label="New password" hint="At least 12 characters." required>
-            <input
-              type="password"
-              formControlName="newPassword"
-              autocomplete="new-password"
-              minlength="12"
-              required
-            />
-          </gggs-form-field>
+          <div class="auth__password">
+            <gggs-form-field label="New password" hint="At least 12 characters." required>
+              <input
+                [type]="showPassword() ? 'text' : 'password'"
+                formControlName="newPassword"
+                autocomplete="new-password"
+                minlength="12"
+                required
+              />
+            </gggs-form-field>
+            <button type="button" class="auth__eye auth__eye--hinted" [attr.aria-pressed]="showPassword()" aria-label="Show password" (click)="showPassword.set(!showPassword())">
+              {{ showPassword() ? 'Hide' : 'Show' }}
+            </button>
+          </div>
 
           @if (errorMessage()) {
-            <p class="card__error" role="alert">{{ errorMessage() }}</p>
+            <p class="auth__error" role="alert">{{ errorMessage() }}</p>
           }
 
           @if (succeeded()) {
-            <p class="card__success" role="status">
+            <p class="auth__success" role="status">
               Password set. You can sign in now.
             </p>
           }
@@ -59,47 +65,7 @@ import { Button, FormField } from '@gggs/shared/ui';
           </gggs-button>
         }
       </form>
-    </main>
-  `,
-  styles: `
-    .page {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100dvh;
-      padding: var(--gggs-space-4, 1rem);
-    }
-
-    .card {
-      display: flex;
-      flex-direction: column;
-      gap: var(--gggs-space-4, 1rem);
-      width: 100%;
-      max-width: 24rem;
-      padding: var(--gggs-space-8, 2rem);
-      border: 1px solid var(--gggs-color-border, #e2e5ea);
-      border-radius: var(--gggs-radius-lg, 0.75rem);
-      background: var(--gggs-color-surface-raised, #ffffff);
-      box-shadow: var(--gggs-shadow-md, none);
-    }
-
-    .card__title {
-      margin: 0;
-      font-size: var(--gggs-font-size-xl, 1.25rem);
-      font-weight: var(--gggs-font-weight-semibold, 600);
-    }
-
-    .card__error {
-      margin: 0;
-      color: var(--gggs-color-danger, #b3261e);
-      font-size: var(--gggs-font-size-base, 0.875rem);
-    }
-
-    .card__success {
-      margin: 0;
-      color: var(--gggs-color-success, #0e6b30);
-      font-size: var(--gggs-font-size-base, 0.875rem);
-    }
+    </gggs-signed-out-layout>
   `,
 })
 export class CompleteInvitationPage {
@@ -112,6 +78,7 @@ export class CompleteInvitationPage {
   readonly token = input<string>();
 
   protected readonly isSaving = signal(false);
+  protected readonly showPassword = signal(false);
   protected readonly succeeded = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
 
@@ -156,7 +123,7 @@ function describeError(error: unknown): string {
       return 'That invitation is no longer valid. Ask whoever invited you to send a new one.';
     }
 
-    if (error.errorCode === 'PASSWORD_REJECTED') {
+    if (['PASSWORD_REJECTED', 'PASSWORD_BREACHED'].includes(error.errorCode)) {
       // The server's own message already explains exactly which rule failed.
       return error.problem.detail ?? 'That password does not meet the policy. Please choose another.';
     }

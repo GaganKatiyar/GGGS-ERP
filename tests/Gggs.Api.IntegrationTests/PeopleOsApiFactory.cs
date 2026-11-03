@@ -22,6 +22,7 @@ using Gggs.Modules.Identity.Domain.Users;
 using Gggs.Modules.Identity.Endpoints;
 using Gggs.Modules.Identity.Infrastructure;
 using Gggs.Modules.Identity.Sessions;
+using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.MasterData.Infrastructure;
 using Gggs.Modules.Notification.Application;
 using Gggs.Modules.Platform.Domain.Subscriptions;
@@ -42,7 +43,7 @@ using Microsoft.Extensions.Options;
 namespace Gggs.Api.IntegrationTests;
 
 /// <summary>
-/// Hosts the whole PeopleOS API in-process against a real SQL Server, built by the real migrations.
+/// Hosts the whole Nuts and Bolts API in-process against a real SQL Server, built by the real migrations.
 /// <para>
 /// Nothing about authentication is faked by default: the browser clients sign in through
 /// <c>/bff/login</c> with real password hashing, a real session cookie and real permission
@@ -191,6 +192,9 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
     /// <summary>The organisation's identity provider, for single sign-on tests.</summary>
     public FakeOidcProvider Oidc { get; } = new();
 
+    /// <summary>What the test connector sent, for automation tests.</summary>
+    public RecordingIntegration Recorder { get; } = new();
+
     public async Task DeliverEventsAsync()
     {
         OutboxDispatcher<AppDbContext> dispatcher = Worker.GetRequiredService<OutboxDispatcher<AppDbContext>>();
@@ -244,6 +248,11 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
         }
 
         services.AddWorkflowSubject(PlatformServicesApi.TestSubjectDefinition);
+        services.AddSingleton(Recorder);
+        services.AddScoped<IIntegrationAdapter, RecordingAdapter>();
+        services.AddScoped<IIntegrationAdapter, RecordingEmailAdapter>();
+        services.AddScoped<IIntegrationAdapter, RecordingSmsAdapter>();
+        services.AddScoped<IIntegrationAdapter, RecordingAccountAdapter>();
         services.AddSingleton<OutboxDispatcher<AppDbContext>>();
         return services.BuildServiceProvider();
     }
@@ -437,6 +446,13 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             // The assistants talk to a scripted model: tests queue its replies and read what it was sent.
             services.AddSingleton<ILlmClient>(Llm);
 
+            // Automations act through a connector that records instead of calling Slack or Teams.
+            services.AddSingleton(Recorder);
+            services.AddScoped<IIntegrationAdapter, RecordingAdapter>();
+            services.AddScoped<IIntegrationAdapter, RecordingEmailAdapter>();
+            services.AddScoped<IIntegrationAdapter, RecordingSmsAdapter>();
+            services.AddScoped<IIntegrationAdapter, RecordingAccountAdapter>();
+
             // Single sign-on talks to a fake provider instead of the network.
             services.AddHttpClient(SsoService.HttpClientName)
                 .ConfigurePrimaryHttpMessageHandler(() => Oidc)
@@ -555,7 +571,7 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             Permissions.Compensation.BandView, Permissions.Compensation.BandManage, Permissions.Compensation.RevisionView, Permissions.Compensation.RevisionManage,
             Permissions.Compensation.VariablePayView, Permissions.Compensation.VariablePayManage, Permissions.Compensation.EquityView, Permissions.Compensation.EquityManage,
             Permissions.Benefit.PlanView, Permissions.Benefit.PlanManage, Permissions.Benefit.EnrollmentView, Permissions.Benefit.EnrollmentManage,
-            Permissions.Self.TaxDeclarationManage, Permissions.Self.BenefitManage, Permissions.Self.CompensationView,
+            Permissions.Self.TaxDeclarationManage, Permissions.Self.BenefitManage, Permissions.Self.CompensationView, Permissions.Self.LoanApply,
             Permissions.Workforce.PlanView, Permissions.Workforce.PlanManage, Permissions.Workforce.RequestView, Permissions.Workforce.RequestManage,
             Permissions.Recruitment.RequisitionView, Permissions.Recruitment.RequisitionManage, Permissions.Recruitment.PostingView, Permissions.Recruitment.PostingManage,
             Permissions.Recruitment.ApplicationView, Permissions.Recruitment.ApplicationManage, Permissions.Recruitment.OfferView, Permissions.Recruitment.OfferManage,
@@ -570,6 +586,7 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             Permissions.Career.SuccessionView, Permissions.Career.SuccessionManage, Permissions.Career.TalentReviewManage,
             Permissions.Asset.View, Permissions.Asset.Manage, Permissions.Asset.CategoryManage,
             Permissions.Spend.CategoryManage, Permissions.Spend.ClaimView, Permissions.Spend.ClaimPay, Permissions.Spend.TravelView, Permissions.Spend.TravelAdvanceManage,
+            Permissions.Loan.View, Permissions.Loan.Manage, Permissions.Loan.TypeManage,
             Permissions.Reward.CatalogView, Permissions.Reward.CatalogManage, Permissions.Reward.ProgramManage, Permissions.Reward.RecognitionView,
             Permissions.Reward.RedemptionManage,
             Permissions.Engagement.SurveyView, Permissions.Engagement.SurveyManage, Permissions.Engagement.ResultsView,

@@ -109,24 +109,6 @@ public sealed class User : TenantAggregateRoot
 
     public DateTime? LastLoginDate { get; private set; }
 
-    public bool MfaEnabled { get; private set; }
-
-    /// <summary>The authenticator secret, encrypted; null until enrolment is confirmed.</summary>
-    public string? MfaSecret { get; private set; }
-
-    /// <summary>A secret being enrolled, encrypted, until the first code confirms it.</summary>
-    public string? MfaPendingSecret { get; private set; }
-
-    /// <summary>Hashes of the unused one-time recovery codes, comma-separated.</summary>
-    public string? MfaRecoveryCodes { get; private set; }
-
-    /// <summary>The last time step a code was accepted for, so a code is never accepted twice.</summary>
-    public long MfaLastStep { get; private set; }
-
-    public DateTime? MfaEnrolledDate { get; private set; }
-
-    public int MfaRecoveryCodesLeft => string.IsNullOrEmpty(MfaRecoveryCodes) ? 0 : MfaRecoveryCodes.Split(',').Length;
-
     /// <summary>
     /// Bumped whenever roles change. Tokens carry it and the permission cache is keyed by it, so a
     /// revoked role takes effect on the next request instead of when the token expires.
@@ -154,6 +136,13 @@ public sealed class User : TenantAggregateRoot
     public string? InvitationTokenHash { get; private set; }
 
     public DateTime? InvitationTokenExpiresDate { get; private set; }
+
+    /// <summary>
+    /// Whether someone can choose a new password from an emailed link: a person's account that already
+    /// has one, and is not disabled. A lockout is no bar, since a lockout is often why they are here.
+    /// An invited account finishes its invitation instead, so a link of one kind can never do the other's job.
+    /// </summary>
+    public bool CanResetPassword => UserType == UserType.TenantUser && PasswordHash is not null && Status is UserStatus.Active or UserStatus.Locked;
 
     /// <summary>Whether this account can sign in at all right now.</summary>
     public bool CanSignIn => Status is UserStatus.Active or UserStatus.Invited;
@@ -183,6 +172,20 @@ public sealed class User : TenantAggregateRoot
         user.Raise(new UserInvitedDomainEvent(user.Id, user.Email, user.DisplayName));
         return user;
     }
+
+    /// <summary>
+    /// A machine account for an API key: active at once, with no password and no invitation, so it
+    /// can never sign in interactively. Its email is a placeholder that no mailbox answers.
+    /// </summary>
+    public static User CreateApiClient(string displayName, string placeholderEmail) => new()
+    {
+        Email = NormalizeEmailForStorage(placeholderEmail),
+        NormalizedEmail = NormalizeEmailForLookup(placeholderEmail),
+        DisplayName = Guard.MaxLength(Guard.NotNullOrWhiteSpace(displayName).Trim(), 200),
+        UserType = UserType.ApiClient,
+        Status = UserStatus.Active,
+        SecurityStamp = NewSecurityStamp(),
+    };
 
     /// <summary>
     /// Records an invitation or password-reset token, given only its hash.
@@ -302,6 +305,21 @@ public sealed class User : TenantAggregateRoot
     /// Changes the password. Rotating the security stamp is the point: whoever prompted the change
     /// - the user, or an administrator after a compromise - expects existing sessions to end.
     /// </summary>
+    /// <summary>
+    /// Sets a new password from a reset link. It lifts any lockout, consumes the link, and through
+    /// <see cref="SetPassword"/> signs the account out everywhere.
+    /// </summary>
+    public void ResetPassword(string passwordHash, PasswordPolicy policy, DateTime now)
+    {
+        Guard.Against(!CanResetPassword, "USER_CANNOT_RESET_PASSWORD", $"A {Status} account cannot reset its password.");
+
+        SetPassword(passwordHash, policy, now);
+        AccessFailedCount = 0;
+        LockoutEndDate = null;
+        Status = UserStatus.Active;
+        ClearInvitationToken();
+    }
+
     public void SetPassword(string passwordHash, PasswordPolicy policy, DateTime now)
     {
         ArgumentNullException.ThrowIfNull(policy);
@@ -358,73 +376,6 @@ public sealed class User : TenantAggregateRoot
         AccessFailedCount = 0;
         LockoutEndDate = null;
     }
-
-    public void SetMfaEnabled(bool enabled)
-    {
-        if (!enabled)
-        {
-            DisableMfa();
-            return;
-        }
-
-        Guard.Against(MfaSecret is null, "USER_MFA_NOT_ENROLLED", "Multi-factor sign-in is switched on by enrolling an authenticator app.");
-        MfaEnabled = true;
-        RotateSecurityStamp();
-    }
-
-    /// <summary>Starts enrolling an authenticator app; the secret is not used until a code confirms it.</summary>
-    public void BeginMfaEnrollment(string encryptedSecret) => MfaPendingSecret = Guard.NotNullOrWhiteSpace(encryptedSecret);
-
-    /// <summary>Confirms enrolment once a code from the app checks out, with fresh recovery codes.</summary>
-    public void ConfirmMfa(long step, IReadOnlyCollection<string> recoveryCodeHashes, DateTime now)
-    {
-        Guard.Against(MfaPendingSecret is null, "USER_MFA_NO_ENROLMENT", "Start enrolment first.");
-        MfaSecret = MfaPendingSecret;
-        MfaPendingSecret = null;
-        MfaLastStep = step;
-        MfaRecoveryCodes = string.Join(',', recoveryCodeHashes);
-        MfaEnrolledDate = now;
-        MfaEnabled = true;
-        RotateSecurityStamp();
-    }
-
-    public void DisableMfa()
-    {
-        MfaEnabled = false;
-        MfaSecret = null;
-        MfaPendingSecret = null;
-        MfaRecoveryCodes = null;
-        MfaEnrolledDate = null;
-        MfaLastStep = 0;
-        RotateSecurityStamp();
-    }
-
-    /// <summary>Records an accepted code's time step; false when that step (or a later one) was already used.</summary>
-    public bool AcceptMfaStep(long step)
-    {
-        if (step <= MfaLastStep)
-        {
-            return false;
-        }
-
-        MfaLastStep = step;
-        return true;
-    }
-
-    /// <summary>Spends a recovery code; false when it is not one of the unused codes.</summary>
-    public bool UseRecoveryCode(string codeHash)
-    {
-        List<string> codes = string.IsNullOrEmpty(MfaRecoveryCodes) ? [] : [.. MfaRecoveryCodes.Split(',')];
-        if (!codes.Remove(codeHash))
-        {
-            return false;
-        }
-
-        MfaRecoveryCodes = string.Join(',', codes);
-        return true;
-    }
-
-    public void ReplaceRecoveryCodes(IReadOnlyCollection<string> recoveryCodeHashes) => MfaRecoveryCodes = string.Join(',', recoveryCodeHashes);
 
     public void LinkToEmployee(Guid employeeId) => EmployeeId = Guard.NotEmpty(employeeId);
 

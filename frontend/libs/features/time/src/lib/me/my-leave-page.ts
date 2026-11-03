@@ -2,9 +2,10 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { ApiError } from '@gggs/core/http';
 import { HasPermissionDirective } from '@gggs/core/permissions';
-import type { HolidayEntry, LeaveBalance, LeavePreview, LeaveRequest, LeaveType } from '@gggs/shared/models';
+import type { HolidayEntry, LeaveBalance, LeavePreview, LeaveRequest, LeaveType, ResolvedLeavePolicy } from '@gggs/shared/models';
 import { LeaveApi, addDays, todayIso } from '@gggs/shared/time';
 import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
+import { ruleSummary } from '../admin/leave-policy-model';
 
 /**
  * My leave: what I have, applying (with the days and any rule it breaks shown before sending), my
@@ -34,9 +35,24 @@ import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge } fr
               [hint]="hint(balance)"
             />
           } @empty {
-            <p class="muted">No leave policy covers you yet.</p>
+            <p class="muted">No leave policy covers you yet. Ask HR to assign one.</p>
           }
         </div>
+
+        @if (policy(); as mine) {
+          <details class="panel">
+            <summary class="leave__policy">
+              <span>Your leave policy: <strong>{{ mine.name }}</strong></span>
+              <span class="muted">Leave year {{ mine.leaveYear }} · {{ mine.yearStart | date: 'mediumDate' }} – {{ mine.yearEnd | date: 'mediumDate' }}{{ mine.source === 'Exception' ? ' · given to you by HR' : '' }}</span>
+            </summary>
+            <dl class="definition-list">
+              @for (item of mine.items; track item.leaveTypeId) {
+                <dt>{{ item.leaveTypeName }}</dt>
+                <dd>{{ summary(item) }}</dd>
+              }
+            </dl>
+          </details>
+        }
 
         <section class="panel stack">
           <h2 class="leave__heading">My requests</h2>
@@ -65,9 +81,17 @@ import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge } fr
                       }
                     </td>
                     <td>{{ request.days | number: '1.0-1' }}</td>
-                    <td>{{ request.reason ?? '' }}</td>
+                    <td>
+                      {{ request.reason ?? '' }}
+                      @if (request.attachmentCount) {
+                        <span class="muted" [attr.aria-label]="request.attachmentCount + ' document(s) attached'"><i class="pi pi-paperclip" aria-hidden="true"></i> {{ request.attachmentCount }}</span>
+                      }
+                    </td>
                     <td><gggs-status-badge [status]="request.status" /></td>
                     <td>
+                      @if (request.status === 'Draft') {
+                        <button type="button" class="btn btn--link btn--sm" (click)="openAttach(request)">Attach &amp; send</button>
+                      }
                       @if (cancellable(request)) {
                         <button type="button" class="btn btn--link btn--sm" (click)="cancel(request)">Cancel</button>
                       }
@@ -138,12 +162,34 @@ import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge } fr
             @for (problem of p.problems; track problem) {
               <div class="field__error">{{ problem }}</div>
             }
+            @if (p.documentRequired && !p.problems.length) {
+              <div><i class="pi pi-paperclip" aria-hidden="true"></i> This request needs a supporting document. You attach it next, then it goes for approval.</div>
+            }
           </div>
         }
       </div>
     </gggs-form-dialog>
+
+    <gggs-form-dialog [(visible)]="attachOpen" title="Attach a supporting document" saveLabel="Attach and send" [busy]="busy()" [saveDisabled]="!file()" [error]="dialogError()" (save)="attachAndSend()">
+      <div class="stack">
+        @if (attaching(); as request) {
+          <p class="muted">{{ request.leaveTypeName }}, {{ request.startDate | date: 'd MMM' }} – {{ request.endDate | date: 'd MMM yyyy' }} ({{ request.days | number: '1.0-1' }} day(s)). A medical certificate or similar: PDF, JPEG or PNG, up to 5 MB.</p>
+        }
+        <label class="field">
+          <span class="field__label">Document *</span>
+          <input type="file" accept="application/pdf,image/jpeg,image/png" (change)="file.set($any($event.target).files?.[0] ?? null)" />
+        </label>
+      </div>
+    </gggs-form-dialog>
   `,
   styles: `
+    .leave__policy {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--gggs-space-1) var(--gggs-space-3);
+      cursor: pointer;
+    }
+
     .leave__heading {
       margin: 0;
       font-size: var(--gggs-font-size-md);
@@ -194,6 +240,8 @@ export class MyLeavePage {
   protected readonly year = new Date().getFullYear();
 
   protected readonly balances = signal<readonly LeaveBalance[]>([]);
+  protected readonly policy = signal<ResolvedLeavePolicy | null>(null);
+  protected readonly summary = ruleSummary;
   protected readonly requests = signal<readonly LeaveRequest[]>([]);
   protected readonly holidays = signal<readonly HolidayEntry[]>([]);
   protected readonly types = signal<readonly LeaveType[]>([]);
@@ -202,6 +250,9 @@ export class MyLeavePage {
   protected readonly actionError = signal<string | null>(null);
 
   protected readonly applyOpen = signal(false);
+  protected readonly attachOpen = signal(false);
+  protected readonly attaching = signal<LeaveRequest | null>(null);
+  protected readonly file = signal<File | null>(null);
   protected readonly typeId = signal('');
   protected readonly start = signal(addDays(this.today, 1));
   protected readonly end = signal(addDays(this.today, 1));
@@ -230,12 +281,15 @@ export class MyLeavePage {
   }
 
   protected cancellable(request: LeaveRequest): boolean {
-    return request.status === 'Pending' || (request.status === 'Approved' && request.startDate > this.today);
+    return request.status === 'Draft' || request.status === 'Pending' || (request.status === 'Approved' && request.startDate > this.today);
   }
 
   protected async openApply(): Promise<void> {
     if (this.types().length === 0) {
-      this.types.set(await this.api.types());
+      // Only the leave types the policy grants can be applied for.
+      const granted = new Set(this.policy()?.items.map((item) => item.leaveTypeId));
+      const types = await this.api.types();
+      this.types.set(granted.size ? types.filter((type) => granted.has(type.id)) : types);
     }
     const covered = this.balances().map((balance) => balance.leaveTypeId);
     this.typeId.set(this.types().find((type) => covered.includes(type.id))?.id ?? this.types()[0]?.id ?? '');
@@ -278,11 +332,43 @@ export class MyLeavePage {
     this.busy.set(true);
     this.dialogError.set(null);
     try {
-      await this.api.apply(this.application());
+      const request = await this.api.apply(this.application());
       this.applyOpen.set(false);
       await this.load();
+      if (request.status === 'Draft') {
+        this.openAttach(request);
+      }
     } catch (error) {
       this.dialogError.set(error instanceof ApiError ? error.message : 'The request could not be sent.');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  protected openAttach(request: LeaveRequest): void {
+    this.attaching.set(request);
+    this.file.set(null);
+    this.dialogError.set(null);
+    this.attachOpen.set(true);
+  }
+
+  protected async attachAndSend(): Promise<void> {
+    const request = this.attaching();
+    const file = this.file();
+    if (!request || !file) {
+      return;
+    }
+
+    this.busy.set(true);
+    this.dialogError.set(null);
+    try {
+      await this.api.attach(request.id, file);
+      await this.api.submit(request.id);
+      this.attachOpen.set(false);
+      await this.load();
+    } catch (error) {
+      this.dialogError.set(error instanceof ApiError ? error.message : 'The document could not be attached.');
+      await this.load();
     } finally {
       this.busy.set(false);
     }
@@ -311,8 +397,14 @@ export class MyLeavePage {
 
   private async load(): Promise<void> {
     try {
-      const [balances, requests, holidays] = await Promise.all([this.api.myBalances(), this.api.myRequests(), this.api.myHolidays(this.year)]);
+      const [balances, requests, holidays, policy] = await Promise.all([
+        this.api.myBalances(),
+        this.api.myRequests(),
+        this.api.myHolidays(this.year),
+        this.api.myPolicy().catch(() => null),
+      ]);
       this.balances.set(balances);
+      this.policy.set(policy);
       this.requests.set(requests.items);
       this.holidays.set(holidays);
     } catch (error) {

@@ -66,7 +66,7 @@ internal static class DocumentCatalog
             <p>Dear {{employeeName}},</p>
             <p>It has been reported that: {{allegation}}</p>
             <p>You are asked to explain in writing, by {{replyBy}}, why disciplinary action should not be taken against you. You may
-            reply through PeopleOS under My resignation. If no reply is received by then, the matter will be decided on the
+            reply through Nuts and Bolts under My resignation. If no reply is received by then, the matter will be decided on the
             information available.</p>
             <p>For the company,<br />Human Resources</p>
             """),
@@ -193,7 +193,7 @@ internal sealed class SeedDocumentCatalogOnTenantProvisioned(DocumentCatalogSeed
 
 /// <summary>
 /// The e-sign port (spec §107). A provider is told a signature is wanted and may hand back its own
-/// reference; completion comes back through PeopleOS (the built-in provider) or a provider webhook.
+/// reference; completion comes back through Nuts and Bolts (the built-in provider) or a provider webhook.
 /// </summary>
 internal interface ISignatureProvider
 {
@@ -203,7 +203,7 @@ internal interface ISignatureProvider
 }
 
 /// <summary>
-/// Built-in click-to-sign: the signer opens the document in PeopleOS and signs there; the time and
+/// Built-in click-to-sign: the signer opens the document in Nuts and Bolts and signs there; the time and
 /// address are recorded as evidence. Suitable for acknowledgements and internal letters; contracts
 /// that need a qualified electronic signature plug an external provider in behind the same port.
 /// </summary>

@@ -19,36 +19,6 @@ public sealed record LeaveTypeItem(Guid Id, string Code, string Name, bool IsPai
 
 public sealed record LeaveTypeRequest(string Code, string Name, bool IsPaid, bool AllowHalfDay, string? Color);
 
-public sealed record LeavePolicyItem(
-    Guid Id,
-    Guid LeaveTypeId,
-    string LeaveTypeName,
-    string? EmploymentTypeCode,
-    decimal AnnualEntitlement,
-    AccrualFrequency Accrual,
-    decimal? CarryForwardLimit,
-    bool AllowDuringProbation,
-    decimal MaxNegativeBalance,
-    int? MaxConsecutiveDays,
-    int MinNoticeDays,
-    bool CountSandwichedDays,
-    bool IsActive);
-
-public sealed record LeavePolicyRequest(
-    Guid LeaveTypeId,
-    string? EmploymentTypeCode,
-    decimal AnnualEntitlement,
-    AccrualFrequency Accrual,
-    decimal? CarryForwardLimit,
-    bool AllowDuringProbation,
-    decimal MaxNegativeBalance,
-    int? MaxConsecutiveDays,
-    int MinNoticeDays,
-    bool CountSandwichedDays)
-{
-    public PolicyRules Rules => new(AnnualEntitlement, Accrual, CarryForwardLimit, AllowDuringProbation, MaxNegativeBalance, MaxConsecutiveDays, MinNoticeDays, CountSandwichedDays);
-}
-
 public sealed record HolidayCalendarItem(Guid Id, string Code, string Name, bool IsDefault, IReadOnlyList<Guid> LocationIds, int HolidayCount);
 
 public sealed record HolidayCalendarRequest(string Code, string Name, bool IsDefault, IReadOnlyList<Guid>? LocationIds);
@@ -78,13 +48,6 @@ internal static class LeaveEndpoints
         group.MapPost("/types/{id:guid}/deactivate", (Guid id, AppDbContext db, CancellationToken ct) => SetTypeActiveAsync(id, false, db, ct))
             .WithName("DeactivateLeaveType").RequirePermission(Permissions.Leave.TypeManage);
 
-        group.MapGet("/policies", ListPoliciesAsync).WithName("ListLeavePolicies").RequirePermission(Permissions.Leave.PolicyManage);
-        group.MapPost("/policies", CreatePolicyAsync).WithName("CreateLeavePolicy").RequirePermission(Permissions.Leave.PolicyManage);
-        group.MapPut("/policies/{id:guid}", UpdatePolicyAsync).WithName("UpdateLeavePolicy").RequirePermission(Permissions.Leave.PolicyManage);
-        group.MapPost("/policies/{id:guid}/activate", (Guid id, AppDbContext db, CancellationToken ct) => SetPolicyActiveAsync(id, true, db, ct))
-            .WithName("ActivateLeavePolicy").RequirePermission(Permissions.Leave.PolicyManage);
-        group.MapPost("/policies/{id:guid}/deactivate", (Guid id, AppDbContext db, CancellationToken ct) => SetPolicyActiveAsync(id, false, db, ct))
-            .WithName("DeactivateLeavePolicy").RequirePermission(Permissions.Leave.PolicyManage);
         group.MapPost("/accrual/run", async (AccrualRunRequest body, LeaveAccrualService accrual, CancellationToken ct) =>
                 TypedResults.Ok(await accrual.RunAsync(body.Year, body.Month, ct, body.EmployeeId)))
             .WithName("RunLeaveAccrual").RequirePermission(Permissions.Leave.PolicyManage);
@@ -104,6 +67,16 @@ internal static class LeaveEndpoints
             .WithName("ApplyLeaveOnBehalf").RequirePermission(Permissions.Leave.RequestCreateOnBehalf);
         group.MapPost("/requests/preview", async (LeaveApplication body, LeaveService leave, CancellationToken ct) => TypedResults.Ok(await leave.PreviewAsync(body, onBehalf: true, ct)))
             .WithName("PreviewLeaveOnBehalf").RequirePermission(Permissions.Leave.RequestCreateOnBehalf);
+        group.MapGet("/requests/{id:guid}/attachments", async (Guid id, LeaveService leave, CancellationToken ct) => TypedResults.Ok(await leave.AttachmentsAsync(id, ct)))
+            .WithName("ListLeaveAttachments").RequirePermission(Permissions.Self.LeaveView, Permissions.Leave.RequestView);
+
+        group.MapGet("/requests/{id:guid}/attachments/{attachmentId:guid}/content", async (Guid id, Guid attachmentId, LeaveService leave, CancellationToken ct) =>
+            {
+                AttachmentContent content = await leave.OpenAttachmentAsync(id, attachmentId, ct);
+                return TypedResults.File(content.Content, content.ContentType, content.FileName);
+            })
+            .WithName("OpenLeaveAttachment").RequirePermission(Permissions.Self.LeaveView, Permissions.Leave.RequestView);
+
         group.MapPost("/requests/{id:guid}/cancel", async (Guid id, CancelLeaveRequest? body, LeaveService leave, CancellationToken ct) =>
             {
                 await leave.CancelAsync(id, body?.Reason, ct);
@@ -144,6 +117,17 @@ internal static class LeaveEndpoints
             .WithName("ApplyMyLeave").RequirePermission(Permissions.Self.LeaveApply);
         me.MapPost("/leave/requests/preview", async (LeaveApplication body, LeaveService leave, CancellationToken ct) => TypedResults.Ok(await leave.PreviewAsync(body with { EmployeeId = null }, onBehalf: false, ct)))
             .WithName("PreviewMyLeave").RequirePermission(Permissions.Self.LeaveApply);
+        me.MapPost("/leave/requests/{id:guid}/submit", async (Guid id, LeaveService leave, CancellationToken ct) => TypedResults.Ok(await leave.SubmitAsync(id, ct)))
+            .WithName("SubmitMyLeaveRequest").RequirePermission(Permissions.Self.LeaveApply);
+
+        me.MapPost("/leave/requests/{id:guid}/attachments", async (Guid id, IFormFile file, LeaveService leave, CancellationToken ct) =>
+            {
+                ArgumentNullException.ThrowIfNull(file);
+                return TypedResults.Ok(await leave.AttachAsync(id, new IncomingAttachment(file.FileName, file.Length, file.OpenReadStream), ct));
+            })
+            .WithName("AttachToMyLeaveRequest").RequirePermission(Permissions.Self.LeaveApply)
+            .DisableAntiforgery(); // Guarded by the X-CSRF header check (BrowserRequestGuard), as every cookie write is.
+
         me.MapPost("/leave/requests/{id:guid}/cancel", async (Guid id, CancelLeaveRequest? body, LeaveService leave, CancellationToken ct) =>
             {
                 await leave.CancelAsync(id, body?.Reason, ct);
@@ -163,6 +147,7 @@ internal static class LeaveEndpoints
             })
             .WithName("MyHolidays").RequirePermission(Permissions.Self.LeaveView);
 
+        LeavePlanEndpoints.Map(group, me);
         return endpoints;
     }
 
@@ -221,75 +206,6 @@ internal static class LeaveEndpoints
 
         await database.SaveChangesAsync(ct);
         return TypedResults.Ok(ToItem(type));
-    }
-
-    // ----- Policies ----------------------------------------------------------------------------
-
-    private static async Task<Ok<List<LeavePolicyItem>>> ListPoliciesAsync(AppDbContext database, CancellationToken ct)
-        => TypedResults.Ok(await database.LeavePolicies.AsNoTracking()
-            .Join(database.LeaveTypes.AsNoTracking(), policy => policy.LeaveTypeId, type => type.Id, (policy, type) => new { policy, type.Name })
-            .OrderBy(row => row.Name).ThenBy(row => row.policy.EmploymentTypeCode)
-            .Select(row => ToItem(row.policy, row.Name))
-            .ToListAsync(ct));
-
-    private static async Task<Created<LeavePolicyItem>> CreatePolicyAsync(LeavePolicyRequest body, AppDbContext database, IMasterDataLookup lookup, CancellationToken ct)
-    {
-        ArgumentNullException.ThrowIfNull(body);
-        LeaveType type = await database.LeaveTypes.AsNoTracking().FirstOrDefaultAsync(row => row.Id == body.LeaveTypeId, ct)
-            ?? throw new NotFoundException(nameof(LeaveType), body.LeaveTypeId);
-        await EnsureNoClashAsync(database, lookup, body.LeaveTypeId, body.EmploymentTypeCode, null, ct);
-
-        var policy = LeavePolicy.Create(type.Id, body.EmploymentTypeCode, body.Rules);
-        database.LeavePolicies.Add(policy);
-        await database.SaveChangesAsync(ct);
-        return TypedResults.Created($"/api/v1/leave/policies/{policy.Id}", ToItem(policy, type.Name));
-    }
-
-    private static async Task<Ok<LeavePolicyItem>> UpdatePolicyAsync(Guid id, LeavePolicyRequest body, AppDbContext database, CancellationToken ct)
-    {
-        ArgumentNullException.ThrowIfNull(body);
-        LeavePolicy policy = await database.LeavePolicies.FirstOrDefaultAsync(row => row.Id == id, ct) ?? throw new NotFoundException(nameof(LeavePolicy), id);
-        policy.Update(body.Rules);
-        await database.SaveChangesAsync(ct);
-        string typeName = await database.LeaveTypes.Where(type => type.Id == policy.LeaveTypeId).Select(type => type.Name).FirstAsync(ct);
-        return TypedResults.Ok(ToItem(policy, typeName));
-    }
-
-    private static async Task<NoContent> SetPolicyActiveAsync(Guid id, bool active, AppDbContext database, CancellationToken ct)
-    {
-        LeavePolicy policy = await database.LeavePolicies.FirstOrDefaultAsync(row => row.Id == id, ct) ?? throw new NotFoundException(nameof(LeavePolicy), id);
-        if (active)
-        {
-            if (await database.LeavePolicies.AnyAsync(
-                    other => other.Id != id && other.IsActive && other.LeaveTypeId == policy.LeaveTypeId && other.EmploymentTypeCode == policy.EmploymentTypeCode, ct))
-            {
-                throw new DomainRuleException("LEAVE_POLICY_CLASH", "Another active policy already covers this leave type and employment type.");
-            }
-
-            policy.Activate();
-        }
-        else
-        {
-            policy.Deactivate();
-        }
-
-        await database.SaveChangesAsync(ct);
-        return TypedResults.NoContent();
-    }
-
-    private static async Task EnsureNoClashAsync(AppDbContext database, IMasterDataLookup lookup, Guid typeId, string? employmentTypeCode, Guid? exceptId, CancellationToken ct)
-    {
-        string? code = string.IsNullOrWhiteSpace(employmentTypeCode) ? null : employmentTypeCode.Trim().ToUpperInvariant();
-        if (code is not null && !await lookup.IsValidAsync("employment-type", code, ct))
-        {
-            throw new DomainRuleException("LEAVE_POLICY_EMPLOYMENT_TYPE", $"'{code}' is not an employment type.");
-        }
-
-        if (await database.LeavePolicies.AnyAsync(
-                policy => policy.Id != exceptId && policy.IsActive && policy.LeaveTypeId == typeId && policy.EmploymentTypeCode == code, ct))
-        {
-            throw new DomainRuleException("LEAVE_POLICY_CLASH", "An active policy already covers this leave type and employment type.");
-        }
     }
 
     // ----- Holidays ----------------------------------------------------------------------------
@@ -398,9 +314,4 @@ internal static class LeaveEndpoints
     }
 
     private static LeaveTypeItem ToItem(LeaveType type) => new(type.Id, type.Code, type.Name, type.IsPaid, type.AllowHalfDay, type.Color, type.IsSystem, type.IsActive);
-
-    private static LeavePolicyItem ToItem(LeavePolicy policy, string typeName)
-        => new(
-            policy.Id, policy.LeaveTypeId, typeName, policy.EmploymentTypeCode, policy.AnnualEntitlement, policy.Accrual, policy.CarryForwardLimit,
-            policy.AllowDuringProbation, policy.MaxNegativeBalance, policy.MaxConsecutiveDays, policy.MinNoticeDays, policy.CountSandwichedDays, policy.IsActive);
 }

@@ -22,6 +22,10 @@ import type {
   SkillItem,
   SkillProfile,
   SkilledPerson,
+  ProjectHoursRow,
+  TimesheetApprovalRow,
+  TimesheetApprovalStatus,
+  TimesheetBankWeek,
   TimesheetEntryInput,
   TimesheetIssue,
   TimesheetRow,
@@ -133,6 +137,10 @@ export class TimesheetsApi {
     return firstValueFrom(this.http.put<TimesheetView>(`${this.mine}/${week}`, { entries, comment }));
   }
 
+  bank(query: { from?: string; to?: string; status?: TimesheetStatus | ''; projectId?: string }): Promise<readonly TimesheetBankWeek[]> {
+    return firstValueFrom(this.http.get<readonly TimesheetBankWeek[]>(`${this.mine}/bank`, { params: params({ ...query }) }));
+  }
+
   copyPrevious(week: string): Promise<TimesheetView> {
     return firstValueFrom(this.http.post<TimesheetView>(`${this.mine}/${week}/copy-previous`, {}));
   }
@@ -157,8 +165,17 @@ export class TimesheetsApi {
     return firstValueFrom(this.http.get<readonly MissingTimesheet[]>(`${this.base}/missing`, { params: { week } }));
   }
 
-  async reopen(id: string, reason: string): Promise<void> {
-    await firstValueFrom(this.http.post(`${this.base}/${id}/reopen`, { reason }));
+  /** Reopens one project's hours, or every approved share of the week when none is named. */
+  async reopen(id: string, reason: string, approvalId?: string | null): Promise<void> {
+    await firstValueFrom(this.http.post(`${this.base}/${id}/reopen`, { reason, approvalId: approvalId ?? null }));
+  }
+
+  approvals(query: { projectId?: string; status?: TimesheetApprovalStatus; page?: number; pageSize?: number } = {}): Promise<PagedResult<TimesheetApprovalRow>> {
+    return firstValueFrom(this.http.get<PagedResult<TimesheetApprovalRow>>(`${this.base}/approvals`, { params: params({ ...query }) }));
+  }
+
+  projectHours(projectId: string, from: string, to: string): Promise<readonly ProjectHoursRow[]> {
+    return firstValueFrom(this.http.get<readonly ProjectHoursRow[]>(`${this.base}/projects/${projectId}`, { params: { from, to } }));
   }
 
   rules(): Promise<TimesheetRules> {

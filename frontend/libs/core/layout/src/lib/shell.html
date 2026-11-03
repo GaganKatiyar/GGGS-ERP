@@ -1,117 +1,192 @@
 <a class="skip-link" href="#main-content" (click)="focusContent($event)">Skip to content</a>
 
-<div
-  class="shell"
-  [class.shell--drawer-open]="isDrawerOpen()"
->
-  <!-- One navigation landmark: the rail of modules and the active module's pages. On a small
-       screen both slide in together as a drawer. -->
-  <nav
-    #navElement
-    id="shell-navigation"
-    class="shell__nav"
-    aria-label="Main"
-    tabindex="-1"
-    [attr.role]="isDrawerOpen() ? 'dialog' : null"
-    [attr.aria-modal]="isDrawerOpen() ? 'true' : null"
-    (keydown)="onNavigationKeydown($event)"
-  >
-    <div class="rail">
-      <a class="rail__brand" routerLink="/dashboard" aria-label="PeopleOS home">
-        <span class="rail__logo" aria-hidden="true">P</span>
-      </a>
-      <ul class="rail__list">
-        @for (item of navigation(); track item.label) {
+<div class="shell" [class.shell--expanded]="navStyle.isExpanded()">
+  <!-- Two menus, the user's choice (NavStyleStore): the expanded sidebar - every module with its
+       pages, and a search - or the rail of icons, whose pages pop out on hover or focus. Either way
+       the grid button (and the logo in the header) opens the app launcher. -->
+  <nav id="shell-navigation" class="shell__nav" aria-label="Main" tabindex="-1" (keydown)="onNavigationKeydown($event)">
+    @if (navStyle.isExpanded()) {
+    <div class="sidebar">
+      <div class="sidebar__top">
+        <button
+          type="button"
+          class="rail__apps"
+          aria-haspopup="dialog"
+          aria-controls="app-launcher"
+          [attr.aria-expanded]="isLauncherOpen()"
+          aria-label="All apps"
+          title="All apps"
+          (click)="openLauncher($event)"
+        >
+          <i class="pi pi-th-large" aria-hidden="true"></i>
+        </button>
+        <label class="sidebar__search">
+          <i class="pi pi-search" aria-hidden="true"></i>
+          <span class="sr-only">Search the menu</span>
+          <input type="search" placeholder="Search menu" autocomplete="off" [value]="menuQuery()" (input)="menuQuery.set($any($event.target).value)" />
+        </label>
+      </div>
+      <ul class="sidebar__list">
+        @for (item of menuItems(); track item.label) {
+        @let active = activeGroup()?.label === item.label;
         <li>
           @if (item.children?.length) {
           <button
             type="button"
-            class="rail__item"
-            [class.rail__item--active]="isActiveGroup(item)"
-            [attr.aria-current]="activeGroup() === item ? 'page' : null"
-            [attr.aria-expanded]="showPanel() && panelGroup() === item"
-            aria-controls="shell-panel"
-            [title]="item.label"
-            (click)="openGroup(item)"
+            class="sidebar__item"
+            [class.sidebar__item--active]="active"
+            [attr.aria-expanded]="isModuleOpen(item)"
+            [attr.data-module]="item.label"
+            [attr.data-nav-module]="entryRoute(item)"
+            (click)="toggleModule(item)"
           >
-            <i class="rail__icon {{ item.icon }}" aria-hidden="true"></i>
-            <span class="rail__label">{{ item.railLabel ?? item.label }}</span>
+            <i class="sidebar__icon {{ item.icon }}" aria-hidden="true"></i>
+            <span class="sidebar__label">{{ item.label }}</span>
+            @if (badgeFor(item) > 0) {
+            <span class="rail__badge sidebar__badge" [attr.aria-label]="badgeFor(item) + ' waiting'">{{ badgeFor(item) }}</span>
+            }
+            <i class="pi sidebar__chevron" [class.pi-chevron-up]="isModuleOpen(item)" [class.pi-chevron-down]="!isModuleOpen(item)" aria-hidden="true"></i>
           </button>
+          @if (isModuleOpen(item)) {
+          <ul class="sidebar__pages" [attr.aria-label]="item.label">
+            @for (section of sectionsOf(item); track section.key) {
+            @if (section.label) {
+            <li class="sidebar__caption" aria-hidden="true">{{ section.label }}</li>
+            }
+            @for (page of section.pages; track page.route) {
+            <li>
+              <a
+                class="sidebar__page"
+                [routerLink]="page.route"
+                [class.sidebar__page--active]="activeEntry()?.route === page.route"
+                [attr.aria-current]="activeEntry()?.route === page.route ? 'page' : null"
+                [attr.data-module]="item.label"
+              >{{ page.label }}</a>
+            </li>
+            }
+            }
+          </ul>
+          }
           } @else {
           <a
-            class="rail__item"
-            [routerLink]="item.route"
-            routerLinkActive="rail__item--active"
-            (click)="closeSubmenu()"
-            ariaCurrentWhenActive="page"
-            [title]="item.label"
+            class="sidebar__item"
+            [routerLink]="entryRoute(item)"
+            [class.sidebar__item--active]="active"
+            [attr.aria-current]="active ? 'page' : null"
+            [attr.data-module]="item.label"
+            [attr.data-nav-module]="entryRoute(item)"
           >
-            <i class="rail__icon {{ item.icon }}" aria-hidden="true"></i>
-            <span class="rail__label">{{ item.railLabel ?? item.label }}</span>
+            <i class="sidebar__icon {{ item.icon }}" aria-hidden="true"></i>
+            <span class="sidebar__label">{{ item.label }}</span>
             @if (badgeFor(item) > 0) {
-            <span class="rail__badge" [attr.aria-label]="badgeFor(item) + ' waiting'">{{ badgeFor(item) }}</span>
+            <span class="rail__badge sidebar__badge" [attr.aria-label]="badgeFor(item) + ' waiting'">{{ badgeFor(item) }}</span>
             }
           </a>
           }
         </li>
+        } @empty {
+        <li class="sidebar__empty" role="status">Nothing in the menu matches “{{ menuQuery().trim() }}”.</li>
         }
       </ul>
     </div>
-
-    @if (panelGroup(); as group) {
-    <div id="shell-panel" class="panel-nav" [hidden]="!showPanel()">
-      <div class="panel-nav__header">
-        <i class="{{ group.icon }}" aria-hidden="true"></i>
-        <span class="panel-nav__title">{{ group.label }}</span>
-        <button type="button" class="panel-nav__close" aria-label="Close menu" title="Close" (click)="closeSubmenu()">
-          <i class="pi pi-times" aria-hidden="true"></i>
+    } @else {
+    <div class="rail">
+      <div class="rail__top">
+        <button
+          type="button"
+          class="rail__apps"
+          aria-haspopup="dialog"
+          aria-controls="app-launcher"
+          [attr.aria-expanded]="isLauncherOpen()"
+          aria-label="All apps"
+          title="All apps"
+          (click)="openLauncher($event)"
+        >
+          <i class="pi pi-th-large" aria-hidden="true"></i>
         </button>
       </div>
-      <ul class="panel-nav__list">
-        @for (child of group.children; track child.label) {
+      <ul class="rail__list">
+        @for (item of navigation(); track item.label) {
         <li>
           <a
-            class="panel-nav__link"
-            [routerLink]="child.route"
-            (click)="closeSubmenu()"
-            [class.panel-nav__link--active]="activeEntry() === child"
-            [attr.aria-current]="activeEntry() === child ? 'page' : null"
+            class="rail__item"
+            [routerLink]="entryRoute(item)"
+            [class.rail__item--active]="activeGroup() === item"
+            [attr.aria-current]="activeGroup() === item ? 'page' : null"
+            [attr.data-nav-module]="entryRoute(item)"
+            [title]="item.children?.length ? '' : item.label"
+            (mouseenter)="hoverRailItem(item, $event)"
+            (mouseleave)="leaveFlyout()"
+            (focus)="focusRailItem(item, $event)"
           >
-            <i class="panel-nav__icon {{ child.icon }}" aria-hidden="true"></i>
-            <span>{{ child.label }}</span>
-            @if (badgeFor(child) > 0) {
-            <span class="panel-nav__badge">{{ badgeFor(child) }}</span>
+            <i class="rail__icon {{ item.icon }}" aria-hidden="true"></i>
+            <span class="rail__label">{{ item.label }}</span>
+            @if (badgeFor(item) > 0) {
+            <span class="rail__badge" [attr.aria-label]="badgeFor(item) + ' waiting'">{{ badgeFor(item) }}</span>
             }
           </a>
         </li>
         }
       </ul>
     </div>
+
+    @if (flyout(); as group) {
+    <!-- A module's pages beside the rail: open while the pointer rests on the icon or the list. -->
+    <div
+      class="rail-flyout"
+      role="group"
+      [attr.aria-label]="group.label + ' pages'"
+      [style.top.px]="flyoutTop()"
+      (mouseenter)="keepFlyout()"
+      (mouseleave)="leaveFlyout()"
+      (keydown)="onFlyoutKeydown($event)"
+    >
+      <p class="rail-flyout__title">{{ group.label }}</p>
+      <ul>
+        @for (section of sectionsOf(group); track section.key) {
+        @if (section.label) {
+        <li class="sidebar__caption" aria-hidden="true">{{ section.label }}</li>
+        }
+        @for (page of section.pages; track page.route) {
+        <li>
+          <a class="rail-flyout__link" [routerLink]="page.route" [class.rail-flyout__link--active]="activeEntry()?.route === page.route" (click)="closeFlyout()">{{ page.label }}</a>
+        </li>
+        }
+        }
+      </ul>
+    </div>
+    }
+    }
+
+    @if (navStyle.canExpand()) {
+    <!-- The switch between the two menus, on the menu's edge; the choice is remembered. -->
+    <button
+      type="button"
+      class="nav-toggle"
+      aria-controls="shell-navigation"
+      [attr.aria-expanded]="navStyle.isExpanded()"
+      [attr.aria-label]="navStyle.isExpanded() ? 'Collapse menu to icons' : 'Expand menu'"
+      [title]="navStyle.isExpanded() ? 'Collapse menu' : 'Expand menu'"
+      (click)="navStyle.toggle()"
+    >
+      <i class="pi" [class.pi-angle-double-left]="navStyle.isExpanded()" [class.pi-angle-double-right]="!navStyle.isExpanded()" aria-hidden="true"></i>
+    </button>
     }
   </nav>
 
-  <button
-    type="button"
-    class="shell__backdrop"
-    [class.shell__backdrop--visible]="isDrawerOpen()"
-    [attr.aria-hidden]="!isDrawerOpen()"
-    [attr.tabindex]="isDrawerOpen() ? 0 : -1"
-    aria-label="Close navigation"
-    (click)="closeDrawer()"
-  ></button>
-
   <div class="shell__main">
     <header class="topbar">
-      <!-- Phones only: opens the navigation drawer. On a desktop the rail and panel are always there. -->
       <button
         type="button"
-        class="topbar__icon-button topbar__menu"
-        (click)="toggleNavigation()"
-        [attr.aria-expanded]="isDrawerOpen()"
-        aria-controls="shell-navigation"
-        aria-label="Toggle navigation"
+        class="topbar__brand"
+        aria-haspopup="dialog"
+        aria-controls="app-launcher"
+        [attr.aria-expanded]="isLauncherOpen()"
+        aria-label="All apps"
+        title="All apps"
+        (click)="openLauncher($event)"
       >
-        <i class="pi pi-bars" aria-hidden="true"></i>
+        <gggs-brand-mark class="topbar__logo" />
       </button>
 
       <div class="topbar__context">
@@ -122,7 +197,7 @@
             @for (crumb of breadcrumbs(); track $index; let last = $last) {
             <li>
               @if (crumb.route && !last) {
-              <a [routerLink]="crumb.route">{{ crumb.label }}</a>
+              <a [routerLink]="crumb.route" [queryParams]="crumb.query ?? null">{{ crumb.label }}</a>
               } @else {
               <span [attr.aria-current]="last ? 'page' : null">{{ crumb.label }}</span>
               }
@@ -157,6 +232,46 @@
       </a>
       }
 
+      <!-- Colour theme: the GGGS brand, the brand with a light menu, or the classic blue. Applies at once. -->
+      <div class="palette-menu" #paletteMenu>
+        <button
+          type="button"
+          class="topbar__icon-button"
+          aria-haspopup="menu"
+          aria-controls="palette-menu"
+          [attr.aria-expanded]="isPaletteMenuOpen()"
+          aria-label="Colour theme"
+          title="Colour theme"
+          (click)="togglePaletteMenu()"
+        >
+          <i class="pi pi-palette" aria-hidden="true"></i>
+        </button>
+        @if (isPaletteMenuOpen()) {
+        <div id="palette-menu" class="palette-menu__popup" role="menu" aria-label="Colour theme">
+          <p class="palette-menu__heading" aria-hidden="true">Colour theme</p>
+          @for (option of palettes; track option.key) {
+          <button
+            type="button"
+            class="palette-menu__item"
+            role="menuitemradio"
+            [attr.aria-checked]="theme.palette() === option.key"
+            (click)="choosePalette(option.key)"
+          >
+            <span class="palette-menu__swatch" aria-hidden="true">
+              <span [style.background]="option.swatch[0]"></span>
+              <span [style.background]="option.swatch[1]"></span>
+            </span>
+            <span class="palette-menu__text">
+              <span class="palette-menu__label">{{ option.label }}</span>
+              <span class="palette-menu__description">{{ option.description }}</span>
+            </span>
+            <i class="pi pi-check palette-menu__check" aria-hidden="true"></i>
+          </button>
+          }
+        </div>
+        }
+      </div>
+
       <button
         type="button"
         class="topbar__icon-button"
@@ -176,7 +291,13 @@
           aria-controls="user-menu"
           (click)="toggleUserMenu()"
         >
-          <span class="user-menu__avatar" aria-hidden="true">{{ initials() }}</span>
+          <span class="user-menu__avatar" aria-hidden="true">
+            @if (photo.url(); as url) {
+            <img class="user-menu__photo" [src]="url" alt="" (error)="photo.set(null)" />
+            } @else {
+            {{ initials() }}
+            }
+          </span>
           <span class="user-menu__name">{{ user.displayName }}</span>
           <i class="pi pi-chevron-down user-menu__chevron" aria-hidden="true"></i>
         </button>
@@ -187,7 +308,7 @@
             <span class="muted">{{ tenant.name() }}</span>
           </div>
           <a class="user-menu__item" role="menuitem" routerLink="/me/profile"><i class="pi pi-id-card" aria-hidden="true"></i> My profile</a>
-          <a class="user-menu__item" role="menuitem" routerLink="/me/security"><i class="pi pi-shield" aria-hidden="true"></i> Sign-in security</a>
+          <a class="user-menu__item" role="menuitem" routerLink="/me/preferences"><i class="pi pi-sliders-v" aria-hidden="true"></i> My preferences</a>
           <button type="button" class="user-menu__item" role="menuitem" (click)="signOut()"><i class="pi pi-sign-out" aria-hidden="true"></i> Sign out</button>
         </div>
         }
@@ -197,9 +318,17 @@
 
     @if (tabs().length) {
     <nav class="module-tabs" [attr.aria-label]="activeGroup()?.label + ' pages'">
-      @for (tab of tabs(); track tab.label) {
-      <a class="module-tabs__tab" [routerLink]="tab.route" [class.module-tabs__tab--active]="activeEntry() === tab" [attr.aria-current]="activeEntry() === tab ? 'page' : null">{{ tab.label }}</a>
-      }
+      <!-- A long module (My Space) overflows: resting the mouse near an end scrolls it (edge-scroll.ts). -->
+      <div class="module-tabs__track" gggsEdgeScroll>
+        @for (tab of tabs(); track tab.label) {
+        <a class="module-tabs__tab" [routerLink]="tab.route" [class.module-tabs__tab--active]="activeEntry() === tab" [attr.aria-current]="activeEntry() === tab ? 'page' : null">{{ tab.label }}</a>
+        }
+        @if (settingsLink(); as link) {
+        <a class="module-tabs__tab module-tabs__settings" routerLink="/settings" [queryParams]="{ section: link.key }" [title]="link.label + ' settings'">
+          <i class="pi pi-cog" aria-hidden="true"></i> Settings
+        </a>
+        }
+      </div>
     </nav>
     }
 
@@ -207,5 +336,95 @@
       <router-outlet />
     </main>
   </div>
+
+  @if (isLauncherOpen()) {
+  <!-- A pointer convenience only; keyboard users close with Escape or the back button. -->
+  <div class="launcher__scrim" aria-hidden="true" (click)="closeLauncher()"></div>
+  <section
+    #launcher
+    id="app-launcher"
+    class="launcher"
+    role="dialog"
+    aria-modal="true"
+    aria-label="All apps"
+    (keydown)="onLauncherKeydown($event)"
+  >
+    <div class="launcher__header">
+      <button type="button" class="launcher__button" aria-label="Close all apps" title="Close" (click)="closeLauncher()">
+        <i class="pi pi-arrow-left" aria-hidden="true"></i>
+      </button>
+      <label class="launcher__search">
+        <i class="pi pi-search" aria-hidden="true"></i>
+        <span class="sr-only">Search apps and pages</span>
+        <input
+          #launcherSearch
+          type="search"
+          placeholder="Search apps and pages"
+          autocomplete="off"
+          enterkeyhint="go"
+          [value]="launcherQuery()"
+          (input)="launcherQuery.set($any($event.target).value)"
+        />
+        @if (launcherQuery()) {
+        <button type="button" class="launcher__button launcher__button--small" aria-label="Clear search" (click)="clearLauncherSearch()">
+          <i class="pi pi-times" aria-hidden="true"></i>
+        </button>
+        }
+      </label>
+    </div>
+
+    <div class="launcher__body">
+      @let results = launcherResults();
+      @if (results.apps.length) {
+      <h2 class="launcher__heading">
+        {{ launcherQuery().trim() ? 'Apps' : 'All apps' }} <span class="launcher__count">{{ results.apps.length }}</span>
+      </h2>
+      <ul class="launcher__grid">
+        @for (item of results.apps; track item.label) {
+        <li>
+          <a
+            class="launcher__tile"
+            [class.launcher__tile--active]="activeGroup() === item"
+            [attr.aria-current]="activeGroup() === item ? 'page' : null"
+            [routerLink]="entryRoute(item)"
+            (click)="closeLauncher(false)"
+          >
+            <span class="launcher__tile-icon">
+              <i class="{{ item.icon }}" aria-hidden="true"></i>
+              @if (badgeFor(item) > 0) {
+              <span class="launcher__badge" [attr.aria-label]="badgeFor(item) + ' waiting'">{{ badgeFor(item) }}</span>
+              }
+            </span>
+            <span class="launcher__tile-label">{{ item.railLabel ?? item.label }}</span>
+          </a>
+        </li>
+        }
+      </ul>
+      }
+
+      @if (results.pages.length) {
+      <h2 class="launcher__heading">Pages <span class="launcher__count">{{ results.pages.length }}</span></h2>
+      <ul class="launcher__hits">
+        @for (hit of results.pages; track hit.page.route) {
+        <li>
+          <a class="launcher__hit" [routerLink]="hit.page.route" (click)="closeLauncher(false)">
+            <span class="launcher__hit-icon"><i class="{{ hit.page.icon }}" aria-hidden="true"></i></span>
+            <span class="launcher__hit-text">
+              <span>{{ hit.page.label }}</span>
+              <span class="launcher__hit-module">{{ hit.group.label }}</span>
+            </span>
+            <i class="pi pi-chevron-right launcher__hit-chevron" aria-hidden="true"></i>
+          </a>
+        </li>
+        }
+      </ul>
+      }
+
+      @if (!results.apps.length && !results.pages.length) {
+      <p class="launcher__empty" role="status">No apps or pages match “{{ launcherQuery().trim() }}”.</p>
+      }
+    </div>
+  </section>
+  }
   <ng-container #stepUpHost />
 </div>

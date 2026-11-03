@@ -134,6 +134,36 @@ export interface ChartSeries {
   readonly values: readonly number[];
 }
 
+interface ChartContext {
+  readonly chart: { readonly ctx: CanvasRenderingContext2D; readonly chartArea?: { readonly top: number; readonly bottom: number } };
+}
+
+/** A fill that fades a series' colour from the top of the plot to nothing at its floor. */
+function fadeToFloor(colour: string): (context: ChartContext) => CanvasGradient | string {
+  return ({ chart }) => {
+    // The plot area is unknown until the first layout; a flat tint stands in for that one frame.
+    if (!chart.chartArea) {
+      return withAlpha(colour, 0.12);
+    }
+
+    const gradient = chart.ctx.createLinearGradient(0, chart.chartArea.top, 0, chart.chartArea.bottom);
+    gradient.addColorStop(0, withAlpha(colour, 0.26));
+    gradient.addColorStop(1, withAlpha(colour, 0));
+    return gradient;
+  };
+}
+
+/** A #rrggbb token with transparency; other colour syntaxes are returned as they are. */
+function withAlpha(colour: string, alpha: number): string {
+  const hex = /^#([0-9a-f]{6})$/i.exec(colour)?.[1];
+  if (!hex) {
+    return colour;
+  }
+
+  const value = parseInt(hex, 16);
+  return `rgba(${value >> 16}, ${(value >> 8) & 255}, ${value & 255}, ${alpha})`;
+}
+
 /**
  * A chart from labels and series - the caller never builds Chart.js configuration. Colours come
  * from the design tokens so charts follow the theme, including dark mode.
@@ -169,7 +199,10 @@ export class Chart {
   readonly height = input('16rem');
 
   /** Used when the tokens cannot be read (tests, server rendering). */
-  private static readonly fallback = ['#1d4ed8', '#0e9f6e', '#d97706', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#475569'];
+  private static readonly fallback = ['#d81324', '#16202b', '#f59e0b', '#15803d', '#ff5a63', '#55677a', '#dc2626', '#65a30d'];
+
+  /** Charts draw in rather than appear, unless the user asked for less motion. */
+  private readonly animate = typeof window === 'undefined' || typeof window.matchMedia !== 'function' || !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /** Bumped when the theme class on <html> changes, so colours are read again. */
   private readonly theme = signal(0);
@@ -189,40 +222,72 @@ export class Chart {
     const token = (name: string, fallback: string) => style?.getPropertyValue(name).trim() || fallback;
     return {
       palette: Chart.fallback.map((colour, index) => token(`--gggs-cat-${index + 1}`, colour)),
-      text: token('--gggs-color-text-muted', '#5b6577'),
-      grid: token('--gggs-color-border', '#e3e7ee'),
+      text: token('--gggs-color-text-muted', '#55677a'),
+      strong: token('--gggs-color-text', '#1b2733'),
+      grid: token('--gggs-color-border', '#dde3e9'),
+      surface: token('--gggs-color-surface-raised', '#ffffff'),
       font: token('--gggs-font-family', 'system-ui, sans-serif'),
     };
   });
 
   protected readonly data = computed(() => {
-    const circular = this.kind() === 'doughnut' || this.kind() === 'pie';
-    const palette = this.colours().palette;
+    const kind = this.kind();
+    const circular = kind === 'doughnut' || kind === 'pie';
+    const { palette, surface } = this.colours();
+    // One line gets a soft fill fading to the floor; several stay unfilled so none hides another.
+    const filled = kind === 'line' && this.series().length === 1;
     return {
       labels: [...this.labels()],
-      datasets: this.series().map((series, index) => ({
-        label: series.label,
-        data: [...series.values],
-        backgroundColor: circular ? palette : palette[index % palette.length],
-        borderColor: circular ? undefined : palette[index % palette.length],
-        borderRadius: this.kind() === 'bar' ? 4 : undefined,
-        maxBarThickness: 56,
-        tension: 0.3,
-      })),
+      datasets: this.series().map((series, index) => {
+        const colour = palette[index % palette.length];
+        return {
+          label: series.label,
+          data: [...series.values],
+          backgroundColor: circular ? palette : filled ? fadeToFloor(colour) : colour,
+          borderColor: circular ? surface : colour,
+          borderWidth: circular ? 2 : kind === 'line' ? 2 : 0,
+          borderRadius: kind === 'bar' ? 6 : undefined,
+          hoverOffset: circular ? 6 : undefined,
+          fill: filled ? 'origin' : false,
+          pointRadius: kind === 'line' ? (series.values.length > 12 ? 0 : 2.5) : undefined,
+          pointHoverRadius: kind === 'line' ? 5 : undefined,
+          pointBackgroundColor: kind === 'line' ? surface : undefined,
+          pointBorderWidth: kind === 'line' ? 2 : undefined,
+          maxBarThickness: 56,
+          tension: 0.35,
+        };
+      }),
     };
   });
 
   protected readonly options = computed(() => {
-    const { text, grid, font } = this.colours();
-    const circular = this.kind() === 'doughnut' || this.kind() === 'pie';
+    const { text, strong, grid, surface, font } = this.colours();
+    const kind = this.kind();
+    const circular = kind === 'doughnut' || kind === 'pie';
     const nonNegative = this.series().every((series) => series.values.every((value) => value >= 0));
-    const axis = { ticks: { color: text, font: { family: font, size: 11 } }, grid: { color: grid }, border: { display: false } };
+    const axis = { ticks: { color: text, font: { family: font, size: 11 } }, grid: { color: grid }, border: { display: false, dash: [3, 4] } };
     return {
       maintainAspectRatio: false,
       font: { family: font },
+      animation: this.animate ? { duration: 450, easing: 'easeOutQuart' } : false,
+      // Hovering anywhere over a column shows every series' value there, not only the nearest point.
+      interaction: circular ? undefined : { mode: 'index', intersect: false },
+      cutout: kind === 'doughnut' ? '66%' : undefined,
       plugins: {
-        legend: { display: this.series().length > 1 || circular, labels: { color: text, font: { family: font }, usePointStyle: true, boxWidth: 8 } },
-        tooltip: { padding: 10, cornerRadius: 6, titleFont: { family: font }, bodyFont: { family: font } },
+        legend: { display: this.series().length > 1 || circular, labels: { color: text, font: { family: font }, usePointStyle: true, pointStyle: 'circle', boxWidth: 8, boxHeight: 8, padding: 14 } },
+        tooltip: {
+          backgroundColor: surface,
+          borderColor: grid,
+          borderWidth: 1,
+          titleColor: strong,
+          bodyColor: text,
+          padding: 10,
+          cornerRadius: 8,
+          boxPadding: 4,
+          usePointStyle: true,
+          titleFont: { family: font, weight: '600' },
+          bodyFont: { family: font },
+        },
       },
       // Counts and money never go negative: start the axis at zero so an all-zero series is a flat
       // line on the floor rather than floating in the middle of a -1..1 scale.

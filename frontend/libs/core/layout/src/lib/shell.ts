@@ -13,31 +13,35 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { type ActivatedRouteSnapshot, NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { SessionStore, StepUpPrompt } from '@gggs/core/auth';
+import { MyPhotoStore, SessionStore, StepUpPrompt } from '@gggs/core/auth';
 import { PermissionStore } from '@gggs/core/permissions';
 import { TenantStore } from '@gggs/core/tenant';
 import { NotificationsApi } from '@gggs/shared/notifications';
+import { BrandMark } from '@gggs/shared/ui';
 import { WorkflowApi } from '@gggs/shared/workflow';
 import { filter } from 'rxjs';
-import { NAVIGATION, filterNavigation, isBuilt, locate, moduleTabs, type NavItem } from './navigation';
-import { ThemeStore } from './theme';
+import { SETTINGS_SECTIONS, entryRoute, filterMenu, locate, moduleTabs, searchNavigation, sectionsOf, type NavItem } from './navigation';
+import { NavStyleStore } from './nav-style';
+import { VisibleNavigation } from './visible-navigation';
+import { PALETTES, ThemeStore, type Palette } from './theme';
+import { EdgeScroll } from './edge-scroll';
 import { GlobalSearch } from './global-search';
+import { refreshSortableTables, sortableHeader, toggleSort } from './table-sort';
 
 /** How often the header bell's unread count refreshes. There is no push yet (architecture.md
  * §14 puts SignalR in a later phase), so this is the whole story until then. */
 const UNREAD_COUNT_REFRESH_MS = 60_000;
 
-/** Below this, the rail and panel stop being columns and become one drawer (shell.scss). */
-const MOBILE_BREAKPOINT_QUERY = '(max-width: 48rem)';
-
 interface Crumb {
   readonly label: string;
   readonly route?: string;
+  readonly query?: Record<string, string>;
 }
 
 /**
- * The application shell: a navy rail of modules, a panel listing the active module's pages,
- * a header with breadcrumbs, search, notifications and the user menu, and the routed outlet.
+ * The application shell: a navy rail with an icon per module, the app launcher (every module as a
+ * tile, and a search over their pages), a header with breadcrumbs, search, notifications and the
+ * user menu, the current module's pages as tabs, and the routed outlet.
  *
  * Everything is built from the navigation manifest filtered by what the user can actually do, so
  * nobody is shown a menu of pages that will refuse them, and the active module, panel, breadcrumbs
@@ -45,7 +49,7 @@ interface Crumb {
  */
 @Component({
   selector: 'gggs-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, GlobalSearch],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, GlobalSearch, EdgeScroll, BrandMark],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell.html',
   // Styled by apps/hrms-web/src/styles/_shell.scss.
@@ -63,15 +67,22 @@ export class Shell {
   private readonly stepUpOpen = inject(StepUpPrompt).open;
   private readonly stepUpHost = viewChild('stepUpHost', { read: ViewContainerRef });
   private readonly userMenu = viewChild<ElementRef<HTMLElement>>('userMenu');
-  private readonly navigationElement = viewChild<ElementRef<HTMLElement>>('navElement');
+  private readonly paletteMenu = viewChild<ElementRef<HTMLElement>>('paletteMenu');
+  private readonly launcherElement = viewChild<ElementRef<HTMLElement>>('launcher');
+  private readonly launcherSearch = viewChild<ElementRef<HTMLInputElement>>('launcherSearch');
+  /** What opened the launcher, so focus goes back there when it closes. */
+  private launcherTrigger: HTMLElement | null = null;
   private stepUpLoaded = false;
   protected readonly tenant = inject(TenantStore);
   protected readonly theme = inject(ThemeStore);
 
-  private readonly isMobile = signal(typeof window !== 'undefined' && window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches);
-  /** On a small screen: whether the navigation drawer is open. */
-  protected readonly isDrawerOpen = signal(false);
   protected readonly isUserMenuOpen = signal(false);
+  /** The header's colour theme picker; the choice applies at once and is kept per browser (ThemeStore). */
+  protected readonly isPaletteMenuOpen = signal(false);
+  protected readonly palettes = PALETTES;
+  /** The app launcher: opened from the rail's grid button or the header logo (the only menu on a phone). */
+  protected readonly isLauncherOpen = signal(false);
+  protected readonly launcherQuery = signal('');
 
   protected readonly unreadCount = signal(0);
   /** Tasks waiting in the approvals inbox, shown on the Approvals entry. */
@@ -82,31 +93,29 @@ export class Shell {
   private readonly canSeeApprovals = computed(() => this.permissions.hasAny(['workflow.task.view']));
 
   /** Navigation the signed-in user can actually reach. */
-  protected readonly navigation = computed(() => filterNavigation(NAVIGATION, (item) => this.isVisible(item)));
+  protected readonly navigation = inject(VisibleNavigation).items;
+  protected readonly launcherResults = computed(() => searchNavigation(this.navigation(), this.launcherQuery()));
+  protected readonly entryRoute = entryRoute;
 
   private readonly url = signal(this.router.url);
   private readonly pageTitle = signal<string | null>(null);
-  /**
-   * The module whose sub-menu is open as a flyout beside the rail (desktop). Opened by a rail click;
-   * closed by choosing a page, clicking the page body, Escape, or clicking the same module again.
-   */
-  private readonly browsedGroup = signal<NavItem | null>(null);
 
   private readonly location = computed(() => locate(this.navigation(), this.url()));
   protected readonly activeGroup = computed(() => this.location()?.group ?? null);
   /** The page the URL is on, by longest match - so an overview is not lit up beside its sub-pages. */
   protected readonly activeEntry = computed(() => this.location()?.entry ?? null);
-  /**
-   * The module whose pages the sub-menu lists: the one opened from the rail; in the phone drawer,
-   * otherwise the current page's module so the drawer opens on where the person is.
-   */
-  protected readonly panelGroup = computed(() => {
-    const group = this.browsedGroup() ?? (this.isMobile() ? this.activeGroup() : null);
-    return group?.children?.length ? group : null;
-  });
-  protected readonly showPanel = computed(() => !!this.panelGroup());
   /** The current module's pages as tabs above the content, for moving within a module in one click. */
-  protected readonly tabs = computed(() => moduleTabs(this.activeGroup()));
+  protected readonly tabs = computed(() => moduleTabs(this.activeGroup(), this.activeEntry()));
+
+  /**
+   * The module's set-up pages now live in Settings: a gear at the end of its tabs leads to that
+   * category, when the user can open at least one page in it.
+   */
+  protected readonly settingsLink = computed(() => {
+    const key = this.activeGroup()?.settingsSection;
+    const reachable = key && this.navigation().some((group) => group.children?.some((child) => child.section === key));
+    return reachable ? { key, label: SETTINGS_SECTIONS.find((section) => section.key === key)?.label ?? 'Settings' } : null;
+  });
 
   protected readonly breadcrumbs = computed<readonly Crumb[]>(() => {
     const location = this.location();
@@ -119,6 +128,12 @@ export class Shell {
       crumbs.push({ label: location.group.label, route: location.group.route ?? location.group.children?.[0]?.route });
     }
 
+    // Settings / Organization / Departments: the category sits between the hub and the page.
+    const section = SETTINGS_SECTIONS.find((candidate) => candidate.key === location.entry.section);
+    if (section) {
+      crumbs.push({ label: section.label, route: location.group.route, query: { section: section.key } });
+    }
+
     crumbs.push({ label: location.entry.label, route: location.entry.route });
     const title = this.pageTitle();
     if (title && title !== location.entry.label && !this.url().split(/[?#]/)[0].endsWith(location.entry.route ?? '')) {
@@ -127,6 +142,27 @@ export class Shell {
 
     return crumbs;
   });
+
+  protected readonly photo = inject(MyPhotoStore);
+
+  // ----- Menu: the expanded sidebar, or the icon rail with a pop-out of a module's pages -----
+
+  protected readonly navStyle = inject(NavStyleStore);
+  protected readonly sectionsOf = sectionsOf;
+  /** The sidebar's search. */
+  protected readonly menuQuery = signal('');
+  protected readonly menuItems = computed(() => filterMenu(this.navigation(), this.menuQuery()));
+  /** Modules opened in the sidebar, by label; the current module opens by itself. */
+  private readonly openModules = signal<ReadonlySet<string>>(new Set());
+
+  /** The module whose pages pop out beside the rail, and how far down the window it sits. */
+  protected readonly flyout = signal<NavItem | null>(null);
+  protected readonly flyoutTop = signal(0);
+  private flyoutTimer: ReturnType<typeof setTimeout> | undefined;
+  private flyoutAnchor: HTMLElement | null = null;
+  /** Set while focus is handed back to an icon on close, so that focus does not reopen the list. */
+  private returningFocus = false;
+  private readonly hoverPointer = typeof window !== 'undefined' && window.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
 
   protected readonly initials = computed(() =>
     (this.session.user()?.displayName ?? '')
@@ -138,6 +174,16 @@ export class Shell {
   );
 
   constructor() {
+    void this.photo.load();
+
+    // Opening a page opens its module in the sidebar; modules opened by hand stay open.
+    effect(() => {
+      const group = this.activeGroup();
+      if (group?.children?.length && !this.openModules().has(group.label)) {
+        this.openModules.set(new Set(this.openModules()).add(group.label));
+      }
+    });
+
     // The "confirm it's you" dialog is fetched the first time it is needed, not with the shell.
     effect(() => {
       const host = this.stepUpHost();
@@ -155,26 +201,18 @@ export class Shell {
       .subscribe((event) => {
         this.url.set(event.urlAfterRedirects);
         this.pageTitle.set(deepestTitle(this.router.routerState.snapshot.root));
-        this.browsedGroup.set(null);
-        this.isDrawerOpen.set(false);
+        this.isLauncherOpen.set(false);
         this.isUserMenuOpen.set(false);
+        this.isPaletteMenuOpen.set(false);
+        this.closeFlyout();
         // In a long tab bar (My Space has two dozen pages) bring the current page's tab into view.
         setTimeout(() => document.querySelector('.module-tabs__tab--active')?.scrollIntoView({ block: 'nearest', inline: 'center' }));
       });
     this.pageTitle.set(deepestTitle(this.router.routerState.snapshot.root));
 
-    if (typeof window !== 'undefined') {
-      const query = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
-      const listener = (event: MediaQueryListEvent) => {
-        this.isMobile.set(event.matches);
-        this.isDrawerOpen.set(false);
-      };
-      query.addEventListener('change', listener);
-      inject(DestroyRef).onDestroy(() => query.removeEventListener('change', listener));
-    }
-
-    // A table wider than a phone screen scrolls sideways inside itself (styles/_table.scss); make
-    // each such table a tab stop so it can be scrolled from the keyboard too.
+    // Plain tables in the page get two things the shared data table has built in: a wide one
+    // (scrolling sideways inside itself on a phone, styles/_table.scss) becomes a tab stop so it can
+    // be scrolled from the keyboard, and their column headers sort the rows (table-sort.ts).
     const destroyRef = inject(DestroyRef);
     afterNextRender(() => {
       const content = document.getElementById('main-content');
@@ -190,10 +228,27 @@ export class Shell {
             table.tabIndex = 0;
           }
         });
+        refreshSortableTables(content);
       };
+      const sortFrom = (event: Event) => {
+        const header = sortableHeader(event.target);
+        if (header && (event.type === 'click' || (event as KeyboardEvent).key === 'Enter' || (event as KeyboardEvent).key === ' ')) {
+          event.preventDefault();
+          toggleSort(header);
+        }
+      };
+      content.addEventListener('click', sortFrom);
+      content.addEventListener('keydown', sortFrom);
+      destroyRef.onDestroy(() => {
+        content.removeEventListener('click', sortFrom);
+        content.removeEventListener('keydown', sortFrom);
+      });
       const schedule = () => (pending ||= window.setTimeout(mark, 250));
       const observer = new MutationObserver(schedule);
       observer.observe(content, { childList: true, subtree: true });
+      // On a full page load the routed page can already be in place by now, with nothing left to
+      // change it, so check once without waiting for a mutation.
+      schedule();
       window.addEventListener('resize', schedule);
       destroyRef.onDestroy(() => window.removeEventListener('resize', schedule));
       destroyRef.onDestroy(() => observer.disconnect());
@@ -212,52 +267,51 @@ export class Shell {
     return item.badge === 'approvals' ? this.approvalsCount() : item.badge === 'notifications' ? this.unreadCount() : 0;
   }
 
-  protected isActiveGroup(item: NavItem): boolean {
-    return (this.browsedGroup() ?? this.activeGroup()) === item;
+  /** Opens the app launcher with an empty search, which takes the focus. */
+  protected openLauncher(event: Event): void {
+    this.launcherTrigger = event.currentTarget as HTMLElement | null;
+    this.launcherQuery.set('');
+    this.isUserMenuOpen.set(false);
+    this.isPaletteMenuOpen.set(false);
+    this.isLauncherOpen.set(true);
+    setTimeout(() => this.launcherSearch()?.nativeElement.focus());
   }
 
-  /** A rail click on a module with pages opens its panel; the page itself is one more click. */
-  protected openGroup(item: NavItem): void {
-    // Clicking the open module again folds its sub-menu away.
-    this.browsedGroup.set(this.browsedGroup() === item ? null : item);
-  }
-
-  /** The phone menu button: opens or closes the navigation drawer. */
-  protected toggleNavigation(): void {
-    this.isDrawerOpen.update((open) => !open);
-    // Focus moves into the drawer, so a keyboard user lands on the menu they just opened.
-    if (this.isDrawerOpen()) {
-      queueMicrotask(() => this.navigationElement()?.nativeElement.querySelector<HTMLElement>('.rail__item')?.focus());
-    }
-  }
-
-  protected closeDrawer(): void {
-    this.isDrawerOpen.set(false);
-  }
-
-  protected toggleUserMenu(): void {
-    this.isUserMenuOpen.update((open) => !open);
-  }
-
-  /**
-   * Arrow keys move between entries of the rail or the panel (Home/End to the ends), and while the
-   * mobile drawer is open Tab cycles inside it rather than escaping to the page underneath.
-   */
-  protected onNavigationKeydown(event: KeyboardEvent): void {
-    const target = event.target as HTMLElement;
-    const list = target.closest('.rail__list, .panel-nav__list');
-    if (list && ['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
-      const items = Array.from(list.querySelectorAll<HTMLElement>('.rail__item, .panel-nav__link'));
-      const index = items.indexOf(target);
-      const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : index + (event.key === 'ArrowDown' ? 1 : -1);
-      items[(next + items.length) % items.length]?.focus();
-      event.preventDefault();
+  /** Closes the launcher; focus returns to what opened it unless a choice is taking the person elsewhere. */
+  protected closeLauncher(restoreFocus = true): void {
+    if (!this.isLauncherOpen()) {
       return;
     }
 
-    if (event.key === 'Tab' && this.isDrawerOpen()) {
-      const nav = this.navigationElement()?.nativeElement;
-      const focusable = (nav ? Array.from(nav.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')) : []).filter((element) => element.offsetParent !== null);
+    this.isLauncherOpen.set(false);
+    if (restoreFocus) {
+      this.launcherTrigger?.focus();
+    }
+  }
+
+  protected clearLauncherSearch(): void {
+    this.launcherQuery.set('');
+    this.launcherSearch()?.nativeElement.focus();
+  }
+
+  /**
+   * Enter in the search opens the first result (a module, else a page), and Tab stays inside the
+   * launcher while it is open - it is a modal dialog over the page.
+   */
+  protected onLauncherKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter' && event.target === this.launcherSearch()?.nativeElement) {
+      const results = this.launcherResults();
+      const route = results.apps[0] ? entryRoute(results.apps[0]) : results.pages[0]?.page.route;
+      if (route) {
+        event.preventDefault();
+        this.closeLauncher(false);
+        void this.router.navigateByUrl(route);
+      }
+      return;
+    }
+
+    if (event.key === 'Tab') {
+      const focusable = Array.from(this.launcherElement()?.nativeElement.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input') ?? []);
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
       if (event.shiftKey && document.activeElement === first) {
@@ -270,10 +324,169 @@ export class Shell {
     }
   }
 
-  protected onEscape(): void {
+  protected toggleUserMenu(): void {
+    this.isPaletteMenuOpen.set(false);
+    this.isUserMenuOpen.update((open) => !open);
+  }
+
+  protected togglePaletteMenu(): void {
     this.isUserMenuOpen.set(false);
-    this.isDrawerOpen.set(false);
-    this.browsedGroup.set(null);
+    this.isPaletteMenuOpen.update((open) => !open);
+  }
+
+  protected choosePalette(palette: Palette): void {
+    this.theme.setPalette(palette);
+    this.isPaletteMenuOpen.set(false);
+  }
+
+  /** Arrow keys move between the rail's icons, Home and End to the ends. */
+  protected isModuleOpen(item: NavItem): boolean {
+    return this.menuQuery().trim().length > 0 || this.openModules().has(item.label);
+  }
+
+  protected toggleModule(item: NavItem): void {
+    const next = new Set(this.openModules());
+    if (next.has(item.label)) {
+      next.delete(item.label);
+    } else {
+      next.add(item.label);
+    }
+    this.openModules.set(next);
+  }
+
+  /**
+   * Keys in the sidebar, a tree in all but name: Up and Down walk the visible modules and pages,
+   * Right opens a module (or steps into it), Left closes it (or steps back up to it), Home and End
+   * jump to the ends.
+   */
+  private onSidebarKeydown(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement;
+    const list = target.closest('.sidebar__list');
+    if (!list || !['ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) {
+      return;
+    }
+
+    const items = Array.from(list.querySelectorAll<HTMLElement>('.sidebar__item, .sidebar__page'));
+    const index = items.indexOf(target);
+    if (index < 0) {
+      return;
+    }
+
+    const moduleLabel = target.dataset['module'];
+    const module = this.menuItems().find((item) => item.label === moduleLabel);
+    if (event.key === 'ArrowRight' && target.classList.contains('sidebar__item') && module?.children?.length) {
+      if (this.isModuleOpen(module)) {
+        items[index + 1]?.focus();
+      } else {
+        this.toggleModule(module);
+      }
+    } else if (event.key === 'ArrowLeft') {
+      if (target.classList.contains('sidebar__page')) {
+        items.slice(0, index).reverse().find((item) => item.classList.contains('sidebar__item'))?.focus();
+      } else if (module && this.openModules().has(module.label)) {
+        this.toggleModule(module);
+      }
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Home' || event.key === 'End') {
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : index + (event.key === 'ArrowDown' ? 1 : -1);
+      items[(next + items.length) % items.length]?.focus();
+    }
+    event.preventDefault();
+  }
+
+  /** A pointer resting on a rail icon: its module's pages pop out after a moment. */
+  protected hoverRailItem(item: NavItem, event: MouseEvent): void {
+    if (!this.hoverPointer || !item.children?.length) {
+      return;
+    }
+    const anchor = event.currentTarget as HTMLElement;
+    clearTimeout(this.flyoutTimer);
+    this.flyoutTimer = setTimeout(() => this.openFlyout(item, anchor), 150);
+  }
+
+  /** Keyboard focus on a rail icon shows the same list at once; Right steps into it. */
+  protected focusRailItem(item: NavItem, event: FocusEvent): void {
+    clearTimeout(this.flyoutTimer);
+    if (this.returningFocus) {
+      this.returningFocus = false;
+      return;
+    }
+    if (item.children?.length) {
+      this.openFlyout(item, event.currentTarget as HTMLElement);
+    } else {
+      this.flyout.set(null);
+    }
+  }
+
+  protected leaveFlyout(): void {
+    clearTimeout(this.flyoutTimer);
+    this.flyoutTimer = setTimeout(() => this.flyout.set(null), 250);
+  }
+
+  protected keepFlyout(): void {
+    clearTimeout(this.flyoutTimer);
+  }
+
+  protected closeFlyout(restoreFocus = false): void {
+    clearTimeout(this.flyoutTimer);
+    this.flyout.set(null);
+    if (restoreFocus && this.flyoutAnchor) {
+      this.returningFocus = true;
+      this.flyoutAnchor.focus();
+      this.returningFocus = false;
+    }
+  }
+
+  protected onFlyoutKeydown(event: KeyboardEvent): void {
+    const links = Array.from((event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('a'));
+    const index = links.indexOf(event.target as HTMLElement);
+    if (event.key === 'ArrowLeft' || event.key === 'Escape') {
+      this.closeFlyout(true);
+      event.preventDefault();
+      event.stopPropagation();
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      links[(index + (event.key === 'ArrowDown' ? 1 : -1) + links.length) % links.length]?.focus();
+      event.preventDefault();
+    }
+  }
+
+  private openFlyout(item: NavItem, anchor: HTMLElement): void {
+    this.flyoutAnchor = anchor;
+    // Level with the icon, but never running off the bottom of the window.
+    const rect = anchor.getBoundingClientRect();
+    const rows = sectionsOf(item).reduce((count, section) => count + section.pages.length + (section.label ? 1 : 0), 1);
+    const height = Math.min(rows * 40 + 24, window.innerHeight - 16);
+    this.flyoutTop.set(Math.max(8, Math.min(rect.top, window.innerHeight - height - 8)));
+    this.flyout.set(item);
+  }
+
+  protected onNavigationKeydown(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement;
+    if (target.closest('.sidebar__list')) {
+      this.onSidebarKeydown(event);
+      return;
+    }
+
+    const list = target.closest('.rail__list');
+    if (list && ['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+      const items = Array.from(list.querySelectorAll<HTMLElement>('.rail__item'));
+      const index = items.indexOf(target);
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : index + (event.key === 'ArrowDown' ? 1 : -1);
+      items[(next + items.length) % items.length]?.focus();
+      event.preventDefault();
+    } else if (list && event.key === 'ArrowRight' && this.flyout()) {
+      // Into the pop-out's first page.
+      document.querySelector<HTMLElement>('.rail-flyout a')?.focus();
+      event.preventDefault();
+    }
+  }
+
+  protected onEscape(): void {
+    if (this.flyout()) {
+      this.closeFlyout(true);
+    }
+    this.isUserMenuOpen.set(false);
+    this.isPaletteMenuOpen.set(false);
+    this.closeLauncher();
   }
 
   protected onDocumentClick(event: MouseEvent): void {
@@ -283,17 +496,10 @@ export class Shell {
       this.isUserMenuOpen.set(false);
     }
 
-    // A click anywhere outside the navigation (the page body, the header) closes the sub-menu.
-    const nav = this.navigationElement()?.nativeElement;
-    if (this.browsedGroup() && !this.isMobile() && nav && !nav.contains(target)) {
-      this.browsedGroup.set(null);
+    const paletteMenu = this.paletteMenu()?.nativeElement;
+    if (this.isPaletteMenuOpen() && paletteMenu && !paletteMenu.contains(target)) {
+      this.isPaletteMenuOpen.set(false);
     }
-  }
-
-  /** Choosing a page in the sub-menu closes it, even when that page is already the current one. */
-  protected closeSubmenu(): void {
-    this.browsedGroup.set(null);
-    this.isDrawerOpen.set(false);
   }
 
   protected focusContent(event: Event): void {
@@ -325,17 +531,6 @@ export class Shell {
     }
   }
 
-  private isVisible(item: NavItem): boolean {
-    if (!isBuilt(item)) {
-      return false;
-    }
-
-    if (item.feature !== undefined && !this.permissions.hasFeature(item.feature)) {
-      return false;
-    }
-
-    return item.permissions === undefined || this.permissions.hasAny(item.permissions);
-  }
 }
 
 /** The title of the innermost routed page, as declared on its route. */

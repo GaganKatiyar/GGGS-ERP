@@ -13,6 +13,8 @@ internal static class TimesheetEndpoints
         RouteGroupBuilder me = endpoints.MapGroup("/api/v1/me/timesheets").WithTags("Timesheets");
         me.MapGet("/", async (DateOnly? week, TimesheetService timesheets, CancellationToken ct) => TypedResults.Ok(await timesheets.MyWeekAsync(week, ct)))
             .WithName("MyTimesheetWeek").RequirePermission(Permissions.Self.TimesheetSubmit);
+        me.MapGet("/bank", async ([AsParameters] BankQuery query, TimesheetService timesheets, CancellationToken ct) => TypedResults.Ok(await timesheets.MyBankAsync(query, ct)))
+            .WithName("MyTimesheetBank").RequirePermission(Permissions.Self.TimesheetSubmit);
         me.MapPut("/{week}", async (DateOnly week, WeekBody body, TimesheetService timesheets, CancellationToken ct) => TypedResults.Ok(await timesheets.SaveMyWeekAsync(week, body, ct)))
             .WithName("SaveMyTimesheetWeek").RequirePermission(Permissions.Self.TimesheetSubmit);
         me.MapPost("/{week}/copy-previous", async (DateOnly week, TimesheetService timesheets, CancellationToken ct) => TypedResults.Ok(await timesheets.CopyPreviousWeekAsync(week, ct)))
@@ -29,6 +31,8 @@ internal static class TimesheetEndpoints
         RouteGroupBuilder group = endpoints.MapGroup("/api/v1/timesheets").WithTags("Timesheets");
         group.MapGet("/", async ([AsParameters] TimesheetListQuery query, TimesheetService timesheets, CancellationToken ct) => TypedResults.Ok(await timesheets.ListAsync(query, ct)))
             .WithName("ListTimesheets").RequirePermission(Permissions.Timesheet.View);
+        group.MapGet("/approvals", async ([AsParameters] ApprovalQuery query, TimesheetService timesheets, CancellationToken ct) => TypedResults.Ok(await timesheets.ApprovalsAsync(query, ct)))
+            .WithName("ListTimesheetApprovals").RequirePermission(Permissions.Timesheet.View, Permissions.Workflow.TaskAct, Permissions.Project.View);
         group.MapGet("/missing", async (DateOnly week, TimesheetService timesheets, CancellationToken ct) => TypedResults.Ok(await timesheets.MissingAsync(week, ct)))
             .WithName("MissingTimesheets").RequirePermission(Permissions.Timesheet.View);
         group.MapGet("/projects/{projectId:guid}", async (Guid projectId, DateOnly from, DateOnly to, TimesheetService timesheets, CancellationToken ct) =>
@@ -38,10 +42,10 @@ internal static class TimesheetEndpoints
             .WithName("GetTimesheet").RequirePermission(Permissions.Timesheet.View, Permissions.Self.TimesheetSubmit, Permissions.Workflow.TaskAct);
         group.MapPost("/{id:guid}/reopen", async (Guid id, ReopenBody body, TimesheetService timesheets, CancellationToken ct) =>
             {
-                await timesheets.ReopenAsync(id, body.Reason, ct);
+                await timesheets.ReopenAsync(id, body, ct);
                 return TypedResults.NoContent();
             })
-            .WithName("ReopenTimesheet").RequirePermission(Permissions.Timesheet.Approve);
+            .WithName("ReopenTimesheet").RequirePermission(Permissions.Timesheet.Approve, Permissions.Workflow.TaskAct);
 
         group.MapGet("/settings", async (TimesheetService timesheets, CancellationToken ct) => TypedResults.Ok(await timesheets.RulesAsync(ct)))
             .WithName("GetTimesheetRules").RequirePermission(Permissions.Timesheet.View, Permissions.Self.TimesheetSubmit);

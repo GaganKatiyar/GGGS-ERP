@@ -1,7 +1,9 @@
 // The application shell (libs/core/layout shell.ts). Global rather than component-scoped: it is
 // on every page, and its size would exceed the per-component style budget.
-// Desktop-first ERP layout: navy module rail, module panel, then a sticky header over scrolling
-// content. Below the tablet breakpoint the rail and panel become one off-canvas drawer.
+// Desktop-first ERP layout: a navy rail of module icons, then a sticky header over scrolling
+// content. The app launcher (every module, and a search over their pages) slides out over the rail
+// from the rail's grid button or the header logo; on a phone the rail is hidden and the logo is
+// the way in.
 gggs-shell {
   display: block;
   height: 100vh;
@@ -15,8 +17,16 @@ gggs-shell {
   height: 100%;
   background: var(--gggs-color-surface);
 
+  // The expanded menu takes a sidebar's width; below 64rem NavStyleStore shows the rail instead.
+  &--expanded {
+    grid-template-columns: var(--gggs-sidebar-width) minmax(0, 1fr);
+  }
+
   @media (max-width: 48rem) {
-    grid-template-columns: minmax(0, 1fr);
+    &,
+    &--expanded {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 }
 
@@ -28,22 +38,14 @@ gggs-shell {
   z-index: var(--gggs-z-nav);
 
   @media (max-width: 48rem) {
-    position: fixed;
-    inset-block: 0;
-    inset-inline-start: 0;
-    z-index: var(--gggs-z-drawer);
-    transform: translateX(-100%);
-    transition: transform var(--gggs-transition);
-    box-shadow: var(--gggs-shadow-lg);
-
-    .shell--drawer-open & {
-      transform: none;
-    }
+    display: none;
   }
 }
 
 // ----- Rail ---------------------------------------------------------------------------------------
 
+// Icons only. Each entry keeps its name in the DOM, visually hidden, for its accessible name; the
+// title attribute shows it on hover.
 .rail {
   display: flex;
   overflow: hidden;
@@ -52,56 +54,241 @@ gggs-shell {
   width: var(--gggs-rail-width);
   min-width: 0;
   min-height: 0;
-  background: var(--gggs-color-nav-bg);
+  background: var(--gggs-gradient-nav);
+  box-shadow: inset -1px 0 0 var(--gggs-color-nav-border);
   color: var(--gggs-color-nav-text);
 }
 
-.rail__brand {
+.rail__top {
   display: grid;
   place-items: center;
   flex: 0 0 var(--gggs-header-height);
-  text-decoration: none;
   border-block-end: 1px solid var(--gggs-color-nav-border);
 }
 
-.rail__logo {
+.rail__apps {
   display: grid;
   place-items: center;
-  width: 2.125rem;
-  height: 2.125rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid color-mix(in srgb, var(--gggs-color-nav-overlay) 12%, transparent);
   border-radius: var(--gggs-radius-md);
-  background: linear-gradient(135deg, #3b6cf6, #7c3aed);
-  color: #fff;
-  font-weight: var(--gggs-font-weight-bold);
-  font-size: 1.05rem;
-  letter-spacing: -0.02em;
+  background: color-mix(in srgb, var(--gggs-color-nav-overlay) 8%, transparent);
+  color: var(--gggs-color-nav-text-active);
+  cursor: pointer;
+  transition:
+    background-color var(--gggs-transition-fast),
+    transform var(--gggs-transition-fast);
+
+  .pi {
+    font-size: 1rem;
+  }
+
+  &:hover,
+  &[aria-expanded='true'] {
+    background: color-mix(in srgb, var(--gggs-color-nav-overlay) 16%, transparent);
+  }
+
+  &:hover {
+    transform: translateY(var(--gggs-lift));
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--gggs-color-nav-focus);
+    outline-offset: 2px;
+  }
 }
 
 .rail__list {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 0.25rem;
   margin: 0;
-  padding: var(--gggs-space-2) var(--gggs-space-1);
+  padding: var(--gggs-space-2) 0;
   overflow-x: hidden;
   overflow-y: auto;
   list-style: none;
   scrollbar-width: none;
+
+  li {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
 }
 
 .rail__item {
   position: relative;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--gggs-radius-md);
+  color: inherit;
+  text-decoration: none;
+  transition:
+    background-color var(--gggs-transition-fast),
+    color var(--gggs-transition-fast),
+    box-shadow var(--gggs-transition-fast);
+
+  &:hover {
+    background: var(--gggs-color-nav-bg-hover);
+    color: var(--gggs-color-nav-text-active);
+
+    .rail__icon {
+      transform: translateY(var(--gggs-lift));
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--gggs-color-nav-focus);
+    outline-offset: -2px;
+  }
+
+  // The current module: a lit tile in the active colour, with a marker at the rail's edge.
+  &--active {
+    background: linear-gradient(180deg, var(--gggs-color-nav-active), var(--gggs-color-nav-active-deep));
+    box-shadow:
+      0 6px 16px -6px color-mix(in srgb, var(--gggs-color-nav-active) 90%, transparent),
+      inset 0 1px 0 rgb(255 255 255 / 16%);
+    color: var(--gggs-color-nav-on-active);
+
+    &:hover {
+      background: linear-gradient(180deg, var(--gggs-color-nav-active), var(--gggs-color-nav-active-deep));
+    }
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset-block: 25%;
+      inset-inline-start: calc((var(--gggs-rail-width) - 2.75rem) / -2);
+      width: 3px;
+      border-radius: 0 var(--gggs-radius-pill) var(--gggs-radius-pill) 0;
+      background: var(--gggs-color-accent-bright);
+      box-shadow: 0 0 8px var(--gggs-color-accent-bright);
+    }
+  }
+}
+
+.rail__icon {
+  font-size: 1.1rem;
+  transition: transform var(--gggs-transition-fast);
+}
+
+.rail__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.rail__badge,
+.launcher__badge,
+.topbar__count {
+  min-width: 1.125rem;
+  padding: 0 0.3rem;
+  border-radius: var(--gggs-radius-pill);
+  background: var(--gggs-color-danger-fill);
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: var(--gggs-font-weight-bold);
+  line-height: 1.125rem;
+  text-align: center;
+}
+
+.rail__badge {
+  position: absolute;
+  inset-block-start: -0.2rem;
+  inset-inline-end: -0.25rem;
+}
+
+// ----- Expanded sidebar -------------------------------------------------------------------------------
+
+// Every module with its name, opening onto its pages - the rail's other form. Same navy, same tokens,
+// so the light-menu palette and dark mode follow without a rule of their own.
+.sidebar {
   display: flex;
   flex-direction: column;
+  width: var(--gggs-sidebar-width);
+  min-width: 0;
+  min-height: 0;
+  background: var(--gggs-gradient-nav);
+  box-shadow: inset -1px 0 0 var(--gggs-color-nav-border);
+  color: var(--gggs-color-nav-text);
+}
+
+.sidebar__top {
+  display: flex;
   align-items: center;
-  gap: 0.2rem;
+  gap: var(--gggs-space-2);
+  flex: 0 0 var(--gggs-header-height);
+  padding-inline: var(--gggs-space-3);
+  border-block-end: 1px solid var(--gggs-color-nav-border);
+}
+
+.sidebar__search {
+  display: flex;
+  align-items: center;
+  gap: var(--gggs-space-2);
+  flex: 1;
+  min-width: 0;
+  height: 2.5rem;
+  padding-inline: var(--gggs-space-3);
+  border: 1px solid color-mix(in srgb, var(--gggs-color-nav-overlay) 18%, transparent);
+  border-radius: var(--gggs-radius-md);
+  background: color-mix(in srgb, var(--gggs-color-nav-overlay) 6%, transparent);
+
+  &:focus-within {
+    border-color: var(--gggs-color-nav-focus);
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: var(--gggs-color-nav-text-active);
+    font: inherit;
+    outline: none;
+
+    &::placeholder {
+      color: var(--gggs-color-nav-text);
+    }
+  }
+}
+
+.sidebar__list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin: 0;
+  padding: var(--gggs-space-2);
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gggs-color-nav-border) transparent;
+}
+
+.sidebar__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--gggs-space-1);
   width: 100%;
-  padding: var(--gggs-space-2) var(--gggs-space-1);
+  min-height: 2.75rem;
+  padding: 0 var(--gggs-space-1);
   border: 0;
   border-radius: var(--gggs-radius-md);
   background: transparent;
   color: inherit;
   font: inherit;
+  font-weight: var(--gggs-font-weight-medium);
+  text-align: start;
   text-decoration: none;
   cursor: pointer;
   transition:
@@ -114,213 +301,498 @@ gggs-shell {
   }
 
   &:focus-visible {
-    outline: 2px solid #fff;
+    outline: 2px solid var(--gggs-color-nav-focus);
     outline-offset: -2px;
   }
 
+  // The current module: the rail's lit tile, stretched across the sidebar.
   &--active {
-    background: var(--gggs-color-nav-active);
-    color: var(--gggs-color-nav-text-active);
+    background: linear-gradient(180deg, var(--gggs-color-nav-active), var(--gggs-color-nav-active-deep));
+    box-shadow:
+      0 6px 16px -6px color-mix(in srgb, var(--gggs-color-nav-active) 90%, transparent),
+      inset 0 1px 0 rgb(255 255 255 / 16%);
+    color: var(--gggs-color-nav-on-active);
 
     &:hover {
-      background: var(--gggs-color-nav-active);
+      background: linear-gradient(180deg, var(--gggs-color-nav-active), var(--gggs-color-nav-active-deep));
+      color: var(--gggs-color-nav-on-active);
     }
   }
 }
 
-.rail__icon {
-  font-size: 1.1rem;
+.sidebar__icon {
+  flex: 0 0 1.25rem;
+  font-size: 1.05rem;
+  text-align: center;
 }
 
-.rail__label {
-  max-width: 100%;
-  overflow-wrap: break-word;
-  hyphens: auto;
+.sidebar__label {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
-  font-size: 0.65rem;
-  font-weight: var(--gggs-font-weight-medium);
-  line-height: 1.15;
-  text-align: center;
   text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
 }
 
-.rail__badge,
-.panel-nav__badge,
-.topbar__count {
-  min-width: 1.125rem;
-  padding: 0 0.3rem;
-  border-radius: var(--gggs-radius-pill);
-  background: var(--gggs-color-danger);
-  color: #fff;
-  font-size: 0.6875rem;
-  font-weight: var(--gggs-font-weight-bold);
-  line-height: 1.125rem;
-  text-align: center;
+.sidebar__badge {
+  position: static;
 }
 
-.rail__badge {
-  position: absolute;
-  inset-block-start: 0.2rem;
-  inset-inline-end: 0.45rem;
+.sidebar__chevron {
+  font-size: 0.7rem;
 }
 
-// ----- Module panel ---------------------------------------------------------------------------------
-
-// The sub-menu: on a desktop a flyout over the page beside the rail, opened from the rail and
-// closed by choosing a page or clicking away; in the phone drawer it sits beside the rail.
-.panel-nav {
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: var(--gggs-rail-width);
+.sidebar__pages {
   display: flex;
   flex-direction: column;
-  width: var(--gggs-panel-width);
-  min-width: 0;
-  min-height: 0;
-  background: var(--gggs-color-surface-raised);
-  border-inline-end: 1px solid var(--gggs-color-border);
-  box-shadow: var(--gggs-shadow-lg);
-  animation: gggs-flyout-in var(--gggs-transition) ease-out;
+  gap: 0.125rem;
+  margin: 0.125rem 0 var(--gggs-space-2);
+  // Page text lines up under the module's label: the item's padding, icon and gap, less the page's
+  // own padding (.sidebar__item, .sidebar__icon, .sidebar__page).
+  padding: 0 0 0 calc(2 * var(--gggs-space-1) + 1.25rem - var(--gggs-space-3));
+  list-style: none;
+  animation: gggs-fade-in var(--gggs-duration) var(--gggs-ease-out);
+}
 
-  @media (max-width: 48rem) {
-    position: static;
-    flex: 0 0 var(--gggs-panel-width);
-    box-shadow: none;
-    animation: none;
+.sidebar__page {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0 var(--gggs-space-3);
+  border-radius: var(--gggs-radius-sm);
+  color: var(--gggs-color-nav-text);
+  font-size: var(--gggs-font-size-sm);
+  text-decoration: none;
+
+  &:hover {
+    background: var(--gggs-color-nav-bg-hover);
+    color: var(--gggs-color-nav-text-active);
   }
 
-  &[hidden] {
-    display: none;
+  &:focus-visible {
+    outline: 2px solid var(--gggs-color-nav-focus);
+    outline-offset: -2px;
+  }
+
+  // The current page: brighter, with the accent mark the rail uses.
+  &--active {
+    background: color-mix(in srgb, var(--gggs-color-nav-overlay) 10%, transparent);
+    color: var(--gggs-color-nav-text-active);
+    font-weight: var(--gggs-font-weight-semibold);
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset-block: 20%;
+      inset-inline-start: 0;
+      width: 3px;
+      border-radius: var(--gggs-radius-pill);
+      background: var(--gggs-color-accent-bright);
+    }
   }
 }
 
-.panel-nav__header {
+.sidebar__caption {
+  padding: var(--gggs-space-2) var(--gggs-space-3) var(--gggs-space-1);
+  color: var(--gggs-color-nav-text);
+  font-size: var(--gggs-font-size-xs);
+  font-weight: var(--gggs-font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sidebar__empty {
+  padding: var(--gggs-space-4) var(--gggs-space-3);
+  color: var(--gggs-color-nav-text);
+  font-size: var(--gggs-font-size-sm);
+}
+
+// ----- Rail pop-out --------------------------------------------------------------------------------
+
+// A module's pages beside the rail, while the pointer rests on its icon (or the icon has focus).
+.rail-flyout {
+  position: fixed;
+  inset-inline-start: var(--gggs-rail-width);
+  z-index: calc(var(--gggs-z-drawer) - 2);
+  width: 15rem;
+  max-height: calc(100vh - var(--gggs-space-4));
+  overflow-y: auto;
+  border-radius: 0 var(--gggs-radius-lg) var(--gggs-radius-lg) 0;
+  background: var(--gggs-gradient-nav);
+  box-shadow: var(--gggs-shadow-4);
+  color: var(--gggs-color-nav-text);
+  animation: gggs-flyout-in var(--gggs-duration) var(--gggs-ease-out);
+
+  ul {
+    margin: 0;
+    padding: var(--gggs-space-1) var(--gggs-space-2) var(--gggs-space-2);
+    list-style: none;
+  }
+}
+
+.rail-flyout__title {
+  margin: 0;
+  padding: var(--gggs-space-3) var(--gggs-space-4);
+  border-block-end: 1px solid var(--gggs-color-nav-border);
+  color: var(--gggs-color-nav-text-active);
+  font-weight: var(--gggs-font-weight-semibold);
+}
+
+.rail-flyout__link {
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0 var(--gggs-space-3);
+  border-radius: var(--gggs-radius-sm);
+  color: var(--gggs-color-nav-text);
+  text-decoration: none;
+
+  &:hover,
+  &--active {
+    background: var(--gggs-color-nav-bg-hover);
+    color: var(--gggs-color-nav-text-active);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--gggs-color-nav-focus);
+    outline-offset: -2px;
+  }
+}
+
+// ----- Menu toggle ---------------------------------------------------------------------------------
+
+// A tab on the menu's edge that swaps the sidebar and the rail.
+.nav-toggle {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-end: -0.875rem;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 1px solid var(--gggs-color-nav-border);
+  border-radius: var(--gggs-radius-md);
+  background: var(--gggs-color-nav-bg);
+  box-shadow: var(--gggs-shadow-2);
+  color: var(--gggs-color-nav-text-active);
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: background-color var(--gggs-transition-fast);
+
+  &:hover {
+    background: var(--gggs-color-nav-bg-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--gggs-color-focus);
+    outline-offset: 2px;
+  }
+
+  .pi {
+    font-size: 0.8rem;
+  }
+}
+
+// ----- App launcher ---------------------------------------------------------------------------------
+
+// The rail opening out: the same navy, over the rail and the page, with a dimmed page behind it.
+.launcher__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--gggs-z-drawer) - 1);
+  background: var(--gggs-color-overlay);
+  cursor: pointer;
+  animation: gggs-fade-in var(--gggs-duration) var(--gggs-ease-out);
+}
+
+.launcher {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-start: 0;
+  z-index: var(--gggs-z-drawer);
+  display: flex;
+  flex-direction: column;
+  width: min(var(--gggs-launcher-width), 100vw);
+  background: var(--gggs-gradient-nav);
+  box-shadow: var(--gggs-shadow-5);
+  color: var(--gggs-color-nav-text-active);
+  animation: gggs-flyout-in var(--gggs-duration-slow) var(--gggs-ease-out);
+}
+
+.launcher__header {
   display: flex;
   align-items: center;
   gap: var(--gggs-space-2);
-  flex: 0 0 var(--gggs-header-height);
-  padding-inline: var(--gggs-space-4);
-  border-block-end: 1px solid var(--gggs-color-border);
-  color: var(--gggs-color-text);
-
-  .pi {
-    color: var(--gggs-color-primary);
-  }
+  flex: 0 0 auto;
+  padding: var(--gggs-space-3) var(--gggs-space-3) var(--gggs-space-2);
 }
 
-.panel-nav__header .panel-nav__close {
-  display: inline-grid;
+.launcher__button {
+  display: grid;
   place-items: center;
   flex: 0 0 auto;
-  width: 2rem;
-  height: 2rem;
-  margin-inline-start: auto;
+  width: 2.25rem;
+  height: 2.25rem;
   border: 0;
   border-radius: var(--gggs-radius-md);
   background: transparent;
-  color: var(--gggs-color-text-muted);
+  color: var(--gggs-color-nav-text);
   cursor: pointer;
   transition:
     background-color var(--gggs-transition-fast),
     color var(--gggs-transition-fast);
 
   &:hover {
-    background: var(--gggs-color-surface-hover);
-    color: var(--gggs-color-text);
+    background: color-mix(in srgb, var(--gggs-color-nav-overlay) 10%, transparent);
+    color: var(--gggs-color-nav-text-active);
   }
 
-  .pi {
-    color: inherit;
-    font-size: 0.85rem;
+  &:focus-visible {
+    outline: 2px solid var(--gggs-color-nav-focus);
+    outline-offset: -2px;
+  }
+
+  &--small {
+    width: 1.875rem;
+    height: 1.875rem;
+
+    .pi {
+      font-size: 0.75rem;
+    }
   }
 }
 
-.panel-nav__title {
-  min-width: 0;
-  font-size: var(--gggs-font-size-md);
-  font-weight: var(--gggs-font-weight-semibold);
-  letter-spacing: -0.01em;
-}
-
-.panel-nav__list {
+.launcher__search {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
-  margin: 0;
-  padding: var(--gggs-space-2);
+  align-items: center;
+  gap: var(--gggs-space-2);
+  flex: 1;
+  min-width: 0;
+  height: 2.75rem;
+  padding-inline: var(--gggs-space-3) var(--gggs-space-1);
+  border: 1px solid color-mix(in srgb, var(--gggs-color-nav-overlay) 14%, transparent);
+  border-radius: var(--gggs-radius-lg);
+  background: color-mix(in srgb, var(--gggs-color-nav-overlay) 8%, transparent);
+  color: var(--gggs-color-nav-text);
+  transition:
+    border-color var(--gggs-transition-fast),
+    background-color var(--gggs-transition-fast);
+
+  &:focus-within {
+    border-color: color-mix(in srgb, var(--gggs-color-nav-active) 60%, var(--gggs-color-nav-overlay));
+    background: color-mix(in srgb, var(--gggs-color-nav-overlay) 12%, transparent);
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--gggs-color-nav-text-active);
+    font: inherit;
+
+    &::placeholder {
+      color: var(--gggs-color-nav-text);
+      opacity: 0.85;
+    }
+
+    &::-webkit-search-cancel-button {
+      display: none;
+    }
+  }
+}
+
+.launcher__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--gggs-space-1) var(--gggs-space-3) var(--gggs-space-6);
   overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.launcher__heading {
+  margin: var(--gggs-space-3) var(--gggs-space-2) var(--gggs-space-2);
+  color: var(--gggs-color-nav-text-active);
+  font-size: var(--gggs-font-size-base);
+  font-weight: var(--gggs-font-weight-semibold);
+}
+
+.launcher__count {
+  margin-inline-start: 0.25rem;
+  color: var(--gggs-color-nav-text);
+  font-weight: var(--gggs-font-weight-regular);
+}
+
+.launcher__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--gggs-space-1);
+  margin: 0;
+  padding: 0;
   list-style: none;
 }
 
-.panel-nav__link {
+.launcher__tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gggs-space-2);
+  height: 100%;
+  min-height: 6rem;
+  padding: var(--gggs-space-2) var(--gggs-space-1);
+  border-radius: var(--gggs-radius-lg);
+  color: var(--gggs-color-nav-text-active);
+  font-size: var(--gggs-font-size-sm);
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+  transition: background-color var(--gggs-transition-fast);
+
+  &:hover {
+    background: color-mix(in srgb, var(--gggs-color-nav-overlay) 7%, transparent);
+
+    .launcher__tile-icon {
+      transform: translateY(var(--gggs-lift));
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--gggs-color-nav-focus);
+    outline-offset: -2px;
+  }
+
+  &--active .launcher__tile-icon {
+    border-color: transparent;
+    background: linear-gradient(180deg, var(--gggs-color-nav-active), var(--gggs-color-nav-active-deep));
+    color: var(--gggs-color-nav-on-active);
+  }
+}
+
+.launcher__tile-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border: 1px solid color-mix(in srgb, var(--gggs-color-nav-overlay) 12%, transparent);
+  border-radius: var(--gggs-radius-xl);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--gggs-color-nav-overlay) 14%, transparent), color-mix(in srgb, var(--gggs-color-nav-overlay) 5%, transparent));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--gggs-color-nav-overlay) 12%, transparent),
+    0 6px 14px -8px rgb(0 0 0 / 60%);
+  color: var(--gggs-color-nav-icon);
+  transition: transform var(--gggs-transition-fast);
+
+  .pi {
+    font-size: 1.3rem;
+  }
+}
+
+.launcher__badge {
+  position: absolute;
+  inset-block-start: -0.35rem;
+  inset-inline-end: -0.4rem;
+}
+
+.launcher__tile-label {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  // A long single word ("Administration") hyphenates rather than breaking anywhere.
+  hyphens: auto;
+  overflow-wrap: break-word;
+}
+
+.launcher__hits {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.launcher__hit {
   display: flex;
   align-items: center;
   gap: var(--gggs-space-3);
-  padding: 0.45rem var(--gggs-space-3);
-  border-radius: var(--gggs-radius-sm);
-  color: var(--gggs-color-text-muted);
-  font-size: var(--gggs-font-size-base);
-  font-weight: var(--gggs-font-weight-medium);
+  min-height: 2.75rem;
+  padding: var(--gggs-space-2);
+  border-radius: var(--gggs-radius-md);
+  color: var(--gggs-color-nav-text-active);
   text-decoration: none;
-  transition:
-    background-color var(--gggs-transition-fast),
-    color var(--gggs-transition-fast);
+  transition: background-color var(--gggs-transition-fast);
 
   &:hover {
-    background: var(--gggs-color-surface-hover);
-    color: var(--gggs-color-text);
+    background: color-mix(in srgb, var(--gggs-color-nav-overlay) 7%, transparent);
   }
 
-  &--active {
-    background: var(--gggs-color-primary-subtle);
-    color: var(--gggs-color-primary);
-
-    .panel-nav__icon {
-      color: var(--gggs-color-primary);
-    }
+  &:focus-visible {
+    outline: 2px solid var(--gggs-color-nav-focus);
+    outline-offset: -2px;
   }
 }
 
-.panel-nav__icon {
-  width: 1rem;
-  color: var(--gggs-color-text-subtle);
-  font-size: 0.875rem;
+.launcher__hit-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--gggs-radius-md);
+  background: color-mix(in srgb, var(--gggs-color-nav-overlay) 8%, transparent);
+  color: var(--gggs-color-nav-icon);
+
+  .pi {
+    font-size: 0.875rem;
+  }
+}
+
+.launcher__hit-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  font-weight: var(--gggs-font-weight-medium);
+}
+
+.launcher__hit-module {
+  color: var(--gggs-color-nav-text);
+  font-size: var(--gggs-font-size-sm);
+  font-weight: var(--gggs-font-weight-regular);
+}
+
+.launcher__hit-chevron {
+  color: var(--gggs-color-nav-text);
+  font-size: 0.75rem;
+}
+
+.launcher__empty {
+  margin: var(--gggs-space-8) var(--gggs-space-2);
+  color: var(--gggs-color-nav-text);
   text-align: center;
-}
-
-.panel-nav__badge {
-  margin-inline-start: auto;
-}
-
-// ----- Backdrop (mobile drawer) ---------------------------------------------------------------------
-
-.shell__backdrop {
-  display: none;
-
-  @media (max-width: 48rem) {
-    &--visible {
-      display: block;
-      position: fixed;
-      inset: 0;
-      z-index: calc(var(--gggs-z-drawer) - 1);
-      border: 0;
-      background: var(--gggs-color-overlay);
-      cursor: pointer;
-    }
-  }
 }
 
 // ----- Main column ------------------------------------------------------------------------------------
 
+// A faint light at the top of every page; `local` lets it scroll away with the content.
 .shell__main {
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
+  background-image: var(--gggs-gradient-wash);
+  background-repeat: no-repeat;
+  background-attachment: local;
 }
 
 .topbar {
@@ -332,9 +804,15 @@ gggs-shell {
   gap: var(--gggs-space-2);
   flex: 0 0 var(--gggs-header-height);
   padding-inline: var(--gggs-space-3) var(--gggs-space-5);
-  background: color-mix(in srgb, var(--gggs-color-surface-raised) 92%, transparent);
-  backdrop-filter: saturate(1.4) blur(8px);
-  border-block-end: 1px solid var(--gggs-color-border);
+  background: var(--gggs-glass-bg);
+  -webkit-backdrop-filter: var(--gggs-glass-blur);
+  backdrop-filter: var(--gggs-glass-blur);
+  border-block-end: 1px solid var(--gggs-glass-border);
+  box-shadow: var(--gggs-shadow-1);
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    background: var(--gggs-color-surface-raised);
+  }
 }
 
 .topbar__context {
@@ -444,10 +922,33 @@ gggs-shell {
   }
 }
 
-// The menu button only opens the phone drawer; a desktop always shows the rail.
-.topbar__icon-button.topbar__menu {
-  @media (min-width: 48.0625rem) {
-    display: none;
+// The logo opens the app launcher - on a phone, where the rail is hidden, it is the way in.
+.topbar__brand {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-inline-end: var(--gggs-space-1);
+  padding: 0;
+  border: 0;
+  border-radius: var(--gggs-radius-md);
+  background: transparent;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: var(--gggs-focus-outline);
+    outline-offset: 2px;
+  }
+}
+
+.topbar__logo {
+  width: 2.125rem;
+  height: 2.125rem;
+  transition: transform var(--gggs-transition);
+
+  .topbar__brand:hover & {
+    transform: translateY(var(--gggs-lift));
   }
 }
 
@@ -497,14 +998,24 @@ gggs-shell {
 
 .user-menu__avatar {
   display: grid;
+  overflow: hidden;
   place-items: center;
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
-  background: var(--gggs-color-primary-subtle);
+  background: var(--gggs-gradient-tile);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gggs-color-primary) 22%, transparent);
   color: var(--gggs-color-primary);
   font-size: var(--gggs-font-size-xs);
   font-weight: var(--gggs-font-weight-bold);
+}
+
+/* A photo fills the avatar circle; initials show until it loads, or when there is none. */
+.user-menu__photo {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .user-menu__name {
@@ -534,9 +1045,13 @@ gggs-shell {
   min-width: 14rem;
   padding: var(--gggs-space-1);
   border: 1px solid var(--gggs-color-border);
-  border-radius: var(--gggs-radius-md);
+  border-radius: var(--gggs-radius-lg);
+  // Opaque, not glass: the frosted header is a backdrop root, so a blur inside it could not
+  // reach the page underneath and the page would show through unblurred.
   background: var(--gggs-color-surface-raised);
-  box-shadow: var(--gggs-shadow-lg);
+  box-shadow: var(--gggs-shadow-4), var(--gggs-shadow-highlight);
+  transform-origin: top right;
+  animation: gggs-pop-in var(--gggs-duration) var(--gggs-ease-out);
 }
 
 .user-menu__who {
@@ -571,6 +1086,103 @@ gggs-shell {
   }
 }
 
+// ----- Colour theme picker ----------------------------------------------------------------------------
+
+// Opens like the user menu beside it; each choice shows its menu and action colours as a swatch.
+.palette-menu {
+  position: relative;
+}
+
+.palette-menu__popup {
+  position: absolute;
+  inset-block-start: calc(100% + var(--gggs-space-2));
+  inset-inline-end: 0;
+  z-index: var(--gggs-z-modal);
+  display: flex;
+  flex-direction: column;
+  min-width: 17rem;
+  padding: var(--gggs-space-1);
+  border: 1px solid var(--gggs-color-border);
+  border-radius: var(--gggs-radius-lg);
+  background: var(--gggs-color-surface-raised);
+  box-shadow: var(--gggs-shadow-4), var(--gggs-shadow-highlight);
+  transform-origin: top right;
+  animation: gggs-pop-in var(--gggs-duration) var(--gggs-ease-out);
+}
+
+.palette-menu__heading {
+  margin: 0;
+  padding: var(--gggs-space-2) var(--gggs-space-3) var(--gggs-space-1);
+  color: var(--gggs-color-text-muted);
+  font-size: var(--gggs-font-size-xs);
+  font-weight: var(--gggs-font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.palette-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--gggs-space-3);
+  padding: var(--gggs-space-2) var(--gggs-space-3);
+  border: 0;
+  border-radius: var(--gggs-radius-sm);
+  background: transparent;
+  color: var(--gggs-color-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--gggs-color-surface-hover);
+  }
+
+  &[aria-checked='true'] {
+    background: var(--gggs-color-surface-selected);
+  }
+}
+
+// Two halves: the menu rail colour, then the action colour.
+.palette-menu__swatch {
+  display: flex;
+  flex: 0 0 auto;
+  overflow: hidden;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--gggs-color-border-strong);
+  border-radius: var(--gggs-radius-md);
+
+  > span {
+    flex: 1;
+  }
+}
+
+.palette-menu__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: var(--gggs-line-height-tight);
+}
+
+.palette-menu__label {
+  font-weight: var(--gggs-font-weight-medium);
+}
+
+.palette-menu__description {
+  color: var(--gggs-color-text-muted);
+  font-size: var(--gggs-font-size-xs);
+}
+
+.palette-menu__check {
+  margin-inline-start: auto;
+  color: var(--gggs-color-primary);
+  visibility: hidden;
+
+  [aria-checked='true'] > & {
+    visibility: visible;
+  }
+}
+
 // ----- Module tabs and content ------------------------------------------------------------------------
 
 // The current module's pages, pinned under the header; a long list scrolls sideways.
@@ -578,35 +1190,102 @@ gggs-shell {
   position: sticky;
   inset-block-start: var(--gggs-header-height);
   z-index: calc(var(--gggs-z-header) - 1);
-  display: flex;
   flex: 0 0 auto;
+  min-width: 0;
+  background: var(--gggs-glass-bg);
+  -webkit-backdrop-filter: var(--gggs-glass-blur);
+  backdrop-filter: var(--gggs-glass-blur);
+  border-block-end: 1px solid var(--gggs-glass-border);
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    background: var(--gggs-color-surface-raised);
+  }
+}
+
+// The tabs themselves scroll sideways, by edge hover and wheel (libs/core/layout edge-scroll.ts) or
+// by swipe, so the scrollbar is hidden; an end with more tabs beyond it fades out instead.
+.module-tabs__track {
+  display: flex;
   gap: var(--gggs-space-1);
   padding-inline: var(--gggs-space-6);
   overflow-x: auto;
-  background: var(--gggs-color-surface-raised);
-  border-block-end: 1px solid var(--gggs-color-border);
-  scrollbar-width: thin;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  &.edge-scroll--start {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--gggs-space-12));
+    mask-image: linear-gradient(to right, transparent, #000 var(--gggs-space-12));
+  }
+
+  &.edge-scroll--end {
+    -webkit-mask-image: linear-gradient(to left, transparent, #000 var(--gggs-space-12));
+    mask-image: linear-gradient(to left, transparent, #000 var(--gggs-space-12));
+  }
+
+  &.edge-scroll--start.edge-scroll--end {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--gggs-space-12), #000 calc(100% - var(--gggs-space-12)), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 var(--gggs-space-12), #000 calc(100% - var(--gggs-space-12)), transparent);
+  }
 
   @media (max-width: 48rem) {
     padding-inline: var(--gggs-space-3);
   }
 }
 
+// The underline grows from the centre: hinted on hover, drawn in full under the current page.
 .module-tabs__tab {
-  padding: var(--gggs-space-3) var(--gggs-space-3) calc(var(--gggs-space-3) - 2px);
-  border-block-end: 2px solid transparent;
+  position: relative;
+  padding: var(--gggs-space-3);
   color: var(--gggs-color-text-muted);
   font-weight: var(--gggs-font-weight-medium);
   white-space: nowrap;
   text-decoration: none;
+  transition: color var(--gggs-transition-fast);
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset-inline: var(--gggs-space-2);
+    inset-block-end: 0;
+    height: 2px;
+    border-radius: var(--gggs-radius-pill) var(--gggs-radius-pill) 0 0;
+    background: var(--gggs-gradient-accent);
+    transform: scaleX(0);
+    transition: transform var(--gggs-transition);
+  }
 
   &:hover {
     color: var(--gggs-color-text);
+
+    &::after {
+      transform: scaleX(0.35);
+    }
   }
 
   &--active {
-    border-block-end-color: var(--gggs-color-primary);
     color: var(--gggs-color-primary);
+
+    &::after,
+    &:hover::after {
+      transform: scaleX(1);
+    }
+  }
+}
+
+// The way from a module to its set-up pages in Settings, kept apart from the module's own tabs.
+.module-tabs__settings {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gggs-space-2);
+  margin-inline-start: auto;
+  padding-inline-start: var(--gggs-space-4);
+  border-inline-start: 1px solid var(--gggs-color-border);
+
+  .pi {
+    font-size: var(--gggs-font-size-sm);
   }
 }
 
@@ -629,6 +1308,19 @@ gggs-shell {
 @keyframes gggs-flyout-in {
   from {
     opacity: 0;
-    transform: translateX(-0.5rem);
+    transform: translateX(-1.5rem);
+  }
+}
+
+@keyframes gggs-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes gggs-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem) scale(0.98);
   }
 }

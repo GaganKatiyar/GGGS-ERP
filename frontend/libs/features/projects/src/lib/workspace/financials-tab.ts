@@ -7,10 +7,13 @@ import { EmployeeSelect } from '@gggs/shared/employee-reference';
 import type { CostCategory, FinanceCost, FinanceInvoice, FinanceRate, ProjectFinance, ProjectRole } from '@gggs/shared/models';
 import { COST_CATEGORIES, humanize } from '@gggs/shared/models';
 import { MoneyPipe, ProjectFinancialsApi } from '@gggs/shared/money';
-import { Chart, FormDialog, KpiCard, Skeleton, StatusBadge } from '@gggs/shared/ui';
+import { Chart, FormDialog, KpiCard, localIsoDate, Skeleton, StatusBadge } from '@gggs/shared/ui';
+import { CreditNoteDialog } from './credit-note-dialog';
+import { OutcomeUnitsPanel } from './outcome-units-panel';
+import { PrepareInvoiceDialog } from './prepare-invoice-dialog';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => localIsoDate();
 
 type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
 
@@ -20,21 +23,80 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
  */
 @Component({
   selector: 'gggs-financials-tab',
-  imports: [DatePipe, DecimalPipe, FormsModule, MoneyPipe, KpiCard, Chart, StatusBadge, Skeleton, FormDialog, EmployeeSelect],
+  imports: [DatePipe, DecimalPipe, FormsModule, MoneyPipe, KpiCard, Chart, StatusBadge, Skeleton, FormDialog, EmployeeSelect, PrepareInvoiceDialog, CreditNoteDialog, OutcomeUnitsPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (finance(); as f) {
       <div class="stack">
-        <div class="fin__kpis">
+        <div class="xp__kpis fin__kpis">
           <gggs-kpi-card label="Contract value" [value]="f.summary.contractValue | gggsMoney: f.currency" [hint]="humanize(f.billingType)" />
           <gggs-kpi-card label="Revenue" [value]="f.summary.revenue | gggsMoney: f.currency" [hint]="'forecast ' + (f.summary.forecastRevenue | gggsMoney: f.currency)" />
           <gggs-kpi-card label="Billed / unbilled" [value]="f.summary.billed | gggsMoney: f.currency" [hint]="(f.summary.unbilled | gggsMoney: f.currency) + ' unbilled'" />
           <gggs-kpi-card label="Actual cost" [value]="f.summary.actualCost | gggsMoney: f.currency" [hint]="'forecast ' + (f.summary.forecastCost | gggsMoney: f.currency)" />
           <gggs-kpi-card label="Budget used" [value]="f.summary.budgetUsedPercent !== undefined ? (f.summary.budgetUsedPercent | number: '1.0-0') + '%' : '—'" [hint]="'of ' + (f.summary.budget | gggsMoney: f.currency)" />
+          @if (f.summary.capUsedPercent !== undefined) {
+            <gggs-kpi-card label="Billing cap used" [value]="(f.summary.capUsedPercent | number: '1.0-0') + '%'" [hint]="f.summary.overCapAmount ? (f.summary.overCapAmount | gggsMoney: f.currency) + ' past the cap' : 'of ' + (f.terms?.notToExceed | gggsMoney: f.currency)" />
+          }
+          @if (f.summary.poBalance !== undefined) {
+            <gggs-kpi-card label="PO balance" [value]="f.summary.poBalance | gggsMoney: f.currency" [hint]="f.terms?.poNumber ?? 'after invoices'" />
+          }
+          @if (f.billingType === 'OutcomeBased') {
+            <gggs-kpi-card [label]="'Cost per ' + (f.terms?.unitName || 'unit')" [value]="f.summary.costPerUnit !== undefined ? (f.summary.costPerUnit | gggsMoney: f.currency) : 'None yet'" [hint]="(f.summary.acceptedUnits ?? 0 | number: '1.0-2') + ' accepted'" />
+          }
+          @if (f.summary.costPerStoryPoint !== undefined) {
+            <gggs-kpi-card label="Cost per story point" [value]="f.summary.costPerStoryPoint | gggsMoney: f.currency" [hint]="f.summary.costPerDoneTask !== undefined ? (f.summary.costPerDoneTask | gggsMoney: f.currency) + ' per finished task' : ''" />
+          } @else if (f.summary.costPerDoneTask !== undefined) {
+            <gggs-kpi-card label="Cost per finished task" [value]="f.summary.costPerDoneTask | gggsMoney: f.currency" />
+          }
           <gggs-kpi-card label="Gross margin" [value]="f.summary.marginPercent !== undefined ? (f.summary.marginPercent | number: '1.0-1') + '%' : '—'" [hint]="(f.summary.grossMargin | gggsMoney: f.currency) + ' · forecast ' + (f.summary.forecastMarginPercent ?? 0 | number: '1.0-1') + '%'" />
         </div>
         @if (f.summary.unpricedHours) {
           <p class="alert alert--warning">{{ f.summary.unpricedHours }} timesheet line(s) have no cost rate - add a rate card line or a team rate so labour cost is complete.</p>
+        }
+
+        @if (f.summary.overCapAmount) {
+          <p class="alert alert--warning">{{ f.summary.overCapAmount | gggsMoney: f.currency }} of work is past the not-to-exceed amount. It cannot be billed unless the client raises the cap.</p>
+        }
+        @if (f.summary.unpricedSeats) {
+          <p class="alert alert--warning">{{ f.summary.unpricedSeats }} billable person(s) on this dedicated team have no monthly rate, so they earn nothing. Add it on the Team tab.</p>
+        }
+
+        @if (f.summary.retainerMonths?.length && f.terms?.includedHoursPerMonth !== undefined && f.terms?.includedHoursPerMonth !== null) {
+          <section class="panel stack">
+            <h3 class="fin__heading">Hours by month</h3>
+            <div class="fin__scroll" tabindex="0" role="region" aria-label="Hours by month">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th scope="col">Month</th>
+                    <th scope="col" class="fin__num">Included</th>
+                    <th scope="col" class="fin__num">Rolled in</th>
+                    <th scope="col" class="fin__num">Used</th>
+                    <th scope="col" class="fin__num">Over</th>
+                    <th scope="col" class="fin__num">Overage</th>
+                    <th scope="col" class="fin__num">Rolls forward</th>
+                    <th scope="col" class="fin__num">Service credit</th>
+                    <th scope="col" class="fin__num">Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of f.summary.retainerMonths; track row.month) {
+                    <tr>
+                      <td>{{ row.month | date: 'MMM y' }}</td>
+                      <td class="fin__num">{{ row.includedHours | number: '1.0-2' }}</td>
+                      <td class="fin__num">{{ row.rolledInHours | number: '1.0-2' }}</td>
+                      <td class="fin__num">{{ row.usedHours | number: '1.0-2' }}</td>
+                      <td class="fin__num">{{ row.overageHours | number: '1.0-2' }}</td>
+                      <td class="fin__num">{{ row.overageAmount | gggsMoney: f.currency }}</td>
+                      <td class="fin__num">{{ row.rollsForwardHours | number: '1.0-2' }}</td>
+                      <td class="fin__num">{{ row.credit | gggsMoney: f.currency }}</td>
+                      <td class="fin__num">{{ row.revenue | gggsMoney: f.currency }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
         }
 
         @if (f.summary.months.length) {
@@ -59,7 +121,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
               <tbody>
                 @for (row of f.summary.categories; track row.category) {
                   <tr>
-                    <td>{{ row.category }}</td>
+                    <td>{{ costLabel(row.category) }}</td>
                     <td class="fin__num">{{ row.budget | gggsMoney: f.currency }}</td>
                     <td class="fin__num" [class.fin__danger]="row.budget > 0 && row.actual > row.budget">{{ row.actual | gggsMoney: f.currency }}</td>
                     <td class="fin__num">{{ row.planned | gggsMoney: f.currency }}</td>
@@ -89,32 +151,63 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
           </section>
         </div>
 
+        @if (f.billingType === 'OutcomeBased') {
+          <gggs-outcome-units-panel [projectId]="projectId()" [currency]="f.currency" [terms]="f.terms" [canManage]="f.canManage" (changed)="load(projectId())" />
+        }
+
         <section class="panel stack">
           <div class="toolbar">
             <h3 class="fin__heading">Invoices</h3>
             <span class="fin__spacer"></span>
             @if (f.canManage) {
-              <button type="button" class="btn btn--sm" (click)="openInvoice()"><i class="pi pi-plus" aria-hidden="true"></i> Invoice</button>
+              <button type="button" class="btn btn--link btn--sm" (click)="openInvoice()">Enter by hand</button>
+              <button type="button" class="btn btn--sm" (click)="preparing.set(true)"><i class="pi pi-file-edit" aria-hidden="true"></i> Prepare invoice</button>
             }
           </div>
           @for (invoice of f.invoices; track invoice.id) {
             <div class="fin__row">
               <span><strong>{{ invoice.number }}</strong>{{ invoice.milestoneName ? ' · ' + invoice.milestoneName : '' }}</span>
-              <span>{{ invoice.amount | gggsMoney: f.currency }} + tax {{ invoice.taxAmount | gggsMoney: f.currency }}</span>
+              <span>
+                {{ invoice.amount | gggsMoney: f.currency }} + tax {{ invoice.taxAmount | gggsMoney: f.currency }}
+                @if (invoice.creditedAmount > 0) {
+                  <br /><span class="muted">{{ invoice.creditedAmount | gggsMoney: f.currency }} credited</span>
+                }
+              </span>
               <span class="muted" [class.fin__danger]="invoice.isOverdue">{{ invoice.invoiceDate | date: 'd MMM y' }}{{ invoice.dueDate ? ' · due ' + (invoice.dueDate | date: 'd MMM') : '' }}{{ invoice.paidOn ? ' · paid ' + (invoice.paidOn | date: 'd MMM') : '' }}</span>
               <span class="toolbar">
                 <gggs-status-badge [status]="invoice.isOverdue ? 'Overdue' : invoice.status" />
+                @if (invoice.lines?.length) {
+                  <button type="button" class="btn btn--link btn--sm" [attr.aria-expanded]="expanded() === invoice.id" (click)="toggleLines(invoice)">Lines</button>
+                }
                 @if (f.canManage && invoice.status === 'Draft') {
                   <button type="button" class="btn btn--link btn--sm" (click)="invoiceAction(invoice, 'send')">Send</button>
                 }
                 @if (f.canManage && invoice.status === 'Sent') {
                   <button type="button" class="btn btn--link btn--sm" (click)="openPaid(invoice)">Paid</button>
                 }
-                @if (f.canManage && (invoice.status === 'Draft' || invoice.status === 'Sent')) {
+                @if (f.canManage && (invoice.status === 'Sent' || invoice.status === 'Paid') && invoice.amount > invoice.creditedAmount) {
+                  <button type="button" class="btn btn--link btn--sm" (click)="openCredit(invoice)">Credit</button>
+                }
+                @if (f.canManage && invoice.creditedAmount === 0 && (invoice.status === 'Draft' || invoice.status === 'PendingApproval' || invoice.status === 'Sent')) {
                   <button type="button" class="btn btn--link btn--sm" (click)="invoiceAction(invoice, 'cancel')">Cancel</button>
                 }
               </span>
             </div>
+            @if (expanded() === invoice.id) {
+              <div class="fin__lines">
+                @for (line of invoice.lines ?? []; track line.id) {
+                  <div class="fin__line" [class.fin__credited]="line.isCredited">
+                    <span>{{ line.description }}{{ line.isCredited ? ' (credited)' : '' }}</span>
+                    <span class="fin__num">{{ line.amount | gggsMoney: f.currency }}</span>
+                    <span>
+                      @if (f.canManage && invoice.status === 'Draft' && (invoice.lines?.length ?? 0) > 1) {
+                        <button type="button" class="btn btn--link btn--sm" (click)="removeLine(invoice, line.id)">Remove</button>
+                      }
+                    </span>
+                  </div>
+                }
+              </div>
+            }
           } @empty {
             <p class="muted">No invoices yet.</p>
           }
@@ -131,7 +224,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
             </div>
             @for (cost of f.costs; track cost.id) {
               <div class="fin__row fin__row--small">
-                <span><strong>{{ cost.description }}</strong><br /><span class="muted">{{ cost.category }}{{ cost.vendor ? ' · ' + cost.vendor : '' }}{{ cost.planned ? ' · committed' : '' }}</span></span>
+                <span><strong>{{ cost.description }}</strong><br /><span class="muted">{{ costLabel(cost.category) }}{{ cost.vendor ? ' · ' + cost.vendor : '' }}{{ cost.planned ? ' · committed' : '' }}</span></span>
                 <span>{{ cost.amount | gggsMoney: f.currency }}</span>
                 <span class="muted">{{ cost.date | date: 'd MMM y' }}</span>
                 <span>
@@ -192,10 +285,50 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
             <span class="field__label">Contract value (overrides the contract's{{ finance()?.contractValueFromContract ? ', ' + (finance()?.contractValueFromContract | gggsMoney) : '' }})</span>
             <input type="number" min="0" [value]="contractValue() ?? ''" (input)="contractValue.set($any($event.target).value === '' ? null : +$any($event.target).value)" />
           </label>
-          @if (finance()?.billingType === 'Retainer') {
+          @if (finance()?.billingType === 'TimeAndMaterial') {
             <label class="field">
-              <span class="field__label">Monthly retainer fee</span>
+              <span class="field__label">Not-to-exceed amount <span class="muted">(revenue stops counting past it)</span></span>
+              <input type="number" min="0" [value]="notToExceed() ?? ''" (input)="notToExceed.set(optionalNumber($any($event.target).value))" />
+            </label>
+          }
+          <label class="field">
+            <span class="field__label">PO number</span>
+            <input type="text" maxlength="100" [value]="poNumber()" (input)="poNumber.set($any($event.target).value)" />
+          </label>
+          <label class="field">
+            <span class="field__label">PO value</span>
+            <input type="number" min="0" [value]="poValue() ?? ''" (input)="poValue.set(optionalNumber($any($event.target).value))" />
+          </label>
+          @if (finance()?.billingType === 'Retainer' || finance()?.billingType === 'ManagedService') {
+            <label class="field">
+              <span class="field__label">Monthly fee</span>
               <input type="number" min="0" [value]="retainer() ?? ''" (input)="retainer.set($any($event.target).value === '' ? null : +$any($event.target).value)" />
+            </label>
+            <label class="field">
+              <span class="field__label">Hours included a month <span class="muted">(blank for no limit)</span></span>
+              <input type="number" min="0" [value]="includedHours() ?? ''" (input)="includedHours.set(optionalNumber($any($event.target).value))" />
+            </label>
+            <label class="field">
+              <span class="field__label">Unused hours that roll into the next month (%)</span>
+              <input type="number" min="0" max="100" [value]="rolloverPercent()" (input)="rolloverPercent.set(+$any($event.target).value)" />
+            </label>
+            <label class="field">
+              <span class="field__label">Rate for hours over the bucket</span>
+              <input type="number" min="0" [value]="overageRate() ?? ''" (input)="overageRate.set(optionalNumber($any($event.target).value))" />
+            </label>
+          }
+          @if (finance()?.billingType === 'OutcomeBased') {
+            <label class="field">
+              <span class="field__label">What one unit is</span>
+              <input type="text" maxlength="60" placeholder="release" [value]="unitName()" (input)="unitName.set($any($event.target).value)" />
+            </label>
+            <label class="field">
+              <span class="field__label">Price per unit</span>
+              <input type="number" min="0" [value]="unitPrice() ?? ''" (input)="unitPrice.set(optionalNumber($any($event.target).value))" />
+            </label>
+            <label class="field">
+              <span class="field__label">Units the contract expects <span class="muted">(for the forecast)</span></span>
+              <input type="number" min="0" [value]="targetUnits() ?? ''" (input)="targetUnits.set(optionalNumber($any($event.target).value))" />
             </label>
           }
           @if (finance()?.billingType === 'Milestone') {
@@ -245,7 +378,7 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
               <span class="field__label">Category</span>
               <select [value]="costCategory()" (change)="costCategory.set($any($event.target).value)">
                 @for (category of nonLabour; track category) {
-                  <option [value]="category">{{ category }}</option>
+                  <option [value]="category">{{ costLabel(category) }}</option>
                 }
               </select>
             </label>
@@ -318,12 +451,21 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
         }
       }
     </gggs-form-dialog>
+    <gggs-prepare-invoice-dialog [(visible)]="preparing" [projectId]="projectId()" (prepared)="load(projectId())" />
+    <gggs-credit-note-dialog [(visible)]="crediting" [projectId]="projectId()" [invoice]="target()" [currency]="finance()?.currency" (credited)="load(projectId())" />
   `,
   styles: `
+    /* Money needs room: seven cards on one row cut the figures off. */
     .fin__kpis {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(9rem, 45%), 1fr));
-      gap: var(--gggs-space-3);
+      grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    }
+
+    .fin__scroll {
+      overflow-x: auto;
+    }
+
+    .fin__num {
+      text-align: end;
     }
 
     .fin__heading {
@@ -362,6 +504,24 @@ type Dialog = 'budget' | 'rate' | 'cost' | 'invoice' | 'terms' | 'paid' | null;
       font-size: var(--gggs-font-size-sm);
     }
 
+    .fin__lines {
+      padding: var(--gggs-space-2) var(--gggs-space-3);
+      border-block-end: 1px solid var(--gggs-color-border);
+      font-size: var(--gggs-font-size-sm);
+    }
+
+    .fin__line {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto 5rem;
+      gap: var(--gggs-space-3);
+      align-items: center;
+    }
+
+    .fin__credited {
+      color: var(--gggs-color-text-muted);
+      text-decoration: line-through;
+    }
+
     .fin__grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
@@ -396,8 +556,23 @@ export class FinancialsTab {
 
   readonly projectId = input.required<string>();
 
+  protected readonly preparing = signal(false);
+  protected readonly crediting = signal(false);
+  protected readonly expanded = signal<string | null>(null);
+
   protected readonly categories = COST_CATEGORIES;
-  protected readonly nonLabour: readonly CostCategory[] = ['Vendor', 'Expense', 'Infrastructure', 'Other'];
+  protected readonly nonLabour: readonly CostCategory[] = ['Vendor', 'Expense', 'Infrastructure', 'AiUsage', 'Other'];
+  protected readonly notToExceed = signal<number | null>(null);
+  protected readonly poNumber = signal('');
+  protected readonly poValue = signal<number | null>(null);
+  protected readonly includedHours = signal<number | null>(null);
+  protected readonly rolloverPercent = signal(0);
+  protected readonly overageRate = signal<number | null>(null);
+  protected readonly unitName = signal('');
+  protected readonly unitPrice = signal<number | null>(null);
+  protected readonly targetUnits = signal<number | null>(null);
+  protected readonly optionalNumber = (value: string): number | null => (value === '' ? null : Number(value));
+  protected readonly costLabel = (category: CostCategory): string => (category === 'AiUsage' ? 'AI usage' : category);
   protected readonly humanize = humanize;
   protected readonly finance = signal<ProjectFinance | null>(null);
   protected readonly roles = signal<readonly ProjectRole[]>([]);
@@ -477,6 +652,15 @@ export class FinancialsTab {
   protected openTerms(finance: ProjectFinance): void {
     this.contractValue.set(finance.contractValueOverride ?? null);
     this.retainer.set(finance.retainerMonthlyFee ?? null);
+    this.notToExceed.set(finance.terms?.notToExceed ?? null);
+    this.poNumber.set(finance.terms?.poNumber ?? '');
+    this.poValue.set(finance.terms?.poValue ?? null);
+    this.includedHours.set(finance.terms?.includedHoursPerMonth ?? null);
+    this.rolloverPercent.set(finance.terms?.rolloverPercent ?? 0);
+    this.overageRate.set(finance.terms?.overageRate ?? null);
+    this.unitName.set(finance.terms?.unitName ?? '');
+    this.unitPrice.set(finance.terms?.unitPrice ?? null);
+    this.targetUnits.set(finance.terms?.targetUnits ?? null);
     this.milestoneAmounts.set(Object.fromEntries(finance.milestones.filter((milestone) => milestone.amount !== undefined).map((milestone) => [milestone.milestoneId, milestone.amount ?? 0])));
     this.show('terms');
   }
@@ -533,6 +717,19 @@ export class FinancialsTab {
     this.show('invoice');
   }
 
+  protected toggleLines(invoice: FinanceInvoice): void {
+    this.expanded.update((open) => (open === invoice.id ? null : invoice.id));
+  }
+
+  protected openCredit(invoice: FinanceInvoice): void {
+    this.target.set(invoice);
+    this.crediting.set(true);
+  }
+
+  protected async removeLine(invoice: FinanceInvoice, lineId: string): Promise<void> {
+    await this.act(() => this.api.removeInvoiceLine(this.projectId(), invoice.id, lineId));
+  }
+
   protected openPaid(invoice: FinanceInvoice): void {
     this.target.set(invoice);
     this.date.set(today());
@@ -568,7 +765,23 @@ export class FinancialsTab {
           );
           break;
         case 'terms':
-          this.finance.set(await this.api.saveProfile(id, { contractValue: this.contractValue(), retainerMonthlyFee: this.retainer(), milestoneAmounts: this.milestoneAmounts() }));
+          this.finance.set(await this.api.saveProfile(id, {
+              contractValue: this.contractValue(),
+              retainerMonthlyFee: this.retainer(),
+              milestoneAmounts: this.milestoneAmounts(),
+              terms: {
+                notToExceed: this.notToExceed(),
+                poNumber: this.poNumber() || null,
+                poValue: this.poValue(),
+                includedHoursPerMonth: this.includedHours(),
+                rolloverPercent: this.rolloverPercent(),
+                overageRate: this.overageRate(),
+                unitName: this.unitName().trim() || null,
+                unitPrice: this.unitPrice(),
+                targetUnits: this.targetUnits(),
+              },
+            }),
+          );
           break;
         case 'rate':
           await this.api.saveRate(id, null, {
@@ -639,7 +852,7 @@ export class FinancialsTab {
     }
   }
 
-  private async load(projectId: string): Promise<void> {
+  protected async load(projectId: string): Promise<void> {
     try {
       this.finance.set(await this.api.project(projectId));
       this.error.set(null);

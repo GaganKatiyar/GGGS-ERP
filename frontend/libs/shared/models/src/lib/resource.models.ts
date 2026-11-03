@@ -95,6 +95,9 @@ export type IssueLevel = 'Info' | 'Warning' | 'Error';
 
 export const HOUR_CATEGORIES: readonly HourCategory[] = ['Billable', 'NonBillable', 'Internal', 'Training', 'Bench', 'Leave'];
 
+/** What someone can choose when booking: leave is taken in the Leave module, not typed in as hours. */
+export const BOOKABLE_HOUR_CATEGORIES: readonly HourCategory[] = ['Billable', 'NonBillable', 'Internal', 'Training', 'Bench'];
+
 export interface TimesheetEntryItem {
   readonly id: string;
   readonly date: string;
@@ -114,12 +117,18 @@ export interface TimesheetDay {
   readonly holiday?: string;
   readonly leave?: string;
   readonly hours: number;
+  readonly leaveHours: number;
+  readonly holidayHours: number;
+  readonly attendanceStatus?: string;
+  readonly workedMinutes?: number;
 }
 
 export interface TimesheetTask {
   readonly taskId: string;
   readonly code: string;
   readonly title: string;
+  /** The epic or story it sits under, which the grid groups by. */
+  readonly activity?: string;
 }
 
 export interface TimesheetTarget {
@@ -128,6 +137,53 @@ export interface TimesheetTarget {
   readonly projectName: string;
   readonly billable: boolean;
   readonly tasks: readonly TimesheetTask[];
+  /** The person's department default project, rather than one they are allocated to. */
+  readonly isDefault?: boolean;
+}
+
+export type TimesheetApprovalStatus = 'Submitted' | 'Approved' | 'Rejected' | 'Returned';
+
+/** One approver's share of a week. No project means default-project and other non-project hours. */
+export interface TimesheetApproval {
+  readonly id: string;
+  readonly projectId?: string;
+  readonly projectCode?: string;
+  readonly projectName?: string;
+  readonly ownerEmployeeId?: string;
+  readonly ownerName?: string;
+  readonly status: TimesheetApprovalStatus;
+  readonly hours: number;
+  readonly billableHours: number;
+  readonly workflowInstanceId?: string;
+  readonly decidedDate?: string;
+}
+
+/** A share of someone's week, as its approver sees it. */
+export interface TimesheetApprovalRow {
+  readonly id: string;
+  readonly timesheetId: string;
+  readonly employeeId: string;
+  readonly employeeName?: string;
+  readonly employeeCode?: string;
+  readonly weekStart: string;
+  readonly projectId?: string;
+  readonly projectCode?: string;
+  readonly projectName?: string;
+  readonly ownerName?: string;
+  readonly status: TimesheetApprovalStatus;
+  readonly hours: number;
+  readonly billableHours: number;
+  readonly submittedDate: string;
+  readonly workflowInstanceId?: string;
+}
+
+export interface ProjectHoursRow {
+  readonly employeeId: string;
+  readonly employeeName?: string;
+  readonly taskId?: string;
+  readonly category: HourCategory;
+  readonly hours: number;
+  readonly approvedHours: number;
 }
 
 export interface TimesheetIssue {
@@ -147,6 +203,7 @@ export interface TimesheetRules {
   readonly allowHolidayEntries: boolean;
   readonly submissionDeadlineDays: number;
   readonly lockedThrough?: string;
+  readonly requireFromEveryone: boolean;
 }
 
 export interface TimesheetHeader {
@@ -177,6 +234,7 @@ export interface TimesheetView {
   readonly byCategory: Readonly<Record<string, number>>;
   readonly overtimeHours: number;
   readonly rules: TimesheetRules;
+  readonly approvals: readonly TimesheetApproval[];
 }
 
 export interface TimesheetEntryInput {
@@ -187,6 +245,29 @@ export interface TimesheetEntryInput {
   readonly hours: number;
   readonly activity?: string | null;
   readonly description?: string | null;
+}
+
+/** One project's share of a week in the bank; no project means time booked to none. */
+export interface TimesheetBankProject {
+  readonly projectId?: string;
+  readonly projectCode?: string;
+  readonly projectName?: string;
+  readonly hours: number;
+  readonly billableHours: number;
+  readonly approverName?: string;
+  readonly status?: TimesheetApprovalStatus;
+}
+
+export interface TimesheetBankWeek {
+  readonly id: string;
+  readonly weekStart: string;
+  readonly weekEnd: string;
+  readonly status: TimesheetStatus;
+  readonly workingHours: number;
+  readonly leaveHours: number;
+  readonly holidayHours: number;
+  readonly isLate: boolean;
+  readonly projects: readonly TimesheetBankProject[];
 }
 
 export interface TimesheetRow {

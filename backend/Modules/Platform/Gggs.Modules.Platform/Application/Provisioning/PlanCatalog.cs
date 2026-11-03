@@ -12,7 +12,7 @@ public sealed record PlanDefinition(
     IReadOnlyList<string> Features);
 
 /// <summary>
-/// The plans PeopleOS is sold as, in code so the commercial packaging is reviewable in a diff.
+/// The plans Nuts and Bolts is sold as, in code so the commercial packaging is reviewable in a diff.
 /// <para>
 /// Seeded into <c>platform.Plan</c> at startup and kept in step: a feature added to a plan here
 /// reaches every tenant on that plan, because a subscription's features are resolved from its plan
@@ -27,12 +27,12 @@ public static class PlanCatalog
 
     public static IReadOnlyList<PlanDefinition> Definitions { get; } =
     [
-        new(Core, "PeopleOS Core", PlanEdition.Core, MaxEmployees: 250,
+        new(Core, "Nuts and Bolts Core", PlanEdition.Core, MaxEmployees: 250,
         [
             Features.CoreHr, Features.Time, Features.Documents, Features.Assets, Features.Helpdesk,
         ]),
 
-        new(Professional, "PeopleOS Professional", PlanEdition.Professional, MaxEmployees: 2500,
+        new(Professional, "Nuts and Bolts Professional", PlanEdition.Professional, MaxEmployees: 2500,
         [
             Features.CoreHr, Features.Time, Features.Documents, Features.Assets, Features.Helpdesk,
             Features.Recruitment, Features.Onboarding, Features.Payroll, Features.Expenses,
@@ -42,6 +42,6 @@ public static class PlanCatalog
         ]),
 
         // Everything, including the delivery financials, workforce planning, analytics and AI.
-        new(Enterprise, "PeopleOS Enterprise", PlanEdition.Enterprise, MaxEmployees: null, Features.All),
+        new(Enterprise, "Nuts and Bolts Enterprise", PlanEdition.Enterprise, MaxEmployees: null, Features.All),
     ];
 }

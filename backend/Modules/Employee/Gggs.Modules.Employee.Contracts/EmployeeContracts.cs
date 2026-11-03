@@ -24,7 +24,8 @@ public sealed record EmployeeSummary(
     string? WorkModeCode = null,
     Guid? GradeId = null,
     DateOnly? ExitDate = null,
-    string? ExitReasonCode = null);
+    string? ExitReasonCode = null,
+    string? GenderCode = null);
 
 /// <summary>
 /// The employee directory other modules read (ADR-12). It replaces the five replicated employee
@@ -38,6 +39,12 @@ public interface IEmployeeDirectory
 
     /// <summary>Whether the id is an employee of the current tenant who has not exited.</summary>
     Task<bool> IsActiveAsync(Guid employeeId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Current employees who manage at least one current employee - the people a "Manager" role
+    /// follows when it is assigned automatically.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> PeopleManagersAsync(CancellationToken cancellationToken = default);
 
     /// <summary>How many active employees currently hold each position - a position's occupancy.</summary>
     Task<IReadOnlyDictionary<Guid, int>> CountByPositionAsync(IEnumerable<Guid> positionIds, CancellationToken cancellationToken = default);
@@ -69,6 +76,12 @@ public interface IEmployeeDirectory
 
     /// <summary>Ids for employee codes (case-insensitive), for imports that name people by code. Unknown codes are left out.</summary>
     Task<IReadOnlyDictionary<string, Guid>> ResolveCodesAsync(IEnumerable<string> employeeCodes, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The departments the employee sat in at any point in the window, from their employment history,
+    /// so a past week is judged by where they were then. Empty when the history holds nothing for it.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> DepartmentsDuringAsync(Guid employeeId, DateOnly firstDay, DateOnly lastDay, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -138,6 +151,18 @@ public interface IEmployeePromotions
 /// <summary>How to reach someone outside work.</summary>
 public sealed record PersonalContact(string? PersonalEmail, string? MobilePhone);
 
+/// <summary>What an outside directory needs to make someone's account, and where to send its first sign-in details.</summary>
+public sealed record AccountHolder(Guid EmployeeId, string EmployeeCode, string FirstName, string? LastName, string DisplayName, string? OfficialEmail, string? PersonalEmail);
+
+/// <summary>For making accounts in outside directories (Studio).</summary>
+public interface IEmployeeAccounts
+{
+    Task<AccountHolder?> GetAsync(Guid employeeId, CancellationToken cancellationToken = default);
+
+    /// <summary>Records the new account's address as the work email, unless they have one or someone else holds this one. Says whether it did.</summary>
+    Task<bool> SetOfficialEmailIfEmptyAsync(Guid employeeId, string email, CancellationToken cancellationToken = default);
+}
+
 /// <summary>An exit that falls due on its own: superannuation or the end of a fixed-term contract.</summary>
 public sealed record UpcomingExit(Guid EmployeeId, UpcomingExitKind Kind, DateOnly Date);
 
@@ -166,7 +191,7 @@ public interface IEmployeeSeparations
     /// </summary>
     Task<IReadOnlyList<UpcomingExit>> UpcomingExitsAsync(int retirementAge, DateOnly until, CancellationToken cancellationToken = default);
 
-    /// <summary>Personal email and mobile, kept with the alumni record to recognise a former employee who applies again.</summary>
+    /// <summary>Personal email and mobile: kept with the alumni record to recognise a former employee who applies again, and used to reach people by text message.</summary>
     Task<IReadOnlyDictionary<Guid, PersonalContact>> PersonalContactsAsync(IEnumerable<Guid> employeeIds, CancellationToken cancellationToken = default);
 
     /// <summary>Moves an employee to a new manager (a leaver's handover), as a manager-change assignment.</summary>

@@ -10,7 +10,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   selector: 'gggs-page-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <header class="page-header">
+    <header class="page-header rise-in">
       <div class="page-header__text">
         <h1 class="page-header__title">{{ title() }}</h1>
         @if (subtitle()) {
@@ -43,7 +43,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
       color: var(--gggs-color-text);
       font-size: var(--gggs-font-size-xl);
       font-weight: var(--gggs-font-weight-semibold);
-      letter-spacing: -0.015em;
+      letter-spacing: -0.02em;
       line-height: var(--gggs-line-height-tight);
     }
 

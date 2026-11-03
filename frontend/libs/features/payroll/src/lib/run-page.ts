@@ -5,7 +5,7 @@ import { PermissionStore } from '@gggs/core/permissions';
 import type { ItemStatus, PayLine, RunDetail, RunItemDetail, RunItemRow } from '@gggs/shared/models';
 import { humanize } from '@gggs/shared/models';
 import { MoneyPipe, PayrollApi, type PayrollReport } from '@gggs/shared/money';
-import { Drawer, EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
+import { Drawer, EmptyState, FormDialog, KpiCard, localIsoDate, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
 import { message } from './payroll-shared';
 
 /**
@@ -59,7 +59,7 @@ import { message } from './payroll-shared';
         }
       </section>
 
-      <div class="pay__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="People paid" [value]="d.run.employeeCount" [hint]="d.held ? d.held + ' on hold' : undefined" icon="pi pi-users" />
         <gggs-kpi-card label="Gross" [value]="d.run.gross | gggsMoney: d.run.currency" />
         <gggs-kpi-card label="Deductions" [value]="d.run.deductions | gggsMoney: d.run.currency" />
@@ -259,7 +259,7 @@ export class PayrollRunPage {
   protected readonly holdOpen = signal(false);
   protected readonly paidOpen = signal(false);
   protected readonly reason = signal('');
-  protected readonly paidOn = signal(new Date().toISOString().slice(0, 10));
+  protected readonly paidOn = signal(localIsoDate());
   protected readonly paidReference = signal('');
   protected readonly busy = signal(false);
   protected readonly notice = signal<string | null>(null);

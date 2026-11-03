@@ -1,8 +1,23 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type {
   BoardView,
+  BulkTaskInput,
+  CodeLinkSetup,
   BurndownPoint,
+  GanttView,
+  ProjectWorkload,
+  SavedTaskView,
+  TaskConversationView,
+  TaskImportPreview,
+  TaskViewFilters,
+  ServiceLevelRow,
+  ServiceLevelView,
+  SlaPolicy,
+  DefaultProjectRow,
+  ProjectBaseline,
+  ProjectTemplate,
+  ProjectTemplateInput,
   CalendarEvent,
   ChangeRequest,
   ChangeRequestInput,
@@ -53,6 +68,7 @@ import type {
   SprintStatus,
   TaskInput,
   TaskType,
+  WorkPriority,
   TeamMember,
   TeamMemberInput,
   BoardColumn,
@@ -174,6 +190,9 @@ export interface ProjectQuery {
 export interface TaskQuery {
   readonly type?: TaskType | '';
   readonly assigneeEmployeeId?: string | null;
+  readonly unassigned?: boolean;
+  readonly priority?: WorkPriority | '';
+  readonly overdue?: boolean;
   readonly sprintId?: string | null;
   readonly backlog?: boolean;
   readonly milestoneId?: string | null;
@@ -191,6 +210,108 @@ export interface TaskQuery {
 export class ProjectsApi {
   private readonly http = inject(HttpClient);
   private readonly base = '/api/v1/projects';
+
+  codeLinkSetup(): Promise<readonly CodeLinkSetup[]> {
+    return firstValueFrom(this.http.get<readonly CodeLinkSetup[]>(`${this.base}/code-links/setup`));
+  }
+
+  // The talk around a task
+  taskConversation(id: string, taskId: string): Promise<TaskConversationView> {
+    return firstValueFrom(this.http.get<TaskConversationView>(`${this.base}/${id}/tasks/${taskId}/conversation`));
+  }
+
+  addTaskComment(id: string, taskId: string, body: string, mentionedEmployeeIds: readonly string[]): Promise<TaskConversationView> {
+    return firstValueFrom(this.http.post<TaskConversationView>(`${this.base}/${id}/tasks/${taskId}/comments`, { body, mentionedEmployeeIds }));
+  }
+
+  editTaskComment(id: string, taskId: string, commentId: string, body: string): Promise<TaskConversationView> {
+    return firstValueFrom(this.http.put<TaskConversationView>(`${this.base}/${id}/tasks/${taskId}/comments/${commentId}`, { body }));
+  }
+
+  deleteTaskComment(id: string, taskId: string, commentId: string): Promise<TaskConversationView> {
+    return firstValueFrom(this.http.delete<TaskConversationView>(`${this.base}/${id}/tasks/${taskId}/comments/${commentId}`));
+  }
+
+  watchTask(id: string, taskId: string, on: boolean): Promise<TaskConversationView> {
+    const url = `${this.base}/${id}/tasks/${taskId}/watch`;
+    return firstValueFrom(on ? this.http.post<TaskConversationView>(url, {}) : this.http.delete<TaskConversationView>(url));
+  }
+
+  // Working on many tasks
+  bulkUpdateTasks(id: string, body: BulkTaskInput): Promise<{ readonly updated: number }> {
+    return firstValueFrom(this.http.post<{ readonly updated: number }>(`${this.base}/${id}/tasks/bulk`, body));
+  }
+
+  previewTaskImport(id: string, csv: string): Promise<TaskImportPreview> {
+    return firstValueFrom(this.http.post<TaskImportPreview>(`${this.base}/${id}/tasks/import/preview`, { csv }));
+  }
+
+  importTasks(id: string, csv: string): Promise<{ readonly created: number }> {
+    return firstValueFrom(this.http.post<{ readonly created: number }>(`${this.base}/${id}/tasks/import`, { csv }));
+  }
+
+  taskViews(id: string): Promise<readonly SavedTaskView[]> {
+    return firstValueFrom(this.http.get<readonly SavedTaskView[]>(`${this.base}/${id}/task-views`));
+  }
+
+  saveTaskView(id: string, name: string, filters: TaskViewFilters, shared: boolean): Promise<readonly SavedTaskView[]> {
+    return firstValueFrom(this.http.post<readonly SavedTaskView[]>(`${this.base}/${id}/task-views`, { name, filters, shared }));
+  }
+
+  deleteTaskView(id: string, viewId: string): Promise<readonly SavedTaskView[]> {
+    return firstValueFrom(this.http.delete<readonly SavedTaskView[]>(`${this.base}/${id}/task-views/${viewId}`));
+  }
+
+  // Seeing the project over time and by person
+  gantt(id: string): Promise<GanttView> {
+    return firstValueFrom(this.http.get<GanttView>(`${this.base}/${id}/gantt`));
+  }
+
+  scheduleTask(id: string, taskId: string, startDate: string | null, dueDate: string | null): Promise<ProjectTask> {
+    return firstValueFrom(this.http.post<ProjectTask>(`${this.base}/${id}/tasks/${taskId}/schedule`, { startDate, dueDate }));
+  }
+
+  workload(id: string): Promise<ProjectWorkload> {
+    return firstValueFrom(this.http.get<ProjectWorkload>(`${this.base}/${id}/workload`));
+  }
+
+  // Service levels
+  serviceLevels(id: string, month: string): Promise<ServiceLevelView> {
+    return firstValueFrom(this.http.get<ServiceLevelView>(`${this.base}/${id}/service-levels`, { params: { month } }));
+  }
+
+  saveSlaPolicy(id: string, policy: SlaPolicy): Promise<ServiceLevelView> {
+    return firstValueFrom(this.http.put<ServiceLevelView>(`${this.base}/${id}/service-levels/policy`, policy));
+  }
+
+  respondToTicket(id: string, taskId: string): Promise<ServiceLevelView> {
+    return firstValueFrom(this.http.post<ServiceLevelView>(`${this.base}/${id}/tickets/${taskId}/respond`, {}));
+  }
+
+  excludeTicketBreach(id: string, taskId: string, reason: string): Promise<ServiceLevelView> {
+    return firstValueFrom(this.http.post<ServiceLevelView>(`${this.base}/${id}/tickets/${taskId}/exclude`, { reason }));
+  }
+
+  reinstateTicketBreach(id: string, taskId: string): Promise<ServiceLevelView> {
+    return firstValueFrom(this.http.post<ServiceLevelView>(`${this.base}/${id}/tickets/${taskId}/reinstate`, {}));
+  }
+
+  serviceLevelReport(month: string, clientId: string | null): Promise<readonly ServiceLevelRow[]> {
+    return firstValueFrom(this.http.get<readonly ServiceLevelRow[]>(`${this.base}/service-levels`, { params: params({ month, clientId }) }));
+  }
+
+  /** Saves the month's report as a spreadsheet. Fetched through HttpClient so the session cookie goes with it. */
+  async exportServiceLevels(month: string, clientId: string | null): Promise<void> {
+    const response: HttpResponse<Blob> = await firstValueFrom(
+      this.http.get(`${this.base}/service-levels/export`, { params: params({ month, clientId }), observe: 'response', responseType: 'blob' }),
+    );
+    const href = URL.createObjectURL(response.body ?? new Blob());
+    const link = document.createElement('a');
+    link.href = href;
+    link.download = `service-levels-${month.slice(0, 7)}.csv`;
+    link.click();
+    URL.revokeObjectURL(href);
+  }
 
   // Projects
   list(query: ProjectQuery = {}): Promise<PagedResult<ProjectItem>> {
@@ -346,6 +467,22 @@ export class ProjectsApi {
     return firstValueFrom(milestoneId ? this.http.put<Milestone>(`${this.base}/${id}/milestones/${milestoneId}`, body) : this.http.post<Milestone>(`${this.base}/${id}/milestones`, body));
   }
 
+  acceptMilestone(id: string, milestoneId: string, body: { on?: string | null; acceptedBy: string; evidence?: string | null }): Promise<Milestone> {
+    return firstValueFrom(this.http.post<Milestone>(`${this.base}/${id}/milestones/${milestoneId}/accept`, body));
+  }
+
+  captureBaseline(id: string): Promise<ProjectBaseline> {
+    return firstValueFrom(this.http.post<ProjectBaseline>(`${this.base}/${id}/baseline`, {}));
+  }
+
+  templates(): Promise<readonly ProjectTemplate[]> {
+    return firstValueFrom(this.http.get<readonly ProjectTemplate[]>(`${this.base}/templates`));
+  }
+
+  saveTemplate(id: string, body: ProjectTemplateInput): Promise<ProjectTemplate> {
+    return firstValueFrom(this.http.put<ProjectTemplate>(`${this.base}/templates/${id}`, body));
+  }
+
   achieveMilestone(id: string, milestoneId: string, on: string | null): Promise<Milestone> {
     return firstValueFrom(this.http.post<Milestone>(`${this.base}/${id}/milestones/${milestoneId}/achieve`, { on }));
   }
@@ -462,6 +599,14 @@ export class ProjectsApi {
 
   async setRoleActive(id: string, active: boolean): Promise<void> {
     await firstValueFrom(this.http.post(`${this.base}/roles/${id}/${active ? 'activate' : 'deactivate'}`, {}));
+  }
+
+  defaultProjects(): Promise<readonly DefaultProjectRow[]> {
+    return firstValueFrom(this.http.get<readonly DefaultProjectRow[]>(`${this.base}/default-projects`));
+  }
+
+  ensureDefaultProjects(): Promise<readonly DefaultProjectRow[]> {
+    return firstValueFrom(this.http.post<readonly DefaultProjectRow[]>(`${this.base}/default-projects/ensure`, {}));
   }
 
   thresholds(): Promise<ProjectHealthThresholds> {

@@ -25,10 +25,6 @@ export interface PasswordSignInResult {
   readonly errorCode?: string;
   readonly mustChangePassword?: boolean;
   readonly lockoutEndDate?: string;
-  /** With `MFA_REQUIRED`: the token for the second step, posted back with the authenticator code. */
-  readonly mfaChallenge?: string;
-  /** Signed in, but the organisation requires an authenticator app that is not set up yet. */
-  readonly mfaEnrollmentRequired?: boolean;
 }
 
 /** A "Sign in with …" button the organisation has configured. */
@@ -117,19 +113,6 @@ export class SessionStore {
     return result;
   }
 
-  /** The second step of sign-in: a code from the authenticator app, or a recovery code. */
-  async completeMfa(challenge: string, code: string): Promise<PasswordSignInResult> {
-    const result = await firstValueFrom(
-      this.http.post<PasswordSignInResult>('/bff/login/mfa', { challenge, code }),
-    );
-
-    if (result.succeeded) {
-      await this.load();
-    }
-
-    return result;
-  }
-
   /** The single sign-on providers an organisation offers; none for an unknown code. */
   singleSignOnOptions(tenantCode: string): Promise<readonly SsoOption[]> {
     return firstValueFrom(
@@ -146,9 +129,9 @@ export class SessionStore {
     window.location.href = `/bff/sso/start?${query.toString()}`;
   }
 
-  /** Confirms it is still the same person before a sensitive action: an authenticator code or the password. */
-  async stepUp(proof: { readonly code?: string; readonly password?: string }): Promise<void> {
-    await firstValueFrom(this.http.post<void>('/bff/step-up', proof));
+  /** Confirms it is still the same person before a sensitive action, with their password. */
+  async stepUp(password: string): Promise<void> {
+    await firstValueFrom(this.http.post<void>('/bff/step-up', { password }));
   }
 
   /**

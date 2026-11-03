@@ -91,26 +91,22 @@ import type { TenantSettingItem } from '@gggs/shared/models';
     .panel {
       display: flex;
       flex-direction: column;
-      gap: 1rem;
-      padding: 1rem;
-      margin-block-end: 1rem;
+      gap: var(--gggs-space-4);
+      margin-block-end: var(--gggs-space-4);
       max-width: 32rem;
-      border: 1px solid var(--gggs-color-border);
-      border-radius: 0.5rem;
-      background: var(--gggs-color-surface-raised);
     }
 
     .panel__grid {
       display: grid;
-      gap: 0.75rem;
+      gap: var(--gggs-space-3);
       grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
     }
 
     .field {
       display: flex;
       flex-direction: column;
-      gap: 0.25rem;
-      font-size: 0.875rem;
+      gap: var(--gggs-space-1);
+      font-size: var(--gggs-font-size-base);
     }
 
     .field__label {
@@ -119,41 +115,20 @@ import type { TenantSettingItem } from '@gggs/shared/models';
 
     textarea {
       font-family: ui-monospace, monospace;
-      font-size: 0.8125rem;
+      font-size: var(--gggs-font-size-sm);
     }
 
     .field__error {
       margin: 0;
       color: var(--gggs-color-danger);
-      font-size: 0.875rem;
+      font-size: var(--gggs-font-size-base);
     }
 
 
 
     .list-table code {
-      font-size: 0.8125rem;
+      font-size: var(--gggs-font-size-sm);
       word-break: break-all;
-    }
-
-    .btn {
-      align-self: flex-start;
-      padding: 0.5rem 1rem;
-      font-weight: 600;
-      font-family: inherit;
-      font-size: inherit;
-      border-radius: 0.375rem;
-      border: 1px solid transparent;
-      cursor: pointer;
-    }
-
-    .btn--primary {
-      background: var(--gggs-color-primary);
-      color: var(--gggs-color-primary-contrast);
-    }
-
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
     }
   `,
 })

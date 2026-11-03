@@ -44,6 +44,23 @@ internal sealed class TimesheetsModel : IModuleModel
             entity.Ignore(entry => entry.DomainEvents);
         });
 
+        modelBuilder.Entity<TimesheetApproval>(entity =>
+        {
+            entity.ToTable("TimesheetApproval", Schema);
+            entity.Property(approval => approval.Status).HasConversion<byte>();
+            entity.Property(approval => approval.Hours).HasPrecision(6, 2);
+            entity.Property(approval => approval.BillableHours).HasPrecision(6, 2);
+            entity.HasOne<Timesheet>().WithMany().HasForeignKey(approval => approval.TimesheetId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(approval => new { approval.TenantId, approval.TimesheetId, approval.ProjectId })
+                .HasDatabaseName("UX_TimesheetApproval_TenantId_Timesheet_Project")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.HasIndex(approval => new { approval.TenantId, approval.OwnerEmployeeId, approval.Status }).HasDatabaseName("IX_TimesheetApproval_TenantId_Owner_Status");
+            entity.HasIndex(approval => new { approval.TenantId, approval.ProjectId, approval.Status }).HasDatabaseName("IX_TimesheetApproval_TenantId_Project_Status");
+            entity.Ignore(approval => approval.IsLocked);
+            entity.Ignore(approval => approval.DomainEvents);
+        });
+
         modelBuilder.Entity<TimesheetSettings>(entity =>
         {
             entity.ToTable("TimesheetSettings", Schema);
@@ -67,6 +84,8 @@ internal static class TimesheetsData
         public DbSet<Timesheet> Timesheets => db.Set<Timesheet>();
 
         public DbSet<TimesheetEntry> TimesheetEntries => db.Set<TimesheetEntry>();
+
+        public DbSet<TimesheetApproval> TimesheetApprovals => db.Set<TimesheetApproval>();
 
         public DbSet<TimesheetSettings> TimesheetSettings => db.Set<TimesheetSettings>();
     }

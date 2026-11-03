@@ -20,7 +20,7 @@ using Testcontainers.MsSql;
 namespace Gggs.TenantIsolation.Tests;
 
 /// <summary>
-/// A real SQL Server holding the real PeopleOS schema, for the isolation suite. Row-level security,
+/// A real SQL Server holding the real Nuts and Bolts schema, for the isolation suite. Row-level security,
 /// session context, block predicates and filtered indexes have no in-memory equivalent, so testing
 /// them against a fake would prove nothing about production.
 /// <para>

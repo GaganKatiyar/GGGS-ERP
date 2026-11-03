@@ -26,30 +26,49 @@ public sealed class ProjectModule : IModule
         services.AddScoped<ICalendarSource, ProjectCalendar>();
         services.AddScoped<ProjectAccess>();
         services.AddScoped<ProjectService>();
+        services.AddScoped<ServiceLevelService>();
+        services.AddScoped<TaskActivityLog>();
+        services.AddScoped<TaskCollaborationService>();
+        services.AddScoped<TaskViewsService>();
+        services.AddScoped<CodeLinkService>();
+        services.AddScoped<GovernanceProjectLookup>();
+        services.AddScoped<IIntegrationAdapter, GitHubAdapter>();
+        services.AddScoped<IIntegrationAdapter, AzureDevOpsAdapter>();
+        services.AddScoped<IAiTool, ProjectWeekTool>();
+        services.AddScoped<IAiTool, ProjectRiskSignalsTool>();
+        services.AddScoped<IAiTool, DraftTaskBreakdownTool>();
+        services.AddScoped<IAiTool, RaiseProjectRiskTool>();
         services.AddScoped<TaskService>();
         services.AddScoped<PlanningService>();
         services.AddScoped<GovernanceService>();
         services.AddScoped<InsightService>();
+        services.AddScoped<DefaultProjectService>();
+        services.AddScoped<ProjectTemplateService>();
         services.AddScoped<ProjectCatalogSeeder>();
         services.AddScoped<IProjectDirectory, ProjectDirectory>();
         services.AddScoped<IProjectStaffing, ProjectStaffing>();
         services.AddScoped<IProjectTasks, ProjectTasks>();
         services.AddScoped<IProjectPermissions, ProjectPermissions>();
         services.AddScoped<IDocumentOwnerAccess, ProjectDocumentAccess>();
+        services.AddScoped<IDocumentOwnerAccess, ProjectTaskDocumentAccess>();
         services.AddWorkflowSubject(GovernanceService.ChangeRequestSubject);
     }
 
     public void AddBackgroundServices(IServiceCollection services, ModuleContext context)
     {
+        services.AddScoped<ProjectSlaSweep>();
+        services.AddScoped<ProjectSlaJob>();
         services.AddScoped<ProjectHealthSweep>();
         services.AddScoped<ProjectHealthJob>();
+        services.AddScoped<DefaultProjectSweep>();
+        services.AddScoped<DefaultProjectJob>();
         services.AddHostedService<ProjectJobRegistration>();
         services.AddGggsEventConsumer<TenantProvisionedIntegrationEvent, SeedProjectCatalogOnTenantProvisioned>();
         services.AddGggsEventConsumer<EmployeeExitedIntegrationEvent, ReleaseFromProjectsOnExit>();
         services.AddGggsEventConsumer<WorkflowApprovedIntegrationEvent, ApproveChangeOnApproval>();
         services.AddGggsEventConsumer<WorkflowRejectedIntegrationEvent, RejectChangeOnRejection>();
         services.AddGggsEventConsumer<WorkflowSentBackIntegrationEvent, ReturnChangeOnSendBack>();
-        services.AddGggsEventConsumer<TimesheetApprovedIntegrationEvent, AddHoursOnTimesheetApproval>();
+        services.AddGggsEventConsumer<TimesheetHoursApprovedIntegrationEvent, AddHoursOnTimesheetApproval>();
         services.AddGggsEventConsumer<TimesheetReopenedIntegrationEvent, RemoveHoursOnTimesheetReopened>();
     }
 

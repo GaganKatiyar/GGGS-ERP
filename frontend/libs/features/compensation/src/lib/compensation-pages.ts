@@ -8,10 +8,10 @@ import type { AwardItem, AwardStatus, AwardType, BandItem, CycleItem, GrantItem,
 import { AWARD_TYPES, REVISION_TYPES, humanize } from '@gggs/shared/models';
 import { CompensationApi, MoneyPipe, TotalRewardsView } from '@gggs/shared/money';
 import { OrgStructureApi } from '@gggs/shared/org-reference';
-import { Drawer, EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
+import { Drawer, EmptyState, FormDialog, localIsoDate, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => localIsoDate();
 
 /** Salary bands (spec §23): minimum, midpoint and maximum by grade, with who sits where. */
 @Component({

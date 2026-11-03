@@ -16,6 +16,7 @@ import type {
 } from '@gggs/shared/models';
 import { DEPENDENCY_LABELS, TASK_TYPES, humanize } from '@gggs/shared/models';
 import { FormDialog } from '@gggs/shared/ui';
+import { TaskConversation } from './task-conversation';
 
 type Draft = { -readonly [K in keyof TaskInput]: TaskInput[K] };
 
@@ -38,6 +39,7 @@ const blank = (type: TaskType): Draft => ({
   storyPoints: null,
   progress: 0,
   billable: true,
+  openToTeam: false,
 });
 
 /**
@@ -46,7 +48,7 @@ const blank = (type: TaskType): Draft => ({
  */
 @Component({
   selector: 'gggs-task-editor',
-  imports: [FormDialog],
+  imports: [FormDialog, TaskConversation],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <gggs-form-dialog [(visible)]="visible" [title]="task() ? task()?.code + ' · ' + task()?.title : 'New ' + describe(draft().type)" size="lg" [busy]="busy()" [error]="error()" [saveDisabled]="readOnly()" (save)="save()">
@@ -156,6 +158,9 @@ const blank = (type: TaskType): Draft => ({
         <label class="field">
           <span><input type="checkbox" [checked]="draft().billable ?? true" [disabled]="readOnly()" (change)="patch('billable', $any($event.target).checked)" /> Billable</span>
         </label>
+        <label class="field">
+          <span><input type="checkbox" [checked]="draft().openToTeam ?? false" [disabled]="readOnly()" (change)="patch('openToTeam', $any($event.target).checked)" /> Anyone on the project can book time to this</span>
+        </label>
       </div>
 
       @if (task(); as current) {
@@ -191,6 +196,7 @@ const blank = (type: TaskType): Draft => ({
             </div>
           }
         </section>
+        <gggs-task-conversation [projectId]="projectId()" [taskId]="current.id" />
       }
     </gggs-form-dialog>
   `,
@@ -268,7 +274,7 @@ export class TaskEditor {
   protected readonly parents = computed(() => {
     const type = this.draft().type;
     const allowed: readonly TaskType[] =
-      type === 'Epic' ? [] : type === 'Story' ? ['Epic'] : type === 'Subtask' ? ['Story', 'Task', 'Bug', 'ChangeRequest'] : ['Epic', 'Story'];
+      type === 'Epic' ? [] : type === 'Story' ? ['Epic'] : type === 'Subtask' ? ['Story', 'Task', 'Bug', 'ChangeRequest', 'Incident', 'ServiceRequest', 'Experiment'] : ['Epic', 'Story'];
     return this.candidates().filter((candidate) => allowed.includes(candidate.type) && candidate.id !== this.task()?.id);
   });
 
@@ -304,6 +310,7 @@ export class TaskEditor {
               storyPoints: task.storyPoints ?? null,
               progress: task.progress,
               billable: task.billable,
+              openToTeam: task.openToTeam,
             }
           : { ...blank('Task'), ...this.defaults() },
       );

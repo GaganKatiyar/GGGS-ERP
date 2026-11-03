@@ -20,6 +20,19 @@ export interface WorkShift {
   readonly weeklyOff: readonly Weekday[];
   readonly isDefault: boolean;
   readonly isActive: boolean;
+  /** Current employees working it today: its own assignees, plus everyone unassigned on the default. */
+  readonly people: number;
+}
+
+/** "From this date (until that date) this person works that shift." */
+export interface ShiftAssignment {
+  readonly id: string;
+  readonly employeeId: string;
+  readonly employeeName?: string;
+  readonly shiftId: string;
+  readonly shiftName: string;
+  readonly effectiveFrom: string;
+  readonly effectiveTo?: string;
 }
 
 export interface WorkShiftInput {
@@ -158,25 +171,132 @@ export interface LeaveType {
   readonly isActive: boolean;
 }
 
-export type AccrualFrequency = 'None' | 'Monthly' | 'Yearly';
+export type AccrualFrequency = 'None' | 'Monthly' | 'Quarterly' | 'HalfYearly' | 'Yearly';
 
-export interface LeavePolicy {
-  readonly id: string;
-  readonly leaveTypeId: string;
-  readonly leaveTypeName: string;
-  readonly employmentTypeCode?: string;
+/** When an accrual period's days are credited: on its first day, or once it has ended. */
+export type CreditTiming = 'StartOfPeriod' | 'EndOfPeriod';
+
+/** The rules one leave type follows inside a leave policy. Empty optional limits mean "no limit". */
+export interface LeavePlanRules {
   readonly annualEntitlement: number;
   readonly accrual: AccrualFrequency;
+  /** Days kept into the next leave year; empty keeps everything. */
   readonly carryForwardLimit?: number;
-  readonly allowDuringProbation: boolean;
   readonly maxNegativeBalance: number;
-  readonly maxConsecutiveDays?: number;
-  readonly minNoticeDays: number;
   readonly countSandwichedDays: boolean;
-  readonly isActive: boolean;
+  /** Gender lookup codes; empty means everyone. */
+  readonly eligibleGenderCodes: readonly string[];
+  readonly minServiceMonths: number;
+  readonly allowDuringProbation: boolean;
+  readonly allowDuringNotice: boolean;
+  readonly minDaysPerRequest?: number;
+  readonly maxConsecutiveDays?: number;
+  readonly maxRequestsPerYear?: number;
+  readonly minNoticeDays: number;
+  readonly maxBackdatedDays?: number;
+  readonly maxAdvanceDays?: number;
+  /** A request longer than this waits for a supporting document. */
+  readonly documentRequiredAboveDays?: number;
+  readonly creditTiming: CreditTiming;
+  readonly joiningCutoffDay: number;
+  readonly prorateOnJoining: boolean;
+  readonly carryForwardExpiryMonths?: number;
+  readonly encashAtYearEnd: boolean;
+  readonly maxEncashDays?: number;
+  /** Days granted each time the leave is taken (maternity), instead of a balance. */
+  readonly grantPerOccurrence?: number;
+  readonly maxOccurrencesInEmployment?: number;
 }
 
-export type LeavePolicyInput = Omit<LeavePolicy, 'id' | 'leaveTypeName' | 'isActive'>;
+export interface LeavePlanRuleItem extends LeavePlanRules {
+  readonly leaveTypeId: string;
+  readonly leaveTypeCode: string;
+  readonly leaveTypeName: string;
+  readonly color: string;
+  readonly isPaid: boolean;
+  readonly allowHalfDay: boolean;
+}
+
+export interface LeavePlanItemInput extends LeavePlanRules {
+  readonly leaveTypeId: string;
+}
+
+/** A named leave policy, as the list shows it. */
+export interface LeavePlanSummary {
+  readonly id: string;
+  readonly code: string;
+  readonly name: string;
+  readonly description?: string;
+  /** 1 = January ... 12 = December. */
+  readonly leaveYearStartMonth: number;
+  /** "Jan-Dec", "Apr-Mar". */
+  readonly leaveYear: string;
+  readonly isActive: boolean;
+  readonly leaveTypeCount: number;
+  /** Engagement-type codes this policy is assigned to. */
+  readonly assignedTo: readonly string[];
+  readonly exceptionCount: number;
+}
+
+export interface LeavePlanDetail {
+  readonly id: string;
+  readonly code: string;
+  readonly name: string;
+  readonly description?: string;
+  readonly leaveYearStartMonth: number;
+  readonly leaveYear: string;
+  readonly isActive: boolean;
+  readonly assignedTo: readonly string[];
+  readonly items: readonly LeavePlanRuleItem[];
+}
+
+export interface LeavePlanInput {
+  readonly code: string;
+  readonly name: string;
+  readonly description?: string | null;
+  readonly leaveYearStartMonth: number;
+}
+
+/** One engagement type and the leave policy it follows. */
+export interface LeavePlanAssignment {
+  readonly employmentTypeCode: string;
+  readonly label: string;
+  readonly planId?: string;
+  readonly planName?: string;
+}
+
+/** A single employee on another policy than their engagement type's, for a time. */
+export interface EmployeeLeavePlan {
+  readonly id: string;
+  readonly employeeId: string;
+  readonly employeeName?: string;
+  readonly employeeCode?: string;
+  readonly planId: string;
+  readonly planName: string;
+  readonly effectiveFrom: string;
+  readonly effectiveTo?: string;
+  readonly reason?: string;
+}
+
+export interface EmployeeLeavePlanInput {
+  readonly employeeId: string;
+  readonly planId: string;
+  readonly effectiveFrom: string;
+  readonly effectiveTo?: string | null;
+  readonly reason?: string | null;
+}
+
+/** The policy an employee follows today, and why. */
+export interface ResolvedLeavePolicy {
+  readonly planId: string;
+  readonly code: string;
+  readonly name: string;
+  readonly leaveYear: string;
+  readonly yearStart: string;
+  readonly yearEnd: string;
+  readonly source: 'EngagementType' | 'Exception';
+  readonly items: readonly LeavePlanRuleItem[];
+}
 
 export interface LeaveBalance {
   readonly leaveTypeId: string;
@@ -191,7 +311,7 @@ export interface LeaveBalance {
   readonly takenThisYear: number;
 }
 
-export type LeaveRequestStatus = 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
+export type LeaveRequestStatus = 'Draft' | 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
 
 export interface LeaveRequest {
   readonly id: string;
@@ -212,6 +332,16 @@ export interface LeaveRequest {
   readonly appliedDate: string;
   readonly decidedDate?: string;
   readonly cancellationReason?: string;
+  readonly attachmentCount?: number;
+}
+
+/** A supporting document on a leave request. */
+export interface LeaveAttachment {
+  readonly id: string;
+  readonly fileName: string;
+  readonly contentType: string;
+  readonly sizeBytes: number;
+  readonly uploadedDate: string;
 }
 
 export interface LeaveApplication {
@@ -229,9 +359,11 @@ export interface LeavePreview {
   readonly available: number;
   readonly withinBalance: boolean;
   readonly problems: readonly string[];
+  /** The request will wait as a draft until a supporting document is attached. */
+  readonly documentRequired?: boolean;
 }
 
-export type LedgerKind = 'Accrual' | 'Grant' | 'Taken' | 'Restored' | 'Adjustment' | 'Lapse';
+export type LedgerKind = 'Accrual' | 'Grant' | 'Taken' | 'Restored' | 'Adjustment' | 'Lapse' | 'Encashment';
 
 export interface LedgerEntry {
   readonly id: string;

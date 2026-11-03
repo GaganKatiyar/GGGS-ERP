@@ -59,6 +59,10 @@ public static class SensitiveDataExtensions
     /// The application name every host shares. Data Protection isolates keys per application by
     /// default, and the API and the worker are different applications on disk - without this, a
     /// value the worker encrypted could not be read by the API.
+    /// <para>
+    /// Keeps the product's old name on purpose: the keys are bound to this exact value, so changing it
+    /// would leave every saved secret and encrypted field unreadable.
+    /// </para>
     /// </summary>
     public const string ApplicationName = "PeopleOS";
 

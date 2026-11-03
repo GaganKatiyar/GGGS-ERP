@@ -31,6 +31,7 @@ body {
   h3,
   h4 {
     margin: 0;
+    font-family: var(--gggs-font-family-display);
     font-weight: var(--gggs-font-weight-semibold);
     line-height: var(--gggs-line-height-tight);
     letter-spacing: -0.01em;
@@ -102,12 +103,17 @@ body {
   scrollbar-color: var(--gggs-color-border-strong) transparent;
 }
 
-/* Users who ask for less motion get less motion. */
+/* Users who ask for less motion get less motion: no transitions, no entrances, no hover lift. */
 @media (prefers-reduced-motion: reduce) {
+  :root {
+    --gggs-lift: 0px;
+  }
+
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }

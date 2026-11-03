@@ -107,7 +107,7 @@ const EMPTY: Draft = {
           <button type="button" class="btn btn--sm btn--danger" [attr.aria-label]="'Remove ' + provider.displayName" (click)="remove(provider)"><i class="pi pi-trash" aria-hidden="true"></i></button>
         </div>
       } @empty {
-        <gggs-empty-state icon="pi pi-key" title="No single sign-on yet" description="People sign in with their PeopleOS password until a provider is added." />
+        <gggs-empty-state icon="pi pi-key" title="No single sign-on yet" description="People sign in with their Nuts and Bolts password until a provider is added." />
       }
     </div>
   `,

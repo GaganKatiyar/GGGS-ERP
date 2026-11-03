@@ -11,9 +11,12 @@
   color: var(--gggs-color-text);
   font: inherit;
   font-size: var(--gggs-font-size-base);
+  /* A faint inner shadow sets the field slightly into the surface, the opposite of a raised card. */
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--gggs-color-brand) 6%, transparent);
   transition:
     border-color var(--gggs-transition-fast),
-    box-shadow var(--gggs-transition-fast);
+    box-shadow var(--gggs-transition-fast),
+    background-color var(--gggs-transition-fast);
 
   &::placeholder {
     color: var(--gggs-color-text-subtle);
@@ -26,7 +29,7 @@
   &:focus-visible,
   &:focus {
     outline: none;
-    border-color: var(--gggs-color-primary);
+    border-color: var(--gggs-color-focus);
     box-shadow: var(--gggs-focus-ring);
   }
 

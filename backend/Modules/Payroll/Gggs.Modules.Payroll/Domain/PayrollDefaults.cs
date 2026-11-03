@@ -24,12 +24,15 @@ public static class PayrollDefaults
         Input("INCENTIVE", "Incentive", ComponentKind.Earning, PayrollInputKind.Incentive, taxable: true, esi: true, order: 42),
         Input("COMMISSION", "Commission", ComponentKind.Earning, PayrollInputKind.Commission, taxable: true, esi: true, order: 43),
         Input("ARREARS", "Arrears", ComponentKind.Earning, PayrollInputKind.Arrears, taxable: true, esi: true, order: 44),
+        Input("LEAVE_ENCASH_YE", "Leave encashment (year end)", ComponentKind.Earning, PayrollInputKind.LeaveEncashmentAnnual, taxable: true, esi: false, order: 39),
         Input("REIMBURSEMENT", "Reimbursement", ComponentKind.Reimbursement, PayrollInputKind.Reimbursement, taxable: false, esi: false, order: 50),
+        Input(LoanDisbursementCode, "Loan disbursement", ComponentKind.Reimbursement, PayrollInputKind.LoanDisbursement, taxable: false, esi: false, order: 51),
         Terminal("GRATUITY_PAY", "Gratuity", PayrollInputKind.Gratuity, taxable: false, order: 45),
         Terminal("LEAVE_ENCASH", "Leave encashment", PayrollInputKind.LeaveEncashment, taxable: false, order: 46),
         Terminal("NOTICE_PAY", "Pay in lieu of notice", PayrollInputKind.NoticePay, taxable: true, order: 47),
         Terminal("RETRENCH_COMP", "Retrenchment compensation", PayrollInputKind.RetrenchmentCompensation, taxable: false, order: 48),
         Terminal("TERMINAL_TAXABLE", "Terminal benefits (taxable part)", PayrollInputKind.TerminalTaxable, taxable: true, order: 49),
+        Input(LoanPerquisiteCode, "Loan interest perquisite", ComponentKind.Perquisite, PayrollInputKind.LoanPerquisite, taxable: true, esi: false, order: 55),
         Statutory(StatutoryKeys.ProvidentFundEmployer, "Employer PF", ComponentKind.EmployerContribution, 60),
         Statutory(StatutoryKeys.StateInsuranceEmployer, "Employer ESI", ComponentKind.EmployerContribution, 61),
         Statutory(StatutoryKeys.Gratuity, "Gratuity", ComponentKind.EmployerContribution, 62),
@@ -40,7 +43,17 @@ public static class PayrollDefaults
         Statutory(StatutoryKeys.IncomeTax, "Income tax (TDS)", ComponentKind.Deduction, 83),
         Statutory(StatutoryKeys.LabourWelfareEmployee, "Labour welfare fund", ComponentKind.Deduction, 84),
         Input("RECOVERY", "Other recovery", ComponentKind.Deduction, PayrollInputKind.Deduction, taxable: false, esi: false, order: 90),
+        Input(LoanInstalmentCode, "Loan instalment", ComponentKind.Deduction, PayrollInputKind.LoanRecovery, taxable: false, esi: false, order: 91),
     ];
+
+    /// <summary>Loan money paid out with salary: owed back by the employee, not a salary cost.</summary>
+    public const string LoanDisbursementCode = "LOAN_DISBURSE";
+
+    /// <summary>Loan instalments recovered from pay: they reduce what the employee owes.</summary>
+    public const string LoanInstalmentCode = "LOAN_EMI";
+
+    /// <summary>The taxable interest benefit of a concessional loan: on the payslip, never paid.</summary>
+    public const string LoanPerquisiteCode = "PERQ_LOAN";
 
     /// <summary>The codes of the standard structure, in payslip order.</summary>
     public static IReadOnlyList<string> StandardStructure { get; } =

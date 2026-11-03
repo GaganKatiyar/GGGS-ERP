@@ -30,6 +30,10 @@ public sealed record BffSession
     /// <summary>The principal's claims, exactly as <c>UserPrincipalFactory</c> built them.</summary>
     public required IReadOnlyList<SessionClaim> Claims { get; init; }
 
+    /// <summary>
+    /// When this browser signed in, or changed the password since: what a request to end earlier
+    /// sign-ins compares with. The limits on a session are measured separately.
+    /// </summary>
     public required DateTimeOffset SignedInAt { get; init; }
 
     /// <summary>Last request on this session, which is what the idle timeout measures.</summary>

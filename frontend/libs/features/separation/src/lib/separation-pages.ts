@@ -24,13 +24,13 @@ import type {
   ShowCause,
 } from '@gggs/shared/models';
 import { CLEARANCE_AREAS, EXIT_REASONS, SEPARATION_TYPES, humanize } from '@gggs/shared/models';
-import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge, Tabs, Timeline } from '@gggs/shared/ui';
+import { EmptyState, FormDialog, KpiCard, localIsoDate, PageHeader, Skeleton, StatusBadge, Tabs, Timeline } from '@gggs/shared/ui';
 import type { TabItem, TimelineEntry } from '@gggs/shared/ui';
 import { OffboardingPanel } from './offboarding-pages';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
-const today = () => new Date().toISOString().slice(0, 10);
-const inDays = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+const today = () => localIsoDate();
+const inDays = (days: number) => localIsoDate(new Date(Date.now() + days * 86_400_000));
 /** Case events as timeline entries, newest first. */
 const timelineOf = (events: readonly SeparationEvent[] | undefined): readonly TimelineEntry[] =>
   [...(events ?? [])].reverse().map((event) => ({
@@ -364,7 +364,7 @@ export class SeparationPage {
         <div class="alert alert--warning">
           <i class="pi pi-calendar" aria-hidden="true"></i>
           <span>
-            Proposed by PeopleOS: {{ label(v.case.type).toLowerCase() }} on {{ v.case.lastWorkingDay | date: 'd MMM y' }}. Nothing happens until it is confirmed.
+            Proposed by Nuts and Bolts: {{ label(v.case.type).toLowerCase() }} on {{ v.case.lastWorkingDay | date: 'd MMM y' }}. Nothing happens until it is confirmed.
             @if (canManage) {
               <button type="button" class="btn btn--sm btn--primary" [disabled]="busy()" (click)="confirmProposal()">Confirm</button>
               <button type="button" class="btn btn--sm" [disabled]="busy()" (click)="withdraw()">Decline</button>

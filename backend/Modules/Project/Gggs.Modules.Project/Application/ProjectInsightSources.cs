@@ -20,7 +20,7 @@ internal sealed class ProjectMetrics(AppDbContext dbContext) : IMetricSource
     public async Task<IReadOnlyList<Metric>> CollectAsync(MetricContext context, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(context);
-        IQueryable<ProjectEntity> query = dbContext.Projects.AsNoTracking();
+        IQueryable<ProjectEntity> query = dbContext.Projects.AsNoTracking().Where(row => row.Type != ProjectType.DepartmentDefault);
         if (context.EmployeeScope is { } scope)
         {
             query = query.Where(row => (row.ProjectManagerEmployeeId != null && scope.Contains(row.ProjectManagerEmployeeId.Value))
@@ -82,7 +82,12 @@ internal sealed class ProjectCalendar(AppDbContext dbContext, ProjectAccess acce
             .Where(row => row.PlannedDate >= firstDay && row.PlannedDate <= lastDay && row.Status != MilestoneStatus.Cancelled);
         if (context.OnlyMine)
         {
-            Guid? me = currentUser.EmployeeId;
+            // Without an employee record nothing is "mine"; a null id would match unowned milestones.
+            if (currentUser.EmployeeId is not { } me)
+            {
+                return [];
+            }
+
             milestones = milestones.Where(row => row.OwnerEmployeeId == me);
         }
         else if ((await permissions.GetCurrentAsync(cancellationToken)).Has(Permissions.Project.View))

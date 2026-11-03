@@ -42,7 +42,7 @@ export class NotificationsApi {
     return firstValueFrom(this.http.get<readonly NotificationTemplate[]>('/api/v1/notifications/templates'));
   }
 
-  updateTemplate(id: string, body: Pick<NotificationTemplate, 'subject' | 'body' | 'sendInApp' | 'sendEmail' | 'isActive'>): Promise<NotificationTemplate> {
+  updateTemplate(id: string, body: Pick<NotificationTemplate, 'subject' | 'body' | 'sendInApp' | 'sendEmail' | 'sendSms' | 'isActive'>): Promise<NotificationTemplate> {
     return firstValueFrom(this.http.put<NotificationTemplate>(`/api/v1/notifications/templates/${id}`, body));
   }
 }

@@ -39,7 +39,8 @@ and versioning cost. Revisit only if separate teams need to deploy the front end
 ## Consequences
 
 - PrimeNG's theme tokens drive tenant branding through CSS variables, within contrast guardrails so
-  a customer's brand colour cannot make the UI unreadable.
+  a customer's brand colour cannot make the UI unreadable. The tokens, elevation levels and motion
+  rules are described in [the design system](../architecture/design-system.md).
 - Accessibility must be tested continuously, not audited once at the end.
 - The wrapper layer is extra code that reviewers must insist on: a direct `p-table` in a feature is
   a review rejection, and lint rules back that up.

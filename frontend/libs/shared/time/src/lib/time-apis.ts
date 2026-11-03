@@ -8,18 +8,26 @@ import type {
   HolidayCalendar,
   HolidayEntry,
   LeaveApplication,
+  LeaveAttachment,
+  EmployeeLeavePlan,
+  EmployeeLeavePlanInput,
   LeaveBalance,
-  LeavePolicy,
-  LeavePolicyInput,
+  LeavePlanAssignment,
+  LeavePlanDetail,
+  LeavePlanInput,
+  LeavePlanItemInput,
+  LeavePlanSummary,
   LeavePreview,
   LeaveRequest,
   LeaveRequestStatus,
   LeaveType,
   LedgerEntry,
   PagedResult,
+  ResolvedLeavePolicy,
   Regularization,
   RosterRow,
   ScheduledDay,
+  ShiftAssignment,
   ShiftSwap,
   TodayAttendance,
   WorkShift,
@@ -50,6 +58,11 @@ export function addDays(iso: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+/** Where a leave request's document is served from; a plain link the browser can follow. */
+export function leaveAttachmentUrl(requestId: string, attachmentId: string): string {
+  return `/api/v1/leave/requests/${requestId}/attachments/${attachmentId}/content`;
+}
+
 /** The Leave API (`/api/v1/leave`, `/api/v1/me/leave`). */
 @Injectable({ providedIn: 'root' })
 export class LeaveApi {
@@ -68,16 +81,60 @@ export class LeaveApi {
     await firstValueFrom(this.http.post(`${this.base}/types/${id}/${active ? 'activate' : 'deactivate'}`, {}));
   }
 
-  policies(): Promise<readonly LeavePolicy[]> {
-    return firstValueFrom(this.http.get<readonly LeavePolicy[]>(`${this.base}/policies`));
+  // ----- Leave policies: named sets of leave types and rules, assigned per engagement type -----
+
+  plans(): Promise<readonly LeavePlanSummary[]> {
+    return firstValueFrom(this.http.get<readonly LeavePlanSummary[]>(`${this.base}/plans`));
   }
 
-  savePolicy(id: string | null, body: LeavePolicyInput): Promise<LeavePolicy> {
-    return firstValueFrom(id ? this.http.put<LeavePolicy>(`${this.base}/policies/${id}`, body) : this.http.post<LeavePolicy>(`${this.base}/policies`, body));
+  plan(id: string): Promise<LeavePlanDetail> {
+    return firstValueFrom(this.http.get<LeavePlanDetail>(`${this.base}/plans/${id}`));
   }
 
-  async setPolicyActive(id: string, active: boolean): Promise<void> {
-    await firstValueFrom(this.http.post(`${this.base}/policies/${id}/${active ? 'activate' : 'deactivate'}`, {}));
+  savePlan(id: string | null, body: LeavePlanInput): Promise<LeavePlanDetail> {
+    return firstValueFrom(id ? this.http.put<LeavePlanDetail>(`${this.base}/plans/${id}`, body) : this.http.post<LeavePlanDetail>(`${this.base}/plans`, body));
+  }
+
+  /** Replaces the policy's leave types and their rules in one save. */
+  setPlanItems(id: string, items: readonly LeavePlanItemInput[]): Promise<LeavePlanDetail> {
+    return firstValueFrom(this.http.put<LeavePlanDetail>(`${this.base}/plans/${id}/items`, items));
+  }
+
+  copyPlan(id: string): Promise<LeavePlanDetail> {
+    return firstValueFrom(this.http.post<LeavePlanDetail>(`${this.base}/plans/${id}/copy`, {}));
+  }
+
+  async setPlanActive(id: string, active: boolean): Promise<void> {
+    await firstValueFrom(this.http.post(`${this.base}/plans/${id}/${active ? 'activate' : 'deactivate'}`, {}));
+  }
+
+  assignments(): Promise<readonly LeavePlanAssignment[]> {
+    return firstValueFrom(this.http.get<readonly LeavePlanAssignment[]>(`${this.base}/plan-assignments`));
+  }
+
+  saveAssignments(changes: readonly { employmentTypeCode: string; planId: string | null }[]): Promise<readonly LeavePlanAssignment[]> {
+    return firstValueFrom(this.http.put<readonly LeavePlanAssignment[]>(`${this.base}/plan-assignments`, changes));
+  }
+
+  exceptions(employeeId?: string): Promise<readonly EmployeeLeavePlan[]> {
+    return firstValueFrom(this.http.get<readonly EmployeeLeavePlan[]>(`${this.base}/employee-plans`, { params: params({ employeeId }) }));
+  }
+
+  async saveException(id: string | null, body: EmployeeLeavePlanInput): Promise<void> {
+    await firstValueFrom(id ? this.http.put(`${this.base}/employee-plans/${id}`, body) : this.http.post(`${this.base}/employee-plans`, body));
+  }
+
+  async removeException(id: string): Promise<void> {
+    await firstValueFrom(this.http.delete(`${this.base}/employee-plans/${id}`));
+  }
+
+  /** The policy an employee follows today; null when none is assigned. */
+  resolve(employeeId: string): Promise<ResolvedLeavePolicy | null> {
+    return firstValueFrom(this.http.get<ResolvedLeavePolicy | null>(`${this.base}/plans/resolve`, { params: { employeeId } }));
+  }
+
+  myPolicy(): Promise<ResolvedLeavePolicy | null> {
+    return firstValueFrom(this.http.get<ResolvedLeavePolicy | null>('/api/v1/me/leave/policy'));
   }
 
   runAccrual(year: number, month: number): Promise<{ period: string; accrued: number; lapsed: number }> {
@@ -152,6 +209,22 @@ export class LeaveApi {
 
   preview(body: LeaveApplication): Promise<LeavePreview> {
     return firstValueFrom(this.http.post<LeavePreview>('/api/v1/me/leave/requests/preview', body));
+  }
+
+  /** Adds a supporting document (PDF, JPEG or PNG, up to 5 MB) to one of my requests. */
+  attach(requestId: string, file: File): Promise<LeaveAttachment> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return firstValueFrom(this.http.post<LeaveAttachment>(`/api/v1/me/leave/requests/${requestId}/attachments`, form));
+  }
+
+  /** Sends a draft, now with its document, for approval. */
+  submit(requestId: string): Promise<LeaveRequest> {
+    return firstValueFrom(this.http.post<LeaveRequest>(`/api/v1/me/leave/requests/${requestId}/submit`, {}));
+  }
+
+  attachments(requestId: string): Promise<readonly LeaveAttachment[]> {
+    return firstValueFrom(this.http.get<readonly LeaveAttachment[]>(`${this.base}/requests/${requestId}/attachments`));
   }
 
   async cancelMine(id: string, reason: string | null): Promise<void> {
@@ -242,6 +315,16 @@ export class ShiftsApi {
 
   setActive(id: string, active: boolean): Promise<WorkShift> {
     return firstValueFrom(this.http.post<WorkShift>(`${this.base}/${id}/${active ? 'activate' : 'deactivate'}`, {}));
+  }
+
+  /** Everyone's current and upcoming assignments - the people not on the default shift. */
+  assignments(): Promise<readonly ShiftAssignment[]> {
+    return firstValueFrom(this.http.get<readonly ShiftAssignment[]>(`${this.base}/assignments`));
+  }
+
+  /** Puts the person back on the default shift from `returnOn`. */
+  async endAssignment(id: string, returnOn: string): Promise<void> {
+    await firstValueFrom(this.http.post(`${this.base}/assignments/${id}/end`, { returnOn }));
   }
 
   assign(body: { employeeIds: readonly string[]; shiftId: string; effectiveFrom: string; effectiveTo?: string | null }): Promise<{ assigned: number }> {

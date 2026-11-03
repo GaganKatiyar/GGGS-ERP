@@ -18,6 +18,9 @@ public enum StatutoryRuleType
 
     /// <summary>Income-tax exemption limits for terminal benefits paid at exit.</summary>
     TerminalExemption = 8,
+
+    /// <summary>The taxable perquisite on interest-free or concessional loans to employees (Rule 3(7)(i)).</summary>
+    LoanPerquisite = 9,
 }
 
 /// <summary>
@@ -88,6 +91,14 @@ public sealed record BonusConfig(decimal EligibilityWageCeiling, decimal Calcula
 /// resignation (s.10(10AA)) and retrenchment compensation (s.10(10B)). Amounts above are taxable.
 /// </summary>
 public sealed record TerminalExemptionConfig(decimal Gratuity, decimal LeaveEncashment, decimal RetrenchmentCompensation);
+
+/// <summary>
+/// Interest-free or concessional loans (Income-tax Rule 3(7)(i)): the employee is taxed each month on
+/// the gap between the benchmark rate - what SBI charged for such a loan on 1 April - and the rate the
+/// employer charges, on the outstanding balance. Nothing is taxed while all loans together are at most
+/// <paramref name="ExemptUpTo"/>; medical treatment of specified diseases is exempt.
+/// </summary>
+public sealed record LoanPerquisiteConfig(decimal BenchmarkRate, decimal ExemptUpTo);
 
 /// <summary>Labour welfare fund: flat amounts deducted in the listed months (1-12).</summary>
 public sealed record LabourWelfareConfig(decimal EmployeeAmount, decimal EmployerAmount, IReadOnlyList<int> Months);

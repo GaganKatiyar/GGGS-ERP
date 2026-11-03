@@ -26,6 +26,7 @@ internal sealed class LeaveModel : IModuleModel
             entity.Ignore(type => type.DomainEvents);
         });
 
+        // The per-type rules before named policies: read once, by LeavePlanUpgrade, and dropped later.
         modelBuilder.Entity<LeavePolicy>(entity =>
         {
             entity.ToTable("LeavePolicy", Schema);
@@ -38,6 +39,68 @@ internal sealed class LeaveModel : IModuleModel
             entity.HasIndex(policy => new { policy.TenantId, policy.LeaveTypeId, policy.EmploymentTypeCode })
                 .HasDatabaseName("IX_LeavePolicy_TenantId_Type");
             entity.Ignore(policy => policy.DomainEvents);
+        });
+
+        modelBuilder.Entity<LeavePlan>(entity =>
+        {
+            entity.ToTable("LeavePlan", Schema);
+            entity.Property(plan => plan.Code).HasMaxLength(32).IsRequired();
+            entity.Property(plan => plan.Name).HasMaxLength(100).IsRequired();
+            entity.Property(plan => plan.Description).HasMaxLength(500);
+            entity.HasMany(plan => plan.Items).WithOne().HasForeignKey(item => item.PlanId).OnDelete(DeleteBehavior.Restrict);
+            entity.Navigation(plan => plan.Items).UsePropertyAccessMode(PropertyAccessMode.Field);
+            entity.HasIndex(plan => new { plan.TenantId, plan.Code })
+                .HasDatabaseName("UX_LeavePlan_TenantId_Code")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.Ignore(plan => plan.DomainEvents);
+        });
+
+        modelBuilder.Entity<LeavePlanItem>(entity =>
+        {
+            entity.ToTable("LeavePlanItem", Schema);
+            entity.Property(item => item.AnnualEntitlement).HasPrecision(6, 2);
+            entity.Property(item => item.CarryForwardLimit).HasPrecision(6, 2);
+            entity.Property(item => item.MaxNegativeBalance).HasPrecision(6, 2);
+            entity.Property(item => item.MinDaysPerRequest).HasPrecision(6, 2);
+            entity.Property(item => item.DocumentRequiredAboveDays).HasPrecision(6, 2);
+            entity.Property(item => item.MaxEncashDays).HasPrecision(6, 2);
+            entity.Property(item => item.GrantPerOccurrence).HasPrecision(6, 2);
+            entity.Property(item => item.CreditTiming).HasConversion<byte>().HasDefaultValue(CreditTiming.StartOfPeriod);
+            entity.Property(item => item.JoiningCutoffDay).HasDefaultValue(15);
+            entity.Property(item => item.ProrateOnJoining).HasDefaultValue(true);
+            entity.Property(item => item.Accrual).HasConversion<byte>();
+            entity.Property(item => item.EligibleGenderCodes).HasMaxLength(200).IsRequired();
+            entity.HasOne<LeaveType>().WithMany().HasForeignKey(item => item.LeaveTypeId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(item => new { item.TenantId, item.PlanId, item.LeaveTypeId })
+                .HasDatabaseName("UX_LeavePlanItem_TenantId_Plan_Type")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.Ignore(item => item.Genders);
+            entity.Ignore(item => item.Rules);
+            entity.Ignore(item => item.DomainEvents);
+        });
+
+        modelBuilder.Entity<LeavePlanAssignment>(entity =>
+        {
+            entity.ToTable("LeavePlanAssignment", Schema);
+            entity.Property(assignment => assignment.EmploymentTypeCode).HasMaxLength(64).IsRequired();
+            entity.HasOne<LeavePlan>().WithMany().HasForeignKey(assignment => assignment.PlanId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(assignment => new { assignment.TenantId, assignment.EmploymentTypeCode })
+                .HasDatabaseName("UX_LeavePlanAssignment_TenantId_EmploymentType")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.Ignore(assignment => assignment.DomainEvents);
+        });
+
+        modelBuilder.Entity<EmployeeLeavePlan>(entity =>
+        {
+            entity.ToTable("EmployeeLeavePlan", Schema);
+            entity.Property(exception => exception.Reason).HasMaxLength(300);
+            entity.HasOne<LeavePlan>().WithMany().HasForeignKey(exception => exception.PlanId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(exception => new { exception.TenantId, exception.EmployeeId, exception.EffectiveFrom })
+                .HasDatabaseName("IX_EmployeeLeavePlan_TenantId_Employee_From");
+            entity.Ignore(exception => exception.DomainEvents);
         });
 
         modelBuilder.Entity<LeaveLedgerEntry>(entity =>
@@ -76,6 +139,18 @@ internal sealed class LeaveModel : IModuleModel
             entity.Ignore(request => request.DomainEvents);
         });
 
+        modelBuilder.Entity<LeaveRequestAttachment>(entity =>
+        {
+            entity.ToTable("LeaveRequestAttachment", Schema);
+            entity.Property(attachment => attachment.FileName).HasMaxLength(200).IsRequired();
+            entity.Property(attachment => attachment.ContentType).HasMaxLength(100).IsRequired();
+            entity.Property(attachment => attachment.StorageKey).HasMaxLength(400).IsRequired();
+            entity.HasOne<LeaveRequest>().WithMany().HasForeignKey(attachment => attachment.RequestId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(attachment => new { attachment.TenantId, attachment.RequestId })
+                .HasDatabaseName("IX_LeaveRequestAttachment_TenantId_Request");
+            entity.Ignore(attachment => attachment.DomainEvents);
+        });
+
         modelBuilder.Entity<HolidayCalendar>(entity =>
         {
             entity.ToTable("HolidayCalendar", Schema);
@@ -112,9 +187,19 @@ internal static class LeaveData
 
         public DbSet<LeavePolicy> LeavePolicies => db.Set<LeavePolicy>();
 
+        public DbSet<LeavePlan> LeavePlans => db.Set<LeavePlan>();
+
+        public DbSet<LeavePlanItem> LeavePlanItems => db.Set<LeavePlanItem>();
+
+        public DbSet<LeavePlanAssignment> LeavePlanAssignments => db.Set<LeavePlanAssignment>();
+
+        public DbSet<EmployeeLeavePlan> EmployeeLeavePlans => db.Set<EmployeeLeavePlan>();
+
         public DbSet<LeaveLedgerEntry> LeaveLedger => db.Set<LeaveLedgerEntry>();
 
         public DbSet<LeaveRequest> LeaveRequests => db.Set<LeaveRequest>();
+
+        public DbSet<LeaveRequestAttachment> LeaveRequestAttachments => db.Set<LeaveRequestAttachment>();
 
         public DbSet<HolidayCalendar> HolidayCalendars => db.Set<HolidayCalendar>();
 

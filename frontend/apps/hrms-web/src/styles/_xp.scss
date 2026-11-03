@@ -85,6 +85,8 @@
   padding: var(--gggs-space-3);
   border: 1px solid var(--gggs-color-border);
   border-radius: var(--gggs-radius-md);
+  background: var(--gggs-color-surface-raised);
+  box-shadow: var(--gggs-shadow-1);
 }
 
 .xp__cards {
@@ -116,7 +118,8 @@
 .xp__bar span {
   display: block;
   height: 100%;
-  background: var(--gggs-color-primary);
+  border-radius: inherit;
+  background: var(--gggs-gradient-accent);
 }
 
 .xp__notice {

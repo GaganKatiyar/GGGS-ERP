@@ -177,3 +177,122 @@ export interface IntegrationRunItem {
   readonly fileName?: string;
   readonly createdDate: string;
 }
+
+/** A value a trigger offers to conditions and to "{{placeholders}}", with an example for previews. */
+export interface AutomationTriggerField {
+  readonly key: string;
+  readonly label: string;
+  readonly sample: string;
+}
+
+export interface AutomationTrigger {
+  readonly code: string;
+  readonly label: string;
+  readonly category: string;
+  readonly description: string;
+  readonly fields: readonly AutomationTriggerField[];
+}
+
+export type AutomationConditionOperator = 'Equals' | 'NotEquals' | 'Contains';
+
+export interface AutomationCondition {
+  readonly field: string;
+  readonly operator: AutomationConditionOperator;
+  readonly value: string;
+}
+
+/** A connection an automation can act through. */
+export interface AutomationConnection {
+  readonly id: string;
+  readonly name: string;
+  readonly adapterKey: string;
+  readonly adapterName: string;
+  readonly isActive: boolean;
+  readonly operations: readonly IntegrationOperation[];
+  readonly channel?: string;
+}
+
+export type AutomationDeliveryStatus = 'Pending' | 'Succeeded' | 'Failed' | 'Abandoned';
+
+export interface AutomationInput {
+  readonly name: string;
+  readonly triggerCode: string;
+  readonly conditions: readonly AutomationCondition[];
+  readonly connectionId: string;
+  readonly operation: string;
+  readonly parameters: Readonly<Record<string, string>>;
+  readonly isActive: boolean;
+}
+
+export interface Automation extends AutomationInput {
+  readonly id: string;
+  readonly triggerLabel: string;
+  readonly connectionName: string;
+  readonly adapterKey: string;
+  readonly operationLabel: string;
+  readonly lastStatus?: AutomationDeliveryStatus;
+  readonly lastDeliveredAt?: string;
+}
+
+export interface AutomationTestOutcome {
+  readonly succeeded: boolean;
+  readonly message: string;
+  readonly parameters: Readonly<Record<string, string>>;
+}
+
+export interface AutomationDelivery {
+  readonly id: string;
+  readonly automationId: string;
+  readonly automationName: string;
+  readonly triggerCode: string;
+  readonly status: AutomationDeliveryStatus;
+  readonly attempts: number;
+  readonly lastMessage?: string;
+  readonly nextAttemptAt?: string;
+  readonly completedAt?: string;
+  readonly createdDate: string;
+  readonly parameters: Readonly<Record<string, string>>;
+}
+
+/** A channel on the Sending page: the connection set for it, and those that could carry it. */
+export interface MessageChannel {
+  readonly channel: string;
+  readonly connectionId?: string;
+  readonly connections: readonly AutomationConnection[];
+}
+
+export interface ChannelSendOutcome {
+  readonly succeeded: boolean;
+  readonly message: string;
+}
+
+/** A directory connection, and what it does by itself. */
+export interface AccountConnection {
+  readonly connectionId: string;
+  readonly name: string;
+  readonly adapterName: string;
+  readonly isActive: boolean;
+  readonly provisionOnHire: boolean;
+  readonly disableOnExit: boolean;
+}
+
+export type DirectoryAccountStatus = 'Creating' | 'Active' | 'Disabling' | 'Disabled';
+
+/** One person's account in an outside directory. */
+export interface DirectoryAccount {
+  readonly id: string;
+  readonly employeeId: string;
+  readonly employeeName: string;
+  readonly employeeCode: string;
+  readonly connectionId: string;
+  readonly connectionName: string;
+  readonly login?: string;
+  readonly status: DirectoryAccountStatus;
+  /** Tries have run out: on a leaver, an account still open. */
+  readonly needsAttention: boolean;
+  readonly attempts: number;
+  readonly lastMessage?: string;
+  readonly nextAttemptAt?: string;
+  readonly disabledAt?: string;
+  readonly createdDate: string;
+}

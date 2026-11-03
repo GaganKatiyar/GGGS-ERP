@@ -3,6 +3,7 @@ using Gggs.BuildingBlocks.Domain.Exceptions;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.Data;
+using Gggs.Modules.Notification.Application;
 using Gggs.Modules.Notification.Domain;
 using Gggs.Modules.Notification.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -14,9 +15,9 @@ public sealed record InAppNotificationItem(Guid Id, string EventCode, string Tit
 
 public sealed record UnreadCountResponse(int UnreadCount);
 
-public sealed record NotificationTemplateItem(Guid Id, string Code, string Name, string Subject, string Body, bool SendInApp, bool SendEmail, bool IsActive);
+public sealed record NotificationTemplateItem(Guid Id, string Code, string Name, string Subject, string Body, bool SendInApp, bool SendEmail, bool SendSms, bool IsActive);
 
-public sealed record UpdateNotificationTemplateRequest(string Subject, string Body, bool SendInApp, bool SendEmail, bool IsActive);
+public sealed record UpdateNotificationTemplateRequest(string Subject, string Body, bool SendInApp, bool SendEmail, bool IsActive, bool SendSms = false);
 
 public sealed record InboxQuery
 {
@@ -43,6 +44,20 @@ internal static class NotificationEndpoints
         group.MapGet("/unread-count", UnreadCountAsync).WithName("CountMyUnreadNotifications").RequirePermission(Permissions.Notification.InboxView);
         group.MapPost("/{id:guid}/read", MarkReadAsync).WithName("MarkNotificationRead").RequirePermission(Permissions.Notification.InboxManage);
         group.MapPost("/read-all", MarkAllReadAsync).WithName("MarkAllNotificationsRead").RequirePermission(Permissions.Notification.InboxManage);
+
+        // The signed-in person's own choices: which notifications reach them by email and in the app.
+        endpoints.MapGet("/api/v1/me/notification-preferences", async (NotificationPreferences preferences, CancellationToken ct) => TypedResults.Ok(await preferences.MineAsync(ct)))
+            .WithTags("Me")
+            .WithName("ListMyNotificationPreferences")
+            .RequirePermission(Permissions.Notification.InboxView);
+        endpoints.MapPut("/api/v1/me/notification-preferences", async (IReadOnlyList<NotificationPreferenceChoice> body, NotificationPreferences preferences, CancellationToken ct) =>
+            {
+                await preferences.SaveAsync(body, ct);
+                return TypedResults.NoContent();
+            })
+            .WithTags("Me")
+            .WithName("SaveMyNotificationPreferences")
+            .RequirePermission(Permissions.Notification.InboxManage);
 
         group.MapGet("/templates", ListTemplatesAsync).WithName("ListNotificationTemplates").RequirePermission(Permissions.Notification.TemplateView);
         group.MapPut("/templates/{id:guid}", UpdateTemplateAsync).WithName("UpdateNotificationTemplate").RequirePermission(Permissions.Notification.TemplateManage);
@@ -110,7 +125,7 @@ internal static class NotificationEndpoints
             .AsNoTracking()
             .OrderBy(template => template.Name)
             .Select(template => new NotificationTemplateItem(
-                template.Id, template.Code, template.Name, template.Subject, template.Body, template.SendInApp, template.SendEmail, template.IsActive))
+                template.Id, template.Code, template.Name, template.Subject, template.Body, template.SendInApp, template.SendEmail, template.SendSms, template.IsActive))
             .ToListAsync(ct));
 
     private static async Task<Ok<NotificationTemplateItem>> UpdateTemplateAsync(
@@ -121,10 +136,10 @@ internal static class NotificationEndpoints
         NotificationTemplate template = await database.NotificationTemplates.FirstOrDefaultAsync(row => row.Id == id, ct)
             ?? throw new NotFoundException(nameof(NotificationTemplate), id);
 
-        template.Update(body.Subject, body.Body, body.SendInApp, body.SendEmail, body.IsActive);
+        template.Update(body.Subject, body.Body, body.SendInApp, body.SendEmail, body.SendSms, body.IsActive);
         await database.SaveChangesAsync(ct);
 
         return TypedResults.Ok(new NotificationTemplateItem(
-            template.Id, template.Code, template.Name, template.Subject, template.Body, template.SendInApp, template.SendEmail, template.IsActive));
+            template.Id, template.Code, template.Name, template.Subject, template.Body, template.SendInApp, template.SendEmail, template.SendSms, template.IsActive));
     }
 }

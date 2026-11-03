@@ -53,7 +53,8 @@ public sealed record PayslipDocument(
     decimal Net,
     string NetInWords,
     PayslipYearToDate YearToDate,
-    PayslipTax? Tax);
+    PayslipTax? Tax,
+    IReadOnlyList<PayslipLine>? Perquisites = null);
 
 /// <summary>Builds the published payslip from a run result.</summary>
 internal static class PayslipDocuments
@@ -99,7 +100,8 @@ internal static class PayslipDocuments
             new PayslipYearToDate(
                 totalsBefore.Gross + item.Gross, totalsBefore.Deductions + item.Deductions, totalsBefore.Net + item.Net,
                 before.Tds + Line(StatutoryKeys.IncomeTax), before.ProvidentFundEmployee + Line(StatutoryKeys.ProvidentFundEmployee)),
-            tax is null ? null : new PayslipTax(tax.Regime, tax.TaxableIncome, tax.AnnualTax, tax.AlreadyDeducted, tax.MonthlyTds));
+            tax is null ? null : new PayslipTax(tax.Regime, tax.TaxableIncome, tax.AnnualTax, tax.AlreadyDeducted, tax.MonthlyTds),
+            Of(ComponentKind.Perquisite));
     }
 }
 

@@ -455,8 +455,9 @@ internal sealed class InvoluntaryService(
             }
 
             string reason = type == SeparationType.Retirement ? $"Superannuation at {rules.RetirementAge}" : "Fixed-term contract ends";
-            await separations.ProposeAsync(exit.EmployeeId, type, exit.Date, reason, today, cancellationToken);
             proposed++;
+
+            // Before the proposal, because notifications commit with its save.
             EmployeeSummary? person = people.GetValueOrDefault(exit.EmployeeId);
             if (person?.HrbpEmployeeId is { } hrbp)
             {
@@ -471,6 +472,8 @@ internal sealed class InvoluntaryService(
                         "/separation"),
                     cancellationToken);
             }
+
+            await separations.ProposeAsync(exit.EmployeeId, type, exit.Date, reason, today, cancellationToken);
         }
 
         return proposed;

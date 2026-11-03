@@ -7,7 +7,7 @@ import { withPermissions } from '@gggs/core/permissions';
  * Application routes.
  *
  * Everything sits under the shell behind {@link authGuard}, and each feature is loaded lazily so
- * the initial bundle stays small as the PeopleOS modules land. Feature routes declare the
+ * the initial bundle stays small as the Nuts and Bolts modules land. Feature routes declare the
  * permission they need with `withPermissions`, which keeps the requirement next to the route
  * rather than buried in a component.
  *
@@ -33,6 +33,30 @@ export const appRoutes: Route[] = [
         (m) => m.CompleteInvitationPage,
       ),
     title: 'Set your password',
+  },
+  {
+    // Outside the shell and the guard: someone here cannot sign in, which is why they came.
+    path: 'forgot-password',
+    loadComponent: () =>
+      import('./pages/forgot-password-page').then((m) => m.ForgotPasswordPage),
+    title: 'Forgot your password?',
+  },
+  {
+    path: 'reset-password',
+    loadComponent: () =>
+      import('./pages/reset-password-page').then((m) => m.ResetPasswordPage),
+    title: 'Choose a new password',
+  },
+  {
+    // Public: people must be able to read these before they sign in.
+    path: 'privacy',
+    loadComponent: () => import('./pages/privacy-page').then((m) => m.PrivacyPage),
+    title: 'Privacy Policy',
+  },
+  {
+    path: 'terms',
+    loadComponent: () => import('./pages/terms-page').then((m) => m.TermsPage),
+    title: 'Terms of Use',
   },
   {
     path: '',
@@ -94,6 +118,14 @@ export const appRoutes: Route[] = [
         ...withPermissions(['workflow.task.view', 'workflow.instance.view-all']),
         loadChildren: () =>
           import('@gggs/features/approvals').then((m) => m.APPROVALS_ROUTES),
+      },
+      {
+        // The signed-in person's own settings: notification channels, time zone and password.
+        path: 'me/preferences',
+        ...withPermissions(['notification.inbox.view']),
+        loadComponent: () =>
+          import('@gggs/features/notifications').then((m) => m.PreferencesPage),
+        title: 'My preferences',
       },
       {
         path: 'notifications',
@@ -307,6 +339,18 @@ export const appRoutes: Route[] = [
           import('@gggs/features/expenses').then((m) => m.EXPENSES_ROUTES),
       },
       {
+        path: 'me/loans',
+        ...withPermissions(['self.loan.apply']),
+        loadChildren: () =>
+          import('@gggs/features/loans').then((m) => m.MY_LOANS_ROUTES),
+      },
+      {
+        path: 'loans',
+        ...withPermissions(['loan.loan.view', 'loan.type.manage', 'self.loan.apply', 'workflow.task.act']),
+        loadChildren: () =>
+          import('@gggs/features/loans').then((m) => m.LOANS_ROUTES),
+      },
+      {
         path: 'me/tickets',
         ...withPermissions(['self.ticket.create']),
         loadChildren: () =>
@@ -373,20 +417,23 @@ export const appRoutes: Route[] = [
           import('@gggs/features/assistant').then((m) => m.ASSISTANT_ROUTES),
       },
       {
-        path: 'me/security',
-        ...withPermissions(['self.profile.view']),
-        loadChildren: () =>
-          import('@gggs/features/security').then((m) => m.MY_SECURITY_ROUTES),
-      },
-      {
         path: 'admin/identity-providers',
         ...withPermissions(['admin.identity-provider.manage']),
         loadChildren: () =>
           import('@gggs/features/security').then((m) => m.IDENTITY_PROVIDER_ROUTES),
       },
+      // Integrations moved into Settings → Studio; old links land on its connectors.
+      { path: 'admin/data/integrations', pathMatch: 'full', redirectTo: '/studio/connectors' },
+      {
+        // Studio: connectors, and API keys for outside systems.
+        path: 'studio',
+        ...withPermissions(['datahub.integration.view', 'admin.user.view']),
+        loadChildren: () =>
+          import('@gggs/features/studio').then((m) => m.STUDIO_ROUTES),
+      },
       {
         path: 'admin/data',
-        ...withPermissions(['datahub.import.run', 'datahub.integration.view']),
+        ...withPermissions(['datahub.import.run']),
         loadChildren: () =>
           import('@gggs/features/data-hub').then((m) => m.DATA_HUB_ROUTES),
       },
@@ -459,8 +506,16 @@ export const appRoutes: Route[] = [
           import('@gggs/features/benefits').then((m) => m.BENEFITS_ROUTES),
       },
       {
+        // The Settings hub. No permission of its own: it lists only what the user may open, and
+        // says so when that is nothing.
+        path: 'settings',
+        loadComponent: () =>
+          import('@gggs/features/admin').then((m) => m.SettingsHomePage),
+        title: 'Settings',
+      },
+      {
         path: 'admin',
-        // Matches NAVIGATION's "Administration" group: any one of these lets someone in, and each
+        // The admin pages of NAVIGATION's Settings group: any one of these lets someone in, and each
         // child route narrows further to the specific permission it actually needs.
         ...withPermissions([
           'admin.user.view',

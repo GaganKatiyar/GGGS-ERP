@@ -2,19 +2,27 @@
  * PrimeNG overlays, aligned with the design system: dialogs and drawers get a divided header and
  * footer with a scrolling body that never runs past the viewport; toasts and tags match the tokens.
  */
+/* The page behind a modal goes soft as well as dim, so the dialog is plainly the thing in front. */
+.p-overlay-mask {
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
 .p-dialog {
   max-height: calc(100vh - 2 * var(--gggs-space-6));
   border: 1px solid var(--gggs-color-border);
-  border-radius: var(--gggs-radius-lg);
-  box-shadow: var(--gggs-shadow-lg);
+  border-radius: var(--gggs-radius-xl);
+  box-shadow: var(--gggs-shadow-5), var(--gggs-shadow-highlight);
   overflow: hidden;
 
   .p-dialog-header {
     padding: var(--gggs-space-4) var(--gggs-space-5);
     border-block-end: 1px solid var(--gggs-color-border);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--gggs-color-primary) 4%, var(--gggs-color-surface-raised)), var(--gggs-color-surface-raised));
   }
 
   .p-dialog-title {
+    font-family: var(--gggs-font-family-display);
     font-size: var(--gggs-font-size-lg);
     font-weight: var(--gggs-font-weight-semibold);
   }
@@ -33,14 +41,16 @@
 
 .p-drawer {
   border-color: var(--gggs-color-border);
-  box-shadow: var(--gggs-shadow-lg);
+  box-shadow: var(--gggs-shadow-5);
 
   .p-drawer-header {
     padding: var(--gggs-space-4) var(--gggs-space-5);
     border-block-end: 1px solid var(--gggs-color-border);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--gggs-color-primary) 4%, var(--gggs-color-surface-raised)), var(--gggs-color-surface-raised));
   }
 
   .p-drawer-title {
+    font-family: var(--gggs-font-family-display);
     font-size: var(--gggs-font-size-lg);
     font-weight: var(--gggs-font-weight-semibold);
   }
@@ -60,8 +70,8 @@
   font-family: var(--gggs-font-family);
 
   .p-toast-message {
-    border-radius: var(--gggs-radius-md);
-    box-shadow: var(--gggs-shadow-lg);
+    border-radius: var(--gggs-radius-lg);
+    box-shadow: var(--gggs-shadow-4);
   }
 }
 
@@ -71,6 +81,30 @@
   border-radius: var(--gggs-radius-pill);
   font-size: var(--gggs-font-size-xs);
   font-weight: var(--gggs-font-weight-semibold);
+}
+
+/*
+ * Tag severities on the semantic tokens, the same pairs as .badge: Aura's own green sits at 4.57:1,
+ * close enough to the AA line that any tint behind it tips it under, and it ignores dark mode.
+ */
+.p-tag.p-tag-success {
+  background: var(--gggs-color-success-subtle);
+  color: var(--gggs-color-success);
+}
+
+.p-tag.p-tag-info {
+  background: var(--gggs-color-info-subtle);
+  color: var(--gggs-color-info);
+}
+
+.p-tag.p-tag-warn {
+  background: var(--gggs-color-warning-subtle);
+  color: var(--gggs-color-warning-strong);
+}
+
+.p-tag.p-tag-danger {
+  background: var(--gggs-color-danger-subtle);
+  color: var(--gggs-color-danger);
 }
 
 .p-component {
@@ -97,6 +131,31 @@
     width: var(--gggs-control-height-md);
     padding: 0;
   }
+}
+
+/* Solid PrimeNG buttons rise and press like .btn (_buttons.scss); text, outlined and link stay flat. */
+.p-button:not(.p-button-text, .p-button-outlined, .p-button-link) {
+  box-shadow: var(--gggs-shadow-1), inset 0 1px 0 rgb(255 255 255 / 18%);
+  transition:
+    background-color var(--gggs-transition-fast),
+    border-color var(--gggs-transition-fast),
+    box-shadow var(--gggs-transition-fast),
+    transform var(--gggs-transition-fast);
+
+  &:not(:disabled):hover {
+    box-shadow: var(--gggs-shadow-glow), inset 0 1px 0 rgb(255 255 255 / 18%);
+    transform: translateY(calc(var(--gggs-lift) / 2));
+  }
+
+  &:not(:disabled):active {
+    box-shadow: inset 0 1px 3px color-mix(in srgb, var(--gggs-color-brand) 40%, transparent);
+    transform: none;
+  }
+}
+
+/* The default (primary) severity gets the primary button's lit face; hover falls back to solid. */
+.p-button:not(.p-button-secondary, .p-button-success, .p-button-info, .p-button-warn, .p-button-help, .p-button-danger, .p-button-contrast, .p-button-text, .p-button-outlined, .p-button-link):not(:disabled, :hover) {
+  background-image: var(--gggs-gradient-primary);
 }
 
 /* PrimeNG's danger severity uses its own lighter red, which fails contrast with white text. */

@@ -10,7 +10,7 @@ using Gggs.Modules.Workflow.Contracts;
 
 namespace Gggs.Modules.Leave;
 
-/// <summary>Leave and holidays (spec §20-21): types, policies, the ledger, requests and accrual.</summary>
+/// <summary>Leave and holidays (spec §20-21): types, named policies assigned by engagement type, the ledger, requests and accrual.</summary>
 public sealed class LeaveModule : IModule
 {
     public string Name => "leave";
@@ -28,6 +28,7 @@ public sealed class LeaveModule : IModule
         services.AddScoped<ILeaveBalances, LeaveBalances>();
         services.AddScoped<LeaveService>();
         services.AddScoped<LeaveAccrualService>();
+        services.AddScoped<LeavePlanService>();
         services.AddScoped<LeaveCatalogSeeder>();
         services.AddWorkflowSubject(LeaveService.Subject);
     }
@@ -36,6 +37,8 @@ public sealed class LeaveModule : IModule
     {
         services.AddScoped<LeaveAccrualSweep>();
         services.AddScoped<LeaveAccrualJob>();
+        services.AddScoped<LeavePlanUpgradeSweep>();
+        services.AddScoped<LeavePlanUpgradeJob>();
         services.AddHostedService<LeaveJobRegistration>();
         services.AddGggsEventConsumer<TenantProvisionedIntegrationEvent, SeedLeaveCatalogOnTenantProvisioned>();
         services.AddGggsEventConsumer<WorkflowApprovedIntegrationEvent, ApproveLeaveOnApproval>();

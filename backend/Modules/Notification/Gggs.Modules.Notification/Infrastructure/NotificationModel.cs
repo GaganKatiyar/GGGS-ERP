@@ -43,6 +43,31 @@ internal sealed class NotificationModel : IModuleModel
             entity.Ignore(notification => notification.DomainEvents);
         });
 
+        modelBuilder.Entity<NotificationPreference>(entity =>
+        {
+            entity.ToTable("NotificationPreference", Schema);
+            entity.Property(preference => preference.EventCode).HasMaxLength(64).IsRequired();
+            entity.HasIndex(preference => new { preference.TenantId, preference.UserId, preference.EventCode })
+                .HasDatabaseName("UX_NotificationPreference_TenantId_User_Event")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.HasIndex(preference => new { preference.TenantId, preference.EmployeeId, preference.EventCode })
+                .HasDatabaseName("IX_NotificationPreference_TenantId_Employee_Event");
+            entity.Ignore(preference => preference.DomainEvents);
+        });
+
+        modelBuilder.Entity<SmsMessage>(entity =>
+        {
+            entity.ToTable("SmsMessage", Schema);
+            entity.Property(sms => sms.ToNumber).HasMaxLength(32).IsRequired();
+            entity.Property(sms => sms.Body).HasMaxLength(1000).IsRequired();
+            entity.Property(sms => sms.EventCode).HasMaxLength(64).IsRequired();
+            entity.Property(sms => sms.Status).HasConversion<byte>();
+            entity.Property(sms => sms.LastError).HasMaxLength(1000);
+            entity.HasIndex(sms => new { sms.TenantId, sms.CreatedDate }).HasDatabaseName("IX_SmsMessage_TenantId_Created");
+            entity.Ignore(sms => sms.DomainEvents);
+        });
+
         modelBuilder.Entity<EmailMessage>(entity =>
         {
             entity.ToTable("EmailMessage", Schema);
@@ -67,5 +92,9 @@ internal static class NotificationData
         public DbSet<InAppNotification> InAppNotifications => db.Set<InAppNotification>();
 
         public DbSet<EmailMessage> EmailMessages => db.Set<EmailMessage>();
+
+        public DbSet<SmsMessage> SmsMessages => db.Set<SmsMessage>();
+
+        public DbSet<NotificationPreference> NotificationPreferences => db.Set<NotificationPreference>();
     }
 }

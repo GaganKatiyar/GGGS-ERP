@@ -21,6 +21,12 @@ public sealed record TaskListQuery
 
     public Guid? AssigneeEmployeeId { get; init; }
 
+    public bool? Unassigned { get; init; }
+
+    public WorkPriority? Priority { get; init; }
+
+    public bool? Overdue { get; init; }
+
     public Guid? SprintId { get; init; }
 
     /// <summary>Only tasks in no sprint: the product backlog.</summary>
@@ -98,6 +104,7 @@ public sealed record TaskItem(
     int? StoryPoints,
     int Progress,
     bool Billable,
+    bool OpenToTeam,
     double Rank,
     DateTime? CompletedDate,
     bool IsOverdue,
@@ -122,7 +129,23 @@ public sealed record TaskBody(
     decimal? ActualHours,
     int? StoryPoints,
     int? Progress,
-    bool? Billable);
+    bool? Billable,
+    bool? OpenToTeam = null);
+
+/// <summary>What to change on many tasks at once. Anything left out stays as it is; clearing takes a flag, because null means leave it.</summary>
+public sealed record BulkTaskBody(
+    IReadOnlyList<Guid> TaskIds,
+    Guid? ColumnId = null,
+    Guid? AssigneeEmployeeId = null,
+    bool? ClearAssignee = null,
+    WorkPriority? Priority = null,
+    Guid? SprintId = null,
+    bool? ClearSprint = null,
+    DateOnly? DueDate = null);
+
+public sealed record BulkTaskResult(int Updated);
+
+public sealed record ScheduleBody(DateOnly? StartDate, DateOnly? DueDate);
 
 /// <summary>Where a task goes on the board: the column and its position in it (0 = top).</summary>
 public sealed record MoveBody(Guid ColumnId, int? Index);
@@ -173,6 +196,8 @@ internal sealed class TaskService(
     AppDbContext dbContext,
     ProjectAccess access,
     ProjectService projects,
+    ServiceLevelService serviceLevels,
+    TaskActivityLog activity,
     INotifier notifier,
     ITenantClock clock,
     TimeProvider timeProvider)
@@ -185,6 +210,9 @@ internal sealed class TaskService(
         ["priority"] = task => task.Priority,
         ["rank"] = task => task.Rank,
     };
+
+    /// <summary>Ranks handed out in this unit of work, which the database cannot see yet.</summary>
+    private readonly Dictionary<Guid, double> _ranks = [];
 
     private DateTime Now => timeProvider.GetUtcNow().UtcDateTime;
 
@@ -220,6 +248,21 @@ internal sealed class TaskService(
         if (query.AssigneeEmployeeId is { } assignee)
         {
             rows = rows.Where(task => task.AssigneeEmployeeId == assignee);
+        }
+        else if (query.Unassigned == true)
+        {
+            rows = rows.Where(task => task.AssigneeEmployeeId == null);
+        }
+
+        if (query.Priority is { } priority)
+        {
+            rows = rows.Where(task => task.Priority == priority);
+        }
+
+        if (query.Overdue == true)
+        {
+            DateOnly today = await clock.TodayAsync(cancellationToken);
+            rows = rows.Where(task => task.CompletedDate == null && task.DueDate < today);
         }
 
         if (query.SprintId is { } sprintId)
@@ -273,17 +316,41 @@ internal sealed class TaskService(
         ArgumentNullException.ThrowIfNull(body);
         await access.EnsureAsync(projectId, Permissions.Project.TaskManage, cancellationToken);
         Domain.Project project = await dbContext.Projects.FirstAsync(row => row.Id == projectId, cancellationToken);
-
-        TaskDetails details = await ValidateAsync(projectId, body, existing: null, cancellationToken);
-        BoardColumn column = await ColumnForNewTaskAsync(projectId, body, cancellationToken);
-        double rank = await NextRankAsync(column.Id, cancellationToken);
-
-        var task = ProjectTask.Create(projectId, project.NextTaskNumber(), project.Code, details, column, rank, access.Me, Now);
-        task.PlanInto(body.SprintId);
-        dbContext.ProjectTasks.Add(task);
-        await NotifyAssigneeAsync(project, task, previousAssignee: null, cancellationToken);
+        ProjectTask task = await AddAsync(project, body, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return (await ToItemsAsync([task], cancellationToken))[0];
+    }
+
+    /// <summary>Creates several tasks together: all of them or, if one is refused, none.</summary>
+    public async Task<IReadOnlyList<TaskItem>> CreateManyAsync(Guid projectId, IReadOnlyList<TaskBody> bodies, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(bodies);
+        await access.EnsureAsync(projectId, Permissions.Project.TaskManage, cancellationToken);
+        Domain.Project project = await dbContext.Projects.FirstAsync(row => row.Id == projectId, cancellationToken);
+        List<ProjectTask> tasks = [];
+        foreach (TaskBody body in bodies)
+        {
+            tasks.Add(await AddAsync(project, body, cancellationToken));
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await ToItemsAsync(tasks, cancellationToken);
+    }
+
+    private async Task<ProjectTask> AddAsync(Domain.Project project, TaskBody body, CancellationToken cancellationToken)
+    {
+        TaskDetails details = await ValidateAsync(project.Id, body, existing: null, cancellationToken);
+        BoardColumn column = await ColumnForNewTaskAsync(project.Id, body, cancellationToken);
+        double rank = _ranks.TryGetValue(column.Id, out double last) ? last + 1000 : await NextRankAsync(column.Id, cancellationToken);
+        _ranks[column.Id] = rank;
+
+        var task = ProjectTask.Create(project.Id, project.NextTaskNumber(), project.Code, details, column, rank, access.Me, Now);
+        task.PlanInto(body.SprintId);
+        dbContext.ProjectTasks.Add(task);
+        activity.Created(task, TaskFields.Created);
+        await serviceLevels.SyncAsync(task, cancellationToken);
+        await NotifyAssigneeAsync(project, task, previousAssignee: null, cancellationToken);
+        return task;
     }
 
     public async Task<TaskItem> UpdateAsync(Guid projectId, Guid taskId, TaskBody body, CancellationToken cancellationToken)
@@ -291,22 +358,94 @@ internal sealed class TaskService(
         ArgumentNullException.ThrowIfNull(body);
         await access.EnsureAsync(projectId, Permissions.Project.TaskManage, cancellationToken);
         ProjectTask task = await FindAsync(projectId, taskId, track: true, cancellationToken);
+        Domain.Project project = await dbContext.Projects.AsNoTracking().FirstAsync(row => row.Id == projectId, cancellationToken);
+        await ApplyAsync(project, task, body, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (await ToItemsAsync([task], cancellationToken))[0];
+    }
+
+    /// <summary>
+    /// Changes many tasks together, by the same rules as changing one, so one that is not allowed stops them
+    /// all rather than leaving the list half done.
+    /// </summary>
+    public async Task<BulkTaskResult> BulkUpdateAsync(Guid projectId, BulkTaskBody body, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        await access.EnsureAsync(projectId, Permissions.Project.TaskManage, cancellationToken);
+        List<Guid> ids = [.. (body.TaskIds ?? []).Distinct()];
+        if (ids.Count is 0 or > 200)
+        {
+            throw new DomainRuleException("PROJECT_TASK_BULK", "Choose between 1 and 200 tasks.");
+        }
+
+        List<ProjectTask> tasks = await dbContext.ProjectTasks.Where(row => row.ProjectId == projectId && ids.Contains(row.Id)).ToListAsync(cancellationToken);
+        if (tasks.Count != ids.Count)
+        {
+            throw new DomainRuleException("PROJECT_TASK_BULK", "Some of those tasks are not in this project.");
+        }
+
+        if (body.SprintId is not null && tasks.Find(row => row.Type == TaskType.Epic) is { } epic)
+        {
+            throw new DomainRuleException("PROJECT_SPRINT_EPIC", $"{epic.Code} is an epic, too big for a sprint; plan its stories instead.");
+        }
+
+        Domain.Project project = await dbContext.Projects.AsNoTracking().FirstAsync(row => row.Id == projectId, cancellationToken);
+        foreach (ProjectTask task in tasks.OrderBy(row => row.Number))
+        {
+            TaskBody change = BodyOf(task) with
+            {
+                ColumnId = body.ColumnId ?? task.ColumnId,
+                AssigneeEmployeeId = body.ClearAssignee == true ? null : body.AssigneeEmployeeId ?? task.AssigneeEmployeeId,
+                Priority = body.Priority ?? task.Priority,
+                SprintId = body.ClearSprint == true ? null : body.SprintId ?? task.SprintId,
+                DueDate = body.DueDate ?? task.DueDate,
+                StartDate = body.DueDate is { } due && task.StartDate > due ? null : task.StartDate,
+            };
+            await ApplyAsync(project, task, change, cancellationToken);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return new BulkTaskResult(tasks.Count);
+    }
+
+    /// <summary>New dates only, for a bar dragged on the timeline. Tasks that depend on it stay put: the timeline shows any clash.</summary>
+    public async Task<TaskItem> ScheduleAsync(Guid projectId, Guid taskId, ScheduleBody body, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        await access.EnsureAsync(projectId, Permissions.Project.TaskManage, cancellationToken);
+        ProjectTask task = await FindAsync(projectId, taskId, track: true, cancellationToken);
+        TaskState before = TaskState.Of(task);
+        task.Reschedule(body.StartDate, body.DueDate);
+        await activity.ChangedAsync(before, task, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (await ToItemsAsync([task], cancellationToken))[0];
+    }
+
+    private static TaskBody BodyOf(ProjectTask task) => new(
+        task.Type, task.ParentTaskId, task.PhaseId, task.MilestoneId, task.SprintId, task.RequirementId, task.ColumnId, task.Title, task.Description, task.AssigneeEmployeeId,
+        task.Priority, task.StartDate, task.DueDate, task.EstimatedHours, task.ActualHours, task.StoryPoints, task.Progress, task.Billable, task.OpenToTeam);
+
+    /// <summary>One change to one task, for the caller to save: the rules, the clock, the history and the assignee told.</summary>
+    private async Task ApplyAsync(Domain.Project project, ProjectTask task, TaskBody body, CancellationToken cancellationToken)
+    {
+        TaskState before = TaskState.Of(task);
         Guid? previousAssignee = task.AssigneeEmployeeId;
 
-        TaskDetails details = await ValidateAsync(projectId, body, task, cancellationToken);
+        TaskDetails details = await ValidateAsync(project.Id, body, task, cancellationToken);
         task.Update(details);
         task.PlanInto(body.SprintId);
 
         if (body.ColumnId is { } columnId && columnId != task.ColumnId)
         {
-            BoardColumn column = await ColumnAsync(projectId, columnId, cancellationToken);
-            task.MoveTo(column, await NextRankAsync(column.Id, cancellationToken), Now);
+            BoardColumn column = await ColumnAsync(project.Id, columnId, cancellationToken);
+            double rank = _ranks.TryGetValue(column.Id, out double last) ? last + 1000 : await NextRankAsync(column.Id, cancellationToken);
+            _ranks[column.Id] = rank;
+            task.MoveTo(column, rank, Now);
         }
 
-        Domain.Project project = await dbContext.Projects.AsNoTracking().FirstAsync(row => row.Id == projectId, cancellationToken);
+        await serviceLevels.SyncAsync(task, cancellationToken);
+        await activity.ChangedAsync(before, task, cancellationToken);
         await NotifyAssigneeAsync(project, task, previousAssignee, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
-        return (await ToItemsAsync([task], cancellationToken))[0];
     }
 
     /// <summary>Drops a task into a column at a position, as a drag on the board does.</summary>
@@ -344,7 +483,10 @@ internal sealed class TaskService(
             rank = index * 1000.0;
         }
 
+        TaskState before = TaskState.Of(task);
         task.MoveTo(column, rank, Now);
+        await serviceLevels.SyncAsync(task, cancellationToken);
+        await activity.ChangedAsync(before, task, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return (await ToItemsAsync([task], cancellationToken))[0];
     }
@@ -363,6 +505,7 @@ internal sealed class TaskService(
             .Where(row => row.PredecessorTaskId == taskId || row.SuccessorTaskId == taskId)
             .ToListAsync(cancellationToken);
         dbContext.TaskDependencies.RemoveRange(links);
+        await serviceLevels.EnsureCanRemoveAsync(task, cancellationToken);
         dbContext.ProjectTasks.Remove(task);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -595,7 +738,8 @@ internal sealed class TaskService(
         return new TaskDetails(
             body.Type, body.ParentTaskId, body.PhaseId, body.MilestoneId, body.RequirementId, body.Title, body.Description, body.AssigneeEmployeeId,
             body.Priority, body.StartDate, body.DueDate, body.EstimatedHours, body.ActualHours, body.StoryPoints, body.Progress ?? existing?.Progress ?? 0,
-            body.Billable ?? existing?.Billable ?? true);
+            body.Billable ?? existing?.Billable ?? true,
+            body.OpenToTeam ?? existing?.OpenToTeam ?? false);
     }
 
     /// <summary>On the team now, or one of the project's managers.</summary>
@@ -714,7 +858,7 @@ internal sealed class TaskService(
                 task.Title, task.Description, task.AssigneeEmployeeId, task.AssigneeEmployeeId is { } assignee ? people.GetValueOrDefault(assignee) : null,
                 task.ReporterEmployeeId, task.ReporterEmployeeId is { } reporter ? people.GetValueOrDefault(reporter) : null, task.Priority,
                 task.ColumnId, column?.Name, column?.Category ?? ColumnCategory.Backlog, task.StartDate, task.DueDate, task.EstimatedHours,
-                task.ActualHours, task.StoryPoints, task.Progress, task.Billable, task.Rank, task.CompletedDate, task.IsOverdue(today),
+                task.ActualHours, task.StoryPoints, task.Progress, task.Billable, task.OpenToTeam, task.Rank, task.CompletedDate, task.IsOverdue(today),
                 children.GetValueOrDefault(task.Id), blocked.GetValueOrDefault(task.Id));
         })];
     }

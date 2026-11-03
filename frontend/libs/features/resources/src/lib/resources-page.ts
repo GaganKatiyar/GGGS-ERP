@@ -1,6 +1,7 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { PermissionStore } from '@gggs/core/permissions';
 import { ResourcesApi, SkillsApi } from '@gggs/shared/delivery';
 import type { CapacityState, ResourceDashboard, ResourceRow, SkillItem } from '@gggs/shared/models';
 import { humanize } from '@gggs/shared/models';
@@ -19,7 +20,7 @@ import { message } from './allocation-dialogs';
     <gggs-page-header title="Resources" subtitle="Who is available, who is stretched, and who is about to free up." />
 
     @if (dashboard(); as d) {
-      <div class="res__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="People" [value]="d.totalPeople" icon="pi pi-users" />
         <gggs-kpi-card label="Billable" [value]="d.billable" [hint]="d.nonBillable + ' non-billable'" />
         <gggs-kpi-card label="On bench" [value]="d.onBench" [hint]="d.benchCostPerDay ? (d.benchCostPerDay | number: '1.0-0') + ' a day' : undefined" />
@@ -48,15 +49,17 @@ import { message } from './allocation-dialogs';
         <span class="field__label">Search</span>
         <input type="search" [value]="search()" (input)="search.set($any($event.target).value)" (keyup.enter)="load()" (search)="load()" />
       </label>
-      <label class="field">
-        <span class="field__label">Skill</span>
-        <select [value]="skillId()" (change)="skillId.set($any($event.target).value); load()">
-          <option value="">Any</option>
-          @for (skill of skills(); track skill.id) {
-            <option [value]="skill.id">{{ skill.name }}</option>
-          }
-        </select>
-      </label>
+      @if (canFilterBySkill) {
+        <label class="field">
+          <span class="field__label">Skill</span>
+          <select [value]="skillId()" (change)="skillId.set($any($event.target).value); load()">
+            <option value="">Any</option>
+            @for (skill of skills(); track skill.id) {
+              <option [value]="skill.id">{{ skill.name }}</option>
+            }
+          </select>
+        </label>
+      }
       <label class="field">
         <span class="field__label">Availability</span>
         <select [value]="state()" (change)="state.set($any($event.target).value); load()">
@@ -97,6 +100,11 @@ import { message } from './allocation-dialogs';
 export class ResourcesPage {
   private readonly api = inject(ResourcesApi);
   private readonly skillsApi = inject(SkillsApi);
+  private readonly permissions = inject(PermissionStore);
+
+  /** The directory needs only profile access; the headline numbers and the skill list need more. */
+  protected readonly canSeeDashboard = this.permissions.has('resource.allocation.view');
+  protected readonly canFilterBySkill = this.permissions.has('skill.view');
 
   protected readonly states: readonly CapacityState[] = ['Bench', 'PartiallyAvailable', 'FullyAllocated', 'Overallocated', 'Leave'];
   protected readonly humanize = humanize;
@@ -111,14 +119,18 @@ export class ResourcesPage {
   protected readonly error = signal<string | null>(null);
 
   constructor() {
-    this.api.dashboard().then(
-      (dashboard) => this.dashboard.set(dashboard),
-      () => undefined,
-    );
-    this.skillsApi.catalog().then(
-      (skills) => this.skills.set(skills),
-      () => undefined,
-    );
+    if (this.canSeeDashboard) {
+      this.api.dashboard().then(
+        (dashboard) => this.dashboard.set(dashboard),
+        () => undefined,
+      );
+    }
+    if (this.canFilterBySkill) {
+      this.skillsApi.catalog().then(
+        (skills) => this.skills.set(skills),
+        () => undefined,
+      );
+    }
     void this.load();
   }
 

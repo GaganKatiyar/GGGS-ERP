@@ -507,6 +507,39 @@ public sealed record ConnectionBody(string AdapterKey, string Name, IReadOnlyDic
 
 public sealed record RunBody(string Operation, IReadOnlyDictionary<string, string>? Parameters);
 
+/// <summary>Studio's way into connections: <see cref="IntegrationService.RunAsync"/>, with refusals as failed results.</summary>
+internal sealed class IntegrationConnections(IntegrationService integrations) : IIntegrationConnections
+{
+    public Task<InboundConnection?> InboundAsync(Guid connectionId, CancellationToken cancellationToken = default) => integrations.InboundAsync(connectionId, cancellationToken);
+
+    public Task<IReadOnlyList<ConnectionOption>> ConnectionsToAsync(IReadOnlyCollection<string> adapterKeys, CancellationToken cancellationToken = default) => integrations.ConnectionsToAsync(adapterKeys, cancellationToken);
+
+    public Task<IReadOnlyList<ConnectionOption>> ListAsync(CancellationToken cancellationToken = default) => integrations.OptionsAsync(cancellationToken);
+
+    public Task<IReadOnlyList<ConnectionOption>> AccountConnectionsAsync(CancellationToken cancellationToken = default) => integrations.AccountOptionsAsync(cancellationToken);
+
+    public Task<AccountOutcome> CreateAccountAsync(Guid connectionId, AccountRequest account, CancellationToken cancellationToken = default) => integrations.CreateAccountAsync(connectionId, account, cancellationToken);
+
+    public Task<ConnectionRunResult> DisableAccountAsync(Guid connectionId, string externalId, CancellationToken cancellationToken = default) => integrations.DisableAccountAsync(connectionId, externalId, cancellationToken);
+
+    public async Task<ConnectionRunResult> RunAsync(Guid connectionId, string operation, IReadOnlyDictionary<string, string> parameters, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            RunOutcome outcome = await integrations.RunAsync(connectionId, new RunBody(operation, parameters), cancellationToken);
+            return new ConnectionRunResult(outcome.Succeeded, outcome.Message);
+        }
+        catch (DomainRuleException refused)
+        {
+            return new ConnectionRunResult(false, refused.Message);
+        }
+        catch (NotFoundException)
+        {
+            return new ConnectionRunResult(false, "The connection no longer exists.");
+        }
+    }
+}
+
 public sealed record RunOutcome(bool Succeeded, string Message, int Records, string? FileName, string? ContentType, string? ContentBase64);
 
 public sealed record RunItem(Guid Id, Guid ConnectionId, string Operation, bool Succeeded, string Message, int Records, string? FileName, DateTime CreatedDate);
@@ -533,6 +566,93 @@ internal sealed class IntegrationService(
 
     public async Task<IReadOnlyList<ConnectionItem>> ConnectionsAsync(CancellationToken cancellationToken)
         => [.. (await dbContext.IntegrationConnections.AsNoTracking().OrderBy(row => row.Name).ToListAsync(cancellationToken)).Select(Item)];
+
+    public async Task<IReadOnlyList<ConnectionOption>> OptionsAsync(CancellationToken cancellationToken)
+    {
+        List<IntegrationConnection> rows = await dbContext.IntegrationConnections.AsNoTracking().OrderBy(row => row.Name).ToListAsync(cancellationToken);
+        return [.. rows.Select(row => (Row: row, Adapter: adapters.FirstOrDefault(candidate => string.Equals(candidate.Key, row.AdapterKey, StringComparison.OrdinalIgnoreCase))))
+            .Where(pair => pair.Adapter is { Automatable: true })
+            .Select(pair => new ConnectionOption(pair.Row.Id, pair.Row.Name, pair.Row.AdapterKey, pair.Adapter!.Name, pair.Row.IsActive, pair.Adapter.Operations, pair.Adapter.Channel))];
+    }
+
+    public async Task<IReadOnlyList<ConnectionOption>> ConnectionsToAsync(IReadOnlyCollection<string> adapterKeys, CancellationToken cancellationToken)
+    {
+        List<IntegrationConnection> rows = await dbContext.IntegrationConnections.AsNoTracking().Where(row => adapterKeys.Contains(row.AdapterKey)).OrderBy(row => row.Name).ToListAsync(cancellationToken);
+        return [.. rows.Select(row => (Row: row, Adapter: Adapter(row.AdapterKey))).Select(pair => new ConnectionOption(pair.Row.Id, pair.Row.Name, pair.Row.AdapterKey, pair.Adapter.Name, pair.Row.IsActive, pair.Adapter.Operations))];
+    }
+
+    public async Task<IReadOnlyList<ConnectionOption>> AccountOptionsAsync(CancellationToken cancellationToken)
+    {
+        List<IntegrationConnection> rows = await dbContext.IntegrationConnections.AsNoTracking().OrderBy(row => row.Name).ToListAsync(cancellationToken);
+        return [.. rows.Select(row => (Row: row, Adapter: adapters.FirstOrDefault(candidate => string.Equals(candidate.Key, row.AdapterKey, StringComparison.OrdinalIgnoreCase))))
+            .Where(pair => pair.Adapter is IAccountAdapter)
+            .Select(pair => new ConnectionOption(pair.Row.Id, pair.Row.Name, pair.Row.AdapterKey, pair.Adapter!.Name, pair.Row.IsActive, pair.Adapter.Operations))];
+    }
+
+    /// <summary>Asks a directory for an account, with its settings decrypted. The run log gets the outcome's message and never the request.</summary>
+    public async Task<AccountOutcome> CreateAccountAsync(Guid id, AccountRequest account, CancellationToken cancellationToken)
+    {
+        (IntegrationConnection? connection, IAccountAdapter? adapter, string? refused) = await AccountConnectionAsync(id, cancellationToken);
+        if (connection is null || adapter is null)
+        {
+            return new AccountOutcome(false, refused!);
+        }
+
+        AccountOutcome outcome;
+        try
+        {
+            outcome = await adapter.CreateAccountAsync(Revealed(connection), account, cancellationToken);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        {
+            outcome = new AccountOutcome(false, exception.Message);
+        }
+
+        dbContext.IntegrationRuns.Add(IntegrationRun.Record(connection.Id, "create-account", outcome.Succeeded, outcome.Message, outcome.Succeeded ? 1 : 0, null, currentUser.UserId));
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return outcome;
+    }
+
+    public async Task<ConnectionRunResult> DisableAccountAsync(Guid id, string externalId, CancellationToken cancellationToken)
+    {
+        (IntegrationConnection? connection, IAccountAdapter? adapter, string? refused) = await AccountConnectionAsync(id, cancellationToken);
+        if (connection is null || adapter is null)
+        {
+            return new ConnectionRunResult(false, refused!);
+        }
+
+        IntegrationResult result;
+        try
+        {
+            result = await adapter.DisableAccountAsync(Revealed(connection), externalId, cancellationToken);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        {
+            result = new IntegrationResult(false, exception.Message);
+        }
+
+        dbContext.IntegrationRuns.Add(IntegrationRun.Record(connection.Id, "disable-account", result.Succeeded, result.Message, result.Succeeded ? 1 : 0, null, currentUser.UserId));
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return new ConnectionRunResult(result.Succeeded, result.Message);
+    }
+
+    private async Task<(IntegrationConnection? Connection, IAccountAdapter? Adapter, string? Refused)> AccountConnectionAsync(Guid id, CancellationToken cancellationToken)
+    {
+        IntegrationConnection? connection = await dbContext.IntegrationConnections.FirstOrDefaultAsync(row => row.Id == id, cancellationToken);
+        if (connection is null)
+        {
+            return (null, null, "The connection no longer exists.");
+        }
+
+        if (!connection.IsActive)
+        {
+            return (null, null, "The connection is switched off.");
+        }
+
+        return adapters.FirstOrDefault(candidate => string.Equals(candidate.Key, connection.AdapterKey, StringComparison.OrdinalIgnoreCase)) is IAccountAdapter adapter
+            ? (connection, adapter, null)
+            : (null, null, "That connection cannot make accounts.");
+    }
 
     public async Task<ConnectionItem> SaveAsync(Guid? id, ConnectionBody body, CancellationToken cancellationToken)
     {
@@ -579,7 +699,7 @@ internal sealed class IntegrationService(
         string json = JsonSerializer.Serialize(next, Json);
         if (connection is null)
         {
-            connection = IntegrationConnection.Create(adapter.Key, name, json);
+            connection = IntegrationConnection.Create(adapter.Key, name, json, body.IsActive);
             dbContext.IntegrationConnections.Add(connection);
         }
         else
@@ -659,6 +779,12 @@ internal sealed class IntegrationService(
 
     private IIntegrationAdapter Adapter(string key)
         => adapters.FirstOrDefault(adapter => string.Equals(adapter.Key, key, StringComparison.OrdinalIgnoreCase)) ?? throw new DomainRuleException("INTEGRATION_ADAPTER", $"There is no {key} integration.");
+
+    public async Task<InboundConnection?> InboundAsync(Guid connectionId, CancellationToken cancellationToken)
+    {
+        IntegrationConnection? connection = await dbContext.IntegrationConnections.AsNoTracking().FirstOrDefaultAsync(row => row.Id == connectionId && row.IsActive, cancellationToken);
+        return connection is not null && Revealed(connection).GetValueOrDefault("secret") is { Length: > 0 } secret ? new InboundConnection(connection.AdapterKey, secret) : null;
+    }
 
     private Dictionary<string, string> Revealed(IntegrationConnection connection)
         => Stored(connection).ToDictionary(

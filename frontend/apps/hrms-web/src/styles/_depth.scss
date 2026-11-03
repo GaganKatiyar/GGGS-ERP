@@ -1,0 +1,171 @@
+/*
+ * Depth: the shared elevation, glass and motion helpers behind the lifted look. Surfaces rest at
+ * elevation 1 and rise to 3 under the pointer; only things that do something when clicked rise.
+ * Lift distances come from --gggs-lift, which is 0 for users who ask for reduced motion
+ * (_base.scss), so every hover lift here switches off with it.
+ */
+.elevated {
+  border: 1px solid var(--gggs-color-border);
+  border-radius: var(--gggs-radius-lg);
+  background: var(--gggs-color-surface-raised);
+  box-shadow: var(--gggs-shadow-1), var(--gggs-shadow-highlight);
+}
+
+/* A surface that is itself a link or a button: it rises toward the pointer and settles on press. */
+.elevated--interactive,
+a.panel,
+a.xp__card,
+button.xp__card {
+  transition:
+    transform var(--gggs-transition),
+    box-shadow var(--gggs-transition),
+    border-color var(--gggs-transition);
+
+  &:hover {
+    transform: translateY(var(--gggs-lift));
+    border-color: color-mix(
+      in srgb,
+      var(--gggs-color-primary) 28%,
+      var(--gggs-color-border)
+    );
+    box-shadow: var(--gggs-shadow-3), var(--gggs-shadow-highlight);
+  }
+
+  &:active {
+    transform: none;
+    box-shadow: var(--gggs-shadow-1), var(--gggs-shadow-highlight);
+  }
+}
+
+/* Frosted glass for floating chrome. Falls back to an opaque surface where blur is unsupported. */
+.glass {
+  border-color: var(--gggs-glass-border);
+  background: var(--gggs-glass-bg);
+  -webkit-backdrop-filter: var(--gggs-glass-blur);
+  backdrop-filter: var(--gggs-glass-blur);
+
+  @supports not (
+    (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+  ) {
+    background: var(--gggs-color-surface-raised);
+  }
+}
+
+/*
+ * Forms on the signed-out pages (sign-in, invitation, forgotten password). The page around them is
+ * SignedOutLayout.
+ */
+.auth__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gggs-space-4);
+  width: 100%;
+  max-width: 22.25rem;
+}
+
+.auth__title {
+  margin: 0;
+  font-family: var(--gggs-font-family-display);
+  font-size: 1.6rem;
+  font-weight: var(--gggs-font-weight-bold);
+  letter-spacing: -0.02em;
+}
+
+.auth__org {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gggs-space-2);
+  min-height: 2.625rem;
+  padding: 0.25rem var(--gggs-space-3);
+  border-radius: var(--gggs-radius-md);
+  background: var(--gggs-color-surface-sunken);
+  overflow-wrap: anywhere;
+}
+
+.auth__password {
+  position: relative;
+
+  input {
+    padding-inline-end: 3.75rem;
+  }
+}
+
+.auth__eye {
+  position: absolute;
+  inset-block-end: 0.3rem;
+  inset-inline-end: 0.3rem;
+  height: 1.875rem;
+  padding: 0 var(--gggs-space-2);
+  border: 0;
+  border-radius: var(--gggs-radius-sm);
+  background: transparent;
+  color: var(--gggs-color-text-muted);
+  font: inherit;
+  font-size: var(--gggs-font-size-sm);
+  font-weight: var(--gggs-font-weight-medium);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--gggs-color-surface-hover);
+    color: var(--gggs-color-text);
+  }
+
+  &:focus-visible {
+    outline: var(--gggs-focus-outline);
+  }
+}
+
+/* With a hint under the field, the button sits level with the input and not the hint. */
+.auth__eye--hinted {
+  inset-block-end: 1.85rem;
+}
+
+.auth__forgot {
+  align-self: flex-end;
+  margin-block-start: calc(var(--gggs-space-2) * -1);
+  font-size: var(--gggs-font-size-sm);
+}
+
+.auth__help {
+  margin: 0;
+  color: var(--gggs-color-text-muted);
+  font-size: var(--gggs-font-size-sm);
+}
+
+.auth__note {
+  margin: 0;
+  color: var(--gggs-color-text-muted);
+}
+
+.auth__error,
+.auth__success {
+  margin: 0;
+  font-size: var(--gggs-font-size-base);
+}
+
+.auth__error {
+  color: var(--gggs-color-danger);
+}
+
+.auth__success {
+  color: var(--gggs-color-success);
+}
+
+/*
+ * Entrance: a block fades up into place once, when it first renders. Set --i on siblings to
+ * stagger them (style="--i: 2"). Never loops; zeroed by the reduced-motion rule.
+ */
+.rise-in {
+  /* backwards, not both: once finished it lets go of transform, so a hover lift still applies. */
+  animation: gggs-rise-in var(--gggs-duration-slow) var(--gggs-ease-out)
+    backwards;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+@keyframes gggs-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.375rem);
+  }
+}

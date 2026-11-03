@@ -26,7 +26,11 @@ public sealed record MilestoneItem(
     decimal MeasuredPercent,
     int TaskCount,
     bool IsBillable,
-    int DaysOverdue);
+    int DaysOverdue,
+    bool RequiresAcceptance = false,
+    DateOnly? AcceptedOn = null,
+    string? AcceptedBy = null,
+    string? AcceptanceEvidence = null);
 
 public sealed record MilestoneBody(
     string Name,
@@ -36,9 +40,12 @@ public sealed record MilestoneBody(
     Guid? PhaseId,
     MilestoneStatus? Status,
     int? PercentComplete,
-    bool? IsBillable);
+    bool? IsBillable,
+    bool? RequiresAcceptance = null);
 
 public sealed record AchieveBody(DateOnly? On);
+
+public sealed record AcceptBody(DateOnly? On, string AcceptedBy, string? Evidence);
 
 public sealed record PortfolioMilestoneQuery
 {
@@ -85,6 +92,8 @@ internal sealed class PlanningService(
     AppDbContext dbContext,
     ProjectAccess access,
     ProjectService projects,
+    ServiceLevelService serviceLevels,
+    TaskActivityLog activity,
     ITenantClock clock,
     TimeProvider timeProvider)
 {
@@ -143,16 +152,26 @@ internal sealed class PlanningService(
             milestone = await FindMilestoneAsync(projectId, id, cancellationToken);
             milestone.Update(new MilestonePlan(
                 body.Name, body.Description, body.PlannedDate, body.OwnerEmployeeId, body.PhaseId, body.Status ?? milestone.Status,
-                body.PercentComplete ?? milestone.PercentComplete, body.IsBillable ?? milestone.IsBillable));
+                body.PercentComplete ?? milestone.PercentComplete, body.IsBillable ?? milestone.IsBillable, body.RequiresAcceptance ?? milestone.RequiresAcceptance));
         }
         else
         {
             milestone = ProjectMilestone.Create(projectId, new MilestonePlan(
                 body.Name, body.Description, body.PlannedDate, body.OwnerEmployeeId, body.PhaseId, body.Status ?? MilestoneStatus.Planned,
-                body.PercentComplete ?? 0, body.IsBillable ?? false));
+                body.PercentComplete ?? 0, body.IsBillable ?? false, body.RequiresAcceptance ?? false));
             dbContext.ProjectMilestones.Add(milestone);
         }
 
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (await ToMilestoneItemsAsync([milestone], withProject: false, cancellationToken))[0];
+    }
+
+    public async Task<MilestoneItem> AcceptMilestoneAsync(Guid projectId, Guid milestoneId, AcceptBody body, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        await access.EnsureAsync(projectId, Permissions.Project.MilestoneManage, cancellationToken);
+        ProjectMilestone milestone = await FindMilestoneAsync(projectId, milestoneId, cancellationToken);
+        milestone.Accept(body.On ?? await clock.TodayAsync(cancellationToken), body.AcceptedBy, body.Evidence);
         await dbContext.SaveChangesAsync(cancellationToken);
         return (await ToMilestoneItemsAsync([milestone], withProject: false, cancellationToken))[0];
     }
@@ -256,13 +275,17 @@ internal sealed class PlanningService(
 
         foreach (ProjectTask task in tasks)
         {
+            TaskState before = TaskState.Of(task);
             task.PlanInto(sprint.Id);
 
             // Pulled from the backlog into a sprint, a task is ready to start.
             if (todo is not null && categories.GetValueOrDefault(task.ColumnId) == ColumnCategory.Backlog)
             {
                 task.MoveTo(todo, task.Rank, Now);
+                await serviceLevels.SyncAsync(task, cancellationToken);
             }
+
+            await activity.ChangedAsync(before, task, cancellationToken);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -275,7 +298,9 @@ internal sealed class PlanningService(
         Sprint sprint = await FindSprintAsync(projectId, sprintId, cancellationToken);
         ProjectTask task = await dbContext.ProjectTasks.FirstOrDefaultAsync(row => row.Id == taskId && row.SprintId == sprintId, cancellationToken)
             ?? throw new NotFoundException("Task", taskId);
+        TaskState before = TaskState.Of(task);
         task.PlanInto(null);
+        await activity.ChangedAsync(before, task, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return (await ToSprintItemsAsync([sprint], withProject: false, cancellationToken))[0];
     }
@@ -466,7 +491,7 @@ internal sealed class PlanningService(
                 milestone.ActualDate, milestone.OwnerEmployeeId, milestone.OwnerEmployeeId is { } owner ? owners.GetValueOrDefault(owner) : null,
                 milestone.PhaseId, milestone.Status, milestone.PercentComplete,
                 milestone.Status == MilestoneStatus.Achieved ? 100 : mine.Count == 0 ? milestone.PercentComplete : measured,
-                mine.Count, milestone.IsBillable, milestone.DaysOverdue(today));
+                mine.Count, milestone.IsBillable, milestone.DaysOverdue(today), milestone.RequiresAcceptance, milestone.AcceptedOn, milestone.AcceptedBy, milestone.AcceptanceEvidence);
         })];
     }
 

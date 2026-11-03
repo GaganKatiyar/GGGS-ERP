@@ -37,6 +37,8 @@
     <ProjectReference Include="..\..\Modules\Engagement\Gggs.Modules.Engagement\Gggs.Modules.Engagement.csproj" />
     <ProjectReference Include="..\..\Modules\Helpdesk\Gggs.Modules.Helpdesk\Gggs.Modules.Helpdesk.csproj" />
     <ProjectReference Include="..\..\Modules\Expense\Gggs.Modules.Expense\Gggs.Modules.Expense.csproj" />
+    <ProjectReference Include="..\..\Modules\Loans\Gggs.Modules.Loans\Gggs.Modules.Loans.csproj" />
+    <ProjectReference Include="..\..\Modules\Studio\Gggs.Modules.Studio\Gggs.Modules.Studio.csproj" />
     <ProjectReference Include="..\..\Modules\Assets\Gggs.Modules.Assets\Gggs.Modules.Assets.csproj" />
     <ProjectReference Include="..\..\Modules\Career\Gggs.Modules.Career\Gggs.Modules.Career.csproj" />
     <ProjectReference Include="..\..\Modules\Learning\Gggs.Modules.Learning\Gggs.Modules.Learning.csproj" />

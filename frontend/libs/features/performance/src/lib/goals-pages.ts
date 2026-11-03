@@ -9,11 +9,11 @@ import type { Confidence, GoalDetailsInput, GoalItem, GoalLevel, GoalView, KeyRe
 import { CONFIDENCES, GOAL_LEVELS, METRIC_TYPES, humanize } from '@gggs/shared/models';
 import { OrgSelect } from '@gggs/shared/org-reference';
 import { GoalsApi, ProgressBar } from '@gggs/shared/talent';
-import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
+import { EmptyState, FormDialog, localIsoDate, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
 
 export const errorText = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
 
-const iso = (date: Date) => date.toISOString().slice(0, 10);
+const iso = (date: Date) => localIsoDate(date);
 
 const blankGoal = (level: GoalLevel, ownerId: string | null): GoalDetailsInput => ({
   title: '',

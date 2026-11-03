@@ -18,6 +18,8 @@ using Gggs.Modules.Identity;
 using Gggs.Modules.Insight;
 using Gggs.Modules.Learning;
 using Gggs.Modules.Leave;
+using Gggs.Modules.Loans;
+using Gggs.Modules.Studio;
 using Gggs.Modules.MasterData;
 using Gggs.Modules.Notification;
 using Gggs.Modules.Onboarding;
@@ -41,7 +43,7 @@ using Gggs.Modules.Workforce;
 namespace Gggs.Composition;
 
 /// <summary>
-/// The modules PeopleOS is made of (ADR-12).
+/// The modules Nuts and Bolts is made of (ADR-12).
 /// <para>
 /// Adding a module is one line here. Both hosts, the migrations project, DevSeed and the
 /// integration tests all compose from this list, so they cannot disagree about what the application
@@ -85,6 +87,8 @@ public static class ModuleCatalog
         new EngagementModule(),
         new HelpdeskModule(),
         new ExpenseModule(),
+        new LoansModule(),
+        new StudioModule(),
         new AssetsModule(),
         new CareerModule(),
         new LearningModule(),

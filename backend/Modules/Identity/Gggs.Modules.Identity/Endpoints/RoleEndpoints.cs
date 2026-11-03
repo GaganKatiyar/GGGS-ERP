@@ -3,6 +3,8 @@ using Gggs.BuildingBlocks.Domain.Exceptions;
 using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.Data;
+using Gggs.Modules.Identity.Application.Authorization;
+using Gggs.Modules.Identity.Application.Roles;
 using Gggs.Modules.Identity.Application.Users;
 using Gggs.Modules.Identity.Domain.Roles;
 using Gggs.Modules.Identity.Infrastructure;
@@ -15,12 +17,18 @@ public sealed record CreateRoleBody(string Name, string? Description);
 
 public sealed record GrantPermissionBody(string PermissionCode, DataScope Scope);
 
+public sealed record SetAutoAssignBody(RoleAutoAssign AutoAssign);
+
+/// <summary>A role's whole permission set, as the grid saves it.</summary>
+public sealed record ReplacePermissionsBody(IReadOnlyList<PermissionChoice> Permissions);
+
 public sealed record RoleResponse(
     Guid Id,
     string Name,
     string? Description,
     bool IsSystem,
-    IReadOnlyList<PermissionAssignmentResponse> Permissions);
+    IReadOnlyList<PermissionAssignmentResponse> Permissions,
+    string AutoAssign);
 
 public sealed record PermissionAssignmentResponse(string PermissionCode, string Scope);
 
@@ -52,6 +60,11 @@ public static class RoleEndpoints
         group.MapPost("/", CreateAsync).WithName("CreateRole").RequirePermission(Permissions.Admin.RoleManage);
         group.MapPost("/{roleId:guid}/permissions", GrantAsync).WithName("GrantPermission").RequirePermission(Permissions.Admin.RoleManage);
         group.MapDelete("/{roleId:guid}/permissions/{permissionCode}", RevokeAsync).WithName("RevokePermission").RequirePermission(Permissions.Admin.RoleManage);
+        group.MapPut("/{roleId:guid}/auto-assign", SetAutoAssignAsync).WithName("SetRoleAutoAssign").RequirePermission(Permissions.Admin.RoleManage);
+        group.MapPut("/{roleId:guid}/permissions", ReplacePermissionsAsync).WithName("ReplaceRolePermissions").RequirePermission(Permissions.Admin.RoleManage);
+        group.MapGet("/{roleId:guid}/members", async (Guid roleId, AccessQueries access, CancellationToken ct) => TypedResults.Ok(await access.MembersAsync(roleId, ct)))
+            .WithName("ListRoleMembers")
+            .RequirePermission(Permissions.Admin.RoleView);
 
         endpoints.MapGet("/api/v1/permissions", ListPermissionsAsync)
             .WithName("ListPermissions")
@@ -92,7 +105,7 @@ public static class RoleEndpoints
         Guid roleId,
         GrantPermissionBody body,
         IRoleRepository roles,
-        IUnitOfWork unitOfWork,
+        RolePermissionEditor editor,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(body);
@@ -100,26 +113,68 @@ public static class RoleEndpoints
         Role role = await roles.GetAsync(roleId, cancellationToken)
             ?? throw new NotFoundException(nameof(Role), roleId);
 
-        // The domain refuses an unknown or platform-only code, so a typo here fails rather than
-        // creating a role that looks like access and grants nothing.
-        role.Grant(body.PermissionCode, body.Scope);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        // Through the editor, so holders see it at once. The domain refuses an unknown or
+        // platform-only code, so a typo here fails rather than granting nothing that looks like access.
+        List<PermissionChoice> permissions =
+        [
+            .. role.Permissions.Where(permission => !string.Equals(permission.PermissionCode, body.PermissionCode, StringComparison.OrdinalIgnoreCase))
+                .Select(permission => new PermissionChoice(permission.PermissionCode, permission.Scope)),
+            new PermissionChoice(body.PermissionCode, body.Scope),
+        ];
 
-        return TypedResults.Ok(ToResponse(role));
+        return TypedResults.Ok(ToResponse(await editor.ReplaceAsync(roleId, permissions, cancellationToken)));
+    }
+
+    /// <summary>Saves the role's whole permission set from the grid, in one go.</summary>
+    private static async Task<Ok<RoleResponse>> ReplacePermissionsAsync(
+        Guid roleId,
+        ReplacePermissionsBody body,
+        RolePermissionEditor editor,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        return TypedResults.Ok(ToResponse(await editor.ReplaceAsync(roleId, body.Permissions ?? [], cancellationToken)));
     }
 
     private static async Task<Ok<RoleResponse>> RevokeAsync(
         Guid roleId,
         string permissionCode,
         IRoleRepository roles,
-        IUnitOfWork unitOfWork,
+        RolePermissionEditor editor,
         CancellationToken cancellationToken)
     {
         Role role = await roles.GetAsync(roleId, cancellationToken)
             ?? throw new NotFoundException(nameof(Role), roleId);
 
-        role.Revoke(permissionCode);
+        List<PermissionChoice> permissions =
+        [
+            .. role.Permissions.Where(permission => !string.Equals(permission.PermissionCode, permissionCode, StringComparison.OrdinalIgnoreCase))
+                .Select(permission => new PermissionChoice(permission.PermissionCode, permission.Scope)),
+        ];
+
+        return TypedResults.Ok(ToResponse(await editor.ReplaceAsync(roleId, permissions, cancellationToken)));
+    }
+
+    /// <summary>
+    /// Who the org chart gives this role to. Takes effect at once: the grants it now calls for are
+    /// made, and the automatic ones it no longer calls for end.
+    /// </summary>
+    private static async Task<Ok<RoleResponse>> SetAutoAssignAsync(
+        Guid roleId,
+        SetAutoAssignBody body,
+        IRoleRepository roles,
+        IUnitOfWork unitOfWork,
+        RoleAutomation automation,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+
+        Role role = await roles.GetAsync(roleId, cancellationToken)
+            ?? throw new NotFoundException(nameof(Role), roleId);
+
+        role.SetAutoAssign(body.AutoAssign);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await automation.SyncAsync(cancellationToken);
 
         return TypedResults.Ok(ToResponse(role));
     }
@@ -150,5 +205,6 @@ public static class RoleEndpoints
         role.Description,
         role.IsSystem,
         [.. role.Permissions.Select(permission =>
-            new PermissionAssignmentResponse(permission.PermissionCode, permission.Scope.ToString()))]);
+            new PermissionAssignmentResponse(permission.PermissionCode, permission.Scope.ToString()))],
+        role.AutoAssign.ToString());
 }

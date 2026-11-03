@@ -16,7 +16,6 @@ export interface UserListItem {
   readonly userType: UserType;
   readonly employeeId?: string;
   readonly lastLoginDate?: string;
-  readonly mfaEnabled: boolean;
 }
 
 export interface InviteUserRequest {
@@ -49,12 +48,75 @@ export interface PermissionAssignment {
   readonly scope: DataScope;
 }
 
+/** Who the org chart gives a role to without anyone granting it. */
+export type RoleAutoAssign = 'None' | 'PeopleManagers' | 'DepartmentHeads';
+
 export interface Role {
   readonly id: string;
   readonly name: string;
   readonly description?: string;
   readonly isSystem: boolean;
   readonly permissions: readonly PermissionAssignment[];
+  readonly autoAssign: RoleAutoAssign;
+}
+
+/** A role grant as the access screens show it: which role, given how, anchored where, from when. */
+export interface AccessGrant {
+  readonly userId: string;
+  readonly roleId: string;
+  readonly roleName: string;
+  readonly isAutomatic: boolean;
+  readonly scopeType?: string;
+  readonly scopeId?: string;
+  readonly scopeName?: string;
+  readonly validFrom: string;
+  readonly validTo?: string;
+}
+
+/** One account on the access overview, with every permission its roles add up to. */
+export interface UserAccessSummary {
+  readonly id: string;
+  readonly email: string;
+  readonly displayName: string;
+  readonly status: string;
+  readonly employeeId?: string;
+  readonly employeeName?: string;
+  readonly lastLoginDate?: string;
+  readonly roles: readonly AccessGrant[];
+  readonly permissionCodes: readonly string[];
+}
+
+/** A permission someone holds, how far it reaches, and the roles it comes through. */
+export interface EffectivePermission {
+  readonly code: string;
+  readonly scope: DataScope;
+  readonly scopeId?: string;
+  readonly via: readonly string[];
+  readonly isSensitive: boolean;
+}
+
+export interface UserAccessDetail {
+  readonly user: UserAccessSummary;
+  readonly permissions: readonly EffectivePermission[];
+}
+
+/** Someone holding a role, for the role's Members tab. */
+export interface RoleMember {
+  readonly userId: string;
+  readonly displayName: string;
+  readonly email: string;
+  readonly isAutomatic: boolean;
+  readonly scopeName?: string;
+  readonly validFrom: string;
+  readonly validTo?: string;
+}
+
+/** A role a user holds because of the org chart; a department head's is anchored to the department. */
+export interface AutomaticRoleGrant {
+  readonly roleId: string;
+  readonly roleName: string;
+  readonly departmentId?: string;
+  readonly departmentName?: string;
 }
 
 export interface CreateRoleRequest {
@@ -89,6 +151,50 @@ export interface TenantSettingItem {
   readonly valueJson: string;
 }
 
+/** The running deployment, mirroring `Gggs.Modules.Platform.Endpoints.AboutResponse` (`/api/v1/about`). */
+export interface AboutInfo {
+  readonly product: string;
+  readonly version: string;
+  /** The source revision the API was built from, when the build recorded one. */
+  readonly commit: string | null;
+  readonly environment: string;
+  readonly runtime: string;
+  readonly operatingSystem: string;
+  readonly startedAt: string;
+  readonly serverTime: string;
+  readonly databaseReachable: boolean;
+  /** Module names in composition order, e.g. `platform`, `identity`, `employee`. */
+  readonly modules: readonly string[];
+}
+
 export interface UpsertTenantSettingRequest {
   readonly valueJson: string;
+}
+
+/** A key an outside system calls the API with; it acts as a machine account holding these roles. */
+export interface ApiKeyItem {
+  readonly id: string;
+  readonly name: string;
+  /** The key's public part, shown to tell keys apart; never the secret. */
+  readonly prefix: string;
+  readonly roles: readonly { readonly id: string; readonly name: string }[];
+  readonly createdBy?: string;
+  readonly createdDate: string;
+  readonly lastUsedAt?: string;
+  readonly expiresOn?: string;
+  readonly revokedAt?: string;
+  readonly status: 'Active' | 'Expired' | 'Revoked';
+}
+
+export interface CreateApiKeyRequest {
+  readonly name: string;
+  readonly roleIds: readonly string[];
+  /** Empty for a key that never expires. */
+  readonly expiresInDays?: number | null;
+}
+
+/** The new key with its full value: shown once, never again. */
+export interface CreatedApiKey {
+  readonly key: ApiKeyItem;
+  readonly value: string;
 }

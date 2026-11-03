@@ -12,6 +12,11 @@ public enum TaskType
     Subtask = 4,
     Bug = 5,
     ChangeRequest = 6,
+    Incident = 7,
+    ServiceRequest = 8,
+
+    /// <summary>AI work whose outcome is not known in advance: a hypothesis, a run, a result.</summary>
+    Experiment = 9,
 }
 
 public sealed record TaskDetails(
@@ -30,10 +35,11 @@ public sealed record TaskDetails(
     decimal? ActualHours,
     int? StoryPoints,
     int Progress,
-    bool Billable);
+    bool Billable,
+    bool OpenToTeam = false);
 
 /// <summary>
-/// A piece of work (spec §44): an epic, story, task, subtask, bug or change. Where it sits on the
+/// A piece of work (spec §44): an epic, story, task, subtask, bug, change or service ticket. Where it sits on the
 /// board is its column; its rank orders it within the column.
 /// </summary>
 public sealed class ProjectTask : TenantAggregateRoot
@@ -90,10 +96,21 @@ public sealed class ProjectTask : TenantAggregateRoot
 
     public bool Billable { get; private set; }
 
+    /// <summary>Anyone who can book to the project can book to this, assigned or not: stand-ups, training, admin.</summary>
+    public bool OpenToTeam { get; private set; }
+
     /// <summary>Order within the column: lower first. Moves pick a value between neighbours.</summary>
     public double Rank { get; private set; }
 
     public DateTime? CompletedDate { get; private set; }
+
+    /// <summary>The key it had in the file it was imported from, which stops the same file bringing it in twice.</summary>
+    public string? ExternalKey { get; private set; }
+
+    /// <summary>The dates it had when the project's baseline was set.</summary>
+    public DateOnly? BaselineStartDate { get; private set; }
+
+    public DateOnly? BaselineDueDate { get; private set; }
 
     public bool IsDone => CompletedDate is not null;
 
@@ -166,6 +183,7 @@ public sealed class ProjectTask : TenantAggregateRoot
         StoryPoints = details.StoryPoints;
         Progress = IsDone ? 100 : details.Progress;
         Billable = details.Billable;
+        OpenToTeam = details.OpenToTeam;
     }
 
     /// <summary>Moves to a column. Arriving in a done column completes the task; leaving one reopens it.</summary>
@@ -195,6 +213,26 @@ public sealed class ProjectTask : TenantAggregateRoot
 
     public void PlanInto(Guid? sprintId) => SprintId = sprintId;
 
+    /// <summary>New dates, as when a bar is dragged on the timeline.</summary>
+    public void Reschedule(DateOnly? startDate, DateOnly? dueDate)
+    {
+        if (startDate is { } start && dueDate is { } due && due < start)
+        {
+            throw new DomainRuleException("PROJECT_TASK_DATES", "The task is due before it starts.");
+        }
+
+        StartDate = startDate;
+        DueDate = dueDate;
+    }
+
+    public void CaptureBaseline()
+    {
+        BaselineStartDate = StartDate;
+        BaselineDueDate = DueDate;
+    }
+
+    public void MarkImported(string? externalKey) => ExternalKey = string.IsNullOrWhiteSpace(externalKey) ? null : Guard.MaxLength(externalKey.Trim(), 100);
+
     /// <summary>Hands the task to someone else, as when its assignee leaves.</summary>
     public void AssignTo(Guid? employeeId) => AssigneeEmployeeId = employeeId;
 
@@ -212,8 +250,8 @@ public static class TaskHierarchy
         (TaskType.Epic, null) => true,
         (TaskType.Epic, _) => false,
         (TaskType.Story, null or TaskType.Epic) => true,
-        (TaskType.Task or TaskType.Bug or TaskType.ChangeRequest, null or TaskType.Epic or TaskType.Story) => true,
-        (TaskType.Subtask, TaskType.Story or TaskType.Task or TaskType.Bug or TaskType.ChangeRequest) => true,
+        (TaskType.Task or TaskType.Bug or TaskType.ChangeRequest or TaskType.Incident or TaskType.ServiceRequest or TaskType.Experiment, null or TaskType.Epic or TaskType.Story) => true,
+        (TaskType.Subtask, TaskType.Story or TaskType.Task or TaskType.Bug or TaskType.ChangeRequest or TaskType.Incident or TaskType.ServiceRequest or TaskType.Experiment) => true,
         _ => false,
     };
 
@@ -229,6 +267,7 @@ public static class TaskHierarchy
     public static string Describe(TaskType type) => type switch
     {
         TaskType.ChangeRequest => "change request",
+        TaskType.ServiceRequest => "service request",
         _ => type.ToString().ToLowerInvariant(),
     };
 }
@@ -298,7 +337,8 @@ public sealed record MilestonePlan(
     Guid? PhaseId,
     MilestoneStatus Status,
     int PercentComplete,
-    bool IsBillable);
+    bool IsBillable,
+    bool RequiresAcceptance = false);
 
 /// <summary>A checkpoint the project commits to (spec §46).</summary>
 public sealed class ProjectMilestone : TenantAggregateRoot
@@ -329,6 +369,17 @@ public sealed class ProjectMilestone : TenantAggregateRoot
     /// <summary>Invoiced on achievement; project billing (M7) picks these up.</summary>
     public bool IsBillable { get; private set; }
 
+    /// <summary>The client has to accept it before it counts as earned.</summary>
+    public bool RequiresAcceptance { get; private set; }
+
+    public DateOnly? AcceptedOn { get; private set; }
+
+    /// <summary>Who at the client accepted it.</summary>
+    public string? AcceptedBy { get; private set; }
+
+    /// <summary>What shows it was met: a sign-off email, a test report, an AI model's evaluation results.</summary>
+    public string? AcceptanceEvidence { get; private set; }
+
     public static ProjectMilestone Create(Guid projectId, MilestonePlan plan)
     {
         var milestone = new ProjectMilestone { ProjectId = Guard.NotEmpty(projectId) };
@@ -351,10 +402,14 @@ public sealed class ProjectMilestone : TenantAggregateRoot
         OwnerEmployeeId = plan.OwnerEmployeeId;
         PhaseId = plan.PhaseId;
         IsBillable = plan.IsBillable;
+        RequiresAcceptance = plan.RequiresAcceptance;
 
         if (plan.Status != MilestoneStatus.Achieved)
         {
             ActualDate = null;
+            AcceptedOn = null;
+            AcceptedBy = null;
+            AcceptanceEvidence = null;
         }
 
         Status = plan.Status;
@@ -371,6 +426,19 @@ public sealed class ProjectMilestone : TenantAggregateRoot
         Status = MilestoneStatus.Achieved;
         ActualDate = on;
         PercentComplete = 100;
+    }
+
+    /// <summary>The client's acceptance. A milestone accepted without having been marked achieved has plainly been reached.</summary>
+    public void Accept(DateOnly on, string acceptedBy, string? evidence)
+    {
+        if (Status != MilestoneStatus.Achieved)
+        {
+            Achieve(on);
+        }
+
+        AcceptedOn = on;
+        AcceptedBy = Guard.MaxLength(Guard.NotNullOrWhiteSpace(acceptedBy).Trim(), 200);
+        AcceptanceEvidence = Project.Clean(evidence, 2000);
     }
 
     public bool IsOpen => Status is MilestoneStatus.Planned or MilestoneStatus.InProgress;

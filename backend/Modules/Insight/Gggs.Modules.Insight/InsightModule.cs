@@ -26,7 +26,9 @@ public sealed class InsightModule : IModule
         services.AddScoped<DigestService>();
         services.AddScoped<ImportService>();
         services.AddScoped<IntegrationService>();
-        services.AddHttpClient(IntegrationHttp.ClientName, client => client.Timeout = TimeSpan.FromSeconds(20));
+        services.AddScoped<IIntegrationConnections, IntegrationConnections>();
+        services.AddHttpClient(IntegrationHttp.ClientName, client => client.Timeout = TimeSpan.FromSeconds(20))
+            .ConfigurePrimaryHttpMessageHandler(OutboundUrlGuard.CreateHandler);
         services.AddScoped<IIntegrationAdapter, WebhookAdapter>();
         services.AddScoped<IIntegrationAdapter, EntraIdAdapter>();
     }

@@ -11,7 +11,7 @@ namespace Gggs.TenantIsolation.Tests;
 
 /// <summary>
 /// Proof that a tenant cannot reach another tenant's rows, exercised against a real SQL Server
-/// holding the real PeopleOS schema, with the production filters, interceptors and security policy
+/// holding the real Nuts and Bolts schema, with the production filters, interceptors and security policy
 /// in place. <c>iam.Role</c> is the probe: an ordinary tenant-owned, soft-deletable table.
 /// </summary>
 [Collection(nameof(SqlServerCollection))]

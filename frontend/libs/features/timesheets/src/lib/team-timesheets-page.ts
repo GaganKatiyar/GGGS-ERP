@@ -1,10 +1,10 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import { PermissionStore } from '@gggs/core/permissions';
 import { TimesheetsApi, addDaysIso, isoToday } from '@gggs/shared/delivery';
-import type { MissingTimesheet, TimesheetRow, TimesheetStatus, TimesheetView } from '@gggs/shared/models';
+import type { MissingTimesheet, TimesheetApproval, TimesheetRow, TimesheetStatus, TimesheetView } from '@gggs/shared/models';
 import { humanize } from '@gggs/shared/models';
 import { Drawer, EmptyState, FormDialog, PageHeader, StatusBadge } from '@gggs/shared/ui';
 
@@ -17,22 +17,14 @@ const mondayOf = (iso: string): string => {
 
 /**
  * Team timesheets (spec §72): the week for everyone in scope - who has submitted, who is missing,
- * what is waiting for approval - and the corrections an approved week sometimes needs. With
- * `approvals` set (from the route) it opens on the weeks waiting for a decision.
+ * what is waiting for approval - and the corrections approved hours sometimes need.
  */
 @Component({
   selector: 'gggs-team-timesheets-page',
   imports: [DatePipe, DecimalPipe, RouterLink, PageHeader, StatusBadge, EmptyState, Drawer, FormDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <gggs-page-header
-      [title]="approvals() ? 'Timesheet approvals' : 'Team timesheets'"
-      [subtitle]="approvals() ? 'Weeks waiting for a decision. Approve or send back from your approvals inbox.' : 'Who has submitted the week, who has not, and what each person booked.'"
-    >
-      @if (approvals()) {
-        <a class="btn btn--primary" routerLink="/approvals">Open approvals inbox</a>
-      }
-    </gggs-page-header>
+    <gggs-page-header title="Team timesheets" subtitle="Who has submitted the week, who has not, and what each person booked." />
 
     <section class="panel toolbar team-ts__filters">
       <label class="field">
@@ -65,14 +57,14 @@ const mondayOf = (iso: string): string => {
           <gggs-status-badge [status]="row.status" />
         </button>
       } @empty {
-        <gggs-empty-state icon="pi pi-stopwatch" [title]="approvals() ? 'Nothing waiting for approval' : 'No timesheets match'" />
+        <gggs-empty-state icon="pi pi-stopwatch" title="No timesheets match" />
       }
       @if (error()) {
         <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
       }
     </section>
 
-    @if (!approvals() && !allWeeks()) {
+    @if (!allWeeks()) {
       <section class="panel stack">
         <h2 class="team-ts__heading">Not yet submitted <span class="muted">({{ missing().length }})</span></h2>
         @for (person of missing(); track person.employeeId) {
@@ -99,6 +91,34 @@ const mondayOf = (iso: string): string => {
             }
             <span><strong>{{ d.timesheet.totalHours | number: '1.0-2' }}</strong> h · {{ d.timesheet.billableHours | number: '1.0-2' }} billable{{ d.overtimeHours ? ' · ' + d.overtimeHours + ' overtime' : '' }}</span>
           </div>
+          @if (d.approvals.length) {
+            <table class="table">
+              <thead>
+                <tr>
+                  <th scope="col">Project</th>
+                  <th scope="col">Hours</th>
+                  <th scope="col">Approver</th>
+                  <th scope="col">Status</th>
+                  <th scope="col" aria-label="Actions"></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (share of d.approvals; track share.id) {
+                  <tr>
+                    <td>{{ share.projectCode ?? 'Non-project time' }}</td>
+                    <td>{{ share.hours | number: '1.0-2' }}</td>
+                    <td>{{ share.ownerName ?? '—' }}</td>
+                    <td><gggs-status-badge [status]="share.status" /></td>
+                    <td>
+                      @if (canReopen() && share.status === 'Approved' && !d.timesheet.isLocked) {
+                        <button type="button" class="btn btn--link btn--sm" (click)="askReopen(share)">Reopen</button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
           <table class="table team-ts__table">
             <thead>
               <tr>
@@ -134,15 +154,15 @@ const mondayOf = (iso: string): string => {
           @if (d.timesheet.workflowInstanceId && d.timesheet.status === 'Submitted') {
             <a class="btn" routerLink="/approvals">Decide in approvals inbox</a>
           }
-          @if (canReopen() && d.timesheet.status === 'Approved' && !d.timesheet.isLocked) {
-            <button type="button" class="btn" (click)="reopenOpen.set(true)">Reopen for correction</button>
+          @if (canReopen() && d.approvals.length === 0 && d.timesheet.status === 'Approved' && !d.timesheet.isLocked) {
+            <button type="button" class="btn" (click)="askReopen(null)">Reopen for correction</button>
           }
         </div>
       }
     </gggs-drawer>
 
-    <gggs-form-dialog [(visible)]="reopenOpen" title="Reopen the week" saveLabel="Reopen" [busy]="busy()" [error]="reopenError()" [saveDisabled]="!reason().trim()" (save)="reopen()">
-      <p class="muted">The week goes back to the employee as a draft. The hours already counted on tasks are taken off until it is approved again.</p>
+    <gggs-form-dialog [(visible)]="reopenOpen" [title]="reopening() ? 'Reopen ' + (reopening()?.projectCode ?? 'non-project time') : 'Reopen the week'" saveLabel="Reopen" [busy]="busy()" [error]="reopenError()" [saveDisabled]="!reason().trim()" (save)="reopen()">
+      <p class="muted">These hours go back to the employee to correct, and stop counting on tasks, cost and revenue until they are approved again. Other approved hours in the week are not affected.</p>
       <label class="field">
         <span class="field__label">Reason</span>
         <textarea rows="3" maxlength="500" [value]="reason()" (input)="reason.set($any($event.target).value)"></textarea>
@@ -207,9 +227,6 @@ export class TeamTimesheetsPage {
   private readonly api = inject(TimesheetsApi);
   private readonly permissions = inject(PermissionStore);
 
-  /** From the route's data: the approvals view of the same list. */
-  readonly approvals = input(false);
-
   protected readonly statuses: readonly TimesheetStatus[] = ['Draft', 'Submitted', 'Approved', 'Rejected'];
   protected readonly humanize = humanize;
   protected readonly week = signal(mondayOf(isoToday()));
@@ -221,6 +238,7 @@ export class TeamTimesheetsPage {
   protected readonly detail = signal<TimesheetView | null>(null);
   protected readonly drawerOpen = signal(false);
   protected readonly reopenOpen = signal(false);
+  protected readonly reopening = signal<TimesheetApproval | null>(null);
   protected readonly reason = signal('');
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -228,13 +246,7 @@ export class TeamTimesheetsPage {
   protected readonly canReopen = computed(() => this.permissions.has('timesheet.entry.approve'));
 
   constructor() {
-    effect(() => {
-      if (this.approvals()) {
-        this.status.set('Submitted');
-        this.allWeeks.set(true);
-      }
-      void this.load();
-    });
+    void this.load();
   }
 
   protected setWeek(day: string): void {
@@ -251,7 +263,7 @@ export class TeamTimesheetsPage {
       const weekStart = this.allWeeks() ? undefined : this.week();
       const [page, missing] = await Promise.all([
         this.api.list({ weekStart, status: this.status(), pageSize: 100 }),
-        this.approvals() || this.allWeeks() ? Promise.resolve([]) : this.api.missing(this.week()),
+        this.allWeeks() ? Promise.resolve([]) : this.api.missing(this.week()),
       ]);
       this.rows.set(page.items);
       this.total.set(page.totalCount ?? page.items.length);
@@ -272,6 +284,13 @@ export class TeamTimesheetsPage {
     }
   }
 
+  protected askReopen(share: TimesheetApproval | null): void {
+    this.reopening.set(share);
+    this.reason.set('');
+    this.reopenError.set(null);
+    this.reopenOpen.set(true);
+  }
+
   protected async reopen(): Promise<void> {
     const id = this.detail()?.timesheet.id;
     if (!id) {
@@ -281,7 +300,7 @@ export class TeamTimesheetsPage {
     this.busy.set(true);
     this.reopenError.set(null);
     try {
-      await this.api.reopen(id, this.reason().trim());
+      await this.api.reopen(id, this.reason().trim(), this.reopening()?.id);
       this.reopenOpen.set(false);
       this.reason.set('');
       this.detail.set(await this.api.get(id));

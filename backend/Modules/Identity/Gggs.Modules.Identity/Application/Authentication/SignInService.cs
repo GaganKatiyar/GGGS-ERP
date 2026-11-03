@@ -26,9 +26,6 @@ public enum SignInFailureReason
     /// <summary>Correct, but the policy says it is too old.</summary>
     PasswordExpired = 5,
 
-    /// <summary>Correct, and a second factor is now required.</summary>
-    MfaRequired = 6,
-
     /// <summary>The tenant is suspended, provisioning or leaving.</summary>
     TenantUnavailable = 7,
 }

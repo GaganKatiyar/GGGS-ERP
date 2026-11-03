@@ -12,7 +12,8 @@ public sealed record ProjectSummary(
     string Stage,
     Guid? ProjectManagerEmployeeId,
     DateOnly StartDate,
-    DateOnly EndDate);
+    DateOnly EndDate,
+    bool IsDefault = false);
 
 /// <summary>One person's place on one project: the role, the share of their time and the dates.</summary>
 public sealed record ProjectMembership(
@@ -29,9 +30,15 @@ public sealed record ProjectMembership(
     bool Billable,
     bool IsActive);
 
+/// <summary>What a project's SLA breaches cost in a month, as a share of its monthly fee.</summary>
+public sealed record ServiceCreditMonth(Guid ProjectId, DateOnly Month, decimal Percent, int Breaches);
+
 /// <summary>Project lookups for resources, timesheets and Employee 360 (ADR-12).</summary>
 public interface IProjectDirectory
 {
+    /// <summary>Service credits owed on these projects, month by month. Excluded breaches are left out, and each month's cap applied.</summary>
+    Task<IReadOnlyList<ServiceCreditMonth>> ServiceCreditsAsync(IEnumerable<Guid> projectIds, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyDictionary<Guid, ProjectSummary>> GetManyAsync(IEnumerable<Guid> projectIds, CancellationToken cancellationToken = default);
 
     /// <summary>Every project the employee has been on, current first.</summary>
@@ -43,7 +50,7 @@ public interface IProjectDirectory
     /// </summary>
     Task<IReadOnlyList<ProjectAllocation>> AllocationsAsync(IEnumerable<Guid>? employeeIds, DateOnly firstDay, DateOnly lastDay, CancellationToken cancellationToken = default);
 
-    /// <summary>Whether the employee may book time to the project on that day: on the team then, or one of its managers.</summary>
+    /// <summary>Whether the employee may book time to the project on that day: on the team then, one of its managers, or it is their department's default project.</summary>
     Task<bool> IsOnTeamAsync(Guid projectId, Guid employeeId, DateOnly day, CancellationToken cancellationToken = default);
 
     /// <summary>The projects (and their open tasks for this person) an employee can book time to in a window.</summary>
@@ -60,7 +67,7 @@ public interface IProjectDirectory
 }
 
 /// <summary>A milestone as billing sees it: achieved or not, and whether it is invoiced on achievement.</summary>
-public sealed record MilestoneFact(Guid Id, string Name, DateOnly PlannedDate, DateOnly? ActualDate, string Status, bool IsBillable);
+public sealed record MilestoneFact(Guid Id, string Name, DateOnly PlannedDate, DateOnly? ActualDate, string Status, bool IsBillable, bool RequiresAcceptance = false, DateOnly? AcceptedOn = null);
 
 /// <summary>A project's commercial facts (spec §74-77).</summary>
 public sealed record ProjectFinancialFacts(
@@ -81,7 +88,10 @@ public sealed record ProjectFinancialFacts(
     DateOnly EndDate,
     decimal ProgressPercent,
     IReadOnlyList<MilestoneFact> Milestones,
-    IReadOnlyList<ProjectAllocation> Team);
+    IReadOnlyList<ProjectAllocation> Team,
+    int DoneTasks = 0,
+    int DoneStoryPoints = 0,
+    string? HealthStatus = null);
 
 public sealed record ProjectAllocation(
     Guid MemberId,
@@ -98,11 +108,13 @@ public sealed record ProjectAllocation(
     bool Billable,
     decimal? BillingRate,
     decimal? CostRate,
-    bool IsActive);
+    bool IsActive,
+    decimal? MonthlyRate = null);
 
-public sealed record TimesheetTask(Guid TaskId, string Code, string Title);
+/// <summary>A task someone can book to; <paramref name="Activity"/> is the epic or story it sits under, which the timesheet groups by.</summary>
+public sealed record TimesheetTask(Guid TaskId, string Code, string Title, string? Activity = null, bool Assigned = false);
 
-public sealed record TimesheetTarget(Guid ProjectId, string ProjectCode, string ProjectName, bool Billable, IReadOnlyList<TimesheetTask> Tasks);
+public sealed record TimesheetTarget(Guid ProjectId, string ProjectCode, string ProjectName, bool Billable, IReadOnlyList<TimesheetTask> Tasks, bool IsDefault = false);
 
 /// <summary>Putting someone on a project, as resource management does when it fills a request.</summary>
 public sealed record StaffingRequest(

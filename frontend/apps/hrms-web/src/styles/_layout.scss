@@ -10,7 +10,7 @@
   border: 1px solid var(--gggs-color-border);
   border-radius: var(--gggs-radius-lg);
   background: var(--gggs-color-surface-raised);
-  box-shadow: var(--gggs-shadow-xs);
+  box-shadow: var(--gggs-shadow-1), var(--gggs-shadow-highlight);
 }
 
 /* Flush panel: for tables and lists that run edge to edge. */
@@ -216,4 +216,69 @@
     grid-template-columns: minmax(0, 1fr) !important;
     row-gap: var(--gggs-space-1);
   }
+}
+
+/*
+ * Profile background cards: education and prior experience, on My profile and Employee 360. An
+ * icon tile, the entry's lines, and its actions on the right.
+ */
+.bg-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-block-end: var(--gggs-space-3);
+}
+
+.bg-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gggs-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bg-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gggs-space-3);
+  padding: var(--gggs-space-4);
+  border: 1px solid var(--gggs-color-border);
+  border-radius: var(--gggs-radius-lg);
+  background: var(--gggs-color-surface-raised);
+  box-shadow: var(--gggs-shadow-1);
+}
+
+.bg-card__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--gggs-radius-md);
+  background: var(--gggs-gradient-tile);
+  color: var(--gggs-color-primary);
+}
+
+.bg-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--gggs-space-1);
+  min-width: 0;
+}
+
+.bg-card__summary {
+  margin: var(--gggs-space-1) 0 0;
+  white-space: pre-line;
+}
+
+.bg-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gggs-space-2);
+}
+
+.bg-total {
+  margin: 0 0 var(--gggs-space-3);
+  color: var(--gggs-color-text-muted);
 }

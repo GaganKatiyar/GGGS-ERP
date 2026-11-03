@@ -22,11 +22,8 @@ public sealed record BffLoginRequest
     public string? TenantCode { get; init; }
 }
 
-/// <summary>The second step of sign-in: the challenge from the first step and a code from the authenticator app (or a recovery code).</summary>
-public sealed record BffMfaRequest(string Challenge, string Code);
-
-/// <summary>Re-authentication before a sensitive action: an authenticator code, or the password when no authenticator is set up.</summary>
-public sealed record BffStepUpRequest(string? Code, string? Password);
+/// <summary>Re-authentication before a sensitive action: the password, typed again.</summary>
+public sealed record BffStepUpRequest(string? Password);
 
 /// <summary>
 /// The answer to a sign-in attempt.
@@ -46,12 +43,6 @@ public sealed record BffLoginResponse
     /// <summary>The user must change their password before going any further.</summary>
     public bool MustChangePassword { get; init; }
 
-    /// <summary>With <c>MFA_REQUIRED</c>: post it with a code to <c>/bff/login/mfa</c>.</summary>
-    public string? MfaChallenge { get; init; }
-
-    /// <summary>Signed in, but the organisation requires an authenticator app and none is set up yet.</summary>
-    public bool MfaEnrollmentRequired { get; init; }
-
     /// <summary>When a lockout lifts, so the UI can say so rather than "try again later".</summary>
     public DateTime? LockoutEndDate { get; init; }
 }
@@ -70,7 +61,6 @@ public static class BrowserSessionEndpoints
 
         // Anonymous by necessity: this is where a session comes from, and where it ends.
         group.MapPost("/login", LoginAsync).WithName("BffLogin").AllowAnonymous().RequireRateLimiting(RateLimitPolicies.SignIn);
-        group.MapPost("/login/mfa", LoginMfaAsync).WithName("BffLoginMfa").AllowAnonymous().RequireRateLimiting(RateLimitPolicies.SignIn);
         group.MapPost("/logout", LogoutAsync).WithName("BffLogout").AllowAnonymous();
 
         // Anonymous at the routing layer; it answers 401 itself without a session.
@@ -110,23 +100,10 @@ public static class BrowserSessionEndpoints
         return TypedResults.Ok(await StartSessionAsync(outcome, context, sessions, cancellationToken));
     }
 
-    private static async Task<Ok<BffLoginResponse>> LoginMfaAsync(
-        BffMfaRequest body,
-        HttpContext context,
-        MfaService mfa,
-        BffSessionStore sessions,
-        CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(body);
-        ArgumentNullException.ThrowIfNull(context);
-        PasswordSignInOutcome outcome = await mfa.CompleteSignInAsync(body.Challenge, body.Code, SessionAuthenticationHandler.SchemeName, cancellationToken);
-        return TypedResults.Ok(await StartSessionAsync(outcome, context, sessions, cancellationToken));
-    }
-
     private static async Task<Results<NoContent, UnauthorizedHttpResult>> StepUpAsync(
         BffStepUpRequest body,
         HttpContext context,
-        MfaService mfa,
+        StepUpService stepUp,
         BffSessionStore sessions,
         TimeProvider timeProvider,
         CancellationToken cancellationToken)
@@ -138,8 +115,8 @@ public static class BrowserSessionEndpoints
             return TypedResults.Unauthorized();
         }
 
-        bool usedSecondFactor = await mfa.StepUpAsync(body.Code, body.Password, cancellationToken);
-        var refreshed = new ClaimsPrincipal(new ClaimsIdentity(MfaService.SteppedUp(context.User.Claims, timeProvider.GetUtcNow(), usedSecondFactor), SessionAuthenticationHandler.SchemeName));
+        await stepUp.ConfirmAsync(body.Password, cancellationToken);
+        var refreshed = new ClaimsPrincipal(new ClaimsIdentity(StepUpService.SteppedUp(context.User.Claims, timeProvider.GetUtcNow()), SessionAuthenticationHandler.SchemeName));
         await sessions.UpdateClaimsAsync(session.SessionKey, session.Session, BffSession.ClaimsOf(refreshed), cancellationToken);
         return TypedResults.NoContent();
     }
@@ -154,7 +131,6 @@ public static class BrowserSessionEndpoints
                 Succeeded = false,
                 ErrorCode = outcome.ErrorCode ?? SignInErrorCodes.InvalidCredentials,
                 LockoutEndDate = outcome.LockoutEndDate,
-                MfaChallenge = outcome.MfaChallenge,
             };
         }
 
@@ -173,7 +149,6 @@ public static class BrowserSessionEndpoints
         {
             Succeeded = true,
             MustChangePassword = outcome.MustChangePassword,
-            MfaEnrollmentRequired = outcome.MfaEnrollmentRequired,
         };
     }
 

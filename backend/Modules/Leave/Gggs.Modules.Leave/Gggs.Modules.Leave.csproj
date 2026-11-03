@@ -10,6 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Files\Gggs.BuildingBlocks.Files.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Jobs\Gggs.BuildingBlocks.Jobs.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Web\Gggs.BuildingBlocks.Web.csproj" />
     <ProjectReference Include="..\..\..\Data\Gggs.Data\Gggs.Data.csproj" />
@@ -18,6 +19,7 @@
     <ProjectReference Include="..\..\Employee\Gggs.Modules.Employee.Contracts\Gggs.Modules.Employee.Contracts.csproj" />
     <ProjectReference Include="..\..\MasterData\Gggs.Modules.MasterData.Contracts\Gggs.Modules.MasterData.Contracts.csproj" />
     <ProjectReference Include="..\..\Organization\Gggs.Modules.Organization.Contracts\Gggs.Modules.Organization.Contracts.csproj" />
+    <ProjectReference Include="..\..\Payroll\Gggs.Modules.Payroll.Contracts\Gggs.Modules.Payroll.Contracts.csproj" />
     <ProjectReference Include="..\..\Platform\Gggs.Modules.Platform.Contracts\Gggs.Modules.Platform.Contracts.csproj" />
     <ProjectReference Include="..\..\Shift\Gggs.Modules.Shift.Contracts\Gggs.Modules.Shift.Contracts.csproj" />
     <ProjectReference Include="..\..\Workflow\Gggs.Modules.Workflow.Contracts\Gggs.Modules.Workflow.Contracts.csproj" />

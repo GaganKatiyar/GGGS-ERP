@@ -161,6 +161,34 @@ public sealed class UserManagementTests(PeopleOsApiFactory factory)
     }
 
     [Fact]
+    public async Task ChangingYourOwnPassword_KeepsThisBrowser_AndSignsOutTheOthers()
+    {
+        // Often done because someone else may have the password, so their session must not survive it.
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        const string oldPassword = "a scoped test passphrase";
+        const string newPassword = "another good passphrase nine";
+        string email = $"{Guid.NewGuid():N}@change.example";
+        using HttpClient here = await factory.CreateScopedUserClientAsync(email, null, (Permissions.Notification.InboxView, DataScope.Own));
+        using HttpClient elsewhere = await factory.CreateSignedInClientAsync(email, oldPassword, PeopleOsApiFactory.SeededTenantCode);
+
+        HttpResponseMessage wrong = await elsewhere.PostAsJsonAsync("/api/v1/users/me/password", new { CurrentPassword = "not-the-current-one", NewPassword = newPassword }, ct);
+        wrong.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await here.GetAsync("/api/v1/me/notification-preferences", ct)).StatusCode.ShouldBe(HttpStatusCode.OK, "a refused change ends nothing");
+
+        HttpResponseMessage changed = await here.PostAsJsonAsync("/api/v1/users/me/password", new { CurrentPassword = oldPassword, NewPassword = newPassword }, ct);
+        changed.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        (await elsewhere.GetAsync("/api/v1/me/notification-preferences", ct)).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        for (int attempt = 0; attempt < 2; attempt++)
+        {
+            (await here.GetAsync("/api/v1/me/notification-preferences", ct)).StatusCode.ShouldBe(HttpStatusCode.OK, "the browser that made the change stays signed in");
+        }
+
+        using HttpClient fresh = await factory.CreateSignedInClientAsync(email, newPassword, PeopleOsApiFactory.SeededTenantCode);
+        (await fresh.GetAsync("/api/v1/me/notification-preferences", ct)).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task ListingUsersNeverExposesCredentialMaterial()
     {
         // A list endpoint is exactly where a hash or a token would end up in a log or a cache.

@@ -96,11 +96,11 @@ const KIND_ICONS: Record<string, string> = {
       inset-block-start: calc(100% + 0.25rem);
       max-height: 26rem;
       overflow-y: auto;
-      z-index: 1000;
-      background: var(--gggs-color-surface);
+      z-index: var(--gggs-z-modal);
+      background: var(--gggs-color-surface-raised);
       border: 1px solid var(--gggs-color-border);
-      border-radius: var(--gggs-radius-md, 0.5rem);
-      box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+      border-radius: var(--gggs-radius-lg);
+      box-shadow: var(--gggs-shadow-4), var(--gggs-shadow-highlight);
       padding: var(--gggs-space-1);
     }
 

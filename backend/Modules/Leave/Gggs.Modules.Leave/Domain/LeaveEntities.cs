@@ -58,6 +58,12 @@ public enum AccrualFrequency
 
     /// <summary>The year's entitlement up front, prorated for someone joining mid-year.</summary>
     Yearly = 2,
+
+    /// <summary>A quarter of the year's entitlement for each quarter of the leave year.</summary>
+    Quarterly = 3,
+
+    /// <summary>Half the year's entitlement for each half of the leave year.</summary>
+    HalfYearly = 4,
 }
 
 /// <summary>
@@ -166,6 +172,9 @@ public enum LedgerKind
     Restored = 4,
     Adjustment = 5,
     Lapse = 6,
+
+    /// <summary>Days paid out at the end of the leave year instead of lapsing.</summary>
+    Encashment = 7,
 }
 
 /// <summary>
@@ -223,6 +232,9 @@ public enum LeaveRequestStatus
     Approved = 2,
     Rejected = 3,
     Cancelled = 4,
+
+    /// <summary>Waiting for a supporting document before it goes for approval.</summary>
+    Draft = 5,
 }
 
 /// <summary>A request for leave. Its days come off the balance when it is approved.</summary>
@@ -261,6 +273,9 @@ public sealed class LeaveRequest : TenantAggregateRoot
 
     public string? CancellationReason { get; private set; }
 
+    /// <summary>The leave is granted afresh for this request (maternity, say) rather than drawn from a balance.</summary>
+    public bool GrantsItsDays { get; private set; }
+
     public static LeaveRequest Apply(
         Guid employeeId,
         Guid leaveTypeId,
@@ -270,7 +285,9 @@ public sealed class LeaveRequest : TenantAggregateRoot
         bool endsFirstHalf,
         decimal days,
         string? reason,
-        Guid? appliedByUserId) => new()
+        Guid? appliedByUserId,
+        bool awaitingDocument = false,
+        bool grantsItsDays = false) => new()
         {
             EmployeeId = Guard.NotEmpty(employeeId),
             LeaveTypeId = Guard.NotEmpty(leaveTypeId),
@@ -280,11 +297,24 @@ public sealed class LeaveRequest : TenantAggregateRoot
             EndsFirstHalf = endsFirstHalf,
             Days = days,
             Reason = string.IsNullOrWhiteSpace(reason) ? null : Guard.MaxLength(reason.Trim(), 500),
-            Status = LeaveRequestStatus.Pending,
+            Status = awaitingDocument ? LeaveRequestStatus.Draft : LeaveRequestStatus.Pending,
             AppliedByUserId = appliedByUserId,
+            GrantsItsDays = grantsItsDays,
         };
 
     public void AwaitApproval(Guid instanceId) => WorkflowInstanceId = instanceId;
+
+    /// <summary>The supporting document is attached: the request goes for approval.</summary>
+    public void Submit(decimal days)
+    {
+        if (Status != LeaveRequestStatus.Draft)
+        {
+            throw new DomainRuleException("LEAVE_REQUEST_CLOSED", $"This request is already {Status}.");
+        }
+
+        Days = days;
+        Status = LeaveRequestStatus.Pending;
+    }
 
     public void Approve(DateTime now) => Move(LeaveRequestStatus.Approved, now);
 
@@ -292,7 +322,7 @@ public sealed class LeaveRequest : TenantAggregateRoot
 
     public void Cancel(DateTime now, string? reason)
     {
-        if (Status is not (LeaveRequestStatus.Pending or LeaveRequestStatus.Approved))
+        if (Status is not (LeaveRequestStatus.Draft or LeaveRequestStatus.Pending or LeaveRequestStatus.Approved))
         {
             throw new DomainRuleException("LEAVE_REQUEST_CLOSED", $"This request is already {Status}.");
         }
@@ -314,6 +344,37 @@ public sealed class LeaveRequest : TenantAggregateRoot
         Status = status;
         DecidedDate = now;
     }
+}
+
+/// <summary>A supporting document on a leave request - a medical certificate, say. The file is in tenant storage.</summary>
+public sealed class LeaveRequestAttachment : TenantAggregateRoot
+{
+    private LeaveRequestAttachment()
+    {
+        FileName = null!;
+        ContentType = null!;
+        StorageKey = null!;
+    }
+
+    public Guid RequestId { get; private set; }
+
+    public string FileName { get; private set; }
+
+    public string ContentType { get; private set; }
+
+    public long SizeBytes { get; private set; }
+
+    public string StorageKey { get; private set; }
+
+    public static LeaveRequestAttachment Create(Guid id, Guid requestId, string fileName, string contentType, long sizeBytes, string storageKey) => new()
+    {
+        Id = Guard.NotEmpty(id),
+        RequestId = Guard.NotEmpty(requestId),
+        FileName = Guard.MaxLength(Guard.NotNullOrWhiteSpace(fileName).Trim(), 200),
+        ContentType = Guard.MaxLength(Guard.NotNullOrWhiteSpace(contentType), 100),
+        SizeBytes = sizeBytes,
+        StorageKey = Guard.MaxLength(Guard.NotNullOrWhiteSpace(storageKey), 400),
+    };
 }
 
 /// <summary>A set of public holidays, for the locations listed or, as the default, for everyone else.</summary>

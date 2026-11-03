@@ -20,11 +20,11 @@ import type {
 } from '@gggs/shared/models';
 import { FILING_FREQUENCIES, FILING_KINDS, REGISTRATION_KINDS, STATUTORY_RULE_TYPES, humanize } from '@gggs/shared/models';
 import { ComplianceApi, MoneyPipe } from '@gggs/shared/money';
-import { Drawer, EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge, Tabs } from '@gggs/shared/ui';
+import { Drawer, EmptyState, FormDialog, KpiCard, localIsoDate, PageHeader, Skeleton, StatusBadge, Tabs } from '@gggs/shared/ui';
 import type { TabItem } from '@gggs/shared/ui';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => localIsoDate();
 
 /** A starting configuration for each scheme, so a new rule is edited rather than typed from nothing. */
 const TEMPLATES: Readonly<Record<StatutoryRuleType, unknown>> = {
@@ -53,7 +53,7 @@ const TEMPLATES: Readonly<Record<StatutoryRuleType, unknown>> = {
   template: `
     <gggs-page-header title="Compliance" subtitle="Statutory rules in force, the filing calendar, and licences and certificates." />
     @if (dashboard(); as d) {
-      <div class="cmp__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="Rules in force" [value]="d.rulesInForce" [hint]="d.draftRules ? d.draftRules + ' draft(s)' : undefined" icon="pi pi-shield" />
         <gggs-kpi-card label="Due in 30 days" [value]="d.dueIn30Days" />
         <gggs-kpi-card label="Overdue" [value]="d.overdue" />

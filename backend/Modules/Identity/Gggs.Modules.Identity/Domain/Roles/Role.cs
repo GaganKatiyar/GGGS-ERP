@@ -44,6 +44,12 @@ public sealed class Role : TenantAggregateRoot
     /// </summary>
     public Guid? ParentRoleId { get; private set; }
 
+    /// <summary>
+    /// Who holds this role without anyone granting it: the people the org chart says need it. The
+    /// grants follow the org chart from then on, and a grant made by hand is never touched.
+    /// </summary>
+    public RoleAutoAssign AutoAssign { get; private set; }
+
     public IReadOnlyCollection<PermissionAssignment> Permissions => _permissions;
 
     public static Role Create(string name, string? description, bool isSystem = false, string? templateCode = null)
@@ -86,6 +92,12 @@ public sealed class Role : TenantAggregateRoot
         _permissions.Add(new PermissionAssignment(permissionCode, scope));
     }
 
+    public void SetAutoAssign(RoleAutoAssign autoAssign)
+    {
+        Guard.Against(!Enum.IsDefined(autoAssign), "ROLE_AUTO_ASSIGN_INVALID", "Choose who this role is assigned to automatically.");
+        AutoAssign = autoAssign;
+    }
+
     public void Revoke(string permissionCode)
         => _permissions.RemoveAll(existing =>
             string.Equals(existing.PermissionCode, permissionCode, StringComparison.OrdinalIgnoreCase));
@@ -107,6 +119,19 @@ public sealed class Role : TenantAggregateRoot
             IsSystem,
             "ROLE_IS_SYSTEM",
             "A system role cannot be deleted; disable the users who hold it instead.");
+}
+
+/// <summary>Who the org chart gives a role to, when it is assigned automatically.</summary>
+public enum RoleAutoAssign
+{
+    /// <summary>Only by hand.</summary>
+    None = 0,
+
+    /// <summary>Everyone who manages at least one current employee.</summary>
+    PeopleManagers = 1,
+
+    /// <summary>The head of each open department, anchored to the department they head.</summary>
+    DepartmentHeads = 2,
 }
 
 /// <summary>A permission granted to a role, and how far it reaches. Stored in the RolePermission table.</summary>

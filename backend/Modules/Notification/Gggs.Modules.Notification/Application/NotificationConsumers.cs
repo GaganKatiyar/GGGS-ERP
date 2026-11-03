@@ -1,3 +1,4 @@
+using Gggs.BuildingBlocks.Jobs;
 using Gggs.BuildingBlocks.Messaging;
 using Gggs.Data;
 using Gggs.Modules.Identity.Contracts;
@@ -6,7 +7,9 @@ using Gggs.Modules.Notification.Domain;
 using Gggs.Modules.Notification.Infrastructure;
 using Gggs.Modules.Platform.Contracts;
 using Gggs.Modules.Workflow.Contracts;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Gggs.Modules.Notification.Application;
@@ -41,6 +44,38 @@ public sealed class NotificationTemplateSeeder(AppDbContext dbContext, ILogger<N
     }
 }
 
+/// <summary>
+/// Fans template seeding out to every tenant each hour. Templates added in a release otherwise reach only
+/// organisations set up after it, and the notifier skips a missing template without a word.
+/// </summary>
+[PlatformJob("Notification templates: fans out one seeding pass per active tenant.")]
+internal sealed class NotificationTemplateSweep(ITenantFanOutScheduler fanOut)
+{
+    public const string RecurringJobName = "notification-templates";
+
+    public Task RunAsync() => fanOut.FanOutAsync<NotificationTemplateJob>((job, tenantId) => job.RunAsync(tenantId));
+}
+
+internal sealed class NotificationTemplateJob(NotificationTemplateSeeder seeder)
+{
+    public async Task RunAsync(Guid tenantId)
+    {
+        _ = tenantId;
+        await seeder.SeedCurrentTenantAsync(CancellationToken.None);
+    }
+}
+
+internal sealed class NotificationTemplateJobRegistration(IRecurringJobManager recurringJobs) : IHostedService
+{
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+        recurringJobs.AddOrUpdate<NotificationTemplateSweep>(NotificationTemplateSweep.RecurringJobName, sweep => sweep.RunAsync(), "5 * * * *");
+        return Task.CompletedTask;
+    }
+
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+}
+
 internal sealed class SeedTemplatesOnTenantProvisioned(NotificationTemplateSeeder seeder)
     : IIntegrationEventConsumer<TenantProvisionedIntegrationEvent>
 {
@@ -49,12 +84,16 @@ internal sealed class SeedTemplatesOnTenantProvisioned(NotificationTemplateSeede
 }
 
 /// <summary>
-/// Sends one queued email. A failure is recorded on the message and not retried here: a bad
-/// address or a rejected relay would fail the same way again, and the record says what happened.
+/// Sends one queued email, through the organisation's own connection if it has one and the system's
+/// sender if not. A failure is recorded on the message and not retried here: a bad address or a
+/// rejected relay would fail the same way again, and the record says what happened. Nor does a
+/// failure on the organisation's connection fall back to the system's sender: that would put mail
+/// out under an address the organisation chose not to use.
 /// </summary>
 internal sealed class DeliverQueuedEmail(
     AppDbContext dbContext,
     INotificationChannel channel,
+    ITenantMessageSender sender,
     TimeProvider timeProvider,
     ILogger<DeliverQueuedEmail> logger) : IIntegrationEventConsumer<EmailQueuedIntegrationEvent>
 {
@@ -70,6 +109,21 @@ internal sealed class DeliverQueuedEmail(
 
         try
         {
+            if (await sender.SendEmailAsync(email.ToAddress, email.Subject, email.Body, cancellationToken) is { } own)
+            {
+                if (own.Succeeded)
+                {
+                    email.MarkSent(timeProvider.GetUtcNow().UtcDateTime);
+                }
+                else
+                {
+                    logger.LogWarning("Email {EmailId} via the organisation's connection failed: {Message}", email.Id, own.Message);
+                    email.MarkFailed(own.Message);
+                }
+
+                return;
+            }
+
             await channel.SendAsync(new OutboundMessage(email.ToAddress, email.Subject, email.Body), cancellationToken);
             email.MarkSent(timeProvider.GetUtcNow().UtcDateTime);
         }
@@ -77,6 +131,37 @@ internal sealed class DeliverQueuedEmail(
         {
             logger.LogWarning(exception, "Email {EmailId} via {Channel} failed.", email.Id, channel.Name);
             email.MarkFailed(exception.Message);
+        }
+    }
+}
+
+/// <summary>Sends one queued text message through the organisation's connection. A failure is recorded, as for email.</summary>
+internal sealed class DeliverQueuedSms(
+    AppDbContext dbContext,
+    ITenantMessageSender sender,
+    TimeProvider timeProvider,
+    ILogger<DeliverQueuedSms> logger) : IIntegrationEventConsumer<SmsQueuedIntegrationEvent>
+{
+    public async Task HandleAsync(SmsQueuedIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(integrationEvent);
+
+        SmsMessage? sms = await dbContext.SmsMessages.FirstOrDefaultAsync(message => message.Id == integrationEvent.SmsMessageId, cancellationToken);
+        if (sms is null || sms.Status != SmsStatus.Queued)
+        {
+            return;
+        }
+
+        ChannelSendResult result = await sender.SendSmsAsync(sms.ToNumber, sms.Body, cancellationToken)
+            ?? new ChannelSendResult(false, "No text-message connection is set up any more.");
+        if (result.Succeeded)
+        {
+            sms.MarkSent(timeProvider.GetUtcNow().UtcDateTime);
+        }
+        else
+        {
+            logger.LogWarning("Text message {SmsId} failed: {Message}", sms.Id, result.Message);
+            sms.MarkFailed(result.Message);
         }
     }
 }
@@ -176,6 +261,45 @@ internal static class RequesterNotice
 }
 
 /// <summary>Invitations go by email: the invitee cannot sign in to see anything in-app yet.</summary>
+/// <summary>Sends the link at once with its stored copy masked, so the record of the email cannot be used to take over the account.</summary>
+internal sealed class SendPasswordResetLink(IOneTimeNotices notices, IOptions<NotificationOptions> options)
+    : IIntegrationEventConsumer<PasswordResetRequestedIntegrationEvent>
+{
+    public async Task HandleAsync(PasswordResetRequestedIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(integrationEvent);
+
+        string link = string.Concat(
+            options.Value.AppBaseUrl.TrimEnd('/'),
+            "/reset-password?tenantCode=", Uri.EscapeDataString(integrationEvent.TenantCode),
+            "&userId=", integrationEvent.UserId.ToString(),
+            "&token=", Uri.EscapeDataString(integrationEvent.Token));
+
+        await notices.SendAsync(
+            NotificationTemplates.PasswordResetRequested,
+            integrationEvent.Email,
+            new Dictionary<string, string> { ["recipientName"] = integrationEvent.DisplayName, ["resetLink"] = link },
+            new HashSet<string>(StringComparer.Ordinal) { "resetLink" },
+            cancellationToken);
+    }
+}
+
+internal sealed class SendPasswordChangedNotice(IOneTimeNotices notices)
+    : IIntegrationEventConsumer<PasswordResetCompletedIntegrationEvent>
+{
+    public async Task HandleAsync(PasswordResetCompletedIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(integrationEvent);
+
+        await notices.SendAsync(
+            NotificationTemplates.PasswordResetCompleted,
+            integrationEvent.Email,
+            new Dictionary<string, string> { ["recipientName"] = integrationEvent.DisplayName },
+            new HashSet<string>(StringComparer.Ordinal),
+            cancellationToken);
+    }
+}
+
 internal sealed class SendInvitation(INotifier notifier, IOptions<NotificationOptions> options)
     : IIntegrationEventConsumer<UserInvitedIntegrationEvent>
 {

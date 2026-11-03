@@ -7,7 +7,7 @@ import { NotificationsApi } from '@gggs/shared/notifications';
 import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
 
 /**
- * The wording of every notification PeopleOS sends, and the channels it goes out on. The set of
+ * The wording of every notification Nuts and Bolts sends, and the channels it goes out on. The set of
  * notifications is fixed - each is sent by some module - but what they say is the organization's.
  */
 @Component({
@@ -15,7 +15,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs
   imports: [ReactiveFormsModule, HasPermissionDirective, PageHeader, FormDialog, EmptyState, Skeleton, StatusBadge],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <gggs-page-header title="Notifications" subtitle="What each notification says, and whether it goes in-app, by email, or both." />
+    <gggs-page-header title="Notifications" subtitle="What each notification says, and whether it goes in-app, by email or by text message." />
 
     @if (loading()) {
       <gggs-skeleton [lines]="6" />
@@ -30,6 +30,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs
               <th scope="col">Subject</th>
               <th scope="col">In-app</th>
               <th scope="col">Email</th>
+              <th scope="col">Text</th>
               <th scope="col">Status</th>
               <th scope="col"><span class="templates__hidden">Actions</span></th>
             </tr>
@@ -41,6 +42,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs
                 <td>{{ template.subject }}</td>
                 <td>{{ template.sendInApp ? 'Yes' : 'No' }}</td>
                 <td>{{ template.sendEmail ? 'Yes' : 'No' }}</td>
+                <td>{{ template.sendSms ? 'Yes' : 'No' }}</td>
                 <td><gggs-status-badge [status]="template.isActive ? 'Active' : 'Inactive'" /></td>
                 <td>
                   <button type="button" class="btn btn--link btn--sm" *gggsHasPermission="'notification.template.manage'" (click)="openEdit(template)">Edit</button>
@@ -71,6 +73,10 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs
         </label>
         <label class="field">
           <span><input type="checkbox" formControlName="sendEmail" /> Email</span>
+        </label>
+        <label class="field">
+          <span><input type="checkbox" formControlName="sendSms" /> Text message</span>
+          <span class="field__hint">Sends the message above, once a connection is chosen under Studio, Sending. Each one costs money and reaches a personal phone.</span>
         </label>
         <label class="field">
           <span><input type="checkbox" formControlName="isActive" /> Send this notification</span>
@@ -107,6 +113,7 @@ export class NotificationTemplatesPage {
     body: new FormControl('', { nonNullable: true, validators: Validators.required }),
     sendInApp: new FormControl(true, { nonNullable: true }),
     sendEmail: new FormControl(true, { nonNullable: true }),
+    sendSms: new FormControl(false, { nonNullable: true }),
     isActive: new FormControl(true, { nonNullable: true }),
   });
 
@@ -116,7 +123,7 @@ export class NotificationTemplatesPage {
 
   protected openEdit(template: NotificationTemplate): void {
     this.editing.set(template);
-    this.form.reset({ subject: template.subject, body: template.body, sendInApp: template.sendInApp, sendEmail: template.sendEmail, isActive: template.isActive });
+    this.form.reset({ subject: template.subject, body: template.body, sendInApp: template.sendInApp, sendEmail: template.sendEmail, sendSms: template.sendSms, isActive: template.isActive });
     this.error.set(null);
     this.dialogOpen.set(true);
   }

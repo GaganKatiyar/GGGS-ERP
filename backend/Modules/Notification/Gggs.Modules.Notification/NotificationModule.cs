@@ -25,6 +25,7 @@ public sealed class NotificationModule : IModule
 
         services.AddOptions<NotificationOptions>().Bind(context.Configuration.GetSection(NotificationOptions.SectionName));
         services.AddScoped<INotifier, Notifier>();
+        services.AddScoped<NotificationPreferences>();
         services.AddScoped<NotificationTemplateSeeder>();
     }
 
@@ -46,14 +47,21 @@ public sealed class NotificationModule : IModule
             services.AddScoped<INotificationChannel, LoggingEmailChannel>();
         }
 
+        services.AddScoped<IOneTimeNotices, OneTimeNotices>();
+        services.AddScoped<NotificationTemplateSweep>();
+        services.AddScoped<NotificationTemplateJob>();
+        services.AddHostedService<NotificationTemplateJobRegistration>();
         services.AddGggsEventConsumer<TenantProvisionedIntegrationEvent, SeedTemplatesOnTenantProvisioned>();
         services.AddGggsEventConsumer<EmailQueuedIntegrationEvent, DeliverQueuedEmail>();
+        services.AddGggsEventConsumer<SmsQueuedIntegrationEvent, DeliverQueuedSms>();
         services.AddGggsEventConsumer<WorkflowTaskAssignedIntegrationEvent, NotifyTaskAssigned>();
         services.AddGggsEventConsumer<WorkflowTaskEscalatedIntegrationEvent, NotifyTaskEscalated>();
         services.AddGggsEventConsumer<WorkflowApprovedIntegrationEvent, NotifyRequestApproved>();
         services.AddGggsEventConsumer<WorkflowRejectedIntegrationEvent, NotifyRequestRejected>();
         services.AddGggsEventConsumer<WorkflowSentBackIntegrationEvent, NotifyRequestSentBack>();
         services.AddGggsEventConsumer<UserInvitedIntegrationEvent, SendInvitation>();
+        services.AddGggsEventConsumer<PasswordResetRequestedIntegrationEvent, SendPasswordResetLink>();
+        services.AddGggsEventConsumer<PasswordResetCompletedIntegrationEvent, SendPasswordChangedNotice>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints) => endpoints.MapNotificationEndpoints();

@@ -81,7 +81,7 @@ export interface ContactInput {
 // ----- Contracts -----------------------------------------------------------------------------
 
 export type ContractType = 'Msa' | 'Sow' | 'PurchaseOrder' | 'Sla' | 'Retainer' | 'TimeAndMaterial';
-export type BillingModel = 'FixedPrice' | 'TimeAndMaterial' | 'Milestone' | 'Retainer' | 'NonBillable';
+export type BillingModel = 'FixedPrice' | 'TimeAndMaterial' | 'Milestone' | 'Retainer' | 'NonBillable' | 'DedicatedTeam' | 'ManagedService' | 'OutcomeBased';
 export type ContractStatus = 'Draft' | 'PendingApproval' | 'Active' | 'Expired' | 'Terminated';
 
 export const CONTRACT_TYPE_LABELS: Readonly<Record<ContractType, string>> = {
@@ -99,6 +99,9 @@ export const BILLING_MODEL_LABELS: Readonly<Record<BillingModel, string>> = {
   Milestone: 'Milestone',
   Retainer: 'Retainer',
   NonBillable: 'Non-billable',
+  DedicatedTeam: 'Dedicated team',
+  ManagedService: 'Managed service',
+  OutcomeBased: 'Outcome based',
 };
 
 export interface ContractItem {
@@ -159,11 +162,59 @@ export interface ContractInput {
 
 // ----- Projects ------------------------------------------------------------------------------
 
-export type ProjectType = 'FixedPrice' | 'TimeAndMaterial' | 'Retainer' | 'Internal' | 'RnD' | 'Support' | 'ManagedService' | 'Implementation' | 'Consulting';
+export type ProjectType = 'FixedPrice' | 'TimeAndMaterial' | 'Retainer' | 'Internal' | 'RnD' | 'Support' | 'ManagedService' | 'Implementation' | 'Consulting' | 'DepartmentDefault';
 export type ProjectStage = 'Opportunity' | 'Proposal' | 'Won' | 'Planning' | 'Kickoff' | 'Execution' | 'Testing' | 'Uat' | 'Deployment' | 'Support' | 'Closure';
 export type ProjectStatus = 'Active' | 'OnHold' | 'Completed' | 'Cancelled';
 export type WorkPriority = 'Low' | 'Medium' | 'High' | 'Critical';
-export type ProjectBillingType = 'FixedPrice' | 'TimeAndMaterial' | 'Milestone' | 'Retainer' | 'NonBillable';
+export type ProjectBillingType = BillingModel;
+
+export type BoardColumnCategory = 'Backlog' | 'Todo' | 'InProgress' | 'Done';
+
+export interface ProjectTemplateColumn {
+  readonly name: string;
+  readonly category: BoardColumnCategory;
+}
+
+export interface ProjectTemplateActivity {
+  readonly name: string;
+  readonly tasks: readonly string[];
+}
+
+/** A starting point for projects under one engagement model. */
+export interface ProjectTemplate {
+  readonly id: string;
+  readonly code: string;
+  readonly name: string;
+  readonly billingType: ProjectBillingType;
+  readonly definition: {
+    readonly phases: readonly string[];
+    readonly columns: readonly ProjectTemplateColumn[];
+    readonly activities: readonly ProjectTemplateActivity[];
+  };
+}
+
+export interface ProjectTemplateInput {
+  readonly name: string;
+  readonly phases: readonly string[];
+  readonly columns: readonly ProjectTemplateColumn[];
+  readonly activities: readonly ProjectTemplateActivity[];
+}
+
+/** The scope baseline, moved by approved change requests, against where the project stands now. */
+export interface ProjectBaseline {
+  readonly baselinedOn: string;
+  readonly baselineEndDate: string;
+  readonly agreedEndDate: string;
+  readonly currentEndDate: string;
+  readonly scheduleVarianceDays: number;
+  readonly baselineHours: number;
+  readonly agreedHours: number;
+  readonly estimatedHours: number;
+  readonly actualHours: number;
+  readonly effortVarianceHours: number;
+  readonly approvedChanges: number;
+  readonly approvedChangeCost: number;
+}
 export type Confidentiality = 'Public' | 'Internal' | 'Confidential' | 'Restricted';
 export type DeliveryMethodology = 'Waterfall' | 'Agile' | 'Hybrid';
 export type HealthRating = 'NotAssessed' | 'Green' | 'Amber' | 'Red';
@@ -180,6 +231,7 @@ export const PROJECT_TYPE_LABELS: Readonly<Record<ProjectType, string>> = {
   ManagedService: 'Managed service',
   Implementation: 'Implementation',
   Consulting: 'Consulting',
+  DepartmentDefault: 'Department default',
 };
 
 export const STAGE_LABELS: Readonly<Record<ProjectStage, string>> = {
@@ -258,6 +310,7 @@ export interface ProjectDetail {
 }
 
 export interface ProjectInput {
+  readonly templateId?: string | null;
   readonly code: string;
   readonly name: string;
   readonly type: ProjectType;
@@ -310,6 +363,7 @@ export interface HistoryItem {
 export type TeamMemberStatus = 'Active' | 'Released';
 
 export interface TeamMember {
+  readonly monthlyRate?: number;
   readonly id: string;
   readonly employeeId: string;
   readonly employeeName?: string;
@@ -330,6 +384,7 @@ export interface TeamMember {
 }
 
 export interface TeamMemberInput {
+  readonly monthlyRate?: number | null;
   readonly employeeId: string;
   readonly projectRoleId: string;
   readonly startDate: string;
@@ -402,9 +457,257 @@ export interface ColumnInput {
   readonly wipLimit?: number | null;
 }
 
-export type TaskType = 'Epic' | 'Story' | 'Task' | 'Subtask' | 'Bug' | 'ChangeRequest';
+export type TaskType = 'Epic' | 'Story' | 'Task' | 'Subtask' | 'Bug' | 'ChangeRequest' | 'Incident' | 'ServiceRequest' | 'Experiment';
 
-export const TASK_TYPES: readonly TaskType[] = ['Epic', 'Story', 'Task', 'Subtask', 'Bug', 'ChangeRequest'];
+export const TASK_TYPES: readonly TaskType[] = ['Epic', 'Story', 'Task', 'Subtask', 'Bug', 'ChangeRequest', 'Incident', 'ServiceRequest', 'Experiment'];
+
+export interface MentionablePerson {
+  readonly employeeId: string;
+  readonly name: string;
+}
+
+export interface TaskComment {
+  readonly id: string;
+  readonly authorEmployeeId: string;
+  readonly authorName?: string;
+  readonly body: string;
+  readonly postedAt: string;
+  readonly editedAt?: string;
+  readonly canEdit: boolean;
+  readonly canDelete: boolean;
+}
+
+export interface ActivityEntry {
+  readonly id: string;
+  readonly field: string;
+  readonly oldValue?: string;
+  readonly newValue?: string;
+  readonly actorName?: string;
+  readonly at: string;
+}
+
+export interface CodeLink {
+  readonly provider: string;
+  readonly kind: 'Commit' | 'PullRequest';
+  readonly externalId: string;
+  readonly title: string;
+  readonly url?: string;
+  readonly author?: string;
+  readonly state?: string;
+  readonly occurredAt: string;
+}
+
+export interface CodeLinkSetup {
+  readonly connectionId: string;
+  readonly name: string;
+  readonly adapterKey: string;
+  readonly isActive: boolean;
+  readonly webhookPath: string;
+}
+
+export interface TaskConversationView {
+  readonly comments: readonly TaskComment[];
+  readonly activity: readonly ActivityEntry[];
+  readonly watchers: readonly { readonly employeeId: string; readonly name?: string }[];
+  readonly people: readonly MentionablePerson[];
+  readonly codeLinks: readonly CodeLink[];
+  readonly isWatching: boolean;
+  readonly canComment: boolean;
+  readonly canAttach: boolean;
+}
+
+export interface TaskViewFilters {
+  readonly search?: string | null;
+  readonly type?: TaskType | null;
+  readonly assigneeEmployeeId?: string | null;
+  readonly unassigned?: boolean | null;
+  readonly priority?: WorkPriority | null;
+  readonly sprintId?: string | null;
+  readonly backlog?: boolean | null;
+  readonly overdue?: boolean | null;
+  readonly includeDone?: boolean | null;
+}
+
+export interface SavedTaskView {
+  readonly id: string;
+  readonly name: string;
+  readonly filters: TaskViewFilters;
+  readonly isShared: boolean;
+  readonly canDelete: boolean;
+}
+
+export interface BulkTaskInput {
+  readonly taskIds: readonly string[];
+  readonly columnId?: string | null;
+  readonly assigneeEmployeeId?: string | null;
+  readonly clearAssignee?: boolean;
+  readonly priority?: WorkPriority | null;
+  readonly sprintId?: string | null;
+  readonly clearSprint?: boolean;
+  readonly dueDate?: string | null;
+}
+
+export interface TaskImportRow {
+  readonly line: number;
+  readonly key?: string;
+  readonly title: string;
+  readonly type: TaskType;
+  readonly priority: WorkPriority;
+  readonly assigneeName?: string;
+  readonly columnName: string;
+  readonly parentKey?: string;
+  readonly dueDate?: string;
+  readonly alreadyImported: boolean;
+  readonly warnings: readonly string[];
+  readonly errors: readonly string[];
+}
+
+export interface TaskImportPreview {
+  readonly rows: readonly TaskImportRow[];
+  readonly willCreate: number;
+  readonly alreadyImported: number;
+  readonly withErrors: number;
+}
+
+export interface GanttTaskRow {
+  readonly id: string;
+  readonly code: string;
+  readonly title: string;
+  readonly type: TaskType;
+  readonly parentTaskId?: string;
+  readonly assigneeName?: string;
+  readonly startDate?: string;
+  readonly dueDate?: string;
+  readonly baselineStartDate?: string;
+  readonly baselineDueDate?: string;
+  readonly progress: number;
+  readonly isDone: boolean;
+  readonly isOverdue: boolean;
+}
+
+export interface GanttView {
+  readonly projectStart: string;
+  readonly projectEnd: string;
+  readonly baselinedOn?: string;
+  readonly baselineEndDate?: string;
+  readonly today: string;
+  readonly tasks: readonly GanttTaskRow[];
+  readonly dependencies: readonly {
+    readonly id: string;
+    readonly predecessorTaskId: string;
+    readonly successorTaskId: string;
+    readonly type: DependencyType;
+    readonly lagDays: number;
+  }[];
+  readonly milestones: readonly { readonly id: string; readonly name: string; readonly plannedDate: string; readonly actualDate?: string; readonly status: string }[];
+  readonly truncated: boolean;
+  readonly canEdit: boolean;
+}
+
+export interface ProjectWorkload {
+  readonly weeks: readonly string[];
+  readonly people: readonly {
+    readonly employeeId: string;
+    readonly employeeName?: string;
+    readonly openTasks: number;
+    readonly overdue: number;
+    readonly unestimated: number;
+    readonly remainingHours: number;
+    readonly unscheduledHours: number;
+    readonly weeks: readonly { readonly weekStart: string; readonly plannedHours: number; readonly capacityHours: number }[];
+  }[];
+  readonly unassignedTasks: number;
+}
+
+export type SlaWeekday = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
+
+export interface SlaCalendar {
+  readonly alwaysOn: boolean;
+  readonly dayStart: string;
+  readonly dayEnd: string;
+  readonly workingDays: readonly SlaWeekday[];
+}
+
+export interface SlaTarget {
+  readonly priority: WorkPriority;
+  readonly responseMinutes: number;
+  readonly resolutionMinutes: number;
+  readonly creditPercent: number;
+}
+
+export interface SlaPolicy {
+  readonly calendar: SlaCalendar;
+  readonly targets: readonly SlaTarget[];
+  readonly pausedColumnIds: readonly string[];
+  readonly monthlyCreditCapPercent: number;
+}
+
+export interface SlaTicket {
+  readonly taskId: string;
+  readonly code: string;
+  readonly title: string;
+  readonly type: TaskType;
+  readonly priority: WorkPriority;
+  readonly columnName?: string;
+  readonly assigneeEmployeeId?: string;
+  readonly assigneeName?: string;
+  readonly openedAt: string;
+  readonly responseDueAt: string;
+  readonly resolutionDueAt: string;
+  readonly respondedAt?: string;
+  readonly resolvedAt?: string;
+  readonly isPaused: boolean;
+  readonly responseBreached: boolean;
+  readonly resolutionBreached: boolean;
+  readonly excludedReason?: string;
+}
+
+export interface SlaPriorityLine {
+  readonly priority: WorkPriority;
+  readonly opened: number;
+  readonly resolved: number;
+  readonly responseMeasured: number;
+  readonly responseMet: number;
+  readonly resolutionMeasured: number;
+  readonly resolutionMet: number;
+}
+
+export interface SlaMonthReport {
+  readonly month: string;
+  readonly opened: number;
+  readonly resolved: number;
+  readonly responseMeasured: number;
+  readonly responseMet: number;
+  readonly resolutionMeasured: number;
+  readonly resolutionMet: number;
+  readonly breaches: number;
+  readonly excluded: number;
+  readonly creditPercent: number;
+  readonly priorities: readonly SlaPriorityLine[];
+  readonly responseMetPercent?: number;
+  readonly resolutionMetPercent?: number;
+}
+
+export interface ServiceLevelView {
+  readonly projectId: string;
+  readonly policy?: SlaPolicy;
+  readonly defaults: SlaPolicy;
+  readonly columns: readonly { readonly id: string; readonly name: string }[];
+  readonly tickets: readonly SlaTicket[];
+  readonly report: SlaMonthReport;
+  readonly canManage: boolean;
+  readonly canManageTickets: boolean;
+  readonly canManageCredits: boolean;
+}
+
+export interface ServiceLevelRow {
+  readonly projectId: string;
+  readonly code: string;
+  readonly name: string;
+  readonly clientId?: string;
+  readonly clientName?: string;
+  readonly report: SlaMonthReport;
+}
 
 export const TASK_TYPE_ICONS: Readonly<Record<TaskType, string>> = {
   Epic: 'pi pi-bolt',
@@ -413,6 +716,9 @@ export const TASK_TYPE_ICONS: Readonly<Record<TaskType, string>> = {
   Subtask: 'pi pi-minus',
   Bug: 'pi pi-exclamation-circle',
   ChangeRequest: 'pi pi-arrow-right-arrow-left',
+  Incident: 'pi pi-exclamation-triangle',
+  ServiceRequest: 'pi pi-inbox',
+  Experiment: 'pi pi-sparkles',
 };
 
 export interface ProjectTask {
@@ -446,6 +752,7 @@ export interface ProjectTask {
   readonly storyPoints?: number;
   readonly progress: number;
   readonly billable: boolean;
+  readonly openToTeam: boolean;
   readonly rank: number;
   readonly completedDate?: string;
   readonly isOverdue: boolean;
@@ -472,6 +779,20 @@ export interface TaskInput {
   readonly storyPoints?: number | null;
   readonly progress?: number | null;
   readonly billable?: boolean | null;
+  readonly openToTeam?: boolean | null;
+}
+
+/** The organisation or a department, and the default project its people book to. */
+export interface DefaultProjectRow {
+  readonly departmentId?: string;
+  readonly name: string;
+  readonly projectId?: string;
+  readonly projectCode?: string;
+  readonly projectName?: string;
+  /** Its own project is missing or closed, so its people use one from further up the tree. */
+  readonly isInherited: boolean;
+  readonly managerEmployeeId?: string;
+  readonly managerName?: string;
 }
 
 export interface BoardView {
@@ -535,6 +856,10 @@ export interface RequirementInput {
 export type MilestoneStatus = 'Planned' | 'InProgress' | 'Achieved' | 'Cancelled';
 
 export interface Milestone {
+  readonly requiresAcceptance: boolean;
+  readonly acceptedOn?: string;
+  readonly acceptedBy?: string;
+  readonly acceptanceEvidence?: string;
   readonly id: string;
   readonly projectId: string;
   readonly projectCode?: string;
@@ -563,6 +888,7 @@ export interface MilestoneInput {
   readonly status?: MilestoneStatus | null;
   readonly percentComplete?: number | null;
   readonly isBillable?: boolean | null;
+  readonly requiresAcceptance?: boolean | null;
 }
 
 export type SprintStatus = 'Planned' | 'Active' | 'Completed' | 'Cancelled';
@@ -806,6 +1132,7 @@ export interface ProjectDashboard {
     readonly byType: Readonly<Record<string, number>>;
   };
   readonly milestones: readonly Milestone[];
+  readonly baseline?: ProjectBaseline;
   readonly milestonesAchieved: number;
   readonly milestonesTotal: number;
   readonly raid: {

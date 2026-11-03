@@ -252,6 +252,12 @@ await RunAsync(provider, "exits", async (scope, tenant) =>
     await Gggs.DevSeed.ExitsDemo.SeedAsync(scope);
 });
 
+await RunAsync(provider, "loans", async (scope, tenant) =>
+{
+    tenant.SetTenant(tenantId);
+    await Gggs.DevSeed.LoansDemo.SeedAsync(scope);
+});
+
 Console.WriteLine();
 Console.WriteLine("Done. Sign in with:");
 Console.WriteLine($"  Organisation code: {tenantCode}");

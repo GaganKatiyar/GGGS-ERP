@@ -6,8 +6,8 @@ namespace Gggs.BuildingBlocks.Security;
 
 /// <summary>
 /// Says why a request was forbidden when the answer is "sign in again", not "you may not": a held
-/// permission whose step-up window has passed. The browser then asks for a password or authenticator
-/// code and retries, rather than showing an access-denied page to someone who has access.
+/// permission whose step-up window has passed. The browser then asks for the password again
+/// and retries, rather than showing an access-denied page to someone who has access.
 /// </summary>
 public sealed class StepUpResultHandler : IAuthorizationMiddlewareResultHandler
 {

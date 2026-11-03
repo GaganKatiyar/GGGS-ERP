@@ -5,10 +5,13 @@ using Gggs.BuildingBlocks.Security;
 using Gggs.BuildingBlocks.Web;
 using Gggs.Data;
 using Gggs.Modules.Identity.Application.Authentication;
+using Gggs.Modules.Identity.Application.Roles;
 using Gggs.Modules.Identity.Application.Users;
 using Gggs.Modules.Identity.Domain.Roles;
 using Gggs.Modules.Identity.Domain.Users;
 using Gggs.Modules.Identity.Infrastructure;
+using Gggs.Modules.Identity.Sessions;
+using Gggs.Modules.Organization.Contracts;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -47,9 +50,16 @@ public sealed record InviteUserResponse(Guid UserId, string InvitationToken, Dat
 /// </summary>
 public sealed record CompleteInvitationBody(string TenantCode, Guid UserId, string Token, string NewPassword);
 
+public sealed record ForgotPasswordBody(string? TenantCode, string Email);
+
+public sealed record ResetPasswordBody(string TenantCode, Guid UserId, string Token, string NewPassword);
+
 public sealed record ChangePasswordBody(string CurrentPassword, string NewPassword);
 
 public sealed record SetRolesBody(IReadOnlyList<Guid> RoleIds);
+
+/// <summary>A role the org chart gives the user, and the department it is anchored to for a department head.</summary>
+public sealed record AutomaticRoleItem(Guid RoleId, string RoleName, Guid? DepartmentId, string? DepartmentName);
 
 public sealed record UserListItem(
     Guid Id,
@@ -58,8 +68,7 @@ public sealed record UserListItem(
     string Status,
     string UserType,
     Guid? EmployeeId,
-    DateTime? LastLoginDate,
-    bool MfaEnabled);
+    DateTime? LastLoginDate);
 
 /// <summary>Managing the people who can sign in.</summary>
 public static class UserEndpoints
@@ -77,6 +86,7 @@ public static class UserEndpoints
         group.MapPost("/{userId:guid}/unlock", UnlockAsync).WithName("UnlockUser").RequirePermission(Permissions.Admin.UserLock);
         group.MapGet("/{userId:guid}/roles", GetRolesAsync).WithName("GetUserRoles").RequirePermission(Permissions.Admin.UserView);
         group.MapPut("/{userId:guid}/roles", SetRolesAsync).WithName("SetUserRoles").RequirePermission(Permissions.Admin.UserManage);
+        group.MapGet("/{userId:guid}/automatic-roles", GetAutomaticRolesAsync).WithName("GetUserAutomaticRoles").RequirePermission(Permissions.Admin.UserView);
 
         // Changing your own password needs no permission beyond being signed in - everyone must be
         // able to do it, including a user whose roles were just taken away.
@@ -87,6 +97,19 @@ public static class UserEndpoints
         // Anonymous: the invitation token is the credential, and the invitee has no account yet.
         endpoints.MapPost("/api/v1/auth/complete-invitation", CompleteInvitationAsync)
             .WithName("CompleteInvitation")
+            .WithTags("Authentication")
+            .AllowAnonymous()
+            .RequireRateLimiting(RateLimitPolicies.SignIn);
+
+        // Anonymous: the person cannot sign in, which is why they are here.
+        endpoints.MapPost("/api/v1/auth/forgot-password", ForgotPasswordAsync)
+            .WithName("ForgotPassword")
+            .WithTags("Authentication")
+            .AllowAnonymous()
+            .RequireRateLimiting(RateLimitPolicies.SignIn);
+
+        endpoints.MapPost("/api/v1/auth/reset-password", ResetPasswordAsync)
+            .WithName("ResetPassword")
             .WithTags("Authentication")
             .AllowAnonymous()
             .RequireRateLimiting(RateLimitPolicies.SignIn);
@@ -102,7 +125,8 @@ public static class UserEndpoints
     {
         PageRequest request = page.ToPageRequest();
 
-        IQueryable<User> query = database.Users.AsNoTracking();
+        // API keys' machine accounts are managed under Studio, not listed as people.
+        IQueryable<User> query = database.Users.AsNoTracking().Where(user => user.UserType != UserType.ApiClient);
 
         if (Enum.TryParse(status, ignoreCase: true, out UserStatus parsedStatus))
         {
@@ -131,8 +155,7 @@ public static class UserEndpoints
                 user.Status.ToString(),
                 user.UserType.ToString(),
                 user.EmployeeId,
-                user.LastLoginDate,
-                user.MfaEnabled))
+                user.LastLoginDate))
             .ToListAsync(cancellationToken);
 
         return TypedResults.Ok(PagedResult.From(items, request, total));
@@ -141,6 +164,7 @@ public static class UserEndpoints
     private static async Task<Created<InviteUserResponse>> InviteAsync(
         InviteUserBody body,
         UserManagementService users,
+        RoleAutomation automation,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(body);
@@ -154,6 +178,13 @@ public static class UserEndpoints
             body.EmployeeId,
             body.RoleIds,
             cancellationToken);
+
+        // An account for someone who already manages people or heads a department gets those
+        // roles now rather than at the nightly sync.
+        if (body.EmployeeId is not null)
+        {
+            await automation.SyncAsync(cancellationToken);
+        }
 
         return TypedResults.Created(
             $"/api/v1/users/{result.UserId}",
@@ -187,14 +218,68 @@ public static class UserEndpoints
         return TypedResults.NoContent();
     }
 
+    /// <summary>Always the same answer, so it cannot be used to find out which customers or people exist.</summary>
+    private static async Task<NoContent> ForgotPasswordAsync(
+        ForgotPasswordBody body,
+        UserManagementService users,
+        TenantDiscoveryService discovery,
+        ITenantContextSetter tenantSetter,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        string email = body.Email?.Trim() ?? string.Empty;
+        if (email.Length == 0)
+        {
+            return TypedResults.NoContent();
+        }
+
+        TenantDiscoveryResult? discovered = await discovery.DiscoverAsync(body.TenantCode, email, cancellationToken);
+        if (discovered is { Tenant.IsOperational: true })
+        {
+            tenantSetter.SetTenant(discovered.Tenant);
+            await users.RequestPasswordResetAsync(email, cancellationToken);
+        }
+
+        return TypedResults.NoContent();
+    }
+
+    private static async Task<NoContent> ResetPasswordAsync(
+        ResetPasswordBody body,
+        UserManagementService users,
+        TenantDiscoveryService discovery,
+        ITenantContextSetter tenantSetter,
+        BffSessionStore sessions,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        TenantDiscoveryResult? discovered = await discovery.DiscoverAsync(body.TenantCode, email: string.Empty, cancellationToken);
+        if (discovered is null || !discovered.Tenant.IsOperational)
+        {
+            throw new DomainRuleException("PASSWORD_RESET_INVALID", "That link has expired or has already been used.");
+        }
+
+        tenantSetter.SetTenant(discovered.Tenant);
+        await users.CompletePasswordResetAsync(body.UserId, body.Token, body.NewPassword, cancellationToken);
+
+        // Someone resetting a password may be shutting out whoever took the account, so nobody stays signed in.
+        await sessions.EndAllForUserAsync(body.UserId, cancellationToken: cancellationToken);
+        return TypedResults.NoContent();
+    }
+
     private static async Task<NoContent> ChangeOwnPasswordAsync(
         ChangePasswordBody body,
         UserManagementService users,
+        ICurrentUser currentUser,
+        BffSessionStore sessions,
+        HttpContext context,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(body);
 
         await users.ChangeOwnPasswordAsync(body.CurrentPassword, body.NewPassword, cancellationToken);
+
+        // Someone changing a password may suspect another person has it, so only this browser stays.
+        await sessions.EndAllForUserAsync(currentUser.UserId, context.Features.Get<BffSessionFeature>(), cancellationToken);
         return TypedResults.NoContent();
     }
 
@@ -254,7 +339,41 @@ public static class UserEndpoints
         DateOnly today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
         IReadOnlyList<UserRole> grants = await roles.GetGrantsForUserAsync(userId, cancellationToken);
 
+        // Roles given by hand only: automatic ones follow the org chart and are not the editor's to change.
         return TypedResults.Ok<IReadOnlyList<Guid>>(
-            [.. grants.Where(grant => grant.IsActiveOn(today)).Select(grant => grant.RoleId)]);
+            [.. grants.Where(grant => grant.IsActiveOn(today) && !grant.IsAutomatic).Select(grant => grant.RoleId)]);
+    }
+
+    /// <summary>The roles the user holds because of the org chart - shown beside the editor, read-only.</summary>
+    private static async Task<Ok<IReadOnlyList<AutomaticRoleItem>>> GetAutomaticRolesAsync(
+        Guid userId,
+        AppDbContext database,
+        IOrgStructure orgStructure,
+        TimeProvider timeProvider,
+        CancellationToken cancellationToken)
+    {
+        DateOnly today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
+        List<UserRole> grants = await database.UserRoles.AsNoTracking()
+            .Where(grant => grant.UserId == userId && grant.IsAutomatic)
+            .ToListAsync(cancellationToken);
+        grants = [.. grants.Where(grant => grant.IsActiveOn(today))];
+
+        List<Guid> roleIds = [.. grants.Select(grant => grant.RoleId).Distinct()];
+        Dictionary<Guid, string> roleNames = await database.Roles.AsNoTracking()
+            .Where(role => roleIds.Contains(role.Id))
+            .ToDictionaryAsync(role => role.Id, role => role.Name, cancellationToken);
+        IReadOnlyDictionary<Guid, string> departments = await orgStructure.GetNamesAsync(
+            OrgUnitKind.Department, grants.Where(grant => grant.ScopeId is not null).Select(grant => grant.ScopeId!.Value), cancellationToken);
+
+        return TypedResults.Ok<IReadOnlyList<AutomaticRoleItem>>(
+        [
+            .. grants
+                .Select(grant => new AutomaticRoleItem(
+                    grant.RoleId,
+                    roleNames.GetValueOrDefault(grant.RoleId) ?? string.Empty,
+                    grant.ScopeId,
+                    grant.ScopeId is { } department ? departments.GetValueOrDefault(department) : null))
+                .OrderBy(item => item.RoleName, StringComparer.CurrentCultureIgnoreCase),
+        ]);
     }
 }

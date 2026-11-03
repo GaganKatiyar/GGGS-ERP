@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import type { EmployeeSalaryView, SalaryPreview, SalaryReason, SalaryRow, StructureItem } from '@gggs/shared/models';
 import { SALARY_REASONS, humanize } from '@gggs/shared/models';
 import { EmployeePayroll, MoneyPipe, PayrollApi } from '@gggs/shared/money';
-import { EmptyState, FormDialog, PageHeader, Skeleton } from '@gggs/shared/ui';
+import { EmptyState, FormDialog, localIsoDate, PageHeader, Skeleton } from '@gggs/shared/ui';
 import { message } from './payroll-shared';
 
 /** Who is paid what (spec §21, §23): everyone in reach with their CTC, and who still has no salary. */
@@ -205,7 +205,7 @@ export class EmployeeSalaryPage {
 
     this.structureId.set(view.current?.structureId ?? this.structures().find((structure) => structure.code === 'STANDARD')?.id ?? '');
     this.ctc.set(view.current?.annualCtc ?? 0);
-    this.effectiveFrom.set(new Date().toISOString().slice(0, 10));
+    this.effectiveFrom.set(localIsoDate());
     this.reason.set(view.current ? 'Revision' : 'Hire');
     this.pfEnabled.set(view.current?.pfEnabled ?? true);
     this.notes.set('');

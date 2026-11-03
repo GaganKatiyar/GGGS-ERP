@@ -16,6 +16,9 @@ public enum ProjectType
     ManagedService = 7,
     Implementation = 8,
     Consulting = 9,
+
+    /// <summary>Where a department's people book time that belongs to no other project. Nobody is allocated to it.</summary>
+    DepartmentDefault = 10,
 }
 
 /// <summary>Where a project is in its life (spec §40), from the first conversation to closure.</summary>
@@ -58,6 +61,15 @@ public enum ProjectBillingType
     Milestone = 3,
     Retainer = 4,
     NonBillable = 5,
+
+    /// <summary>A monthly rate for each person, prorated by the days they are on the project.</summary>
+    DedicatedTeam = 6,
+
+    /// <summary>A monthly fee under an SLA, with an optional bucket of hours.</summary>
+    ManagedService = 7,
+
+    /// <summary>A price per agreed unit of outcome, earned when the client accepts it.</summary>
+    OutcomeBased = 8,
 }
 
 public enum Confidentiality
@@ -191,6 +203,13 @@ public sealed class Project : TenantAggregateRoot
 
     public DateOnly? ClientSatisfactionOn { get; private set; }
 
+    /// <summary>When the plan was fixed as the scope baseline; change requests move it from here.</summary>
+    public DateOnly? BaselinedOn { get; private set; }
+
+    public DateOnly? BaselineEndDate { get; private set; }
+
+    public decimal? BaselineHours { get; private set; }
+
     public int TaskSequence { get; private set; }
 
     public int RequirementSequence { get; private set; }
@@ -251,6 +270,11 @@ public sealed class Project : TenantAggregateRoot
         if (profile.ContractId is not null && profile.ClientId is null)
         {
             throw new DomainRuleException("PROJECT_CONTRACT_WITHOUT_CLIENT", "A project delivered under a contract needs that contract's client.");
+        }
+
+        if (profile.Type == ProjectType.DepartmentDefault && (profile.ClientId is not null || profile.BillingType != ProjectBillingType.NonBillable))
+        {
+            throw new DomainRuleException("PROJECT_DEFAULT_TERMS", "A department's default project has no client and is not billed.");
         }
 
         Name = Guard.MaxLength(Guard.NotNullOrWhiteSpace(profile.Name).Trim(), 200);
@@ -317,6 +341,14 @@ public sealed class Project : TenantAggregateRoot
         }
 
         return previous;
+    }
+
+    /// <summary>Fixes the plan as it stands now: the committed end date and the estimated effort.</summary>
+    public void CaptureBaseline(decimal estimatedHours, DateOnly today)
+    {
+        BaselinedOn = today;
+        BaselineEndDate = EndDate;
+        BaselineHours = estimatedHours;
     }
 
     public void RecordHealth(HealthRating overall, DateOnly assessedOn)
@@ -449,7 +481,8 @@ public sealed record TeamAssignment(
     bool Billable,
     decimal? BillingRate,
     decimal? CostRate,
-    string? Notes);
+    string? Notes,
+    decimal? MonthlyRate = null);
 
 /// <summary>Someone on a project (spec §41): their role, share of time, dates and rates.</summary>
 public sealed class ProjectTeamMember : TenantAggregateRoot
@@ -477,6 +510,9 @@ public sealed class ProjectTeamMember : TenantAggregateRoot
 
     /// <summary>What an hour costs the company; project financials (M7) build on it.</summary>
     public decimal? CostRate { get; private set; }
+
+    /// <summary>What the client pays a month for this seat, on a dedicated team.</summary>
+    public decimal? MonthlyRate { get; private set; }
 
     public TeamMemberStatus Status { get; private set; }
 
@@ -508,7 +544,7 @@ public sealed class ProjectTeamMember : TenantAggregateRoot
             throw new DomainRuleException("PROJECT_TEAM_DATES", "The end date is before the start date.");
         }
 
-        if (assignment.BillingRate is < 0 || assignment.CostRate is < 0)
+        if (assignment.BillingRate is < 0 || assignment.CostRate is < 0 || assignment.MonthlyRate is < 0)
         {
             throw new DomainRuleException("PROJECT_RATE", "Rates cannot be negative.");
         }
@@ -520,6 +556,7 @@ public sealed class ProjectTeamMember : TenantAggregateRoot
         Billable = assignment.Billable;
         BillingRate = assignment.BillingRate;
         CostRate = assignment.CostRate;
+        MonthlyRate = assignment.MonthlyRate;
         Notes = Project.Clean(assignment.Notes, 500);
     }
 

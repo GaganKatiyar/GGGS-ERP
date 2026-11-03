@@ -7,11 +7,11 @@ import { PermissionStore } from '@gggs/core/permissions';
 import { ExpensesApi } from '@gggs/shared/experience';
 import type { ClaimItem, ClaimLineInput, ClaimStatus, ClaimView, ExpenseCategoryInput, ExpenseCategoryItem, ExpenseDashboard, PaymentMode, TravelDetailsInput, TravelItem, TravelStatus } from '@gggs/shared/models';
 import { CLAIM_STATUSES, TRAVEL_MODES, TRAVEL_STATUSES, humanize } from '@gggs/shared/models';
-import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge, Tabs } from '@gggs/shared/ui';
+import { EmptyState, FormDialog, KpiCard, localIsoDate, PageHeader, Skeleton, StatusBadge, Tabs } from '@gggs/shared/ui';
 import type { TabItem } from '@gggs/shared/ui';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => localIsoDate();
 const num = (value: string): number | null => (value === '' ? null : +value);
 
 const blankTrip = (): TravelDetailsInput => ({ purpose: '', fromCity: '', toCity: '', departOn: today(), returnOn: today(), mode: 'Air', estimatedCost: 0, advanceRequested: 0, projectId: null });

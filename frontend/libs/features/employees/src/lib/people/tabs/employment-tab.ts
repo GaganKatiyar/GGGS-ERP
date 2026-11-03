@@ -7,7 +7,7 @@ import { EmployeeDirectoryApi } from '@gggs/shared/employee-reference';
 import { LookupSelect } from '@gggs/shared/master-data';
 import type { AssignmentChangeType, EmployeeProfile } from '@gggs/shared/models';
 import { LOOKUP_LISTS } from '@gggs/shared/models';
-import { FormDialog } from '@gggs/shared/ui';
+import { FormDialog, localIsoDate } from '@gggs/shared/ui';
 import { AssignmentFields, assignmentForm, toAssignmentInput, type AssignmentForm } from '../assignment-fields';
 
 type LifecycleAction = 'confirm' | 'notice' | 'exit' | 'contract';
@@ -20,7 +20,7 @@ const CHANGE_TYPES: readonly { readonly value: AssignmentChangeType; readonly la
   { value: 'EmploymentTermsChange', label: 'Change of employment terms' },
 ];
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => localIsoDate();
 
 /**
  * Where someone sits and the actions that move them: a transfer, promotion or manager change opens a

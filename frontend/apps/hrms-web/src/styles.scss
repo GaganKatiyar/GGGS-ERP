@@ -1,8 +1,9 @@
 @use 'primeicons/primeicons.css';
 @use '@fontsource-variable/inter/index.css';
+@use '@fontsource-variable/plus-jakarta-sans/index.css' as plus-jakarta-sans;
 
 /*
- * The PeopleOS design system. Tokens first, then element defaults (in a cascade layer, so any
+ * The Nuts and Bolts design system. Tokens first, then element defaults (in a cascade layer, so any
  * component or PrimeNG rule overrides them), then the shared building blocks every screen uses.
  * Components may add local styles for what is genuinely theirs - never colours or spacing
  * written out literally.
@@ -15,6 +16,7 @@
 @use './styles/layout';
 @use './styles/feedback';
 @use './styles/xp';
+@use './styles/depth';
 @use './styles/shell';
 @use './styles/overlays';
 @use './styles/utilities';

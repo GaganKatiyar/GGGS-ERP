@@ -50,6 +50,12 @@ public sealed class UserRole : TenantAggregateRoot
     /// <summary>Null for an open-ended grant.</summary>
     public DateOnly? ValidTo { get; private set; }
 
+    /// <summary>
+    /// Granted by the org chart (<see cref="Role.AutoAssign"/>) rather than by an administrator, and
+    /// ended the same way. Editing a user's roles by hand never touches these.
+    /// </summary>
+    public bool IsAutomatic { get; private set; }
+
     /// <summary>Why it was granted. Required for a time-limited grant, which is always an exception.</summary>
     public string? Reason { get; private set; }
 
@@ -92,6 +98,27 @@ public sealed class UserRole : TenantAggregateRoot
             ScopeId = scopeId,
             Reason = reason is null ? null : Guard.MaxLength(reason.Trim(), 500),
         };
+    }
+
+    /// <summary>A grant the org chart calls for: open-ended, and anchored to a department for a department head.</summary>
+    public static UserRole GrantAutomatically(Guid userId, Guid roleId, DateOnly validFrom, Guid? departmentId)
+    {
+        UserRole grant = Grant(
+            userId,
+            roleId,
+            validFrom,
+            scopeType: departmentId is null ? null : RoleScopeType.Department,
+            scopeId: departmentId,
+            reason: "Assigned automatically from the org chart.");
+        grant.IsAutomatic = true;
+        return grant;
+    }
+
+    /// <summary>An administrator gave this role by hand while the org chart already did: it is theirs from now on.</summary>
+    public void TakeOverByHand()
+    {
+        IsAutomatic = false;
+        Reason = null;
     }
 
     /// <summary>Whether this grant is in force on a given day.</summary>

@@ -20,9 +20,6 @@ public static class SignInErrorCodes
     /// rather than retrying and extending the lockout.
     /// </summary>
     public const string AccountLocked = "ACCOUNT_LOCKED";
-
-    /// <summary>The password was right and an authenticator code is now needed: finish with the challenge.</summary>
-    public const string MfaRequired = "MFA_REQUIRED";
 }
 
 /// <summary>The result of checking a password, with the principal to issue when it succeeded.</summary>
@@ -40,12 +37,6 @@ public sealed record PasswordSignInOutcome
     public bool MustChangePassword { get; init; }
 
     public DateTime? LockoutEndDate { get; init; }
-
-    /// <summary>With <see cref="SignInErrorCodes.MfaRequired"/>: what carries the user to the second step.</summary>
-    public string? MfaChallenge { get; init; }
-
-    /// <summary>Signed in, but policy requires an authenticator and none is set up yet.</summary>
-    public bool MfaEnrollmentRequired { get; init; }
 
     internal static PasswordSignInOutcome Failed(string errorCode, DateTime? lockoutEndDate = null) => new()
     {
@@ -76,7 +67,6 @@ public sealed class PasswordSignInService(
     IUserRepository users,
     IPlatformStaffRepository platformStaff,
     PlatformStaffSignInService platformStaffSignIn,
-    MfaService mfa,
     TimeProvider timeProvider)
 {
     public async Task<PasswordSignInOutcome> SignInAsync(
@@ -129,29 +119,16 @@ public sealed class PasswordSignInService(
         User user = await users.GetAsync(result.UserId!.Value, cancellationToken)
             ?? throw new InvalidOperationException("The user vanished between authentication and sign-in.");
 
-        if (user.MfaEnabled)
-        {
-            return new PasswordSignInOutcome
-            {
-                Succeeded = false,
-                ErrorCode = SignInErrorCodes.MfaRequired,
-                SubjectId = user.Id,
-                MfaChallenge = mfa.IssueChallenge(user.Id, discovered.Tenant.Id),
-            };
-        }
-
         return new PasswordSignInOutcome
         {
             Succeeded = true,
             SubjectId = user.Id,
             MustChangePassword = result.MustChangePassword,
-            MfaEnrollmentRequired = await mfa.IsRequiredAsync(user, cancellationToken),
             Principal = UserPrincipalFactory.Create(
                 user,
                 discovered.Tenant.Id,
                 sessionId: Guid.CreateVersion7(),
                 authenticatedAt: timeProvider.GetUtcNow(),
-                mfaSatisfied: false,
                 authenticationScheme),
         };
     }

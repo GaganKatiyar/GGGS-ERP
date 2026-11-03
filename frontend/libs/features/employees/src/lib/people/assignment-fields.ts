@@ -83,7 +83,7 @@ export function toAssignmentInput(form: AssignmentForm): EmployeeAssignmentInput
 
       <label class="field">
         <span class="field__label">Designation</span>
-        <input type="text" formControlName="designation" maxlength="200" placeholder="Title shown on letters and the directory" />
+        <input type="text" formControlName="designation" maxlength="200" placeholder="Leave empty to use the job title" />
       </label>
       <label class="field">
         <span class="field__label">Manager</span>

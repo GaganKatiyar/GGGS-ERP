@@ -1,3 +1,5 @@
+using Gggs.BuildingBlocks.Messaging;
+
 namespace Gggs.Modules.Organization.Contracts;
 
 /// <summary>The kinds of organization record another module may point at.</summary>
@@ -22,6 +24,9 @@ public sealed record OrgReference(OrgUnitKind Kind, Guid Id);
 /// <summary>What a position says about the seat an employee is placed in.</summary>
 public sealed record PositionPlacement(Guid PositionId, Guid JobId, Guid DepartmentId, Guid? LocationId, Guid? GradeId, Guid? ReportsToPositionId, int Headcount);
 
+/// <summary>A department and where it sits in the tree.</summary>
+public sealed record DepartmentNode(Guid Id, string Code, string Name, Guid? ParentDepartmentId, bool IsActive);
+
 /// <summary>
 /// The organization structure as other modules see it (ADR-12): reference checks and display names,
 /// never the tables themselves.
@@ -45,4 +50,17 @@ public interface IOrgStructure
     /// one. Null when no department up the chain names a head. Approval routing uses this.
     /// </summary>
     Task<Guid?> GetDepartmentHeadAsync(Guid departmentId, CancellationToken cancellationToken = default);
+
+    /// <summary>Who heads which open departments: each head's employee id and the departments they head.</summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<Guid>>> DepartmentHeadsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Every department, closed ones included so a tree can still be walked through them.</summary>
+    Task<IReadOnlyList<DepartmentNode>> DepartmentsAsync(CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// A department gained, lost or changed its head, or closed with one. Identity reacts by moving the
+/// Department Head role when that role is assigned automatically.
+/// </summary>
+[MessageType("gggs.organization.department-head-changed")]
+public sealed record DepartmentHeadChangedIntegrationEvent(Guid DepartmentId, Guid? PreviousHeadEmployeeId, Guid? HeadEmployeeId) : IntegrationEvent;

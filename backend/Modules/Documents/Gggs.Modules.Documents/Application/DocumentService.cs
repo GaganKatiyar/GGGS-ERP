@@ -563,7 +563,7 @@ internal sealed partial class DocumentService(
         await RequireTenantScopeAsync(permission, cancellationToken);
     }
 
-    private static bool IsExternal(DocumentOwnerType ownerType) => ownerType is DocumentOwnerType.Client or DocumentOwnerType.Project;
+    private static bool IsExternal(DocumentOwnerType ownerType) => ownerType is DocumentOwnerType.Client or DocumentOwnerType.Project or DocumentOwnerType.ProjectTask;
 
     /// <summary>The owning module's access rules; a kind of owner nobody answers for is closed.</summary>
     private IDocumentOwnerAccess AccessFor(DocumentOwnerType ownerType)

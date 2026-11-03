@@ -14,6 +14,8 @@ import { NG_VALUE_ACCESSOR, type ControlValueAccessor } from '@angular/forms';
 import type {
   BankDetails,
   Dependent,
+  EducationEntry,
+  EducationInput,
   EmergencyContactEntry,
   Employee360,
   EmployeeProfile,
@@ -25,6 +27,8 @@ import type {
   OrgChartNode,
   PagedResult,
   StatutoryDetails,
+  WorkExperienceEntry,
+  WorkExperienceInput,
 } from '@gggs/shared/models';
 import { firstValueFrom } from 'rxjs';
 
@@ -69,12 +73,61 @@ export class EmployeeDirectoryApi {
     return firstValueFrom(this.http.get<EmployeeProfile>('/api/v1/me/employee'));
   }
 
+  /** Replaces the signed-in employee's photo. Returns the new photo's id. */
+  async uploadMyPhoto(picture: Blob, fileName: string): Promise<string> {
+    const form = new FormData();
+    form.append('file', picture, fileName);
+    const result = await firstValueFrom(this.http.put<{ photoId: string }>('/api/v1/me/employee/photo', form));
+    return result.photoId;
+  }
+
+  async removeMyPhoto(): Promise<void> {
+    await firstValueFrom(this.http.delete('/api/v1/me/employee/photo'));
+  }
+
   get360(id: string): Promise<Employee360> {
     return firstValueFrom(this.http.get<Employee360>(`${this.base}/${id}/360`));
   }
 
   history(id: string): Promise<readonly EmploymentHistoryEntry[]> {
     return firstValueFrom(this.http.get<readonly EmploymentHistoryEntry[]>(`${this.base}/${id}/history`));
+  }
+
+  /** The signed-in employee's own employment history (self-service). */
+  myHistory(): Promise<readonly EmploymentHistoryEntry[]> {
+    return firstValueFrom(this.http.get<readonly EmploymentHistoryEntry[]>('/api/v1/me/employee/history'));
+  }
+
+  // Education and prior experience: an employee id is HR reading someone in their scope; none is the signed-in employee's own.
+
+  education(employeeId?: string): Promise<readonly EducationEntry[]> {
+    return firstValueFrom(this.http.get<readonly EducationEntry[]>(`${this.owner(employeeId)}/education`));
+  }
+
+  async saveEducation(entry: EducationInput, id: string | null, employeeId?: string): Promise<void> {
+    const path = `${this.owner(employeeId)}/education`;
+    await firstValueFrom(id ? this.http.put(`${path}/${id}`, entry) : this.http.post(path, entry));
+  }
+
+  async removeEducation(id: string, employeeId?: string): Promise<void> {
+    await firstValueFrom(this.http.delete(`${this.owner(employeeId)}/education/${id}`));
+  }
+
+  workExperience(employeeId?: string): Promise<readonly WorkExperienceEntry[]> {
+    return firstValueFrom(this.http.get<readonly WorkExperienceEntry[]>(`${this.owner(employeeId)}/work-experience`));
+  }
+
+  async saveWorkExperience(entry: WorkExperienceInput, id: string | null, employeeId?: string): Promise<void> {
+    const path = `${this.owner(employeeId)}/work-experience`;
+    await firstValueFrom(id ? this.http.put(`${path}/${id}`, entry) : this.http.post(path, entry));
+  }
+
+  async removeWorkExperience(id: string, employeeId?: string): Promise<void> {
+    await firstValueFrom(this.http.delete(`${this.owner(employeeId)}/work-experience/${id}`));
+  }
+
+  private owner(employeeId: string | undefined): string {
+    return employeeId ? `${this.base}/${employeeId}` : '/api/v1/me/employee';
   }
 
   orgChart(rootId?: string, depth = 3): Promise<readonly OrgChartNode[]> {

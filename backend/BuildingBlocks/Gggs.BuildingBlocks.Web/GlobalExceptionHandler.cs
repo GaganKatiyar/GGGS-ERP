@@ -13,7 +13,7 @@ namespace Gggs.BuildingBlocks.Web;
 /// Turns every exception into an RFC 9457 problem document with a stable error code and the trace
 /// id, and keeps internal detail out of the response.
 /// <para>
-/// The document also carries the PeopleOS error envelope (spec §129) as extension members, so a
+/// The document also carries the Nuts and Bolts error envelope (spec §129) as extension members, so a
 /// client can read either form:
 /// <c>{ "success": false, "code": "VALIDATION_FAILED", "message": "...", "errors": [ { "field", "message" } ], "traceId": "..." }</c>.
 /// </para>

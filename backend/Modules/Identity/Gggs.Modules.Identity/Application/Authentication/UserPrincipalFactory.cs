@@ -27,11 +27,11 @@ public static class UserPrincipalFactory
     {
         public const string Password = "pwd";
 
-        /// <summary>A second factor was satisfied; step-up checks look for this.</summary>
-        public const string MultiFactor = "mfa";
-
         /// <summary>Federated. Unused until Entra ID federation ships.</summary>
         public const string ExternalProvider = "ext";
+
+        /// <summary>An API key: a machine account calling the API.</summary>
+        public const string ApiKey = "key";
     }
 
     /// <summary>
@@ -46,7 +46,6 @@ public static class UserPrincipalFactory
         Guid tenantId,
         Guid sessionId,
         DateTimeOffset authenticatedAt,
-        bool mfaSatisfied,
         string authenticationScheme,
         string authenticationMethod = AuthenticationMethods.Password)
     {
@@ -89,11 +88,6 @@ public static class UserPrincipalFactory
         }
 
         claims.Add(new Claim("amr", authenticationMethod));
-
-        if (mfaSatisfied)
-        {
-            claims.Add(new Claim("amr", AuthenticationMethods.MultiFactor));
-        }
 
         if (user.PreferredLocale is not null)
         {

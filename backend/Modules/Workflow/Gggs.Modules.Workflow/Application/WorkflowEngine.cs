@@ -68,7 +68,7 @@ internal sealed class WorkflowEngine(
 
         WorkflowInstance instance = WorkflowInstance.Start(
             definition, subjectType, request.SubjectId, request.Title, request.Link,
-            request.RequesterEmployeeId, currentUser.UserId, request.Fields, Now);
+            request.RequesterEmployeeId, currentUser.UserId, request.Fields, Now, request.OwnerEmployeeId);
 
         dbContext.WorkflowInstances.Add(instance);
         Log(instance, WorkflowActionKind.Submitted);
@@ -370,7 +370,7 @@ internal sealed class WorkflowEngine(
         var resolved = new List<Guid>();
         foreach (ApproverRule rule in stage.Approvers)
         {
-            if (await ResolveAsync(rule, instance.RequesterEmployeeId, cancellationToken) is { } approver)
+            if (await ResolveAsync(rule, instance, cancellationToken) is { } approver)
             {
                 resolved.Add(approver);
             }
@@ -399,14 +399,19 @@ internal sealed class WorkflowEngine(
         return eligible;
     }
 
-    private async Task<Guid?> ResolveAsync(ApproverRule rule, Guid? requester, CancellationToken cancellationToken)
+    private async Task<Guid?> ResolveAsync(ApproverRule rule, WorkflowInstance instance, CancellationToken cancellationToken)
     {
         if (rule.Kind == ApproverKind.Employee)
         {
             return rule.EmployeeId;
         }
 
-        if (requester is null || await employees.GetAsync(requester.Value, cancellationToken) is not { } person)
+        if (rule.Kind == ApproverKind.SubjectOwner)
+        {
+            return instance.OwnerEmployeeId;
+        }
+
+        if (instance.RequesterEmployeeId is not { } requester || await employees.GetAsync(requester, cancellationToken) is not { } person)
         {
             return null;
         }
@@ -461,7 +466,7 @@ internal sealed class WorkflowEngine(
     private async Task<Guid?> EscalationTargetAsync(WorkflowInstance instance, WorkflowStage stage, WorkflowTask task, CancellationToken cancellationToken)
     {
         Guid? target = stage.EscalateTo is { } rule
-            ? await ResolveAsync(rule, instance.RequesterEmployeeId, cancellationToken)
+            ? await ResolveAsync(rule, instance, cancellationToken)
             : (await employees.GetAsync(task.AssigneeEmployeeId, cancellationToken))?.ManagerEmployeeId;
 
         if (target is not { } candidate || candidate == task.AssigneeEmployeeId)

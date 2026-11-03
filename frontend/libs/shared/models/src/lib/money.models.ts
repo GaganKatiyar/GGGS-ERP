@@ -834,11 +834,95 @@ export interface TotalRewards {
 
 // ----- Project financials --------------------------------------------------------------------
 
-export type CostCategory = 'Labour' | 'Vendor' | 'Expense' | 'Infrastructure' | 'Other';
-export type InvoiceStatus = 'Draft' | 'Sent' | 'Paid' | 'Cancelled';
+export type CostCategory = 'Labour' | 'Vendor' | 'Expense' | 'Infrastructure' | 'Other' | 'AiUsage';
+export type InvoiceStatus = 'Draft' | 'PendingApproval' | 'Sent' | 'Paid' | 'Cancelled';
+export type InvoiceLineKind = 'Hours' | 'Milestone' | 'MonthlyFee' | 'Overage' | 'Seat' | 'Progress' | 'ServiceCredit' | 'Outcome';
+
+export interface OutcomeUnits {
+  readonly id: string;
+  readonly acceptedOn: string;
+  readonly quantity: number;
+  readonly unitPrice: number;
+  readonly amount: number;
+  readonly reference: string;
+  readonly acceptedBy: string;
+  readonly evidence?: string;
+  readonly isBilled: boolean;
+}
+
+export interface RollupRow {
+  readonly label: string;
+  readonly projects: number;
+  readonly revenue: number;
+  readonly cost: number;
+  readonly margin: number;
+  readonly marginPercent?: number;
+  readonly forecastRevenue: number;
+  readonly unbilled: number;
+}
+
+export interface CurrencyPortfolio {
+  readonly currency: string;
+  readonly totals: RollupRow;
+  readonly byModel: readonly RollupRow[];
+  readonly byClient: readonly RollupRow[];
+  readonly byDepartment: readonly RollupRow[];
+  readonly forecast: readonly { readonly month: string; readonly revenue: number }[];
+  readonly forecastLater: number;
+  readonly watch: readonly {
+    readonly projectId: string;
+    readonly code: string;
+    readonly name: string;
+    readonly health: string;
+    readonly margin: number;
+    readonly marginPercent?: number;
+    readonly unbilled: number;
+  }[];
+}
+
+export interface PortfolioDashboard {
+  readonly health: { readonly green: number; readonly amber: number; readonly red: number; readonly notAssessed: number };
+  readonly currencies: readonly CurrencyPortfolio[];
+}
 export const COST_CATEGORIES: readonly CostCategory[] = ['Labour', 'Vendor', 'Expense', 'Infrastructure', 'Other'];
 
+/** What an engagement's contract says beyond its value. */
+export interface CommercialTerms {
+  readonly notToExceed?: number | null;
+  readonly poNumber?: string | null;
+  readonly poValue?: number | null;
+  readonly includedHoursPerMonth?: number | null;
+  readonly rolloverPercent: number;
+  readonly overageRate?: number | null;
+  readonly unitName?: string | null;
+  readonly unitPrice?: number | null;
+  readonly targetUnits?: number | null;
+}
+
+/** One month of a retainer or managed service. */
+export interface RetainerMonth {
+  readonly month: string;
+  readonly fee: number;
+  readonly includedHours: number;
+  readonly rolledInHours: number;
+  readonly usedHours: number;
+  readonly overageHours: number;
+  readonly overageAmount: number;
+  readonly rollsForwardHours: number;
+  readonly credit: number;
+  readonly revenue: number;
+}
+
 export interface FinanceSummary {
+  readonly capUsedPercent?: number;
+  readonly overCapAmount: number;
+  readonly poBalance?: number;
+  readonly retainerMonths?: readonly RetainerMonth[];
+  readonly unpricedSeats: number;
+  readonly costPerDoneTask?: number;
+  readonly costPerStoryPoint?: number;
+  readonly acceptedUnits?: number;
+  readonly costPerUnit?: number;
   readonly contractValue: number;
   readonly revenue: number;
   readonly billed: number;
@@ -935,6 +1019,74 @@ export interface FinanceInvoice {
   readonly milestoneName?: string;
   readonly notes?: string;
   readonly isOverdue: boolean;
+  readonly creditedAmount: number;
+  readonly lines?: readonly FinanceInvoiceLine[];
+}
+
+export interface FinanceInvoiceLine {
+  readonly id: string;
+  readonly kind: InvoiceLineKind;
+  readonly description: string;
+  readonly quantity: number;
+  readonly rate: number;
+  readonly amount: number;
+  readonly month?: string;
+  readonly isCredited: boolean;
+}
+
+export interface BillingPreviewLine {
+  readonly kind: InvoiceLineKind;
+  readonly description: string;
+  readonly quantity: number;
+  readonly rate: number;
+  readonly amount: number;
+  readonly month?: string;
+}
+
+export interface BillingPreview {
+  readonly projectId: string;
+  readonly code: string;
+  readonly name: string;
+  readonly billingType: string;
+  readonly currency: string;
+  readonly from: string;
+  readonly to: string;
+  readonly lines: readonly BillingPreviewLine[];
+  readonly amount: number;
+  readonly heldByCap: number;
+  readonly unpricedHours: number;
+  /** Invoices entered by hand that overlap the period: the app cannot tell what they covered. */
+  readonly typedInvoices: readonly string[];
+  /** Service credits owed that this invoice is too small to carry. */
+  readonly creditsWaiting: number;
+}
+
+export interface OverdueInvoice {
+  readonly projectId: string;
+  readonly projectCode: string;
+  readonly invoiceId: string;
+  readonly number: string;
+  readonly dueDate: string;
+  readonly amount: number;
+  readonly currency: string;
+  readonly daysOverdue: number;
+}
+
+export interface BillingRun {
+  readonly month: string;
+  readonly ready: readonly BillingPreview[];
+  readonly overdue: readonly OverdueInvoice[];
+  readonly drafts: number;
+}
+
+export interface CreditNote {
+  readonly id: string;
+  readonly invoiceId: string;
+  readonly number: string;
+  readonly date: string;
+  readonly amount: number;
+  readonly taxAmount: number;
+  readonly reason: string;
 }
 
 export interface ProjectFinance {
@@ -954,7 +1106,141 @@ export interface ProjectFinance {
   readonly invoices: readonly FinanceInvoice[];
   readonly contractValueOverride?: number;
   readonly retainerMonthlyFee?: number;
+  readonly terms?: CommercialTerms;
   readonly milestones: readonly { readonly milestoneId: string; readonly name: string; readonly plannedDate: string; readonly actualDate?: string; readonly status: string; readonly isBillable: boolean; readonly amount?: number }[];
   readonly trend: readonly { readonly month: string; readonly revenue: number; readonly cost: number; readonly billed: number; readonly collected: number; readonly forecastRevenue: number; readonly forecastCost: number }[];
   readonly canManage: boolean;
+}
+
+// ----- Loans ----------------------------------------------------------------------------------
+
+export type LoanStatus = 'PendingApproval' | 'Approved' | 'Active' | 'Closed' | 'Rejected' | 'Cancelled' | 'WrittenOff';
+export type DisbursementMode = 'Payroll' | 'Bank';
+export type InstalmentStatus = 'Scheduled' | 'Deducted' | 'Prepaid' | 'RecoveredAtExit' | 'WrittenOff' | 'Superseded';
+export type RepaymentKind = 'Prepayment' | 'WriteOff' | 'Settlement';
+export const LOAN_STATUSES: readonly LoanStatus[] = ['PendingApproval', 'Approved', 'Active', 'Closed', 'Rejected', 'Cancelled', 'WrittenOff'];
+
+export interface LoanTypeDetails {
+  code: string;
+  name: string;
+  description?: string | null;
+  interestRate: number;
+  maxTenureMonths: number;
+  maxAmount?: number | null;
+  maxGrossMultiple?: number | null;
+  minServiceMonths: number;
+  maxActive: number;
+  maxEmiPercentOfGross: number;
+  perquisiteExempt: boolean;
+}
+
+export interface LoanTypeItem extends LoanTypeDetails {
+  id: string;
+  isActive: boolean;
+}
+
+export interface LoanOffer {
+  type: LoanTypeItem;
+  limit: number;
+  problem?: string | null;
+}
+
+export interface LoanItem {
+  id: string;
+  number: string;
+  employeeId: string;
+  employeeName?: string | null;
+  employeeCode?: string | null;
+  typeId: string;
+  typeName: string;
+  principal: number;
+  interestRate: number;
+  tenureMonths: number;
+  emi: number;
+  purpose: string;
+  status: LoanStatus;
+  appliedOn: string;
+  workflowInstanceId?: string | null;
+  decisionNote?: string | null;
+  disbursementMode?: DisbursementMode | null;
+  disbursementReference?: string | null;
+  disbursedOn?: string | null;
+  firstEmiMonth?: string | null;
+  outstanding: number;
+  instalmentsLeft: number;
+  nextInstalmentMonth?: string | null;
+  nextInstalmentAmount?: number | null;
+  settlementId?: string | null;
+  closedOn?: string | null;
+  closeNote?: string | null;
+  canCancel: boolean;
+}
+
+export interface InstalmentItem {
+  id: string;
+  sequence: number;
+  month: string;
+  principal: number;
+  interest: number;
+  amount: number;
+  status: InstalmentStatus;
+  raised: boolean;
+  settledOn?: string | null;
+}
+
+export interface RepaymentItem {
+  id: string;
+  kind: RepaymentKind;
+  amount: number;
+  date: string;
+  reference?: string | null;
+  note?: string | null;
+}
+
+export interface LoanView {
+  loan: LoanItem;
+  schedule: readonly InstalmentItem[];
+  repayments: readonly RepaymentItem[];
+}
+
+export interface MyLoans {
+  loans: readonly LoanItem[];
+  offers: readonly LoanOffer[];
+  outstanding: number;
+  monthlyEmi: number;
+}
+
+export interface ScheduledInstalment {
+  sequence: number;
+  month: string;
+  principal: number;
+  interest: number;
+  balanceAfter: number;
+  amount: number;
+}
+
+export interface LoanQuote {
+  limit: number;
+  emi: number;
+  totalInterest: number;
+  problem?: string | null;
+  schedule: readonly ScheduledInstalment[];
+}
+
+export interface LoanSummary {
+  pendingApproval: number;
+  toDisburse: number;
+  active: number;
+  outstanding: number;
+  dueThisMonth: number;
+  recoveredThisMonth: number;
+  outstandingByType: Record<string, number>;
+}
+
+export interface LoanApplication {
+  typeId: string;
+  amount: number;
+  tenureMonths: number;
+  purpose: string;
+  employeeId?: string | null;
 }

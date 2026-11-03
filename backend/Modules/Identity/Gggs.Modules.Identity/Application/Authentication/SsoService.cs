@@ -52,7 +52,6 @@ public sealed class SsoService(
     ISensitiveDataProtector protector,
     IDataProtectionProvider dataProtection,
     IHttpClientFactory httpClients,
-    MfaService mfa,
     TimeProvider timeProvider,
     ILogger<SsoService> logger)
 {
@@ -214,20 +213,6 @@ public sealed class SsoService(
         user.ActivateThroughFederation();
         user.LinkExternalLogin(provider.LoginProvider, subject, identity.FindFirst("name")?.Value, now);
 
-        // The provider vouches for its own second factor; a local authenticator still applies when it does not.
-        bool providerMfa = identity.FindAll("amr").Any(claim => claim.Value is "mfa" or "otp" or "hwk" or "swk" or "fido");
-        if (user.MfaEnabled && !providerMfa)
-        {
-            await unitOfWork.SaveChangesAsync(cancellationToken);
-            return new PasswordSignInOutcome
-            {
-                Succeeded = false,
-                ErrorCode = SignInErrorCodes.MfaRequired,
-                SubjectId = user.Id,
-                MfaChallenge = mfa.IssueChallenge(user.Id, tenant.Id),
-            };
-        }
-
         user.RecordSuccessfulSignIn(now);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         logger.LogInformation("User {UserId} signed in through {Provider}.", user.Id, provider.Key);
@@ -235,7 +220,7 @@ public sealed class SsoService(
         {
             Succeeded = true,
             SubjectId = user.Id,
-            Principal = UserPrincipalFactory.Create(user, tenant.Id, Guid.CreateVersion7(), timeProvider.GetUtcNow(), providerMfa, authenticationScheme, UserPrincipalFactory.AuthenticationMethods.ExternalProvider),
+            Principal = UserPrincipalFactory.Create(user, tenant.Id, Guid.CreateVersion7(), timeProvider.GetUtcNow(), authenticationScheme, UserPrincipalFactory.AuthenticationMethods.ExternalProvider),
         };
     }
 

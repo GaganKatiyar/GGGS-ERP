@@ -14,7 +14,7 @@ using Gggs.Data;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 /*
- * PeopleOS - the one web host (ADR-12).
+ * Nuts and Bolts - the one web host (ADR-12).
  *
  * The browser's only origin and every API client's only address. The SPA is served from here, the
  * session cookie belongs to here, and every module's endpoints run in this process against the one
@@ -55,6 +55,9 @@ if (string.IsNullOrWhiteSpace(redis))
 
 builder.Services.AddGggsAppDbContext(builder.Configuration, ModuleCatalog.ModelAssemblies);
 builder.Services.AddGggsMessaging<AppDbContext>(builder.Configuration);
+
+// The composed list itself, for the About page (Platform module), which cannot see ModuleCatalog.
+builder.Services.AddSingleton(ModuleCatalog.All);
 
 var moduleContext = new ModuleContext(builder.Configuration, builder.Environment);
 foreach (IModule module in ModuleCatalog.All)
@@ -139,7 +142,7 @@ EndpointSecurityValidator.ThrowIfAnyUnprotected(
     app.Services.GetRequiredService<ILogger<Program>>());
 
 app.Logger.LogInformation(
-    "PeopleOS API starting in the {Profile} profile with {Count} modules.",
+    "Nuts and Bolts API starting in the {Profile} profile with {Count} modules.",
     platform.DeploymentProfile,
     ModuleCatalog.All.Count);
 

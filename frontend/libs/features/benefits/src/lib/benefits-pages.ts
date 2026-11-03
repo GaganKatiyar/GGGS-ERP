@@ -7,7 +7,7 @@ import { EmployeeSelect } from '@gggs/shared/employee-reference';
 import type { BenefitType, EnrollmentItem, EnrollmentStatus, MyBenefits, PlanDetails, PlanItem } from '@gggs/shared/models';
 import { BENEFIT_TYPES, humanize } from '@gggs/shared/models';
 import { BenefitsApi, MoneyPipe } from '@gggs/shared/money';
-import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
+import { EmptyState, FormDialog, KpiCard, localIsoDate, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
 
@@ -337,7 +337,7 @@ export class BenefitEnrollmentsPage {
   protected readonly dialogOpen = signal(false);
   protected readonly employeeId = signal<string | null>(null);
   protected readonly newPlan = signal('');
-  protected readonly effectiveFrom = signal(new Date().toISOString().slice(0, 10));
+  protected readonly effectiveFrom = signal(localIsoDate());
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly formError = signal<string | null>(null);
@@ -403,7 +403,7 @@ export class BenefitEnrollmentsPage {
   template: `
     <gggs-page-header title="My benefits" subtitle="Your cover, what you pay, what the company pays, and plans you can join." />
     @if (mine(); as m) {
-      <div class="ben__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="You pay a month" [value]="m.monthlyEmployeeCost | gggsMoney" />
         <gggs-kpi-card label="The company pays a month" [value]="m.monthlyEmployerCost | gggsMoney" />
         <gggs-kpi-card label="Dependents on record" [value]="m.dependents.length" />

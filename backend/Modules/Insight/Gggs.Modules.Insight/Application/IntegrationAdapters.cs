@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using Gggs.BuildingBlocks.Web;
 using Gggs.Modules.Insight.Contracts;
 
 namespace Gggs.Modules.Insight.Application;
@@ -23,6 +24,8 @@ internal sealed class WebhookAdapter(IHttpClientFactory http, TimeProvider timeP
 
     public string Description => "Posts a JSON event to a URL, signed with a shared secret in the X-PeopleOS-Signature header.";
 
+    public bool Automatable => true;
+
     public IReadOnlyList<IntegrationField> Fields { get; } =
     [
         new("url", "Endpoint URL", Hint: "https://..."),
@@ -35,17 +38,19 @@ internal sealed class WebhookAdapter(IHttpClientFactory http, TimeProvider timeP
     ];
 
     public Task<IntegrationResult> TestAsync(IReadOnlyDictionary<string, string> settings, CancellationToken cancellationToken = default)
-        => PostAsync(settings, "peopleos.ping", "Connection test from PeopleOS.", cancellationToken);
+        => PostAsync(settings, "peopleos.ping", "Connection test from Nuts and Bolts.", cancellationToken);
 
     public Task<IntegrationResult> RunAsync(string operation, IReadOnlyDictionary<string, string> settings, IReadOnlyDictionary<string, string> parameters, CancellationToken cancellationToken = default)
         => PostAsync(settings, parameters.GetValueOrDefault("event") ?? "peopleos.event", parameters.GetValueOrDefault("message") ?? string.Empty, cancellationToken);
 
     private async Task<IntegrationResult> PostAsync(IReadOnlyDictionary<string, string> settings, string type, string message, CancellationToken cancellationToken)
     {
-        if (!Uri.TryCreate(settings.GetValueOrDefault("url"), UriKind.Absolute, out Uri? url) || url.Scheme != Uri.UriSchemeHttps)
+        if (await OutboundUrlGuard.CheckAsync(settings.GetValueOrDefault("url"), cancellationToken) is { } refused)
         {
-            return new IntegrationResult(false, "The endpoint must be an https URL.");
+            return new IntegrationResult(false, refused);
         }
+
+        var url = new Uri(settings["url"]);
 
         string body = JsonSerializer.Serialize(new { type, message, sentAt = timeProvider.GetUtcNow() });
         using var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json") };

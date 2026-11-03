@@ -1,4 +1,5 @@
 import type { Routes } from '@angular/router';
+import { withPermissions } from '@gggs/core/permissions';
 import { ApprovalsInboxPage } from './approvals-inbox-page';
 import { DelegationsPage } from './delegations-page';
 import { MyRequestsPage } from './my-requests-page';
@@ -9,5 +10,5 @@ export const APPROVALS_ROUTES: Routes = [
   { path: '', component: ApprovalsInboxPage, title: 'Approvals' },
   { path: 'requests', component: MyRequestsPage, title: 'My requests' },
   { path: 'requests/:id', component: RequestDetailPage, title: 'Request' },
-  { path: 'delegations', component: DelegationsPage, title: 'Delegations' },
+  { path: 'delegations', component: DelegationsPage, title: 'Delegations', ...withPermissions(['workflow.delegation.manage']) },
 ];

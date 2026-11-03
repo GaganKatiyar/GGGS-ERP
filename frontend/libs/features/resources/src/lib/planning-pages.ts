@@ -278,7 +278,7 @@ export class ResourceCapacityPage {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <gggs-page-header title="Bench" subtitle="People without enough project work, longest first." />
-    <div class="res__kpis">
+    <div class="xp__kpis">
       <gggs-kpi-card label="On bench" [value]="items().length" icon="pi pi-pause-circle" />
       <gggs-kpi-card label="Bench days (total)" [value]="totalDays()" />
       <gggs-kpi-card label="Cost a day" [value]="(dailyCost() | number: '1.0-0') ?? '0'" hint="at cost rate × 8 h" />
@@ -353,7 +353,7 @@ export class ResourceBenchPage {
       </label>
     </section>
     @if (report(); as r) {
-      <div class="res__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="Utilization" [value]="(r.utilizationPercent | number: '1.0-1') + '%'" icon="pi pi-gauge" />
         <gggs-kpi-card label="Billable hours" [value]="r.billableHours | number: '1.0-0'" />
         <gggs-kpi-card label="Available hours" [value]="r.availableHours | number: '1.0-0'" />

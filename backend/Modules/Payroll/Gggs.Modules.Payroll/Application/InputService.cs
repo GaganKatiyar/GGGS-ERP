@@ -39,6 +39,7 @@ public sealed record InputBody(Guid EmployeeId, DateOnly Period, Guid ComponentI
 internal sealed class InputService(
     AppDbContext dbContext,
     PayrollCatalog catalog,
+    PayrollSeeder seeder,
     IEmployeeDirectory employees,
     ITimesheetLedger timesheets) : IPayrollInputs
 {
@@ -174,8 +175,15 @@ internal sealed class InputService(
             return existing.Id;
         }
 
-        SalaryComponent component = (await catalog.ComponentsAsync(cancellationToken)).FirstOrDefault(row => row.IsActive && row.InputKind == request.Kind)
-            ?? throw new DomainRuleException("INPUT_COMPONENT", $"No active payroll component takes {request.Kind} inputs.");
+        SalaryComponent? component = (await catalog.ComponentsAsync(cancellationToken)).FirstOrDefault(row => row.IsActive && row.InputKind == request.Kind);
+        if (component is null)
+        {
+            // Tenants set up before a kind existed (loans, say) get its component now.
+            await seeder.SeedCurrentTenantAsync(cancellationToken);
+            component = await dbContext.SalaryComponents.AsNoTracking().FirstOrDefaultAsync(row => row.IsActive && row.InputKind == request.Kind, cancellationToken)
+                ?? throw new DomainRuleException("INPUT_COMPONENT", $"No active payroll component takes {request.Kind} inputs.");
+        }
+
         DateOnly month = new(request.Period.Year, request.Period.Month, 1);
         for (int i = 0; i < 12 && await IsLockedAsync(month, cancellationToken); i++)
         {

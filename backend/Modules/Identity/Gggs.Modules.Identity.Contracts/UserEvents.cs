@@ -32,3 +32,14 @@ public sealed record UserInvitedIntegrationEvent(
     /// the login-discovery slug, not a secret, so carrying it here is unremarkable next to the
     /// token.</summary>
     string TenantCode) : IntegrationEvent;
+
+/// <summary>
+/// Someone asked for a link to choose a new password. Carries the one-time token for the same reason
+/// <see cref="UserInvitedIntegrationEvent"/> does: it has to reach their inbox. It lasts an hour and works once.
+/// </summary>
+[MessageType("gggs.identity.user.password-reset-requested")]
+public sealed record PasswordResetRequestedIntegrationEvent(Guid UserId, string Email, string DisplayName, string Token, DateTime ExpiresDate, string TenantCode) : IntegrationEvent;
+
+/// <summary>A password was changed from a reset link: the owner is told, in case it was not them.</summary>
+[MessageType("gggs.identity.user.password-reset-completed")]
+public sealed record PasswordResetCompletedIntegrationEvent(Guid UserId, string Email, string DisplayName) : IntegrationEvent;

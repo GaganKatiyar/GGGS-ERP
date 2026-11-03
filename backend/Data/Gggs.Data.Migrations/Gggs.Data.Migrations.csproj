@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <RootNamespace>Gggs.Data.Migrations</RootNamespace>
-    <Description>The single migration history of the PeopleOS database. Separate from Gggs.Data because it must see every module's model.</Description>
+    <Description>The single migration history of the Nuts and Bolts database. Separate from Gggs.Data because it must see every module's model.</Description>
   </PropertyGroup>
 
   <ItemGroup>

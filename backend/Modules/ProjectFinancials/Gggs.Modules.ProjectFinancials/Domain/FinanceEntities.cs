@@ -12,6 +12,9 @@ public enum CostCategory
     Expense = 3,
     Infrastructure = 4,
     Other = 5,
+
+    /// <summary>LLM APIs, GPUs and AI tool seats: on AI-based work, cost that hours do not show.</summary>
+    AiUsage = 6,
 }
 
 /// <summary>A project's budget for one kind of cost (spec §125 ProjectBudget).</summary>
@@ -160,6 +163,9 @@ public enum InvoiceStatus
     Sent = 2,
     Paid = 3,
     Cancelled = 4,
+
+    /// <summary>With an approver before it goes out.</summary>
+    PendingApproval = 5,
 }
 
 /// <summary>An invoice raised on the client for the project (spec §75, §125 ProjectInvoice): billed once sent, collected once paid.</summary>
@@ -194,6 +200,14 @@ public sealed class ProjectInvoice : TenantAggregateRoot
 
     public string? Notes { get; private set; }
 
+    /// <summary>What credit notes have taken back.</summary>
+    public decimal CreditedAmount { get; private set; }
+
+    public Guid? WorkflowInstanceId { get; private set; }
+
+    /// <summary>What still stands of the invoice after credit notes.</summary>
+    public decimal OpenAmount => Status == InvoiceStatus.Cancelled ? 0 : Amount - CreditedAmount;
+
     public static ProjectInvoice Raise(Guid projectId, string number, InvoiceDetails details)
     {
         var invoice = new ProjectInvoice { ProjectId = Guard.NotEmpty(projectId), Number = Guard.MaxLength(Guard.NotNullOrWhiteSpace(number).Trim(), 40), Status = InvoiceStatus.Draft };
@@ -204,9 +218,9 @@ public sealed class ProjectInvoice : TenantAggregateRoot
     public void Update(InvoiceDetails details)
     {
         ArgumentNullException.ThrowIfNull(details);
-        if (Status is InvoiceStatus.Paid or InvoiceStatus.Cancelled)
+        if (Status is not (InvoiceStatus.Draft or InvoiceStatus.Sent) || CreditedAmount > 0)
         {
-            throw new DomainRuleException("INVOICE_STATE", $"A {Status.ToString().ToLowerInvariant()} invoice cannot change.");
+            throw new DomainRuleException("INVOICE_STATE", CreditedAmount > 0 ? "An invoice with a credit note cannot change." : $"An invoice that is {Status.ToString().ToLowerInvariant()} cannot change.");
         }
 
         if (details.Amount <= 0 || details.TaxAmount < 0)
@@ -231,12 +245,61 @@ public sealed class ProjectInvoice : TenantAggregateRoot
 
     public void Send()
     {
-        if (Status != InvoiceStatus.Draft)
+        if (Status is not (InvoiceStatus.Draft or InvoiceStatus.PendingApproval))
         {
             throw new DomainRuleException("INVOICE_STATE", "Only a draft invoice can be sent.");
         }
 
         Status = InvoiceStatus.Sent;
+        WorkflowInstanceId = null;
+    }
+
+    public void AwaitApproval(Guid workflowInstanceId)
+    {
+        if (Status != InvoiceStatus.Draft)
+        {
+            throw new DomainRuleException("INVOICE_STATE", "Only a draft invoice goes for approval.");
+        }
+
+        Status = InvoiceStatus.PendingApproval;
+        WorkflowInstanceId = workflowInstanceId;
+    }
+
+    /// <summary>Turned down, or sent back: a draft again.</summary>
+    public void ReturnToDraft()
+    {
+        if (Status == InvoiceStatus.PendingApproval)
+        {
+            Status = InvoiceStatus.Draft;
+            WorkflowInstanceId = null;
+        }
+    }
+
+    /// <summary>The amount follows the lines when one comes off a draft.</summary>
+    public void SetAmount(decimal amount)
+    {
+        if (Status != InvoiceStatus.Draft || amount <= 0)
+        {
+            throw new DomainRuleException("INVOICE_STATE", "Only a draft's amount changes, and it stays above zero.");
+        }
+
+        Amount = Math.Round(amount, 2);
+    }
+
+    /// <summary>Takes back part or all of an invoice that went out. A draft is simply changed or cancelled.</summary>
+    public void Credit(decimal amount)
+    {
+        if (Status is not (InvoiceStatus.Sent or InvoiceStatus.Paid))
+        {
+            throw new DomainRuleException("INVOICE_STATE", "Only an invoice that has gone out takes a credit note; change or cancel a draft.");
+        }
+
+        if (amount <= 0 || Math.Round(amount, 2) > OpenAmount)
+        {
+            throw new DomainRuleException("INVOICE_CREDIT_AMOUNT", $"A credit note on {Number} can be for up to {OpenAmount:0.##}.");
+        }
+
+        CreditedAmount += Math.Round(amount, 2);
     }
 
     public void MarkPaid(DateOnly paidOn)
@@ -252,15 +315,16 @@ public sealed class ProjectInvoice : TenantAggregateRoot
 
     public void Cancel()
     {
-        if (Status == InvoiceStatus.Paid)
+        if (Status == InvoiceStatus.Paid || CreditedAmount > 0)
         {
-            throw new DomainRuleException("INVOICE_STATE", "A paid invoice cannot be cancelled; issue a credit note instead.");
+            throw new DomainRuleException("INVOICE_STATE", "A paid or credited invoice cannot be cancelled; issue a credit note instead.");
         }
 
         Status = InvoiceStatus.Cancelled;
+        WorkflowInstanceId = null;
     }
 
-    public bool IsOverdue(DateOnly today) => Status == InvoiceStatus.Sent && DueDate is { } due && due < today;
+    public bool IsOverdue(DateOnly today) => Status == InvoiceStatus.Sent && OpenAmount > 0 && DueDate is { } due && due < today;
 }
 
 public sealed record InvoiceDetails(DateOnly InvoiceDate, DateOnly? DueDate, DateOnly? PeriodFrom, DateOnly? PeriodTo, decimal Amount, decimal TaxAmount, Guid? MilestoneId, string? Notes);
@@ -288,17 +352,68 @@ public sealed class ProjectFinanceProfile : TenantAggregateRoot
     /// <summary>The highest budget threshold (90, 100) already alerted, so each goes out once.</summary>
     public int AlertedPercent { get; private set; }
 
+    /// <summary>The most a T&amp;M engagement may bill; revenue stops counting past it.</summary>
+    public decimal? NotToExceed { get; private set; }
+
+    public string? PoNumber { get; private set; }
+
+    public decimal? PoValue { get; private set; }
+
+    /// <summary>Hours a month's fee covers, on a retainer or managed service.</summary>
+    public decimal? IncludedHoursPerMonth { get; private set; }
+
+    /// <summary>The share of a month's unused hours that rolls into the next: 0 none, 100 all.</summary>
+    public int RolloverPercent { get; private set; }
+
+    /// <summary>What an hour beyond the bucket is billed at.</summary>
+    public decimal? OverageRate { get; private set; }
+
+    /// <summary>What one unit of outcome is, on outcome pricing: a release, a ticket resolved, a module delivered.</summary>
+    public string? UnitName { get; private set; }
+
+    public decimal? UnitPrice { get; private set; }
+
+    /// <summary>How many units the contract expects, which is what the forecast goes by.</summary>
+    public decimal? TargetUnits { get; private set; }
+
+    /// <summary>The highest cap threshold (75, 90, 100) already alerted, so each goes out once.</summary>
+    public int CapAlertedPercent { get; private set; }
+
+    public CommercialTerms Terms => new(NotToExceed, PoNumber, PoValue, IncludedHoursPerMonth, RolloverPercent, OverageRate, UnitName, UnitPrice, TargetUnits);
+
     public IReadOnlyDictionary<Guid, decimal> MilestoneAmounts
         => System.Text.Json.JsonSerializer.Deserialize<Dictionary<Guid, decimal>>(MilestoneAmountsJson) ?? [];
 
     public static ProjectFinanceProfile For(Guid projectId) => new() { ProjectId = Guard.NotEmpty(projectId) };
 
-    public void Update(decimal? contractValue, decimal? retainerMonthlyFee, IReadOnlyDictionary<Guid, decimal>? milestoneAmounts)
+    public void Update(decimal? contractValue, decimal? retainerMonthlyFee, IReadOnlyDictionary<Guid, decimal>? milestoneAmounts, CommercialTerms? terms = null)
     {
-        if (contractValue < 0 || retainerMonthlyFee < 0 || (milestoneAmounts?.Values.Any(amount => amount < 0) ?? false))
+        CommercialTerms next = terms ?? new CommercialTerms();
+        if (contractValue < 0 || retainerMonthlyFee < 0 || (milestoneAmounts?.Values.Any(amount => amount < 0) ?? false)
+            || next.NotToExceed < 0 || next.PoValue < 0 || next.IncludedHoursPerMonth < 0 || next.OverageRate < 0 || next.UnitPrice < 0 || next.TargetUnits < 0)
         {
             throw new DomainRuleException("PROFILE_AMOUNTS", "Amounts cannot be negative.");
         }
+
+        if (next.RolloverPercent is < 0 or > 100)
+        {
+            throw new DomainRuleException("PROFILE_ROLLOVER", "Rollover is a share of the unused hours, from 0 to 100 percent.");
+        }
+
+        if (next.NotToExceed != NotToExceed)
+        {
+            CapAlertedPercent = 0;
+        }
+
+        NotToExceed = next.NotToExceed;
+        PoNumber = string.IsNullOrWhiteSpace(next.PoNumber) ? null : Guard.MaxLength(next.PoNumber.Trim(), 100);
+        PoValue = next.PoValue;
+        IncludedHoursPerMonth = next.IncludedHoursPerMonth;
+        RolloverPercent = next.RolloverPercent;
+        OverageRate = next.OverageRate;
+        UnitName = string.IsNullOrWhiteSpace(next.UnitName) ? null : Guard.MaxLength(next.UnitName.Trim(), 60);
+        UnitPrice = next.UnitPrice;
+        TargetUnits = next.TargetUnits;
 
         ContractValue = contractValue;
         RetainerMonthlyFee = retainerMonthlyFee;
@@ -308,6 +423,8 @@ public sealed class ProjectFinanceProfile : TenantAggregateRoot
     public void Alerted(int percent) => AlertedPercent = Math.Max(AlertedPercent, percent);
 
     public void ResetAlerts() => AlertedPercent = 0;
+
+    public void CapAlerted(int percent) => CapAlertedPercent = Math.Max(CapAlertedPercent, percent);
 }
 
 /// <summary>A month of a project's money, kept nightly so the financial dashboard can show a trend (spec §125 ProjectProfitability).</summary>

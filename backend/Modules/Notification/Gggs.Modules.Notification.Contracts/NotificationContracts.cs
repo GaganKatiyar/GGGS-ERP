@@ -26,6 +26,31 @@ public interface INotifier
     Task NotifyAsync(NotificationRequest request, CancellationToken cancellationToken = default);
 }
 
+/// <summary>What happened when a message went out through the organisation's own connection.</summary>
+public sealed record ChannelSendResult(bool Succeeded, string Message);
+
+/// <summary>
+/// The organisation's own way of sending, if it has set one up in Studio. A null result means none
+/// is set: email then goes through the system's sender, and text messages do not go at all.
+/// </summary>
+public interface ITenantMessageSender
+{
+    Task<bool> SendsSmsAsync(CancellationToken cancellationToken = default);
+
+    Task<ChannelSendResult?> SendEmailAsync(string recipient, string subject, string body, CancellationToken cancellationToken = default);
+
+    Task<ChannelSendResult?> SendSmsAsync(string recipient, string text, CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// An email sent once and straight away, for what must not wait in a queue or stay in a record: the
+/// stored copy has the secret values masked, and nothing logs them. Worker host only.
+/// </summary>
+public interface IOneTimeNotices
+{
+    Task<ChannelSendResult> SendAsync(string templateCode, string address, IReadOnlyDictionary<string, string> values, IReadOnlySet<string> secrets, CancellationToken cancellationToken = default);
+}
+
 /// <summary>Template codes other modules send. Released contract: add freely, never rename.</summary>
 public static class NotificationTemplates
 {
@@ -48,6 +73,13 @@ public static class NotificationTemplates
     public const string CompensationRevisionDecided = "compensation.revision-decided";
     public const string BenefitEnrollmentDecided = "benefit.enrollment-decided";
     public const string ProjectBudgetAlert = "project.budget-alert";
+    public const string ProjectCapAlert = "project.cap-alert";
+
+    public const string ProjectSlaBreached = "project.sla-breached";
+
+    public const string ProjectTaskMentioned = "project.task-mentioned";
+
+    public const string ProjectTaskCommented = "project.task-commented";
     public const string InterviewScheduled = "recruitment.interview-scheduled";
     public const string ReferralUpdate = "recruitment.referral-update";
     public const string OnboardingTaskAssigned = "onboarding.task-assigned";
@@ -72,6 +104,7 @@ public static class NotificationTemplates
     public const string TicketSlaBreached = "helpdesk.sla-breached";
     public const string AssetAssigned = "asset.assigned";
     public const string ExpenseDecided = "expense.decided";
+    public const string LoanUpdate = "loan.update";
     public const string ResignationSubmitted = "separation.resignation-submitted";
     public const string ClearanceAssigned = "separation.clearance-assigned";
     public const string OffboardingTaskAssigned = "separation.offboarding-task-assigned";
@@ -83,4 +116,7 @@ public static class NotificationTemplates
     public const string ExitProposed = "separation.exit-proposed";
     public const string SettlementOverdue = "separation.settlement-overdue";
     public const string ReportDigest = "insight.report-digest";
+    public const string AccountCreated = "identity.account-created";
+    public const string PasswordResetRequested = "identity.password-reset-requested";
+    public const string PasswordResetCompleted = "identity.password-reset-completed";
 }

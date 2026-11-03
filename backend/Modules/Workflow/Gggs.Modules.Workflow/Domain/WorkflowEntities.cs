@@ -109,6 +109,9 @@ public sealed class WorkflowInstance : TenantAggregateRoot
 
     public Guid? RequesterEmployeeId { get; private set; }
 
+    /// <summary>Who a stage resolving to the record's owner goes to.</summary>
+    public Guid? OwnerEmployeeId { get; private set; }
+
     public Guid RequestedByUserId { get; private set; }
 
     public string FieldsJson { get; private set; }
@@ -152,8 +155,10 @@ public sealed class WorkflowInstance : TenantAggregateRoot
         Guid? requesterEmployeeId,
         Guid requestedByUserId,
         IReadOnlyDictionary<string, string> fields,
-        DateTime now) => new()
+        DateTime now,
+        Guid? ownerEmployeeId = null) => new()
         {
+            OwnerEmployeeId = ownerEmployeeId,
             DefinitionId = definition?.Id,
             DefinitionVersion = definition?.Version ?? 0,
             SubjectType = Guard.MaxLength(Guard.NotNullOrWhiteSpace(subjectType).Trim().ToLowerInvariant(), 64),

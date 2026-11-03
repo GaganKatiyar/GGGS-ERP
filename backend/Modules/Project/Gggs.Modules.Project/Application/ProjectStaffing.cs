@@ -79,7 +79,7 @@ internal sealed class ProjectStaffing(
             throw new DomainRuleException("PROJECT_TEAM_RELEASED", "This allocation has ended; allocate the person again instead.");
         }
 
-        member.Update(new TeamAssignment(member.ProjectRoleId, startDate, endDate, allocationPercent, billable, member.BillingRate, member.CostRate, member.Notes));
+        member.Update(new TeamAssignment(member.ProjectRoleId, startDate, endDate, allocationPercent, billable, member.BillingRate, member.CostRate, member.Notes, member.MonthlyRate));
         publisher.Publish(new ProjectTeamChangedIntegrationEvent(member.ProjectId, member.Id, member.EmployeeId, "Updated"));
     }
 

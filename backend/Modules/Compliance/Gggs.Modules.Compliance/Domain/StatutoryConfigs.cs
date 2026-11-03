@@ -27,6 +27,7 @@ public static class StatutoryConfigValidator
                 StatutoryRuleType.LabourWelfareFund => Write(Check(Read<LabourWelfareConfig>(json))),
                 StatutoryRuleType.Bonus => Write(Check(Read<BonusConfig>(json))),
                 StatutoryRuleType.TerminalExemption => Write(Check(Read<TerminalExemptionConfig>(json))),
+                StatutoryRuleType.LoanPerquisite => Write(Check(Read<LoanPerquisiteConfig>(json))),
                 _ => throw Invalid("Unknown rule type."),
             };
         }
@@ -168,6 +169,16 @@ public static class StatutoryConfigValidator
         return config;
     }
 
+    private static LoanPerquisiteConfig Check(LoanPerquisiteConfig config)
+    {
+        if (config.BenchmarkRate is < 0 or > 30 || config.ExemptUpTo < 0)
+        {
+            throw Invalid("The benchmark rate is between 0% and 30% and the exempt amount is not negative.");
+        }
+
+        return config;
+    }
+
     private static void Steps(IEnumerable<decimal> froms, string what)
     {
         List<decimal> list = [.. froms];
@@ -266,6 +277,9 @@ public static class IndiaStatutoryDefaults
         new("IN-TERMINAL-EXEMPT", "Terminal benefit exemptions", StatutoryRuleType.TerminalExemption, null, new DateOnly(2023, 4, 1),
             new TerminalExemptionConfig(2000000m, 2500000m, 500000m),
             "Tax-free limits on gratuity (s.10(10)), leave encashment (s.10(10AA)) and retrenchment compensation (s.10(10B)); the excess is taxed with the final salary."),
+        new("IN-LOAN-PERQ", "Loan interest perquisite", StatutoryRuleType.LoanPerquisite, null, new DateOnly(2025, 4, 1),
+            new LoanPerquisiteConfig(9.25m, 20000m),
+            "Interest-free or concessional loans to employees: the gap to SBI's rate for such a loan on 1 April is a taxable perquisite, unless all loans together are at most 20,000 or the loan is for specified medical treatment. Update the benchmark each April."),
         new("IN-KA-LWF", "Labour welfare fund - Karnataka", StatutoryRuleType.LabourWelfareFund, "IN-KA", new DateOnly(2021, 1, 1),
             new LabourWelfareConfig(50m, 100m, [12]),
             "Employees working in Karnataka; deducted once a year with December's salary."),

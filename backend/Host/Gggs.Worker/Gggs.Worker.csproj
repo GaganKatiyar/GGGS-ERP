@@ -3,7 +3,7 @@
   <PropertyGroup>
     <RootNamespace>Gggs.Worker</RootNamespace>
     <UserSecretsId>gggs-worker</UserSecretsId>
-    <Description>PeopleOS background host: delivers outbox messages to module consumers and runs scheduled jobs (ADR-12).</Description>
+    <Description>Nuts and Bolts background host: delivers outbox messages to module consumers and runs scheduled jobs (ADR-12).</Description>
   </PropertyGroup>
 
   <ItemGroup>

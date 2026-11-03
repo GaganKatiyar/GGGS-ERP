@@ -8,7 +8,7 @@ import { EmployeeSelect } from '@gggs/shared/employee-reference';
 import type { CatalogEntry, CourseInput, CourseItem, LearningDashboard, LearningEnrollment, LearningEnrollmentStatus, LearningPathItem, MyLearning } from '@gggs/shared/models';
 import { COURSE_FORMATS, humanize } from '@gggs/shared/models';
 import { LearningApi, ProgressBar } from '@gggs/shared/talent';
-import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge, Tabs } from '@gggs/shared/ui';
+import { EmptyState, FormDialog, KpiCard, localIsoDate, PageHeader, Skeleton, StatusBadge, Tabs } from '@gggs/shared/ui';
 import type { TabItem } from '@gggs/shared/ui';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
@@ -47,7 +47,7 @@ const blankCourse = (): CourseInput => ({
       <a class="btn btn--primary" routerLink="/learning/courses">Courses</a>
     </gggs-page-header>
     @if (dashboard(); as d) {
-      <div class="lms__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="Assigned, not started" [value]="d.assigned" />
         <gggs-kpi-card label="In progress" [value]="d.inProgress" />
         <gggs-kpi-card label="Completed (90 days)" [value]="d.completedLast90Days" />
@@ -489,7 +489,7 @@ export class CertificatesPage {
   template: `
     <gggs-page-header title="My learning" subtitle="Courses assigned to you, the catalogue, and your certificates." />
     @if (mine(); as m) {
-      <div class="lms__kpis">
+      <div class="xp__kpis">
         <gggs-kpi-card label="To do" [value]="m.active.length" [hint]="overdueCount() + ' overdue'" />
         <gggs-kpi-card label="Completed" [value]="m.completed.length" />
         <gggs-kpi-card label="Hours this year" [value]="m.hoursThisYear" />
@@ -607,7 +607,7 @@ export class MyLearningPage {
   protected readonly catalog = signal<readonly CatalogEntry[]>([]);
   protected readonly completeOpen = signal(false);
   protected readonly completing = signal<LearningEnrollment | null>(null);
-  protected readonly completedOn = signal(new Date().toISOString().slice(0, 10));
+  protected readonly completedOn = signal(localIsoDate());
   protected readonly score = signal<number | null>(null);
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -641,7 +641,7 @@ export class MyLearningPage {
 
   protected openComplete(row: LearningEnrollment): void {
     this.completing.set(row);
-    this.completedOn.set(new Date().toISOString().slice(0, 10));
+    this.completedOn.set(localIsoDate());
     this.score.set(null);
     this.formError.set(null);
     this.completeOpen.set(true);

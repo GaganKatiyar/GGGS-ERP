@@ -16,8 +16,11 @@ using Microsoft.EntityFrameworkCore;
 namespace Gggs.Modules.Project.Application;
 
 /// <summary>Project lookups for other modules.</summary>
-internal sealed class ProjectDirectory(AppDbContext dbContext) : IProjectDirectory
+internal sealed class ProjectDirectory(AppDbContext dbContext, DefaultProjectService defaults, ServiceLevelService serviceLevels) : IProjectDirectory
 {
+    public Task<IReadOnlyList<ServiceCreditMonth>> ServiceCreditsAsync(IEnumerable<Guid> projectIds, CancellationToken cancellationToken = default)
+        => serviceLevels.CreditsAsync(projectIds, cancellationToken);
+
     public async Task<IReadOnlyDictionary<Guid, ProjectSummary>> GetManyAsync(IEnumerable<Guid> projectIds, CancellationToken cancellationToken = default)
     {
         List<Guid> ids = [.. projectIds.Distinct()];
@@ -31,7 +34,7 @@ internal sealed class ProjectDirectory(AppDbContext dbContext) : IProjectDirecto
             project => project.Id,
             project => new ProjectSummary(
                 project.Id, project.Code, project.Name, project.ClientId, project.Status.ToString(), project.Stage.ToString(),
-                project.ProjectManagerEmployeeId, project.StartDate, project.EndDate));
+                project.ProjectManagerEmployeeId, project.StartDate, project.EndDate, project.Type == ProjectType.DepartmentDefault));
     }
 
     public async Task<IReadOnlyList<ProjectMembership>> MembershipsAsync(Guid employeeId, CancellationToken cancellationToken = default)
@@ -68,7 +71,7 @@ internal sealed class ProjectDirectory(AppDbContext dbContext) : IProjectDirecto
         return [.. rows.Select(row => new ProjectAllocation(
             row.member.Id, row.project.Id, row.project.Code, row.project.Name, row.project.Status.ToString(), row.member.EmployeeId, row.member.ProjectRoleId,
             row.RoleName, row.member.AllocationPercent, row.member.StartDate, row.member.EndDate, row.member.Billable, row.member.BillingRate,
-            row.member.CostRate, row.member.Status == TeamMemberStatus.Active))];
+            row.member.CostRate, row.member.Status == TeamMemberStatus.Active, row.member.MonthlyRate))];
     }
 
     public async Task<bool> IsOnTeamAsync(Guid projectId, Guid employeeId, DateOnly day, CancellationToken cancellationToken = default)
@@ -78,7 +81,9 @@ internal sealed class ProjectDirectory(AppDbContext dbContext) : IProjectDirecto
             || await dbContext.Projects.AnyAsync(
                 project => project.Id == projectId
                     && (project.ProjectManagerEmployeeId == employeeId || project.DeliveryManagerEmployeeId == employeeId || project.AccountManagerEmployeeId == employeeId),
-                cancellationToken);
+                cancellationToken)
+            || (await dbContext.Projects.AnyAsync(project => project.Id == projectId && project.Type == ProjectType.DepartmentDefault, cancellationToken)
+                && (await defaults.ForEmployeeAsync(employeeId, day, day, cancellationToken)).Contains(projectId));
 
     public async Task<IReadOnlyList<TimesheetTarget>> TimesheetTargetsAsync(Guid employeeId, DateOnly firstDay, DateOnly lastDay, CancellationToken cancellationToken = default)
     {
@@ -93,24 +98,31 @@ internal sealed class ProjectDirectory(AppDbContext dbContext) : IProjectDirecto
             .Select(group => new { group.Key, Billable = group.Any(member => member.Billable) })
             .ToDictionaryAsync(row => row.Key, row => row.Billable, cancellationToken);
 
+        IReadOnlyCollection<Guid> defaultProjects = await defaults.ForEmployeeAsync(employeeId, firstDay, lastDay, cancellationToken);
         List<Domain.Project> projects = await dbContext.Projects.AsNoTracking()
-            .Where(project => memberOf.Contains(project.Id)
-                || project.ProjectManagerEmployeeId == employeeId || project.DeliveryManagerEmployeeId == employeeId)
+            .Where(project => memberOf.Contains(project.Id) || defaultProjects.Contains(project.Id)
+                || project.ProjectManagerEmployeeId == employeeId || project.DeliveryManagerEmployeeId == employeeId || project.AccountManagerEmployeeId == employeeId)
             .Where(project => project.Status == ProjectStatus.Active || project.Status == ProjectStatus.OnHold)
-            .OrderBy(project => project.Code)
+            .OrderBy(project => project.Type == ProjectType.DepartmentDefault)
+            .ThenBy(project => project.Code)
             .ToListAsync(cancellationToken);
         List<Guid> projectIds = [.. projects.Select(project => project.Id)];
         var tasks = await dbContext.ProjectTasks.AsNoTracking()
-            .Where(task => projectIds.Contains(task.ProjectId) && task.AssigneeEmployeeId == employeeId && task.Type != TaskType.Epic
+            .Where(task => projectIds.Contains(task.ProjectId) && (task.AssigneeEmployeeId == employeeId || task.OpenToTeam) && task.Type != TaskType.Epic
                 && (task.CompletedDate == null || task.CompletedDate >= firstDay.ToDateTime(TimeOnly.MinValue)))
             .OrderBy(task => task.Number)
-            .Select(task => new { task.ProjectId, task.Id, task.Code, task.Title })
+            .Select(task => new { task.ProjectId, task.Id, task.Code, task.Title, task.ParentTaskId, Assigned = task.AssigneeEmployeeId == employeeId })
             .ToListAsync(cancellationToken);
+        List<Guid> parentIds = [.. tasks.Select(task => task.ParentTaskId).OfType<Guid>().Distinct()];
+        Dictionary<Guid, string> parents = await dbContext.ProjectTasks.AsNoTracking()
+            .Where(task => parentIds.Contains(task.Id))
+            .ToDictionaryAsync(task => task.Id, task => task.Title, cancellationToken);
 
         return [.. projects.Select(project => new TimesheetTarget(
             project.Id, project.Code, project.Name,
             billable.TryGetValue(project.Id, out bool isBillable) ? isBillable : project.BillingType != ProjectBillingType.NonBillable,
-            [.. tasks.Where(task => task.ProjectId == project.Id).Select(task => new TimesheetTask(task.Id, task.Code, task.Title))]))];
+            [.. tasks.Where(task => task.ProjectId == project.Id).Select(task => new TimesheetTask(task.Id, task.Code, task.Title, task.ParentTaskId is { } parent ? parents.GetValueOrDefault(parent) : null, task.Assigned))],
+            project.Type == ProjectType.DepartmentDefault))];
     }
 
     public async Task<IReadOnlyDictionary<Guid, Guid>> TaskProjectsAsync(IEnumerable<Guid> taskIds, CancellationToken cancellationToken = default)
@@ -131,7 +143,7 @@ internal sealed class ProjectDirectory(AppDbContext dbContext) : IProjectDirecto
         }
         else
         {
-            query = query.Where(project => project.Status != ProjectStatus.Cancelled);
+            query = query.Where(project => project.Status != ProjectStatus.Cancelled && project.Type != ProjectType.DepartmentDefault);
         }
 
         List<Domain.Project> projects = await query.OrderBy(project => project.Code).ToListAsync(cancellationToken);
@@ -162,11 +174,14 @@ internal sealed class ProjectDirectory(AppDbContext dbContext) : IProjectDirecto
                 project.RevenueTarget, project.CostBudget, project.ClientId, project.ContractId, project.ProjectManagerEmployeeId, project.DepartmentId,
                 project.StartDate, project.EndDate, progress,
                 [.. milestones.Where(milestone => milestone.ProjectId == project.Id).Select(milestone => new MilestoneFact(
-                    milestone.Id, milestone.Name, milestone.PlannedDate, milestone.ActualDate, milestone.Status.ToString(), milestone.IsBillable))],
+                    milestone.Id, milestone.Name, milestone.PlannedDate, milestone.ActualDate, milestone.Status.ToString(), milestone.IsBillable, milestone.RequiresAcceptance, milestone.AcceptedOn))],
                 [.. team.Where(row => row.member.ProjectId == project.Id).Select(row => new ProjectAllocation(
                     row.member.Id, project.Id, project.Code, project.Name, project.Status.ToString(), row.member.EmployeeId, row.member.ProjectRoleId,
                     row.RoleName, row.member.AllocationPercent, row.member.StartDate, row.member.EndDate, row.member.Billable, row.member.BillingRate,
-                    row.member.CostRate, row.member.Status == TeamMemberStatus.Active))]);
+                    row.member.CostRate, row.member.Status == TeamMemberStatus.Active, row.member.MonthlyRate))],
+                tasks.Count(task => task.ProjectId == project.Id && task.Done && task.Type != TaskType.Epic && task.Type != TaskType.Story),
+                tasks.Where(task => task.ProjectId == project.Id && task.Done && task.Type != TaskType.Epic).Sum(task => task.StoryPoints ?? 0),
+                project.HealthStatus.ToString());
         })];
     }
 }
@@ -208,12 +223,14 @@ internal static class ProjectCatalog
         ("UX", "UI/UX Designer", ["User research", "Interaction design"]),
         ("DE", "Data Engineer", ["Data pipelines", "SQL"]),
         ("AI", "AI Engineer", ["Machine learning", "LLM applications"]),
+        ("MLE", "ML Engineer", ["Model training", "MLOps"]),
+        ("AIQA", "AI QA / Evaluation", ["Model evaluation", "Test design"]),
         ("CONSULTANT", "Consultant", ["Consulting"]),
     ];
 }
 
 /// <summary>Gives the current tenant every catalog project role it lacks, and its health thresholds row.</summary>
-public sealed class ProjectCatalogSeeder(AppDbContext dbContext, ILogger<ProjectCatalogSeeder> logger)
+public sealed class ProjectCatalogSeeder(AppDbContext dbContext, DefaultProjectService defaults, ProjectTemplateService templates, ILogger<ProjectCatalogSeeder> logger)
 {
     public async Task<int> SeedCurrentTenantAsync(CancellationToken cancellationToken = default)
     {
@@ -245,6 +262,9 @@ public sealed class ProjectCatalogSeeder(AppDbContext dbContext, ILogger<Project
         {
             logger.LogInformation("Project catalog seeded: {Added} role(s) added.", added);
         }
+
+        await defaults.EnsureAllAsync(cancellationToken);
+        await templates.SeedCurrentTenantAsync(cancellationToken);
 
         return added;
     }
@@ -303,9 +323,9 @@ internal sealed class ReturnChangeOnSendBack(GovernanceService governance) : IIn
 }
 
 /// <summary>Approved timesheet hours become tasks' actual hours (spec §70: timesheets feed the project).</summary>
-internal sealed class AddHoursOnTimesheetApproval(AppDbContext dbContext) : IIntegrationEventConsumer<TimesheetApprovedIntegrationEvent>
+internal sealed class AddHoursOnTimesheetApproval(AppDbContext dbContext) : IIntegrationEventConsumer<TimesheetHoursApprovedIntegrationEvent>
 {
-    public Task HandleAsync(TimesheetApprovedIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
+    public Task HandleAsync(TimesheetHoursApprovedIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(integrationEvent);
         return TaskHoursLedger.ApplyAsync(dbContext, integrationEvent.TaskHours, sign: 1, cancellationToken);
@@ -349,10 +369,31 @@ internal sealed class ProjectHealthSweep(ITenantFanOutScheduler fanOut)
     public Task RunAsync() => fanOut.FanOutAsync<ProjectHealthJob>((job, tenantId) => job.RunAsync(tenantId));
 }
 
-internal sealed class ProjectHealthJob(InsightService insights, ILogger<ProjectHealthJob> logger)
+/// <summary>At start-up: gives every tenant the default projects and templates it lacks.</summary>
+[PlatformJob("Project catalog: fans out one check per active tenant, creating only what is missing.")]
+internal sealed class DefaultProjectSweep(ITenantFanOutScheduler fanOut)
+{
+    public Task RunAsync() => fanOut.FanOutAsync<DefaultProjectJob>((job, tenantId) => job.RunAsync(tenantId));
+}
+
+internal sealed class DefaultProjectJob(ProjectCatalogSeeder seeder)
 {
     public async Task RunAsync(Guid tenantId)
     {
+        _ = tenantId;
+
+        // Roles, default projects and templates added since this organisation was set up.
+        await seeder.SeedCurrentTenantAsync(CancellationToken.None);
+    }
+}
+
+internal sealed class ProjectHealthJob(InsightService insights, DefaultProjectService defaults, ILogger<ProjectHealthJob> logger)
+{
+    public async Task RunAsync(Guid tenantId)
+    {
+        // A department opened today has fallen back to its parent's default project until now.
+        await defaults.EnsureAllAsync(CancellationToken.None);
+
         int assessed = await insights.AssessAllAsync(CancellationToken.None);
         if (assessed > 0)
         {
@@ -361,11 +402,15 @@ internal sealed class ProjectHealthJob(InsightService insights, ILogger<ProjectH
     }
 }
 
-internal sealed class ProjectJobRegistration(IRecurringJobManager recurringJobs) : IHostedService
+internal sealed class ProjectJobRegistration(IRecurringJobManager recurringJobs, IBackgroundJobClient backgroundJobs) : IHostedService
 {
     public Task StartAsync(CancellationToken cancellationToken)
     {
+        recurringJobs.AddOrUpdate<ProjectSlaSweep>(ProjectSlaSweep.RecurringJobName, sweep => sweep.RunAsync(), "*/30 * * * *");
         recurringJobs.AddOrUpdate<ProjectHealthSweep>(ProjectHealthSweep.RecurringJobName, sweep => sweep.RunAsync(), "45 2 * * *");
+
+        // Creates only what is missing, so queuing it at every start is harmless.
+        backgroundJobs.Enqueue<DefaultProjectSweep>(sweep => sweep.RunAsync());
         return Task.CompletedTask;
     }
 

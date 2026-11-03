@@ -91,23 +91,48 @@ internal sealed class MasterDataLookup(AppDbContext dbContext, IGggsCache cache)
         return labels;
     }
 
+    public async Task<IReadOnlyList<LookupOption>> ValuesAsync(string listCode, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(listCode))
+        {
+            return [];
+        }
+
+        string normalizedList = listCode.Trim().ToLowerInvariant();
+        return await dbContext.LookupValues
+            .AsNoTracking()
+            .Where(value => value.ListCode == normalizedList && value.IsActive)
+            .OrderBy(value => value.SortOrder)
+            .ThenBy(value => value.Label)
+            .Select(value => new LookupOption(value.Code, value.Label))
+            .ToListAsync(cancellationToken);
+    }
+
     private async Task<IReadOnlyDictionary<string, string>> ActiveValuesAsync(string listCode, CancellationToken cancellationToken)
     {
         string normalizedList = listCode.Trim().ToLowerInvariant();
 
-        LookupLabel[] values = await cache.GetOrCreateAsync(
-            CacheAreas.Lookups,
-            normalizedList,
-            async token => await dbContext.LookupValues
-                .AsNoTracking()
-                .Where(value => value.ListCode == normalizedList && value.IsActive)
-                .Select(value => new LookupLabel(value.Code, value.Label))
-                .ToArrayAsync(token),
-            CacheDuration,
-            cancellationToken);
+        // Inside a transaction - an event consumer's - the cache's factory runs off the retrying
+        // execution strategy's flow, and SQL Server's strategy refuses the query as a user
+        // transaction it did not start. Read straight from the database there instead.
+        LookupLabel[] values = dbContext.Database.CurrentTransaction is not null
+            ? await LoadAsync(normalizedList, cancellationToken)
+            : await cache.GetOrCreateAsync(
+                CacheAreas.Lookups,
+                normalizedList,
+                async token => await LoadAsync(normalizedList, token),
+                CacheDuration,
+                cancellationToken);
 
         return values.ToDictionary(value => value.Code, value => value.Label, StringComparer.OrdinalIgnoreCase);
     }
+
+    private Task<LookupLabel[]> LoadAsync(string normalizedList, CancellationToken cancellationToken)
+        => dbContext.LookupValues
+            .AsNoTracking()
+            .Where(value => value.ListCode == normalizedList && value.IsActive)
+            .Select(value => new LookupLabel(value.Code, value.Label))
+            .ToArrayAsync(cancellationToken);
 
     /// <summary>Plain data for the cache: it must round-trip through JSON.</summary>
     internal sealed record LookupLabel(string Code, string Label);

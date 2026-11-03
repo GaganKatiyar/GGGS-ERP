@@ -106,6 +106,26 @@ public sealed class Timesheet : TenantAggregateRoot
 
     public void AwaitApproval(Guid workflowInstanceId) => WorkflowInstanceId = workflowInstanceId;
 
+    /// <summary>Takes the status its approvals add up to; <paramref name="openRequest"/> is a request still open, if any.</summary>
+    public void Settle(TimesheetStatus status, Guid? openRequest, DateTime now)
+    {
+        Status = status;
+        WorkflowInstanceId = openRequest;
+        DecidedDate = status is TimesheetStatus.Approved or TimesheetStatus.Rejected ? now : null;
+    }
+
+    /// <summary>Notes a correction to approved hours (spec §71). Locked periods stay shut.</summary>
+    public void RecordCorrection(string reason, DateOnly? lockedThrough)
+    {
+        if (lockedThrough is { } locked && WeekStart <= locked)
+        {
+            throw new DomainRuleException("TIMESHEET_LOCKED", $"Timesheets up to {locked:d MMM yyyy} are locked.");
+        }
+
+        CorrectionCount++;
+        LastCorrectionReason = Guard.MaxLength(Guard.NotNullOrWhiteSpace(reason).Trim(), 500);
+    }
+
     public void Approve(DateTime now)
     {
         if (Status != TimesheetStatus.Submitted)
@@ -169,6 +189,9 @@ public sealed class TimesheetEntry : TenantAggregateRoot
 
     public Guid EmployeeId { get; private set; }
 
+    /// <summary>The share of the week this went to an approver in; none until it is submitted.</summary>
+    public Guid? ApprovalId { get; private set; }
+
     public DateOnly Date { get; private set; }
 
     public Guid? ProjectId { get; private set; }
@@ -183,6 +206,8 @@ public sealed class TimesheetEntry : TenantAggregateRoot
     public string? Activity { get; private set; }
 
     public string? Description { get; private set; }
+
+    public void AssignTo(Guid approvalId) => ApprovalId = approvalId;
 
     public static TimesheetEntry Book(Timesheet timesheet, DateOnly date, Guid? projectId, Guid? taskId, HourCategory category, decimal hours, string? activity, string? description)
     {
@@ -261,6 +286,9 @@ public sealed class TimesheetSettings : TenantAggregateRoot
     /// <summary>Nothing on or before this date changes (spec §124 TimesheetLock).</summary>
     public DateOnly? LockedThrough { get; private set; }
 
+    /// <summary>Everyone owes a timesheet, not only people allocated to a project; missing weeks are chased for all of them.</summary>
+    public bool RequireFromEveryone { get; private set; }
+
     public static TimesheetSettings Defaults() => new();
 
     public void Update(TimesheetRules rules)
@@ -281,6 +309,7 @@ public sealed class TimesheetSettings : TenantAggregateRoot
         AllowWeekendEntries = rules.AllowWeekendEntries;
         AllowHolidayEntries = rules.AllowHolidayEntries;
         SubmissionDeadlineDays = rules.SubmissionDeadlineDays;
+        RequireFromEveryone = rules.RequireFromEveryone;
     }
 
     /// <summary>Locks every week ending on or before <paramref name="through"/>. A lock only moves forward.</summary>
@@ -295,7 +324,7 @@ public sealed class TimesheetSettings : TenantAggregateRoot
     }
 
     public TimesheetRules ToRules() => new(
-        StandardHoursPerDay, MinHoursPerDay, MaxHoursPerDay, MinWeeklyHours, EnforceWeeklyMinimum, AllowWeekendEntries, AllowHolidayEntries, SubmissionDeadlineDays, LockedThrough);
+        StandardHoursPerDay, MinHoursPerDay, MaxHoursPerDay, MinWeeklyHours, EnforceWeeklyMinimum, AllowWeekendEntries, AllowHolidayEntries, SubmissionDeadlineDays, LockedThrough, RequireFromEveryone);
 }
 
 public sealed record TimesheetRules(
@@ -307,7 +336,8 @@ public sealed record TimesheetRules(
     bool AllowWeekendEntries,
     bool AllowHolidayEntries,
     int SubmissionDeadlineDays,
-    DateOnly? LockedThrough)
+    DateOnly? LockedThrough,
+    bool RequireFromEveryone = false)
 {
     public static TimesheetRules Default { get; } = TimesheetSettings.Defaults().ToRules();
 }

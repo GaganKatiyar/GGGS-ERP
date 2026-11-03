@@ -20,7 +20,11 @@ public sealed record WorkflowSubjectField(string Key, string Label, WorkflowFiel
 /// conditions may test.
 /// </para>
 /// </summary>
-public sealed record WorkflowSubject(string Code, string Name, string Module, IReadOnlyList<WorkflowSubjectField> Fields);
+public sealed record WorkflowSubject(string Code, string Name, string Module, IReadOnlyList<WorkflowSubjectField> Fields)
+{
+    /// <summary>Every organisation starts with this approved by the record's owner, rather than not approved at all.</summary>
+    public bool OwnerApprovesByDefault { get; init; }
+}
 
 public static class WorkflowSubjectRegistration
 {
@@ -43,6 +47,9 @@ public sealed record WorkflowStartRequest
     /// department head) are resolved from them, and they can never approve their own request.
     /// </summary>
     public Guid? RequesterEmployeeId { get; init; }
+
+    /// <summary>Who owns the record, for stages that go to its owner, such as a timesheet's project manager.</summary>
+    public Guid? OwnerEmployeeId { get; init; }
 
     /// <summary>Values stage conditions test. Keys are the subject's registered field keys.</summary>
     public IReadOnlyDictionary<string, string> Fields { get; init; } = new Dictionary<string, string>();

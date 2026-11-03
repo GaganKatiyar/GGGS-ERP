@@ -67,7 +67,13 @@ internal sealed class ReviewCalendar(AppDbContext dbContext) : ICalendarSource
             .ToListAsync(cancellationToken);
         if (context.OnlyMine)
         {
-            Guid? me = context.EmployeeId;
+            // An account without an employee record has no reviews; comparing a null id would
+            // match every review that has no manager.
+            if (context.EmployeeId is not { } me)
+            {
+                return [];
+            }
+
             List<Guid> ids = [.. cycles.Select(row => row.Id)];
             HashSet<Guid> mine = [.. await dbContext.Reviews.AsNoTracking().Where(row => ids.Contains(row.CycleId) && (row.EmployeeId == me || row.ManagerEmployeeId == me)).Select(row => row.CycleId).ToListAsync(cancellationToken)];
             cycles = [.. cycles.Where(row => mine.Contains(row.Id))];

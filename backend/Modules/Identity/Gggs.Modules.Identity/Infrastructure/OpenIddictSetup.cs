@@ -291,7 +291,7 @@ public static class OpenIddictSetup
                     ? (environment.IsDevelopment() ? DevelopmentSecrets.GatewayClientSecret : null)
                     : tokens.GatewayClientSecret,
                 ClientType = ClientTypes.Confidential,
-                DisplayName = "PeopleOS API client",
+                DisplayName = "Nuts and Bolts API client",
                 Permissions =
                 {
                     Permissions.Endpoints.Token,

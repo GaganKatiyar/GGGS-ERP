@@ -51,7 +51,7 @@ import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
               </td>
               <td class="muted">{{ member.startDate | date: 'd MMM y' }} – {{ member.endDate ? (member.endDate | date: 'd MMM y') : 'ongoing' }}</td>
               @if (seeRates()) {
-                <td>{{ member.billingRate ?? '—' }} / {{ member.costRate ?? '—' }}</td>
+                <td>{{ member.billingRate ?? '—' }} / {{ member.costRate ?? '—' }}{{ member.monthlyRate ? ' · ' + member.monthlyRate + ' a month' : '' }}</td>
               }
               <td><gggs-status-badge [status]="member.status" /></td>
               @if (canManage()) {
@@ -105,6 +105,10 @@ import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
         <label class="field">
           <span class="field__label">Billing rate / hour</span>
           <input type="number" min="0" [value]="billingRate() ?? ''" (input)="billingRate.set($any($event.target).value === '' ? null : +$any($event.target).value)" />
+        </label>
+        <label class="field">
+          <span class="field__label">Monthly rate <span class="muted">(dedicated team)</span></span>
+          <input type="number" min="0" [value]="monthlyRate() ?? ''" (input)="monthlyRate.set($any($event.target).value === '' ? null : +$any($event.target).value)" />
         </label>
         <label class="field">
           <span class="field__label">Cost rate / hour</span>
@@ -171,6 +175,7 @@ export class TeamTab {
   protected readonly endDate = signal('');
   protected readonly billingRate = signal<number | null>(null);
   protected readonly costRate = signal<number | null>(null);
+  protected readonly monthlyRate = signal<number | null>(null);
   protected readonly billable = signal(true);
   protected readonly busy = signal(false);
   protected readonly dialogError = signal<string | null>(null);
@@ -199,6 +204,7 @@ export class TeamTab {
     this.endDate.set(member?.endDate ?? '');
     this.billingRate.set(member?.billingRate ?? null);
     this.costRate.set(member?.costRate ?? null);
+    this.monthlyRate.set(member?.monthlyRate ?? null);
     this.billable.set(member?.billable ?? true);
     this.dialogError.set(null);
     this.formOpen.set(true);
@@ -222,6 +228,7 @@ export class TeamTab {
         endDate: this.endDate() || null,
         billingRate: this.billingRate(),
         costRate: this.costRate(),
+        monthlyRate: this.monthlyRate(),
         billable: this.billable(),
       });
       this.formOpen.set(false);

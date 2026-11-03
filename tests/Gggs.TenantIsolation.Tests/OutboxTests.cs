@@ -40,7 +40,7 @@ public sealed class OutboxTests(SqlServerFixture fixture)
         await using AppDbContext verify = fixture.CreateContext(AcmeTenantId);
         OutboxMessage? staged = await verify.Set<OutboxMessage>()
             .SingleOrDefaultAsync(
-                message => message.MessageType == "gggs.tests.probe.created" && message.TenantId == AcmeTenantId,
+                message => message.MessageType == "gggs.tests.probe.created" && message.TenantId == AcmeTenantId && message.Payload.Contains(record.Id.ToString()),
                 TestContext.Current.CancellationToken);
 
         staged.ShouldNotBeNull();

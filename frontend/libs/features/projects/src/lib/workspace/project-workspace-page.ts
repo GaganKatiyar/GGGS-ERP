@@ -23,14 +23,24 @@ import { SettingsTab } from './settings-tab';
 import { SprintsTab } from './sprints-tab';
 import { TasksTab } from './tasks-tab';
 import { TeamTab } from './team-tab';
+import { BacklogTab } from './backlog-tab';
+import { GanttTab } from './gantt-tab';
+import { ServiceTab } from './service-tab';
+import { WorkloadTab } from './workload-tab';
+import { ProjectTimesheetsTab } from './timesheets-tab';
 
 const TABS: readonly TabItem[] = [
   { key: 'overview', label: 'Overview' },
   { key: 'tasks', label: 'Tasks' },
   { key: 'board', label: 'Board' },
+  { key: 'service', label: 'Service' },
+  { key: 'backlog', label: 'Backlog' },
   { key: 'sprints', label: 'Sprints' },
+  { key: 'gantt', label: 'Gantt' },
   { key: 'plan', label: 'Phases & milestones' },
   { key: 'team', label: 'Team' },
+  { key: 'workload', label: 'Workload' },
+  { key: 'timesheets', label: 'Timesheets' },
   { key: 'requirements', label: 'Requirements' },
   { key: 'changes', label: 'Change requests' },
   { key: 'raid', label: 'RAID' },
@@ -48,6 +58,11 @@ const TABS: readonly TabItem[] = [
     DatePipe,
     RouterLink,
     PageHeader,
+    ProjectTimesheetsTab,
+    ServiceTab,
+    BacklogTab,
+    GanttTab,
+    WorkloadTab,
     Tabs,
     StatusBadge,
     Skeleton,
@@ -119,7 +134,7 @@ const TABS: readonly TabItem[] = [
         </div>
       </section>
 
-      <gggs-tabs [tabs]="tabs" [selected]="currentTab()" (selectedChange)="selectTab($event)" />
+      <gggs-tabs [tabs]="tabs()" [selected]="currentTab()" (selectedChange)="selectTab($event)" />
 
       <div class="workspace__body">
         @switch (currentTab()) {
@@ -158,6 +173,21 @@ const TABS: readonly TabItem[] = [
           }
           @case ('documents') {
             <gggs-record-documents ownerType="Project" [ownerId]="d.project.id" [canUpload]="d.can.manage || d.can.manageTasks" />
+          }
+          @case ('timesheets') {
+            <gggs-project-timesheets-tab [projectId]="d.project.id" />
+          }
+          @case ('service') {
+            <gggs-service-tab [projectId]="d.project.id" />
+          }
+          @case ('backlog') {
+            <gggs-backlog-tab [projectId]="d.project.id" />
+          }
+          @case ('gantt') {
+            <gggs-gantt-tab [projectId]="d.project.id" />
+          }
+          @case ('workload') {
+            <gggs-workload-tab [projectId]="d.project.id" />
           }
           @case ('financials') {
             <gggs-financials-tab [projectId]="d.project.id" />
@@ -286,7 +316,7 @@ export class ProjectWorkspacePage {
   /** Bound from the `task` query parameter: opens that task in the tasks tab. */
   readonly task = input<string | undefined>(undefined);
 
-  protected readonly tabs = this.permissions.has('project.financials.view') ? TABS : TABS.filter((tab) => tab.key !== 'financials');
+  private readonly allowedTabs = this.permissions.has('project.financials.view') ? TABS : TABS.filter((tab) => tab.key !== 'financials');
   protected readonly stages = PROJECT_STAGES;
   protected readonly stageLabels = STAGE_LABELS;
   protected readonly detail = signal<ProjectDetail | null>(null);
@@ -303,6 +333,11 @@ export class ProjectWorkspacePage {
   protected readonly busy = signal(false);
   protected readonly dialogError = signal<string | null>(null);
 
+  /** Service levels belong to work paid for by the month. */
+  protected readonly tabs = computed(() => {
+    const billing = this.detail()?.project.billingType;
+    return billing === 'ManagedService' || billing === 'Retainer' ? this.allowedTabs : this.allowedTabs.filter((tab) => tab.key !== 'service');
+  });
   protected readonly me = computed(() => this.session.user()?.employeeId);
   protected readonly currentTab = computed(() => this.selected() ?? (this.tab() && TABS.some((item) => item.key === this.tab()) ? (this.tab() as string) : 'overview'));
   protected readonly stageIndex = computed(() => {

@@ -1,4 +1,4 @@
-# PeopleOS
+# Nuts and Bolts
 
 A multi-tenant, AI-ready HRMS, project management and resource management platform, aimed first
 at IT, software and consulting companies. It is an Angular front end over **one modular monolith**
@@ -119,15 +119,28 @@ applies.
   punches; and integrations - bank transfer files and Tally or CSV accounting journals from a
   finalized payroll, Microsoft Entra ID directory reads and signed webhooks - with secrets encrypted
   at rest and every run logged.
+- Integration Studio (Settings, Studio): a catalogue of connectors - Slack, Microsoft Teams, SMTP,
+  SendGrid, Microsoft 365 email, Twilio SMS and WhatsApp, MSG91 and the WhatsApp Cloud API among
+  them; sending the organisation's email through its own connection, and notifications by text
+  message, chosen per template with each person able to opt out; work accounts in Microsoft 365 or
+  Google Workspace, created on hire and disabled (never deleted) on exit once switched on, with
+  temporary passwords sent only to the person's personal email and never stored or logged;
+  automations that act on 16 business events through those connectors, with conditions,
+  `{{field}}` templates, a test send, automatic retries and a delivery log; and API keys that act
+  as machine accounts holding the roles chosen for them. Addresses a tenant types can never reach
+  the hosting network.
 - AI and security: nine assistants (my assistant, HR command centre, workforce planner, resource
   manager, projects, career, recruitment, performance and rewards) on the Anthropic Messages API,
   using tools each module provides that run as the signed-in user within their own permissions;
   anything that would change data is drafted as a proposal and runs only when the person approves it.
-  Sign-in takes an authenticator app with recovery codes (required by policy for administrators by
-  default), sensitive actions ask the person to confirm it is them, organisations can add their own
-  OpenID Connect provider for single sign-on, and credential endpoints and assistant turns are
-  rate-limited.
-- The frontend has the PeopleOS shell, a shared UI kit (KPI cards, charts, drawers, form dialogs,
+  Sign-in is by password (two-step sign-in was removed later, see ADR-13), sensitive actions ask the
+  person to confirm it is them with their password, organisations can add their own OpenID Connect
+  provider for single sign-on, and credential endpoints and assistant turns are rate-limited.
+  Forgotten passwords are reset through a one-hour, single-use emailed link, which ends every earlier
+  sign-in on the account; changing your own password (My preferences) ends all but the browser you did it from. The
+  Privacy Policy and Terms of Use are public pages (`/privacy`, `/terms`);
+  their company details are bracketed blanks in `pages/legal-details.ts`, shown highlighted until filled in.
+- The frontend has the Nuts and Bolts shell, a shared UI kit (KPI cards, charts, drawers, form dialogs,
   filter bar, timeline, tabs, an upgraded data table with column chooser and CSV export), and the
   Core HR and administration screens. Unbuilt modules stay hidden in the navigation.
 - 779 backend tests pass, including architecture rules for module boundaries, a tenant-isolation
@@ -262,7 +275,7 @@ devtools click from being visible.
 
 The sidebar is generated from `NAVIGATION` in `@gggs/core/layout`, filtered by the user's
 permissions, the tenant's licensed features and whether the module is built yet. The manifest holds
-the whole PeopleOS tree, and unbuilt entries carry `planned` and their milestone. Shipping a screen
+the whole Nuts and Bolts tree, and unbuilt entries carry `planned` and their milestone. Shipping a screen
 means adding its route and deleting that flag; there is no separate menu to keep in step.
 
 ## The rules that matter

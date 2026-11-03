@@ -5,7 +5,7 @@ import { ApiError } from '@gggs/core/http';
 import { PermissionStore } from '@gggs/core/permissions';
 import { AnalyticsApi, MetricPanel, downloadCsv, formatMetric } from '@gggs/shared/insight';
 import type { AnalyticsArea, DashboardView, DigestFrequency, Metric, ReportSubscription } from '@gggs/shared/models';
-import { EmptyState, PageHeader, Skeleton } from '@gggs/shared/ui';
+import { EmptyState, localIsoDate, PageHeader, Skeleton } from '@gggs/shared/ui';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
 
@@ -233,7 +233,7 @@ export class DashboardViewPage {
       }
     }
 
-    downloadCsv(`${view.area}-analytics-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+    downloadCsv(`${view.area}-analytics-${localIsoDate()}.csv`, rows);
   }
 
   protected async setDigest(frequency: DigestFrequency | ''): Promise<void> {

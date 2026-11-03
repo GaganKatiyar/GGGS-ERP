@@ -1,3 +1,5 @@
 export * from './lib/navigation';
 export * from './lib/shell';
 export * from './lib/theme';
+export * from './lib/visible-navigation';
+export * from './lib/nav-style';

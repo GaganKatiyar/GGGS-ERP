@@ -1,6 +1,6 @@
 # GGGS HRMS — Multi-Tenant SaaS HRMS ERP: Architecture & Implementation Plan
 
-> **Superseded in part (2026-10-07).** The product is being rebuilt as PeopleOS, a single modular monolith with one database. See [ADR-12](../adr/0012-modular-monolith.md) and [peopleos-target.md](peopleos-target.md). The tenancy, security, isolation, audit and compliance-pack sections below still apply; the microservice boundaries (§5), per-service databases (§6.1) and roadmap (§22) do not.
+> **Superseded in part (2026-10-07).** The product is being rebuilt as Nuts and Bolts, a single modular monolith with one database. See [ADR-12](../adr/0012-modular-monolith.md) and [peopleos-target.md](peopleos-target.md). The tenancy, security, isolation, audit and compliance-pack sections below still apply; the microservice boundaries (§5), per-service databases (§6.1) and roadmap (§22) do not.
 
 ## Context
 
@@ -907,6 +907,56 @@ Seeding runs in `Gggs.Identity.Worker` from the `TenantProvisioned` event and is
 specific way: a repeat run creates only missing roles and **never re-grants permissions on a role
 that already exists**. Topping a role back up to the template would let the redelivery of an old
 message silently undo an administrator's decision to narrow it.
+
+#### Roles that follow the org chart
+
+A role can be **assigned automatically** (`Role.AutoAssign`): to every people manager (an employee
+whom at least one current employee reports to), or to every department head (one grant per
+department headed, anchored to it with `RoleScopeType.Department`). The built-in Manager
+(`TEAM_LEAD`) and Department Head (`DEPARTMENT_MANAGER`) roles start that way; an administrator can
+switch either off, or switch it on for a role of their own, on the role's page.
+
+`RoleAutomation.SyncAsync` makes the tenant's automatic grants match the org chart. It runs when
+an employee is hired, changes assignment or exits, when a department's head changes
+(`DepartmentHeadChangedIntegrationEvent`, published by Organization), when a role's setting changes,
+and when an account is invited for an employee - and a nightly per-tenant sweep
+(`role-automation`) catches anything an event missed. The decision itself is the pure
+`RoleAutomationPlan`, unit-tested on its own.
+
+Automatic grants are marked `UserRole.IsAutomatic` and kept apart from grants made by hand:
+
+- **A grant by hand always wins.** No automatic copy is added beside one that already covers it,
+  and the sync never ends a manual grant. Ticking a role a user already holds automatically turns
+  that grant into a manual one.
+- **The user-roles editor sees manual grants only** (`GET /users/{id}/roles`), so saving it never
+  ends an automatic grant; the automatic ones are listed beside it (`GET /users/{id}/automatic-roles`).
+- **An automatic grant that is no longer wanted ends at once** (yesterday, or removed if it began
+  today) rather than at midnight, and the user's permission version is bumped.
+
+The unique index on `UserRole` covers open grants only (`ValidTo IS NULL`): an ended grant is
+history, so the same role can be given again later.
+
+#### Access screens
+
+Settings → Access & security answers "who can do what" three ways round, all read from the same
+calculation the server authorizes with:
+
+- **Access overview** (`/admin/access`): every user with their roles (automatic ones marked),
+  permission count and menu-page count; a roles × permissions matrix showing each role's reach per
+  permission; and a menu-page × role matrix.
+- **A user's access** (`/admin/users/{id}/access`): their grants, each effective permission with
+  its reach and the roles it comes through (`PermissionSources`, the companion to
+  `PermissionResolver`), and the menu they see.
+- **A role** (`/admin/roles/{id}`): its permissions as a grid saved whole
+  (`PUT /roles/{id}/permissions`), its members, the menu pages it opens, and its automatic
+  assignment.
+
+Menus are worked out in the browser from the navigation manifest by the shell's own rule
+(`canSee` / `navigationFor` in `libs/core/layout`), so an access screen can never show a menu
+different from the one the person gets. Every change to a role's permissions - the grid, or the
+single grant and revoke routes - goes through `RolePermissionEditor`, which bumps the permission
+version of everyone holding the role and refuses a change that would leave nobody able to manage
+users or roles (`LAST_ADMINISTRATOR`).
 
 #### Bootstrapping the first administrator
 

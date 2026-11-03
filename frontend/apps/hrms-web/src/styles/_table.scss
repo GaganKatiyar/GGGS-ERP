@@ -8,7 +8,20 @@
   overflow-x: auto;
   border: 1px solid var(--gggs-color-border);
   border-radius: var(--gggs-radius-md);
-  background: var(--gggs-color-surface-raised);
+  /*
+   * Scroll shadows: a soft shade at whichever edge has more table beyond it. The two covers scroll
+   * with the content (local) and hide each shade once its edge is reached; the shades stay put.
+   */
+  background-color: var(--gggs-color-surface-raised);
+  background-image:
+    linear-gradient(to right, var(--gggs-color-surface-raised) 40%, transparent),
+    linear-gradient(to left, var(--gggs-color-surface-raised) 40%, transparent),
+    radial-gradient(farthest-side at 0 50%, color-mix(in srgb, var(--gggs-color-brand) 16%, transparent), transparent),
+    radial-gradient(farthest-side at 100% 50%, color-mix(in srgb, var(--gggs-color-brand) 16%, transparent), transparent);
+  background-position: left, right, left, right;
+  background-size: 2rem 100%, 2rem 100%, 0.75rem 100%, 0.75rem 100%;
+  background-repeat: no-repeat;
+  background-attachment: local, local, scroll, scroll;
 
   /* Inside a panel the panel already draws the frame. */
   .panel > &,
@@ -48,12 +61,61 @@
     white-space: nowrap;
   }
 
+  /*
+   * Headers the shell made sortable (libs/core/layout table-sort.ts): a quiet two-way arrow that
+   * firms up on hover, and points the chosen way on the sorted column.
+   */
+  thead th[data-gggs-sortable] {
+    cursor: pointer;
+    user-select: none;
+    transition: color var(--gggs-transition-fast);
+
+    &::after {
+      content: '↕' / '';
+      margin-inline-start: var(--gggs-space-1);
+      opacity: 0.4;
+      transition: opacity var(--gggs-transition-fast);
+    }
+
+    &:hover {
+      color: var(--gggs-color-text);
+
+      &::after {
+        opacity: 0.8;
+      }
+    }
+
+    &:focus-visible {
+      outline: var(--gggs-focus-outline);
+      outline-offset: -2px;
+    }
+  }
+
+  thead th[aria-sort='ascending'],
+  thead th[aria-sort='descending'] {
+    color: var(--gggs-color-primary);
+
+    &::after {
+      opacity: 1;
+    }
+  }
+
+  thead th[aria-sort='ascending']::after {
+    content: '↑' / '';
+  }
+
+  thead th[aria-sort='descending']::after {
+    content: '↓' / '';
+  }
+
   tbody tr {
     transition: background-color var(--gggs-transition-fast);
   }
 
+  /* The row under the pointer is tinted and marked at its edge, so the eye can follow it across. */
   tbody tr:hover {
     background: var(--gggs-color-surface-hover);
+    box-shadow: inset 2px 0 0 color-mix(in srgb, var(--gggs-color-primary) 55%, transparent);
   }
 
   tbody tr:last-child td {

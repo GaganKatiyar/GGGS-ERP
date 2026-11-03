@@ -33,12 +33,37 @@ internal sealed class EmployeeDirectory(AppDbContext dbContext, EmployeeScope sc
                 employee.DepartmentId, employee.PositionId, employee.JobId, employee.ManagerEmployeeId, employee.LocationId, employee.LegalEntityId,
                 employee.HrbpEmployeeId, employee.Designation, employee.JoiningDate,
                 employee.EmploymentTypeCode, employee.ProbationEndDate, employee.ConfirmationDate,
-                employee.WorkModeCode, employee.GradeId, employee.ExitDate, employee.ExitReasonCode))
+                employee.WorkModeCode, employee.GradeId, employee.ExitDate, employee.ExitReasonCode, employee.GenderCode))
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Guid>> DepartmentsDuringAsync(Guid employeeId, DateOnly firstDay, DateOnly lastDay, CancellationToken cancellationToken = default)
+        => await dbContext.EmploymentRecords
+            .AsNoTracking()
+            .Where(record => record.EmployeeId == employeeId && record.EffectiveFrom <= lastDay && (record.EffectiveTo == null || record.EffectiveTo >= firstDay))
+            .Select(record => record.DepartmentId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
     public async Task<bool> IsActiveAsync(Guid employeeId, CancellationToken cancellationToken = default)
         => await dbContext.Employees.AnyAsync(employee => employee.Id == employeeId && employee.Status != EmployeeStatus.Exited, cancellationToken);
+
+    public async Task<IReadOnlySet<Guid>> PeopleManagersAsync(CancellationToken cancellationToken = default)
+    {
+        List<Guid> managers = await dbContext.Employees.AsNoTracking()
+            .Where(employee => employee.Status != EmployeeStatus.Exited && employee.ManagerEmployeeId != null)
+            .Select(employee => employee.ManagerEmployeeId!.Value)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        // A manager who has left keeps nobody's access, even before their reports are moved.
+        List<Guid> current = await dbContext.Employees.AsNoTracking()
+            .Where(employee => managers.Contains(employee.Id) && employee.Status != EmployeeStatus.Exited)
+            .Select(employee => employee.Id)
+            .ToListAsync(cancellationToken);
+
+        return current.ToHashSet();
+    }
 
     public async Task<IReadOnlyDictionary<Guid, int>> CountByPositionAsync(IEnumerable<Guid> positionIds, CancellationToken cancellationToken = default)
     {

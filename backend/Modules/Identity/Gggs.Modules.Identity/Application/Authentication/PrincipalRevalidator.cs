@@ -92,7 +92,6 @@ public sealed class PrincipalRevalidator(
             tenantId,
             sessionId,
             authenticatedAt,
-            mfaSatisfied: previous.HasClaim("amr", UserPrincipalFactory.AuthenticationMethods.MultiFactor),
             authenticationScheme);
     }
 

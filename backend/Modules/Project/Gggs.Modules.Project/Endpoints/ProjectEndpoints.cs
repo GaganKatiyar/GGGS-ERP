@@ -24,6 +24,14 @@ internal static class ProjectEndpoints
         MapPlanning(group);
         MapGovernance(group);
         MapSettings(group);
+        MapServiceLevels(group);
+        MapTaskCollaboration(group);
+
+        // Public: the signature is the credential, because a code host has no account here.
+        endpoints.MapPost("/api/v1/webhooks/git/{tenantCode}/{connectionId:guid}", (string tenantCode, Guid connectionId, HttpRequest request, CodeLinkService links, CancellationToken ct) => links.ReceiveAsync(tenantCode, connectionId, request, ct))
+            .WithTags("Projects").WithName("GitWebhook").AllowAnonymous().DisableAntiforgery().RequireRateLimiting(RateLimitPolicies.Webhook);
+        group.MapGet("/code-links/setup", async (CodeLinkService links, CancellationToken ct) => TypedResults.Ok(await links.SetupAsync(ct)))
+            .WithName("CodeLinkSetup").RequirePermission(Permissions.Project.SettingsManage);
 
         endpoints.MapGet("/api/v1/project-tasks", async ([AsParameters] PortfolioTaskQuery query, TaskService tasks, CancellationToken ct) => TypedResults.Ok(await tasks.PortfolioAsync(query, ct)))
             .WithTags("Projects").WithName("ListPortfolioTasks").RequirePermission(Permissions.Project.TaskView);
@@ -39,6 +47,68 @@ internal static class ProjectEndpoints
             .WithTags("Projects").WithName("ListMyProjects").RequirePermission(Permissions.Project.View);
 
         return endpoints;
+    }
+
+    private static void MapTaskCollaboration(RouteGroupBuilder group)
+    {
+        group.MapGet("/{id:guid}/tasks/{taskId:guid}/conversation", async (Guid id, Guid taskId, TaskCollaborationService tasks, CancellationToken ct) => TypedResults.Ok(await tasks.ConversationAsync(id, taskId, ct)))
+            .WithName("TaskConversation").RequirePermission(Permissions.Project.TaskView);
+        group.MapPost("/{id:guid}/tasks/{taskId:guid}/comments", async (Guid id, Guid taskId, CommentBody body, TaskCollaborationService tasks, CancellationToken ct) => TypedResults.Ok(await tasks.AddCommentAsync(id, taskId, body, ct)))
+            .WithName("AddTaskComment").RequirePermission(Permissions.Project.TaskView);
+        group.MapPut("/{id:guid}/tasks/{taskId:guid}/comments/{commentId:guid}", async (Guid id, Guid taskId, Guid commentId, CommentBody body, TaskCollaborationService tasks, CancellationToken ct) => TypedResults.Ok(await tasks.EditCommentAsync(id, taskId, commentId, body, ct)))
+            .WithName("EditTaskComment").RequirePermission(Permissions.Project.TaskView);
+        group.MapDelete("/{id:guid}/tasks/{taskId:guid}/comments/{commentId:guid}", async (Guid id, Guid taskId, Guid commentId, TaskCollaborationService tasks, CancellationToken ct) => TypedResults.Ok(await tasks.DeleteCommentAsync(id, taskId, commentId, ct)))
+            .WithName("DeleteTaskComment").RequirePermission(Permissions.Project.TaskView);
+        group.MapPost("/{id:guid}/tasks/{taskId:guid}/watch", async (Guid id, Guid taskId, TaskCollaborationService tasks, CancellationToken ct) => TypedResults.Ok(await tasks.WatchAsync(id, taskId, true, ct)))
+            .WithName("WatchTask").RequirePermission(Permissions.Project.TaskView);
+        group.MapDelete("/{id:guid}/tasks/{taskId:guid}/watch", async (Guid id, Guid taskId, TaskCollaborationService tasks, CancellationToken ct) => TypedResults.Ok(await tasks.WatchAsync(id, taskId, false, ct)))
+            .WithName("UnwatchTask").RequirePermission(Permissions.Project.TaskView);
+        group.MapPost("/{id:guid}/tasks/bulk", async (Guid id, BulkTaskBody body, TaskService tasks, CancellationToken ct) => TypedResults.Ok(await tasks.BulkUpdateAsync(id, body, ct)))
+            .WithName("BulkUpdateTasks").RequirePermission(Permissions.Project.TaskManage);
+        group.MapPost("/{id:guid}/tasks/{taskId:guid}/schedule", async (Guid id, Guid taskId, ScheduleBody body, TaskService tasks, CancellationToken ct) => TypedResults.Ok(await tasks.ScheduleAsync(id, taskId, body, ct)))
+            .WithName("ScheduleTask").RequirePermission(Permissions.Project.TaskManage);
+        group.MapPost("/{id:guid}/tasks/import/preview", async (Guid id, ImportBody body, TaskViewsService views, CancellationToken ct) => TypedResults.Ok(await views.PreviewImportAsync(id, body, ct)))
+            .WithName("PreviewTaskImport").RequirePermission(Permissions.Project.TaskManage);
+        group.MapPost("/{id:guid}/tasks/import", async (Guid id, ImportBody body, TaskViewsService views, CancellationToken ct) => TypedResults.Ok(await views.ImportAsync(id, body, ct)))
+            .WithName("ImportTasks").RequirePermission(Permissions.Project.TaskManage);
+        group.MapGet("/{id:guid}/task-views", async (Guid id, TaskCollaborationService tasks, CancellationToken ct) => TypedResults.Ok(await tasks.ViewsAsync(id, ct)))
+            .WithName("ListTaskViews").RequirePermission(Permissions.Project.TaskView);
+        group.MapPost("/{id:guid}/task-views", async (Guid id, SavedViewBody body, TaskCollaborationService tasks, CancellationToken ct) => TypedResults.Ok(await tasks.SaveViewAsync(id, body, ct)))
+            .WithName("SaveTaskView").RequirePermission(Permissions.Project.TaskView);
+        group.MapDelete("/{id:guid}/task-views/{viewId:guid}", async (Guid id, Guid viewId, TaskCollaborationService tasks, CancellationToken ct) => TypedResults.Ok(await tasks.DeleteViewAsync(id, viewId, ct)))
+            .WithName("DeleteTaskView").RequirePermission(Permissions.Project.TaskView);
+        group.MapGet("/{id:guid}/gantt", async (Guid id, TaskViewsService views, CancellationToken ct) => TypedResults.Ok(await views.GanttAsync(id, ct)))
+            .WithName("ProjectGantt").RequirePermission(Permissions.Project.TaskView);
+        group.MapGet("/{id:guid}/workload", async (Guid id, int? weeks, TaskViewsService views, CancellationToken ct) => TypedResults.Ok(await views.WorkloadAsync(id, weeks, ct)))
+            .WithName("ProjectWorkload").RequirePermission(Permissions.Project.TaskView);
+    }
+
+    private static void MapServiceLevels(RouteGroupBuilder group)
+    {
+        group.MapGet("/service-levels", async ([AsParameters] ServiceLevelQuery query, ServiceLevelService levels, CancellationToken ct) => TypedResults.Ok(await levels.ReportAsync(query, ct)))
+            .WithName("ServiceLevelReport").RequirePermission(Permissions.Project.TaskView);
+        group.MapGet("/service-levels/export", async ([AsParameters] ServiceLevelQuery query, ServiceLevelService levels, CancellationToken ct) =>
+            {
+                ServiceLevelFile file = await levels.ExportAsync(query, ct);
+                return Results.File(file.Content, "text/csv", file.FileName);
+            })
+            .WithName("ExportServiceLevels").RequirePermission(Permissions.Project.TaskView);
+        group.MapGet("/{id:guid}/service-levels", async (Guid id, DateOnly month, ServiceLevelService levels, CancellationToken ct) => TypedResults.Ok(await levels.ViewAsync(id, month, ct)))
+            .WithName("ProjectServiceLevels").RequirePermission(Permissions.Project.TaskView);
+        group.MapPut("/{id:guid}/service-levels/policy", async (Guid id, SlaPolicyDetails body, ServiceLevelService levels, CancellationToken ct) => TypedResults.Ok(await levels.SavePolicyAsync(id, body, ct)))
+            .WithName("SaveProjectSlaPolicy").RequirePermission(Permissions.Project.Manage);
+        group.MapDelete("/{id:guid}/service-levels/policy", async (Guid id, ServiceLevelService levels, CancellationToken ct) =>
+            {
+                await levels.DeletePolicyAsync(id, ct);
+                return TypedResults.NoContent();
+            })
+            .WithName("DeleteProjectSlaPolicy").RequirePermission(Permissions.Project.Manage);
+        group.MapPost("/{id:guid}/tickets/{taskId:guid}/respond", async (Guid id, Guid taskId, ServiceLevelService levels, CancellationToken ct) => TypedResults.Ok(await levels.RespondAsync(id, taskId, ct)))
+            .WithName("RespondToTicket").RequirePermission(Permissions.Project.TaskManage);
+        group.MapPost("/{id:guid}/tickets/{taskId:guid}/exclude", async (Guid id, Guid taskId, ExcludeBody body, ServiceLevelService levels, CancellationToken ct) => TypedResults.Ok(await levels.ExcludeAsync(id, taskId, body, ct)))
+            .WithName("ExcludeTicketBreach").RequirePermission(Permissions.Project.FinancialsManage);
+        group.MapPost("/{id:guid}/tickets/{taskId:guid}/reinstate", async (Guid id, Guid taskId, ServiceLevelService levels, CancellationToken ct) => TypedResults.Ok(await levels.ReinstateAsync(id, taskId, ct)))
+            .WithName("ReinstateTicketBreach").RequirePermission(Permissions.Project.FinancialsManage);
     }
 
     private static void MapProjects(RouteGroupBuilder group)
@@ -71,6 +141,8 @@ internal static class ProjectEndpoints
             .WithName("ProjectHistory").RequirePermission(Permissions.Project.View);
         group.MapGet("/{id:guid}/dashboard", async (Guid id, InsightService insights, CancellationToken ct) => TypedResults.Ok(await insights.DashboardAsync(id, ct)))
             .WithName("ProjectDashboard").RequirePermission(Permissions.Project.View);
+        group.MapPost("/{id:guid}/baseline", async (Guid id, InsightService insights, CancellationToken ct) => TypedResults.Ok(await insights.CaptureBaselineAsync(id, ct)))
+            .WithName("CaptureProjectBaseline").RequirePermission(Permissions.Project.Manage);
         group.MapGet("/{id:guid}/health", async (Guid id, InsightService insights, CancellationToken ct) => TypedResults.Ok(await insights.HealthAsync(id, ct)))
             .WithName("ProjectHealth").RequirePermission(Permissions.Project.View);
         group.MapPost("/{id:guid}/health/assess", async (Guid id, InsightService insights, CancellationToken ct) => TypedResults.Ok(await insights.AssessAsync(id, ct)))
@@ -184,6 +256,9 @@ internal static class ProjectEndpoints
         group.MapPost("/{id:guid}/milestones/{milestoneId:guid}/achieve", async (Guid id, Guid milestoneId, AchieveBody body, PlanningService planning, CancellationToken ct) =>
                 TypedResults.Ok(await planning.AchieveMilestoneAsync(id, milestoneId, body.On, ct)))
             .WithName("AchieveMilestone").RequirePermission(Permissions.Project.MilestoneManage);
+        group.MapPost("/{id:guid}/milestones/{milestoneId:guid}/accept", async (Guid id, Guid milestoneId, AcceptBody body, PlanningService planning, CancellationToken ct) =>
+                TypedResults.Ok(await planning.AcceptMilestoneAsync(id, milestoneId, body, ct)))
+            .WithName("AcceptMilestone").RequirePermission(Permissions.Project.MilestoneManage);
         group.MapDelete("/{id:guid}/milestones/{milestoneId:guid}", async (Guid id, Guid milestoneId, PlanningService planning, CancellationToken ct) =>
             {
                 await planning.DeleteMilestoneAsync(id, milestoneId, ct);
@@ -300,6 +375,19 @@ internal static class ProjectEndpoints
                 return TypedResults.NoContent();
             })
             .WithName("DeactivateProjectRole").RequirePermission(Permissions.Project.SettingsManage);
+        group.MapGet("/templates", async (ProjectTemplateService templates, CancellationToken ct) => TypedResults.Ok(await templates.ListAsync(ct)))
+            .WithName("ListProjectTemplates").RequirePermission(Permissions.Project.View);
+        group.MapPut("/templates/{templateId:guid}", async (Guid templateId, ProjectTemplateBody body, ProjectTemplateService templates, CancellationToken ct) =>
+                TypedResults.Ok(await templates.SaveAsync(templateId, body, ct)))
+            .WithName("SaveProjectTemplate").RequirePermission(Permissions.Project.SettingsManage);
+        group.MapGet("/default-projects", async (DefaultProjectService defaults, CancellationToken ct) => TypedResults.Ok(await defaults.ListAsync(ct)))
+            .WithName("ListDefaultProjects").RequirePermission(Permissions.Project.SettingsManage);
+        group.MapPost("/default-projects/ensure", async (DefaultProjectService defaults, CancellationToken ct) =>
+            {
+                await defaults.EnsureAllAsync(ct);
+                return TypedResults.Ok(await defaults.ListAsync(ct));
+            })
+            .WithName("EnsureDefaultProjects").RequirePermission(Permissions.Project.SettingsManage);
         group.MapGet("/settings/health", async (ProjectService projects, CancellationToken ct) => TypedResults.Ok(await projects.ThresholdsAsync(ct)))
             .WithName("GetProjectHealthThresholds").RequirePermission(Permissions.Project.View);
         group.MapPut("/settings/health", async (ProjectHealthThresholds body, ProjectService projects, CancellationToken ct) => TypedResults.Ok(await projects.SaveThresholdsAsync(body, ct)))
