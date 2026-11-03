@@ -141,6 +141,51 @@ export interface TimesheetTarget {
   readonly isDefault?: boolean;
 }
 
+export type TimesheetApprovalStatus = 'Submitted' | 'Approved' | 'Rejected' | 'Returned';
+
+/** One approver's share of a week. No project means default-project and other non-project hours. */
+export interface TimesheetApproval {
+  readonly id: string;
+  readonly projectId?: string;
+  readonly projectCode?: string;
+  readonly projectName?: string;
+  readonly ownerEmployeeId?: string;
+  readonly ownerName?: string;
+  readonly status: TimesheetApprovalStatus;
+  readonly hours: number;
+  readonly billableHours: number;
+  readonly workflowInstanceId?: string;
+  readonly decidedDate?: string;
+}
+
+/** A share of someone's week, as its approver sees it. */
+export interface TimesheetApprovalRow {
+  readonly id: string;
+  readonly timesheetId: string;
+  readonly employeeId: string;
+  readonly employeeName?: string;
+  readonly employeeCode?: string;
+  readonly weekStart: string;
+  readonly projectId?: string;
+  readonly projectCode?: string;
+  readonly projectName?: string;
+  readonly ownerName?: string;
+  readonly status: TimesheetApprovalStatus;
+  readonly hours: number;
+  readonly billableHours: number;
+  readonly submittedDate: string;
+  readonly workflowInstanceId?: string;
+}
+
+export interface ProjectHoursRow {
+  readonly employeeId: string;
+  readonly employeeName?: string;
+  readonly taskId?: string;
+  readonly category: HourCategory;
+  readonly hours: number;
+  readonly approvedHours: number;
+}
+
 export interface TimesheetIssue {
   readonly level: IssueLevel;
   readonly code: string;
@@ -189,6 +234,7 @@ export interface TimesheetView {
   readonly byCategory: Readonly<Record<string, number>>;
   readonly overtimeHours: number;
   readonly rules: TimesheetRules;
+  readonly approvals: readonly TimesheetApproval[];
 }
 
 export interface TimesheetEntryInput {
@@ -209,6 +255,7 @@ export interface TimesheetBankProject {
   readonly hours: number;
   readonly billableHours: number;
   readonly approverName?: string;
+  readonly status?: TimesheetApprovalStatus;
 }
 
 export interface TimesheetBankWeek {

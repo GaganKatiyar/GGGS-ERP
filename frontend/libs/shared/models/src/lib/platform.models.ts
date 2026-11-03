@@ -5,7 +5,7 @@
 
 // ----- Workflow ------------------------------------------------------------------------------
 
-export type ApproverKind = 'ReportingManager' | 'SkipLevelManager' | 'DepartmentHead' | 'HrBusinessPartner' | 'Employee';
+export type ApproverKind = 'ReportingManager' | 'SkipLevelManager' | 'DepartmentHead' | 'HrBusinessPartner' | 'Employee' | 'SubjectOwner';
 
 export type StageMode = 'All' | 'Any';
 
@@ -409,4 +409,5 @@ export const APPROVER_KIND_LABELS: Readonly<Record<ApproverKind, string>> = {
   DepartmentHead: 'Department head',
   HrBusinessPartner: 'HR business partner',
   Employee: 'A named person',
+  SubjectOwner: "The record's owner (a timesheet's project manager)",
 };

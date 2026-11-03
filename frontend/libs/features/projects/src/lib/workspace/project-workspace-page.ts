@@ -23,6 +23,7 @@ import { SettingsTab } from './settings-tab';
 import { SprintsTab } from './sprints-tab';
 import { TasksTab } from './tasks-tab';
 import { TeamTab } from './team-tab';
+import { ProjectTimesheetsTab } from './timesheets-tab';
 
 const TABS: readonly TabItem[] = [
   { key: 'overview', label: 'Overview' },
@@ -37,6 +38,7 @@ const TABS: readonly TabItem[] = [
   { key: 'meetings', label: 'Meetings' },
   { key: 'calendar', label: 'Calendar' },
   { key: 'documents', label: 'Documents' },
+  { key: 'timesheets', label: 'Timesheets' },
   { key: 'financials', label: 'Financials' },
   { key: 'settings', label: 'Board & history' },
 ];
@@ -48,6 +50,7 @@ const TABS: readonly TabItem[] = [
     DatePipe,
     RouterLink,
     PageHeader,
+    ProjectTimesheetsTab,
     Tabs,
     StatusBadge,
     Skeleton,
@@ -158,6 +161,9 @@ const TABS: readonly TabItem[] = [
           }
           @case ('documents') {
             <gggs-record-documents ownerType="Project" [ownerId]="d.project.id" [canUpload]="d.can.manage || d.can.manageTasks" />
+          }
+          @case ('timesheets') {
+            <gggs-project-timesheets-tab [projectId]="d.project.id" />
           }
           @case ('financials') {
             <gggs-financials-tab [projectId]="d.project.id" />

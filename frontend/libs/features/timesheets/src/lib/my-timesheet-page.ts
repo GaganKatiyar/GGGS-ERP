@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, si
 import { Router } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import { TimesheetsApi, addDaysIso, isoToday } from '@gggs/shared/delivery';
-import type { HourCategory, TimesheetDay, TimesheetView } from '@gggs/shared/models';
+import type { HourCategory, TimesheetApproval, TimesheetDay, TimesheetView } from '@gggs/shared/models';
 import { BOOKABLE_HOUR_CATEGORIES, humanize } from '@gggs/shared/models';
 import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
 import { CopyTimesheetDialog, type CopiedLines } from './copy-timesheet-dialog';
@@ -39,7 +39,7 @@ interface Column {
     @if (view(); as v) {
       <section class="panel stack">
         <div class="toolbar ts__summary">
-          <gggs-status-badge [status]="v.timesheet.status" />
+          <gggs-status-badge [status]="partlyApproved() ? 'Partly approved' : v.timesheet.status" />
           @if (v.timesheet.isLocked) {
             <gggs-status-badge status="Locked" />
           }
@@ -58,6 +58,19 @@ interface Column {
           }
           <span class="muted">{{ v.rules.minHoursPerDay | number: '1.0-2' }} hours a day expected</span>
         </div>
+
+        @if (v.approvals.length) {
+          <ul class="ts__shares" aria-label="Approvals">
+            @for (share of v.approvals; track share.id) {
+              <li class="ts__share">
+                <strong>{{ share.projectCode ?? 'Non-project time' }}</strong>
+                <span>{{ share.hours | number: '1.0-2' }} h</span>
+                <gggs-status-badge [status]="share.status" />
+                <span class="muted">{{ shareNote(share) }}</span>
+              </li>
+            }
+          </ul>
+        }
 
         <div class="toolbar">
           @if (editable()) {
@@ -136,7 +149,7 @@ interface Column {
                       </td>
                       <td class="ts__task">
                         {{ row.title }}
-                        <select class="ts__kind" [attr.aria-label]="'Kind of hours for ' + row.title" [disabled]="!editable()" (change)="setCategory(row.id, $any($event.target).value)">
+                        <select class="ts__kind" [attr.aria-label]="'Kind of hours for ' + row.title" [disabled]="!canEdit(row)" (change)="setCategory(row.id, $any($event.target).value)">
                           @for (category of categoriesFor(row); track category) {
                             <option [value]="category" [selected]="category === row.category">{{ humanize(category) }}</option>
                           }
@@ -152,7 +165,7 @@ interface Column {
                               step="0.25"
                               [attr.aria-label]="row.title + ', hours on ' + column.day.date"
                               [value]="row.cells[column.index].hours ?? ''"
-                              [disabled]="!editable()"
+                              [disabled]="!canEdit(row)"
                               (input)="setHours(row.id, column.index, $any($event.target).value)"
                             />
                             @if (dayIndex() === null) {
@@ -171,7 +184,7 @@ interface Column {
                         </td>
                       }
                       @if (dayIndex() !== null) {
-                        <td><input type="text" maxlength="500" class="ts__day-note" [attr.aria-label]="'Note for ' + row.title" [value]="row.cells[dayIndex()!].note" [disabled]="!editable()" (input)="setNote(row.id, dayIndex()!, $any($event.target).value)" /></td>
+                        <td><input type="text" maxlength="500" class="ts__day-note" [attr.aria-label]="'Note for ' + row.title" [value]="row.cells[dayIndex()!].note" [disabled]="!canEdit(row)" (input)="setNote(row.id, dayIndex()!, $any($event.target).value)" /></td>
                       }
                       <td class="ts__num">{{ rowTotal(row) | number: '1.2-2' }}</td>
                     </tr>
@@ -230,7 +243,7 @@ interface Column {
           </div>
         } @else if (v.timesheet.status === 'Submitted') {
           <div class="toolbar">
-            <span class="muted">With your approver since {{ v.timesheet.submittedDate | date: 'd MMM, HH:mm' }}.</span>
+            <span class="muted">Submitted {{ v.timesheet.submittedDate | date: 'd MMM, HH:mm' }}. Anything already approved stays approved if you withdraw.</span>
             <span class="ts__spacer"></span>
             <button type="button" class="btn" [disabled]="busy()" (click)="withdraw()">Withdraw to edit</button>
           </div>
@@ -256,10 +269,10 @@ interface Column {
       </section>
 
       <gggs-copy-timesheet-dialog [(visible)]="copyOpen" [targets]="v.targets" [week]="weekStart()" [days]="v.days" (copied)="applyCopy($event)" />
-      <gggs-form-dialog [(visible)]="noteOpen" [title]="noteTitle()" [saveDisabled]="!editable()" (save)="saveNote()">
+      <gggs-form-dialog [(visible)]="noteOpen" [title]="noteTitle()" [saveDisabled]="!noteEditable()" (save)="saveNote()">
         <label class="field">
           <span class="field__label">Note</span>
-          <textarea rows="3" maxlength="500" [value]="noteText()" [disabled]="!editable()" (input)="noteText.set($any($event.target).value)"></textarea>
+          <textarea rows="3" maxlength="500" [value]="noteText()" [disabled]="!noteEditable()" (input)="noteText.set($any($event.target).value)"></textarea>
         </label>
       </gggs-form-dialog>
     } @else if (error()) {
@@ -280,6 +293,21 @@ interface Column {
 
     .ts__summary {
       flex-wrap: wrap;
+    }
+
+    .ts__shares {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--gggs-space-2) var(--gggs-space-4);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .ts__share {
+      display: inline-flex;
+      gap: var(--gggs-space-2);
+      align-items: center;
     }
 
     .ts__mode {
@@ -467,6 +495,7 @@ export class MyTimesheetPage {
   protected readonly noteOpen = signal(false);
   protected readonly noteTitle = signal('');
   protected readonly noteText = signal('');
+  protected readonly noteEditable = signal(false);
   private noteAt: { rowId: number; day: number } | null = null;
   private nextId = 0;
   private readonly newId = () => this.nextId++;
@@ -474,6 +503,16 @@ export class MyTimesheetPage {
   protected readonly editable = computed(() => {
     const sheet = this.view()?.timesheet;
     return !!sheet && !sheet.isLocked && (sheet.status === 'Draft' || sheet.status === 'Rejected');
+  });
+
+  /** The projects whose hours are with an approver or approved; '' is default-project and non-project time. */
+  private readonly lockedShares = computed(
+    () => new Set((this.view()?.approvals ?? []).filter((share) => share.status === 'Submitted' || share.status === 'Approved').map((share) => share.projectId ?? '')),
+  );
+
+  protected readonly partlyApproved = computed(() => {
+    const shares = this.view()?.approvals ?? [];
+    return shares.some((share) => share.status === 'Approved') && shares.some((share) => share.status !== 'Approved');
   });
 
   /** A week that can no longer change shows only what was booked, not every line that could have been. */
@@ -538,6 +577,25 @@ export class MyTimesheetPage {
     return BOOKABLE_HOUR_CATEGORIES.includes(row.category) ? BOOKABLE_HOUR_CATEGORIES : [row.category, ...BOOKABLE_HOUR_CATEGORIES];
   }
 
+  /** A line can change while the week can, unless its project's hours are with an approver or approved. */
+  protected canEdit(row: GridRow): boolean {
+    return this.editable() && !this.lockedShares().has(row.isDefault ? '' : (row.projectId ?? ''));
+  }
+
+  protected shareNote(share: TimesheetApproval): string {
+    const who = share.ownerName ?? 'your approver';
+    switch (share.status) {
+      case 'Submitted':
+        return `With ${who}`;
+      case 'Approved':
+        return `Approved by ${who}`;
+      case 'Rejected':
+        return `Rejected by ${who}: correct it and submit again`;
+      default:
+        return 'Not submitted yet';
+    }
+  }
+
   protected toggleGroup(key: string): void {
     this.collapsed.update((collapsed) => {
       const next = new Set(collapsed);
@@ -572,6 +630,7 @@ export class MyTimesheetPage {
     this.noteAt = { rowId: row.id, day: column.index };
     this.noteTitle.set(`${row.title}, ${column.day.date}`);
     this.noteText.set(row.cells[column.index].note);
+    this.noteEditable.set(this.canEdit(row));
     this.noteOpen.set(true);
   }
 

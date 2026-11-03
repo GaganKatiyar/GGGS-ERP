@@ -97,6 +97,7 @@ const STATUSES: readonly TimesheetStatus[] = ['Draft', 'Submitted', 'Approved', 
                               <th scope="col" class="bank__num">Hours</th>
                               <th scope="col" class="bank__num">Billable</th>
                               <th scope="col">Approver</th>
+                              <th scope="col">Status</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -106,10 +107,15 @@ const STATUSES: readonly TimesheetStatus[] = ['Draft', 'Submitted', 'Approved', 
                                 <td class="bank__num">{{ project.hours | number: '1.2-2' }}</td>
                                 <td class="bank__num">{{ project.billableHours | number: '1.2-2' }}</td>
                                 <td>{{ project.approverName ?? 'Your approver' }}</td>
+                                <td>
+                                  @if (project.status) {
+                                    <gggs-status-badge [status]="project.status" />
+                                  }
+                                </td>
                               </tr>
                             } @empty {
                               <tr>
-                                <td colspan="4" class="muted">No hours booked.</td>
+                                <td colspan="5" class="muted">No hours booked.</td>
                               </tr>
                             }
                           </tbody>

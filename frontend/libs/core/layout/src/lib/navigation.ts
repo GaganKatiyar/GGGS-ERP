@@ -387,7 +387,7 @@ export const NAVIGATION: readonly NavItem[] = [
       { label: 'Capacity & demand', icon: 'pi pi-chart-bar', route: '/resources/capacity', permissions: ['resource.allocation.view'] },
       { label: 'Bench', icon: 'pi pi-pause-circle', route: '/resources/bench', permissions: ['resource.profile.view'] },
       { label: 'Utilization', icon: 'pi pi-gauge', route: '/resources/utilization', permissions: ['resource.utilization.view'] },
-      { label: 'Timesheet approvals', icon: 'pi pi-stopwatch', route: '/timesheets/approvals', permissions: ['timesheet.entry.approve'], feature: 'Timesheets' },
+      { label: 'Timesheet approvals', icon: 'pi pi-stopwatch', route: '/timesheets/approvals', permissions: ['timesheet.entry.approve', 'workflow.task.act'], feature: 'Timesheets' },
       { label: 'Transfers', icon: 'pi pi-arrow-right-arrow-left', route: '/resources/transfers', permissions: ['resource.allocation.view'] },
     ],
   },
