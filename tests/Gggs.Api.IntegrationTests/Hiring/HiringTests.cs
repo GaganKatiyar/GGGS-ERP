@@ -294,6 +294,40 @@ public sealed class HiringTests(PeopleOsApiFactory factory)
     }
 
     [Fact]
+    public async Task The_panel_hears_when_an_interview_is_scheduled_and_when_it_changes()
+    {
+        using HttpClient admin = await factory.CreateAdminClientAsync();
+        Guid department = await CoreHrApi.DepartmentAsync(admin);
+        Guid manager = await CoreHrApi.HireAsync(admin, department);
+        Guid panelist = await CoreHrApi.HireAsync(admin, department);
+        Guid joiner = await CoreHrApi.HireAsync(admin, department);
+        Guid requisitionId = (await OkAsync(await admin.PostAsJsonAsync("/api/v1/recruitment/requisitions", Requisition(department, hiringManager: manager), Ct))).GetProperty("id").GetGuid();
+        string candidate = CoreHrApi.Unique("Asha");
+        await OkAsync(await admin.PostAsJsonAsync("/api/v1/recruitment/candidates", new { Details = Candidate(candidate), Source = "Direct", RequisitionId = requisitionId }, Ct));
+        Guid applicationId = (await admin.GetFromJsonAsync<JsonElement[]>($"/api/v1/recruitment/applications?requisitionId={requisitionId}", Ct))!.ShouldHaveSingleItem().GetProperty("id").GetGuid();
+        object Interview(params Guid[] panel) => new
+        {
+            Round = "Technical 1",
+            ScheduledAt = new DateTime(2030, 3, 4, 4, 30, 0, DateTimeKind.Utc),
+            DurationMinutes = 60,
+            Mode = "Video",
+            Location = "https://meet.example/abc",
+            Panel = panel,
+        };
+
+        JsonElement scheduled = await OkAsync(await admin.PostAsJsonAsync($"/api/v1/recruitment/applications/{applicationId}/interviews", Interview(panelist), Ct));
+        Guid interviewId = scheduled.GetProperty("interviews")[0].GetProperty("id").GetGuid();
+        using HttpClient first = await PersonAsync(factory, panelist);
+        string inbox = (await first.GetFromJsonAsync<JsonElement>("/api/v1/notifications", Ct)).ToString();
+        inbox.ShouldContain(candidate);
+        inbox.ShouldContain($"/me/interviews/{interviewId}");
+
+        await OkAsync(await admin.PutAsJsonAsync($"/api/v1/recruitment/interviews/{interviewId}", Interview(panelist, joiner), Ct));
+        using HttpClient second = await PersonAsync(factory, joiner);
+        (await second.GetFromJsonAsync<JsonElement>("/api/v1/notifications", Ct)).ToString().ShouldContain(candidate);
+    }
+
+    [Fact]
     public async Task An_offer_cannot_skip_its_steps_and_a_declined_offer_closes_the_application()
     {
         using HttpClient admin = await factory.CreateAdminClientAsync();

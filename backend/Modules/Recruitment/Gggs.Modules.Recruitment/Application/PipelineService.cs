@@ -397,8 +397,9 @@ internal sealed class PipelineService(
             await TouchReferralAsync(application.CandidateId, application.Stage, cancellationToken);
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        // Before the save, because notifications commit with it.
         await NotifyPanelAsync(interview, application, interview.Panel, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
         return await ApplicationAsync(applicationId, cancellationToken);
     }
 
@@ -409,8 +410,8 @@ internal sealed class PipelineService(
         JobApplication application = await VisibleApplicationAsync(interview.ApplicationId, Permissions.Recruitment.ApplicationManage, tracked: false, cancellationToken);
         await EnsurePanelAsync(body.Panel, cancellationToken);
         interview.Reschedule(body.Round, body.ScheduledAt, body.DurationMinutes, body.Mode, body.Location, body.Panel, body.Notes);
-        await dbContext.SaveChangesAsync(cancellationToken);
         await NotifyPanelAsync(interview, application, interview.Panel, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
         return await ApplicationAsync(application.Id, cancellationToken);
     }
 

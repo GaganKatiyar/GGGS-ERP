@@ -214,6 +214,32 @@ public sealed class InvoluntaryExitTests(PeopleOsApiFactory factory)
     }
 
     [Fact]
+    public async Task The_hr_partner_hears_about_the_last_exit_proposed_in_a_run()
+    {
+        using HttpClient admin = await factory.CreateAdminClientAsync();
+        Guid department = await CoreHrApi.DepartmentAsync(admin);
+        Guid partner = await CoreHrApi.HireAsync(admin, department);
+
+        // Whatever is already due goes first, so this contract end is the only proposal in the next run.
+        await OkAsync(await admin.PostAsync("/api/v1/separation/exit-proposals/run", null, Ct));
+        HttpResponseMessage hired = await admin.PostAsJsonAsync("/api/v1/employees", new
+        {
+            FirstName = "Contract",
+            LastName = CoreHrApi.Unique("Person"),
+            JoiningDate = "2024-01-15",
+            Assignment = new { DepartmentId = department, HrbpEmployeeId = partner, EmploymentTypeCode = "FULL_TIME", WorkModeCode = "OFFICE" },
+        }, Ct);
+        hired.EnsureSuccessStatusCode();
+        Guid contractor = (await hired.Content.ReadFromJsonAsync<JsonElement>(Ct)).GetProperty("id").GetGuid();
+        (await admin.PutAsJsonAsync($"/api/v1/employees/{contractor}/contract-end", new { ContractEndDate = Iso(Today.AddDays(30)) }, Ct)).EnsureSuccessStatusCode();
+
+        (await OkAsync(await admin.PostAsync("/api/v1/separation/exit-proposals/run", null, Ct))).GetProperty("proposed").GetInt32().ShouldBe(1);
+
+        using HttpClient hr = await PersonAsync(factory, partner);
+        (await hr.GetFromJsonAsync<JsonElement>("/api/v1/notifications", Ct)).ToString().ShouldContain("the end of their contract");
+    }
+
+    [Fact]
     public async Task Retirements_and_contract_ends_are_proposed_and_wait_for_hr()
     {
         HttpClient admin = await factory.CreateAdminClientAsync();
