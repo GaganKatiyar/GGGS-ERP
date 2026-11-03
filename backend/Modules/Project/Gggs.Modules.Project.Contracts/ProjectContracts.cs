@@ -61,7 +61,7 @@ public interface IProjectDirectory
 }
 
 /// <summary>A milestone as billing sees it: achieved or not, and whether it is invoiced on achievement.</summary>
-public sealed record MilestoneFact(Guid Id, string Name, DateOnly PlannedDate, DateOnly? ActualDate, string Status, bool IsBillable);
+public sealed record MilestoneFact(Guid Id, string Name, DateOnly PlannedDate, DateOnly? ActualDate, string Status, bool IsBillable, bool RequiresAcceptance = false, DateOnly? AcceptedOn = null);
 
 /// <summary>A project's commercial facts (spec §74-77).</summary>
 public sealed record ProjectFinancialFacts(
@@ -82,7 +82,9 @@ public sealed record ProjectFinancialFacts(
     DateOnly EndDate,
     decimal ProgressPercent,
     IReadOnlyList<MilestoneFact> Milestones,
-    IReadOnlyList<ProjectAllocation> Team);
+    IReadOnlyList<ProjectAllocation> Team,
+    int DoneTasks = 0,
+    int DoneStoryPoints = 0);
 
 public sealed record ProjectAllocation(
     Guid MemberId,
@@ -99,7 +101,8 @@ public sealed record ProjectAllocation(
     bool Billable,
     decimal? BillingRate,
     decimal? CostRate,
-    bool IsActive);
+    bool IsActive,
+    decimal? MonthlyRate = null);
 
 /// <summary>A task someone can book to; <paramref name="Activity"/> is the epic or story it sits under, which the timesheet groups by.</summary>
 public sealed record TimesheetTask(Guid TaskId, string Code, string Title, string? Activity = null);

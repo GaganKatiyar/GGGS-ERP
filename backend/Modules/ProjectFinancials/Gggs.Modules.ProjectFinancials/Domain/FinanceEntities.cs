@@ -12,6 +12,9 @@ public enum CostCategory
     Expense = 3,
     Infrastructure = 4,
     Other = 5,
+
+    /// <summary>LLM APIs, GPUs and AI tool seats: on AI-based work, cost that hours do not show.</summary>
+    AiUsage = 6,
 }
 
 /// <summary>A project's budget for one kind of cost (spec §125 ProjectBudget).</summary>
@@ -288,17 +291,57 @@ public sealed class ProjectFinanceProfile : TenantAggregateRoot
     /// <summary>The highest budget threshold (90, 100) already alerted, so each goes out once.</summary>
     public int AlertedPercent { get; private set; }
 
+    /// <summary>The most a T&amp;M engagement may bill; revenue stops counting past it.</summary>
+    public decimal? NotToExceed { get; private set; }
+
+    public string? PoNumber { get; private set; }
+
+    public decimal? PoValue { get; private set; }
+
+    /// <summary>Hours a month's fee covers, on a retainer or managed service.</summary>
+    public decimal? IncludedHoursPerMonth { get; private set; }
+
+    /// <summary>The share of a month's unused hours that rolls into the next: 0 none, 100 all.</summary>
+    public int RolloverPercent { get; private set; }
+
+    /// <summary>What an hour beyond the bucket is billed at.</summary>
+    public decimal? OverageRate { get; private set; }
+
+    /// <summary>The highest cap threshold (75, 90, 100) already alerted, so each goes out once.</summary>
+    public int CapAlertedPercent { get; private set; }
+
+    public CommercialTerms Terms => new(NotToExceed, PoNumber, PoValue, IncludedHoursPerMonth, RolloverPercent, OverageRate);
+
     public IReadOnlyDictionary<Guid, decimal> MilestoneAmounts
         => System.Text.Json.JsonSerializer.Deserialize<Dictionary<Guid, decimal>>(MilestoneAmountsJson) ?? [];
 
     public static ProjectFinanceProfile For(Guid projectId) => new() { ProjectId = Guard.NotEmpty(projectId) };
 
-    public void Update(decimal? contractValue, decimal? retainerMonthlyFee, IReadOnlyDictionary<Guid, decimal>? milestoneAmounts)
+    public void Update(decimal? contractValue, decimal? retainerMonthlyFee, IReadOnlyDictionary<Guid, decimal>? milestoneAmounts, CommercialTerms? terms = null)
     {
-        if (contractValue < 0 || retainerMonthlyFee < 0 || (milestoneAmounts?.Values.Any(amount => amount < 0) ?? false))
+        CommercialTerms next = terms ?? new CommercialTerms();
+        if (contractValue < 0 || retainerMonthlyFee < 0 || (milestoneAmounts?.Values.Any(amount => amount < 0) ?? false)
+            || next.NotToExceed < 0 || next.PoValue < 0 || next.IncludedHoursPerMonth < 0 || next.OverageRate < 0)
         {
             throw new DomainRuleException("PROFILE_AMOUNTS", "Amounts cannot be negative.");
         }
+
+        if (next.RolloverPercent is < 0 or > 100)
+        {
+            throw new DomainRuleException("PROFILE_ROLLOVER", "Rollover is a share of the unused hours, from 0 to 100 percent.");
+        }
+
+        if (next.NotToExceed != NotToExceed)
+        {
+            CapAlertedPercent = 0;
+        }
+
+        NotToExceed = next.NotToExceed;
+        PoNumber = string.IsNullOrWhiteSpace(next.PoNumber) ? null : Guard.MaxLength(next.PoNumber.Trim(), 100);
+        PoValue = next.PoValue;
+        IncludedHoursPerMonth = next.IncludedHoursPerMonth;
+        RolloverPercent = next.RolloverPercent;
+        OverageRate = next.OverageRate;
 
         ContractValue = contractValue;
         RetainerMonthlyFee = retainerMonthlyFee;
@@ -308,6 +351,8 @@ public sealed class ProjectFinanceProfile : TenantAggregateRoot
     public void Alerted(int percent) => AlertedPercent = Math.Max(AlertedPercent, percent);
 
     public void ResetAlerts() => AlertedPercent = 0;
+
+    public void CapAlerted(int percent) => CapAlertedPercent = Math.Max(CapAlertedPercent, percent);
 }
 
 /// <summary>A month of a project's money, kept nightly so the financial dashboard can show a trend (spec §125 ProjectProfitability).</summary>

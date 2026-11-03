@@ -31,6 +31,7 @@ public sealed class ProjectModule : IModule
         services.AddScoped<GovernanceService>();
         services.AddScoped<InsightService>();
         services.AddScoped<DefaultProjectService>();
+        services.AddScoped<ProjectTemplateService>();
         services.AddScoped<ProjectCatalogSeeder>();
         services.AddScoped<IProjectDirectory, ProjectDirectory>();
         services.AddScoped<IProjectStaffing, ProjectStaffing>();

@@ -29,6 +29,7 @@ internal sealed class ProjectModel : IModuleModel
             entity.Property(project => project.Budget).HasPrecision(18, 2);
             entity.Property(project => project.RevenueTarget).HasPrecision(18, 2);
             entity.Property(project => project.CostBudget).HasPrecision(18, 2);
+            entity.Property(project => project.BaselineHours).HasPrecision(10, 2);
             entity.Property(project => project.Type).HasConversion<byte>();
             entity.Property(project => project.Stage).HasConversion<byte>();
             entity.Property(project => project.Status).HasConversion<byte>();
@@ -98,6 +99,21 @@ internal sealed class ProjectModel : IModuleModel
             entity.Ignore(member => member.DomainEvents);
         });
 
+        modelBuilder.Entity<ProjectTemplate>(entity =>
+        {
+            entity.ToTable("ProjectTemplate", Schema);
+            entity.Property(template => template.Code).HasMaxLength(32).IsRequired();
+            entity.Property(template => template.Name).HasMaxLength(100).IsRequired();
+            entity.Property(template => template.BillingType).HasConversion<byte>();
+            entity.Property(template => template.DefinitionJson).IsRequired();
+            entity.HasIndex(template => new { template.TenantId, template.Code })
+                .HasDatabaseName("UX_ProjectTemplate_TenantId_Code")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.Ignore(template => template.Definition);
+            entity.Ignore(template => template.DomainEvents);
+        });
+
         modelBuilder.Entity<ProjectPhase>(entity =>
         {
             entity.ToTable("ProjectPhase", Schema);
@@ -162,6 +178,8 @@ internal sealed class ProjectModel : IModuleModel
         modelBuilder.Entity<ProjectMilestone>(entity =>
         {
             entity.ToTable("ProjectMilestone", Schema);
+            entity.Property(milestone => milestone.AcceptedBy).HasMaxLength(200);
+            entity.Property(milestone => milestone.AcceptanceEvidence).HasMaxLength(2000);
             entity.Property(milestone => milestone.Name).HasMaxLength(200).IsRequired();
             entity.Property(milestone => milestone.Description).HasMaxLength(2000);
             entity.Property(milestone => milestone.Status).HasConversion<byte>();
@@ -326,6 +344,8 @@ internal static class ProjectData
         public DbSet<ProjectTeamMember> ProjectTeamMembers => db.Set<ProjectTeamMember>();
 
         public DbSet<ProjectPhase> ProjectPhases => db.Set<ProjectPhase>();
+
+        public DbSet<ProjectTemplate> ProjectTemplates => db.Set<ProjectTemplate>();
 
         public DbSet<BoardColumn> BoardColumns => db.Set<BoardColumn>();
 

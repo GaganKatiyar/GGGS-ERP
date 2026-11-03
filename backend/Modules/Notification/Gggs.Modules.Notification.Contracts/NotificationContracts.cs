@@ -73,6 +73,7 @@ public static class NotificationTemplates
     public const string CompensationRevisionDecided = "compensation.revision-decided";
     public const string BenefitEnrollmentDecided = "benefit.enrollment-decided";
     public const string ProjectBudgetAlert = "project.budget-alert";
+    public const string ProjectCapAlert = "project.cap-alert";
     public const string InterviewScheduled = "recruitment.interview-scheduled";
     public const string ReferralUpdate = "recruitment.referral-update";
     public const string OnboardingTaskAssigned = "onboarding.task-assigned";

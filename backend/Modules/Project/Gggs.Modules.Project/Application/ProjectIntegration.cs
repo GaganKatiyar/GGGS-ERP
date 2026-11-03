@@ -68,7 +68,7 @@ internal sealed class ProjectDirectory(AppDbContext dbContext, DefaultProjectSer
         return [.. rows.Select(row => new ProjectAllocation(
             row.member.Id, row.project.Id, row.project.Code, row.project.Name, row.project.Status.ToString(), row.member.EmployeeId, row.member.ProjectRoleId,
             row.RoleName, row.member.AllocationPercent, row.member.StartDate, row.member.EndDate, row.member.Billable, row.member.BillingRate,
-            row.member.CostRate, row.member.Status == TeamMemberStatus.Active))];
+            row.member.CostRate, row.member.Status == TeamMemberStatus.Active, row.member.MonthlyRate))];
     }
 
     public async Task<bool> IsOnTeamAsync(Guid projectId, Guid employeeId, DateOnly day, CancellationToken cancellationToken = default)
@@ -171,11 +171,13 @@ internal sealed class ProjectDirectory(AppDbContext dbContext, DefaultProjectSer
                 project.RevenueTarget, project.CostBudget, project.ClientId, project.ContractId, project.ProjectManagerEmployeeId, project.DepartmentId,
                 project.StartDate, project.EndDate, progress,
                 [.. milestones.Where(milestone => milestone.ProjectId == project.Id).Select(milestone => new MilestoneFact(
-                    milestone.Id, milestone.Name, milestone.PlannedDate, milestone.ActualDate, milestone.Status.ToString(), milestone.IsBillable))],
+                    milestone.Id, milestone.Name, milestone.PlannedDate, milestone.ActualDate, milestone.Status.ToString(), milestone.IsBillable, milestone.RequiresAcceptance, milestone.AcceptedOn))],
                 [.. team.Where(row => row.member.ProjectId == project.Id).Select(row => new ProjectAllocation(
                     row.member.Id, project.Id, project.Code, project.Name, project.Status.ToString(), row.member.EmployeeId, row.member.ProjectRoleId,
                     row.RoleName, row.member.AllocationPercent, row.member.StartDate, row.member.EndDate, row.member.Billable, row.member.BillingRate,
-                    row.member.CostRate, row.member.Status == TeamMemberStatus.Active))]);
+                    row.member.CostRate, row.member.Status == TeamMemberStatus.Active, row.member.MonthlyRate))],
+                tasks.Count(task => task.ProjectId == project.Id && task.Done && task.Type != TaskType.Epic && task.Type != TaskType.Story),
+                tasks.Where(task => task.ProjectId == project.Id && task.Done && task.Type != TaskType.Epic).Sum(task => task.StoryPoints ?? 0));
         })];
     }
 }
@@ -222,7 +224,7 @@ internal static class ProjectCatalog
 }
 
 /// <summary>Gives the current tenant every catalog project role it lacks, and its health thresholds row.</summary>
-public sealed class ProjectCatalogSeeder(AppDbContext dbContext, DefaultProjectService defaults, ILogger<ProjectCatalogSeeder> logger)
+public sealed class ProjectCatalogSeeder(AppDbContext dbContext, DefaultProjectService defaults, ProjectTemplateService templates, ILogger<ProjectCatalogSeeder> logger)
 {
     public async Task<int> SeedCurrentTenantAsync(CancellationToken cancellationToken = default)
     {
@@ -256,6 +258,7 @@ public sealed class ProjectCatalogSeeder(AppDbContext dbContext, DefaultProjectS
         }
 
         await defaults.EnsureAllAsync(cancellationToken);
+        await templates.SeedCurrentTenantAsync(cancellationToken);
 
         return added;
     }
@@ -360,19 +363,21 @@ internal sealed class ProjectHealthSweep(ITenantFanOutScheduler fanOut)
     public Task RunAsync() => fanOut.FanOutAsync<ProjectHealthJob>((job, tenantId) => job.RunAsync(tenantId));
 }
 
-/// <summary>At start-up: gives every tenant the default projects it lacks, so people in existing organisations can book to them.</summary>
-[PlatformJob("Default projects: fans out one check per active tenant, creating only what is missing.")]
+/// <summary>At start-up: gives every tenant the default projects and templates it lacks.</summary>
+[PlatformJob("Project catalog: fans out one check per active tenant, creating only what is missing.")]
 internal sealed class DefaultProjectSweep(ITenantFanOutScheduler fanOut)
 {
     public Task RunAsync() => fanOut.FanOutAsync<DefaultProjectJob>((job, tenantId) => job.RunAsync(tenantId));
 }
 
-internal sealed class DefaultProjectJob(DefaultProjectService defaults)
+internal sealed class DefaultProjectJob(ProjectCatalogSeeder seeder)
 {
     public async Task RunAsync(Guid tenantId)
     {
         _ = tenantId;
-        await defaults.EnsureAllAsync(CancellationToken.None);
+
+        // Roles, default projects and templates added since this organisation was set up.
+        await seeder.SeedCurrentTenantAsync(CancellationToken.None);
     }
 }
 

@@ -16,6 +16,21 @@ public sealed record TaskCounts(int Total, int Open, int Done, int Overdue, IRea
 
 public sealed record RaidCounts(int OpenRisks, int HighRisks, int OpenIssues, int CriticalIssues, int OpenAssumptions, int OpenDependencies);
 
+/// <summary>The scope baseline, moved by approved change requests, against where the project stands now.</summary>
+public sealed record BaselineView(
+    DateOnly BaselinedOn,
+    DateOnly BaselineEndDate,
+    DateOnly AgreedEndDate,
+    DateOnly CurrentEndDate,
+    int ScheduleVarianceDays,
+    decimal BaselineHours,
+    decimal AgreedHours,
+    decimal EstimatedHours,
+    decimal ActualHours,
+    decimal EffortVarianceHours,
+    int ApprovedChanges,
+    decimal ApprovedChangeCost);
+
 public sealed record ProjectDashboard(
     ProjectItem Project,
     HealthView Health,
@@ -30,7 +45,8 @@ public sealed record ProjectDashboard(
     SprintItem? ActiveSprint,
     IReadOnlyList<BurndownPoint> Burndown,
     IReadOnlyList<VelocityPoint> Velocity,
-    IReadOnlyList<PhaseItem> Phases);
+    IReadOnlyList<PhaseItem> Phases,
+    BaselineView? Baseline = null);
 
 /// <summary>Project health (spec §78) and the project dashboard (spec §79, §120).</summary>
 internal sealed class InsightService(
@@ -76,6 +92,42 @@ internal sealed class InsightService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return open.Count;
+    }
+
+    /// <summary>Fixes the plan as it stands as the baseline, or fixes it again after a re-plan.</summary>
+    public async Task<BaselineView> CaptureBaselineAsync(Guid projectId, CancellationToken cancellationToken)
+    {
+        ProjectEntity project = await access.LoadAsync(projectId, Permissions.Project.Manage, track: true, cancellationToken);
+        project.CaptureBaseline(await projects.EstimatedHoursAsync(projectId, cancellationToken), await clock.TodayAsync(cancellationToken));
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return (await BaselineAsync(project, cancellationToken))!;
+    }
+
+    private async Task<BaselineView?> BaselineAsync(ProjectEntity project, CancellationToken cancellationToken)
+    {
+        if (project.BaselinedOn is not { } baselinedOn || project.BaselineEndDate is not { } baselineEnd)
+        {
+            return null;
+        }
+
+        var changes = await dbContext.ChangeRequests.AsNoTracking()
+            .Where(change => change.ProjectId == project.Id
+                && (change.Status == ChangeRequestStatus.Approved || change.Status == ChangeRequestStatus.Implementing || change.Status == ChangeRequestStatus.Testing || change.Status == ChangeRequestStatus.Closed))
+            .Select(change => new { change.ScheduleImpactDays, change.EstimatedHours, change.EstimatedCost })
+            .ToListAsync(cancellationToken);
+        var effort = await dbContext.ProjectTasks.AsNoTracking()
+            .Where(task => task.ProjectId == project.Id && task.Type != TaskType.Epic && task.Type != TaskType.Story)
+            .GroupBy(_ => 1)
+            .Select(group => new { Estimated = group.Sum(task => task.EstimatedHours ?? 0), Actual = group.Sum(task => task.ActualHours ?? 0) })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        DateOnly agreedEnd = baselineEnd.AddDays(changes.Sum(change => change.ScheduleImpactDays ?? 0));
+        decimal baselineHours = project.BaselineHours ?? 0;
+        decimal agreedHours = baselineHours + changes.Sum(change => change.EstimatedHours ?? 0);
+        decimal actual = effort?.Actual ?? 0;
+        return new BaselineView(
+            baselinedOn, baselineEnd, agreedEnd, project.TargetEndDate, project.TargetEndDate.DayNumber - agreedEnd.DayNumber, baselineHours, agreedHours, effort?.Estimated ?? 0, actual,
+            actual - agreedHours, changes.Count, changes.Sum(change => change.EstimatedCost ?? 0));
     }
 
     public async Task<ProjectDashboard> DashboardAsync(Guid projectId, CancellationToken cancellationToken)
@@ -126,7 +178,8 @@ internal sealed class InsightService(
             active,
             active is null ? [] : await planning.BurndownAsync(projectId, active.Id, cancellationToken),
             await planning.VelocityAsync(projectId, cancellationToken),
-            await projects.PhasesAsync(projectId, cancellationToken));
+            await projects.PhasesAsync(projectId, cancellationToken),
+            await BaselineAsync(project, cancellationToken));
     }
 
     // ----- Internals ----------------------------------------------------------------------------

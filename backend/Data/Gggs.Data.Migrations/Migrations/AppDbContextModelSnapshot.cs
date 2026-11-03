@@ -12413,6 +12413,16 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<DateOnly?>("ActualEndDate")
                         .HasColumnType("date");
 
+                    b.Property<DateOnly?>("BaselineEndDate")
+                        .HasColumnType("date");
+
+                    b.Property<decimal?>("BaselineHours")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateOnly?>("BaselinedOn")
+                        .HasColumnType("date");
+
                     b.Property<byte>("BillingType")
                         .HasColumnType("tinyint");
 
@@ -12908,6 +12918,17 @@ namespace Gggs.Data.Migrations.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AcceptanceEvidence")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("AcceptedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateOnly?>("AcceptedOn")
+                        .HasColumnType("date");
+
                     b.Property<DateOnly?>("ActualDate")
                         .HasColumnType("date");
 
@@ -12961,6 +12982,9 @@ namespace Gggs.Data.Migrations.Migrations
 
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("RequiresAcceptance")
+                        .HasColumnType("bit");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -13461,6 +13485,10 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<DateTime?>("ModifiedDate")
                         .HasColumnType("datetime2(3)");
 
+                    b.Property<decimal?>("MonthlyRate")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -13509,6 +13537,81 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasFilter("[Status] = 1 AND [IsDeleted] = 0");
 
                     b.ToTable("ProjectTeamMember", "prj");
+
+                    b.HasAnnotation("Gggs:TenantOwned", true);
+                });
+
+            modelBuilder.Entity("Gggs.Modules.Project.Domain.ProjectTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("BillingType")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("DefinitionJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("TenantId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("UX_ProjectTemplate_TenantId_Code")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_ProjectTemplate_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.ToTable("ProjectTemplate", "prj");
 
                     b.HasAnnotation("Gggs:TenantOwned", true);
                 });
@@ -14094,6 +14197,9 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<int>("AlertedPercent")
                         .HasColumnType("int");
 
+                    b.Property<int>("CapAlertedPercent")
+                        .HasColumnType("int");
+
                     b.Property<decimal?>("ContractValue")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
@@ -14109,6 +14215,10 @@ namespace Gggs.Data.Migrations.Migrations
 
                     b.Property<DateTime?>("DeletedDate")
                         .HasColumnType("datetime2(3)");
+
+                    b.Property<decimal?>("IncludedHoursPerMonth")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -14126,12 +14236,31 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<DateTime?>("ModifiedDate")
                         .HasColumnType("datetime2(3)");
 
+                    b.Property<decimal?>("NotToExceed")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("OverageRate")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("PoNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal?>("PoValue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal?>("RetainerMonthlyFee")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("RolloverPercent")
+                        .HasColumnType("int");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()

@@ -61,6 +61,12 @@ public enum ProjectBillingType
     Milestone = 3,
     Retainer = 4,
     NonBillable = 5,
+
+    /// <summary>A monthly rate for each person, prorated by the days they are on the project.</summary>
+    DedicatedTeam = 6,
+
+    /// <summary>A monthly fee under an SLA, with an optional bucket of hours.</summary>
+    ManagedService = 7,
 }
 
 public enum Confidentiality
@@ -193,6 +199,13 @@ public sealed class Project : TenantAggregateRoot
     public byte? ClientSatisfaction { get; private set; }
 
     public DateOnly? ClientSatisfactionOn { get; private set; }
+
+    /// <summary>When the plan was fixed as the scope baseline; change requests move it from here.</summary>
+    public DateOnly? BaselinedOn { get; private set; }
+
+    public DateOnly? BaselineEndDate { get; private set; }
+
+    public decimal? BaselineHours { get; private set; }
 
     public int TaskSequence { get; private set; }
 
@@ -327,6 +340,14 @@ public sealed class Project : TenantAggregateRoot
         return previous;
     }
 
+    /// <summary>Fixes the plan as it stands now: the committed end date and the estimated effort.</summary>
+    public void CaptureBaseline(decimal estimatedHours, DateOnly today)
+    {
+        BaselinedOn = today;
+        BaselineEndDate = EndDate;
+        BaselineHours = estimatedHours;
+    }
+
     public void RecordHealth(HealthRating overall, DateOnly assessedOn)
     {
         HealthStatus = overall;
@@ -457,7 +478,8 @@ public sealed record TeamAssignment(
     bool Billable,
     decimal? BillingRate,
     decimal? CostRate,
-    string? Notes);
+    string? Notes,
+    decimal? MonthlyRate = null);
 
 /// <summary>Someone on a project (spec §41): their role, share of time, dates and rates.</summary>
 public sealed class ProjectTeamMember : TenantAggregateRoot
@@ -485,6 +507,9 @@ public sealed class ProjectTeamMember : TenantAggregateRoot
 
     /// <summary>What an hour costs the company; project financials (M7) build on it.</summary>
     public decimal? CostRate { get; private set; }
+
+    /// <summary>What the client pays a month for this seat, on a dedicated team.</summary>
+    public decimal? MonthlyRate { get; private set; }
 
     public TeamMemberStatus Status { get; private set; }
 
@@ -516,7 +541,7 @@ public sealed class ProjectTeamMember : TenantAggregateRoot
             throw new DomainRuleException("PROJECT_TEAM_DATES", "The end date is before the start date.");
         }
 
-        if (assignment.BillingRate is < 0 || assignment.CostRate is < 0)
+        if (assignment.BillingRate is < 0 || assignment.CostRate is < 0 || assignment.MonthlyRate is < 0)
         {
             throw new DomainRuleException("PROJECT_RATE", "Rates cannot be negative.");
         }
@@ -528,6 +553,7 @@ public sealed class ProjectTeamMember : TenantAggregateRoot
         Billable = assignment.Billable;
         BillingRate = assignment.BillingRate;
         CostRate = assignment.CostRate;
+        MonthlyRate = assignment.MonthlyRate;
         Notes = Project.Clean(assignment.Notes, 500);
     }
 

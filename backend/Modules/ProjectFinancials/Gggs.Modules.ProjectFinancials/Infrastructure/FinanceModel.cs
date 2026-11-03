@@ -68,6 +68,12 @@ internal sealed class FinanceModel : IModuleModel
             entity.ToTable("ProjectFinanceProfile", Schema);
             entity.Property(profile => profile.ContractValue).HasPrecision(18, 2);
             entity.Property(profile => profile.RetainerMonthlyFee).HasPrecision(18, 2);
+            entity.Property(profile => profile.NotToExceed).HasPrecision(18, 2);
+            entity.Property(profile => profile.PoNumber).HasMaxLength(100);
+            entity.Property(profile => profile.PoValue).HasPrecision(18, 2);
+            entity.Property(profile => profile.IncludedHoursPerMonth).HasPrecision(8, 2);
+            entity.Property(profile => profile.OverageRate).HasPrecision(18, 2);
+            entity.Ignore(profile => profile.Terms);
             entity.Property(profile => profile.MilestoneAmountsJson).IsRequired();
             entity.HasIndex(profile => new { profile.TenantId, profile.ProjectId })
                 .HasDatabaseName("UX_ProjectFinanceProfile_TenantId_Project")

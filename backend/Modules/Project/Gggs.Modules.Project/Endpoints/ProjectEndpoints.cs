@@ -71,6 +71,8 @@ internal static class ProjectEndpoints
             .WithName("ProjectHistory").RequirePermission(Permissions.Project.View);
         group.MapGet("/{id:guid}/dashboard", async (Guid id, InsightService insights, CancellationToken ct) => TypedResults.Ok(await insights.DashboardAsync(id, ct)))
             .WithName("ProjectDashboard").RequirePermission(Permissions.Project.View);
+        group.MapPost("/{id:guid}/baseline", async (Guid id, InsightService insights, CancellationToken ct) => TypedResults.Ok(await insights.CaptureBaselineAsync(id, ct)))
+            .WithName("CaptureProjectBaseline").RequirePermission(Permissions.Project.Manage);
         group.MapGet("/{id:guid}/health", async (Guid id, InsightService insights, CancellationToken ct) => TypedResults.Ok(await insights.HealthAsync(id, ct)))
             .WithName("ProjectHealth").RequirePermission(Permissions.Project.View);
         group.MapPost("/{id:guid}/health/assess", async (Guid id, InsightService insights, CancellationToken ct) => TypedResults.Ok(await insights.AssessAsync(id, ct)))
@@ -184,6 +186,9 @@ internal static class ProjectEndpoints
         group.MapPost("/{id:guid}/milestones/{milestoneId:guid}/achieve", async (Guid id, Guid milestoneId, AchieveBody body, PlanningService planning, CancellationToken ct) =>
                 TypedResults.Ok(await planning.AchieveMilestoneAsync(id, milestoneId, body.On, ct)))
             .WithName("AchieveMilestone").RequirePermission(Permissions.Project.MilestoneManage);
+        group.MapPost("/{id:guid}/milestones/{milestoneId:guid}/accept", async (Guid id, Guid milestoneId, AcceptBody body, PlanningService planning, CancellationToken ct) =>
+                TypedResults.Ok(await planning.AcceptMilestoneAsync(id, milestoneId, body, ct)))
+            .WithName("AcceptMilestone").RequirePermission(Permissions.Project.MilestoneManage);
         group.MapDelete("/{id:guid}/milestones/{milestoneId:guid}", async (Guid id, Guid milestoneId, PlanningService planning, CancellationToken ct) =>
             {
                 await planning.DeleteMilestoneAsync(id, milestoneId, ct);
@@ -300,6 +305,11 @@ internal static class ProjectEndpoints
                 return TypedResults.NoContent();
             })
             .WithName("DeactivateProjectRole").RequirePermission(Permissions.Project.SettingsManage);
+        group.MapGet("/templates", async (ProjectTemplateService templates, CancellationToken ct) => TypedResults.Ok(await templates.ListAsync(ct)))
+            .WithName("ListProjectTemplates").RequirePermission(Permissions.Project.View);
+        group.MapPut("/templates/{templateId:guid}", async (Guid templateId, ProjectTemplateBody body, ProjectTemplateService templates, CancellationToken ct) =>
+                TypedResults.Ok(await templates.SaveAsync(templateId, body, ct)))
+            .WithName("SaveProjectTemplate").RequirePermission(Permissions.Project.SettingsManage);
         group.MapGet("/default-projects", async (DefaultProjectService defaults, CancellationToken ct) => TypedResults.Ok(await defaults.ListAsync(ct)))
             .WithName("ListDefaultProjects").RequirePermission(Permissions.Project.SettingsManage);
         group.MapPost("/default-projects/ensure", async (DefaultProjectService defaults, CancellationToken ct) =>

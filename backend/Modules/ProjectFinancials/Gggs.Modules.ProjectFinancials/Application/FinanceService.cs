@@ -80,7 +80,7 @@ public sealed record BudgetBody(IReadOnlyList<BudgetLineItem> Lines);
 
 public sealed record MilestoneBilling(Guid MilestoneId, string Name, DateOnly PlannedDate, DateOnly? ActualDate, string Status, bool IsBillable, decimal? Amount);
 
-public sealed record ProfileBody(decimal? ContractValue, decimal? RetainerMonthlyFee, IReadOnlyDictionary<Guid, decimal>? MilestoneAmounts);
+public sealed record ProfileBody(decimal? ContractValue, decimal? RetainerMonthlyFee, IReadOnlyDictionary<Guid, decimal>? MilestoneAmounts, CommercialTerms? Terms = null);
 
 public sealed record TrendItem(DateOnly Month, decimal Revenue, decimal Cost, decimal Billed, decimal Collected, decimal ForecastRevenue, decimal ForecastCost);
 
@@ -106,7 +106,8 @@ public sealed record ProjectFinance(
     decimal? RetainerMonthlyFee,
     IReadOnlyList<MilestoneBilling> Milestones,
     IReadOnlyList<TrendItem> Trend,
-    bool CanManage);
+    bool CanManage,
+    CommercialTerms? Terms = null);
 
 /// <summary>
 /// Project financials (spec §74-77, §125): budget by category, rate cards, non-labour costs, invoices,
@@ -176,7 +177,8 @@ internal sealed class FinanceService(
                 milestone.Id, milestone.Name, milestone.PlannedDate, milestone.ActualDate, milestone.Status, milestone.IsBillable, milestoneAmounts.TryGetValue(milestone.Id, out decimal amount) ? amount : null))],
             [.. (await dbContext.ProjectFinancialSnapshots.AsNoTracking().Where(row => row.ProjectId == projectId).OrderBy(row => row.Month).ToListAsync(cancellationToken))
                 .Select(row => new TrendItem(row.Month, row.Revenue, row.Cost, row.Billed, row.Collected, row.ForecastRevenue, row.ForecastCost))],
-            await projectPermissions.CanAsync(projectId, Permissions.Project.FinancialsManage, cancellationToken));
+            await projectPermissions.CanAsync(projectId, Permissions.Project.FinancialsManage, cancellationToken),
+            profile?.Terms ?? new CommercialTerms());
     }
 
     // ----- Budget, profile, rates, costs, invoices ----------------------------------------------
@@ -215,7 +217,7 @@ internal sealed class FinanceService(
         ArgumentNullException.ThrowIfNull(body);
         await EnsureAsync(projectId, Permissions.Project.FinancialsManage, cancellationToken);
         ProjectFinanceProfile profile = await ProfileAsync(projectId, cancellationToken);
-        profile.Update(body.ContractValue, body.RetainerMonthlyFee, body.MilestoneAmounts);
+        profile.Update(body.ContractValue, body.RetainerMonthlyFee, body.MilestoneAmounts, body.Terms);
         await dbContext.SaveChangesAsync(cancellationToken);
         return await ProjectAsync(projectId, cancellationToken);
     }
@@ -354,7 +356,31 @@ internal sealed class FinanceService(
 
             snapshot.Record(summary.Revenue, summary.ActualCost, summary.Billed, summary.Collected, summary.ForecastRevenue, summary.ForecastCost);
 
-            if (summary.Budget <= 0 || fact.ProjectManagerEmployeeId is not { } manager)
+            if (fact.ProjectManagerEmployeeId is not { } manager)
+            {
+                continue;
+            }
+
+            int capThreshold = CommercialRules.CapThreshold(summary.CapUsedPercent);
+            if (capThreshold > 0 && profiles.TryGetValue(fact.Id, out ProjectFinanceProfile? capped) && capThreshold > capped.CapAlertedPercent)
+            {
+                await notifier.NotifyAsync(
+                    new NotificationRequest(
+                        NotificationTemplates.ProjectCapAlert,
+                        [new NotificationRecipient(manager)],
+                        new Dictionary<string, string>
+                        {
+                            ["projectCode"] = fact.Code,
+                            ["projectName"] = fact.Name,
+                            ["percent"] = capThreshold.ToString(CultureInfo.InvariantCulture),
+                            ["cap"] = (capped.NotToExceed ?? 0).ToString("N0", CultureInfo.InvariantCulture),
+                        },
+                        $"/projects/{fact.Id}?tab=financials"),
+                    cancellationToken);
+                capped.CapAlerted(capThreshold);
+            }
+
+            if (summary.Budget <= 0)
             {
                 continue;
             }
@@ -417,7 +443,10 @@ internal sealed class FinanceService(
             decimal? contract = profile?.ContractValue ?? (fact.ContractId is { } contractId ? contractValues.GetValueOrDefault(contractId)?.Value : null);
             return FinanceCalculator.Calculate(new FinanceInput(
                 fact, contract, profile?.RetainerMonthlyFee, profile?.MilestoneAmounts ?? new Dictionary<Guid, decimal>(), [.. hours[fact.Id]], [.. rates[fact.Id]],
-                [.. costs[fact.Id]], [.. invoices[fact.Id]], [.. budgets[fact.Id]], today));
+                [.. costs[fact.Id]], [.. invoices[fact.Id]], [.. budgets[fact.Id]], today)
+            {
+                Terms = profile?.Terms ?? new CommercialTerms(),
+            });
         });
     }
 

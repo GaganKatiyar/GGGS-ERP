@@ -134,7 +134,8 @@ public sealed record ProjectRequest(
     string? WorkModeCode,
     Confidentiality Confidentiality,
     DeliveryMethodology Methodology,
-    ProjectStage? Stage);
+    ProjectStage? Stage,
+    Guid? TemplateId = null);
 
 public sealed record StageBody(ProjectStage Stage, string? Comment);
 
@@ -170,7 +171,8 @@ public sealed record TeamMemberItem(
     TeamMemberStatus Status,
     string? Notes,
     int TotalAllocationPercent,
-    bool OverAllocated);
+    bool OverAllocated,
+    decimal? MonthlyRate = null);
 
 public sealed record TeamMemberBody(
     Guid EmployeeId,
@@ -181,7 +183,8 @@ public sealed record TeamMemberBody(
     bool Billable,
     decimal? BillingRate,
     decimal? CostRate,
-    string? Notes);
+    string? Notes,
+    decimal? MonthlyRate = null);
 
 public sealed record ReleaseBody(DateOnly On);
 
@@ -224,7 +227,8 @@ internal sealed class ProjectService(
     INotifier notifier,
     IIntegrationEventPublisher publisher,
     ITenantClock clock,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ProjectTemplateService templates)
 {
     private static readonly Dictionary<string, Expression<Func<ProjectEntity, object?>>> Sortable = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -339,10 +343,17 @@ internal sealed class ProjectService(
         var project = ProjectEntity.Create(code, profile, request.Stage ?? ProjectStage.Planning);
         dbContext.Projects.Add(project);
 
-        int order = 0;
-        foreach ((string name, ColumnCategory category) in BoardColumn.Defaults)
+        if (await templates.DefinitionForAsync(request.TemplateId, request.BillingType, cancellationToken) is { } template)
         {
-            dbContext.BoardColumns.Add(BoardColumn.Create(project.Id, name, category, order++, null));
+            templates.Apply(project, template);
+        }
+        else
+        {
+            int order = 0;
+            foreach ((string name, ColumnCategory category) in BoardColumn.Defaults)
+            {
+                dbContext.BoardColumns.Add(BoardColumn.Create(project.Id, name, category, order++, null));
+            }
         }
 
         dbContext.ProjectStatusHistory.Add(ProjectStatusHistory.Record(project.Id, "Stage", "-", project.Stage.ToString(), "Project created", access.Me, Now));
@@ -368,6 +379,12 @@ internal sealed class ProjectService(
         ProjectStage previous = project.MoveToStage(body.Stage);
         if (previous != body.Stage)
         {
+            // Kick-off is when the plan is agreed, so that is what later changes are measured against.
+            if (project.BaselinedOn is null && body.Stage is ProjectStage.Kickoff or ProjectStage.Execution)
+            {
+                project.CaptureBaseline(await EstimatedHoursAsync(id, cancellationToken), await clock.TodayAsync(cancellationToken));
+            }
+
             dbContext.ProjectStatusHistory.Add(ProjectStatusHistory.Record(id, "Stage", previous.ToString(), body.Stage.ToString(), body.Comment, access.Me, Now));
             await dbContext.SaveChangesAsync(cancellationToken);
         }
@@ -765,6 +782,12 @@ internal sealed class ProjectService(
 
     // ----- Internals ----------------------------------------------------------------------------
 
+    /// <summary>The effort estimated on the work itself: epics and stories only add up what sits under them.</summary>
+    internal Task<decimal> EstimatedHoursAsync(Guid projectId, CancellationToken cancellationToken)
+        => dbContext.ProjectTasks.AsNoTracking()
+            .Where(task => task.ProjectId == projectId && task.Type != TaskType.Epic && task.Type != TaskType.Story)
+            .SumAsync(task => task.EstimatedHours ?? 0, cancellationToken);
+
     private async Task<ProjectProfile> ValidateAsync(ProjectRequest request, ProjectEntity? existing, CancellationToken cancellationToken)
     {
         if ((request.Type == ProjectType.DepartmentDefault) != (existing?.Type == ProjectType.DepartmentDefault))
@@ -865,7 +888,7 @@ internal sealed class ProjectService(
             ?? throw new NotFoundException(nameof(ProjectTeamMember), memberId);
 
     private static TeamAssignment ToAssignment(TeamMemberBody body)
-        => new(body.ProjectRoleId, body.StartDate, body.EndDate, body.AllocationPercent, body.Billable, body.BillingRate, body.CostRate, body.Notes);
+        => new(body.ProjectRoleId, body.StartDate, body.EndDate, body.AllocationPercent, body.Billable, body.BillingRate, body.CostRate, body.Notes, body.MonthlyRate);
 
     private static PhasePlan ToPlan(PhaseBody body, int sortOrder)
         => new(body.Name, sortOrder, body.StartDate, body.EndDate, body.OwnerEmployeeId, body.Budget, body.Status, body.Progress);
@@ -896,7 +919,7 @@ internal sealed class ProjectService(
             return new TeamMemberItem(
                 member.Id, member.EmployeeId, person?.DisplayName, person?.EmployeeCode, person?.Designation, member.ProjectRoleId,
                 roles.GetValueOrDefault(member.ProjectRoleId), member.StartDate, member.EndDate, member.AllocationPercent, member.Billable,
-                seeRates ? member.BillingRate : null, seeRates ? member.CostRate : null, member.Status, member.Notes, total, total > 100);
+                seeRates ? member.BillingRate : null, seeRates ? member.CostRate : null, member.Status, member.Notes, total, total > 100, seeRates ? member.MonthlyRate : null);
         })];
     }
 

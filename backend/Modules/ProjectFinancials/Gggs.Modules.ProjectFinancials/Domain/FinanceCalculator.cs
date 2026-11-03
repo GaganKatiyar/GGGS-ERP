@@ -15,7 +15,10 @@ public sealed record FinanceInput(
     IReadOnlyList<ProjectInvoice> Invoices,
     IReadOnlyList<ProjectBudgetLine> Budget,
     DateOnly Today,
-    decimal HoursPerDay = 8);
+    decimal HoursPerDay = 8)
+{
+    public CommercialTerms Terms { get; init; } = new();
+}
 
 public sealed record PersonLabour(Guid EmployeeId, decimal Hours, decimal BillableHours, decimal Cost, decimal Revenue, decimal? CostRate, decimal? BillingRate);
 
@@ -48,13 +51,32 @@ public sealed record FinanceSummary(
     int UnpricedHours,
     IReadOnlyList<PersonLabour> People,
     IReadOnlyList<MonthFinance> Months,
-    IReadOnlyList<CategoryFinance> Categories);
+    IReadOnlyList<CategoryFinance> Categories)
+{
+    /// <summary>Earned revenue against a T&amp;M cap, which can pass 100 to show how far over the work went.</summary>
+    public decimal? CapUsedPercent { get; init; }
+
+    /// <summary>Work past the cap: done, but not billable unless the cap is raised.</summary>
+    public decimal OverCapAmount { get; init; }
+
+    public decimal? PoBalance { get; init; }
+
+    public IReadOnlyList<RetainerMonth>? RetainerMonths { get; init; }
+
+    /// <summary>Billable people on a dedicated team with no monthly rate, so earning nothing.</summary>
+    public int UnpricedSeats { get; init; }
+
+    public decimal? CostPerDoneTask { get; init; }
+
+    public decimal? CostPerStoryPoint { get; init; }
+}
 
 /// <summary>
 /// Project costing and revenue (spec §74-76). Labour costs the hours booked times the cost rate;
-/// revenue follows the billing type - billable hours × billing rate for time and material, the
-/// contract value × progress for fixed price, achieved milestones for milestone billing, the monthly
-/// fee for a retainer. A rate card line for the person beats their team rate, which beats one for their role.
+/// revenue follows the billing type - billable hours × billing rate for time and material, up to any cap; the
+/// contract value × progress for fixed price; achieved (and where required, accepted) milestones for milestone
+/// billing; the monthly fee and any overage for a retainer or managed service; prorated monthly rates for a
+/// dedicated team. A rate card line for the person beats their team rate, which beats one for their role.
 /// </summary>
 public static class FinanceCalculator
 {
@@ -112,11 +134,30 @@ public static class FinanceCalculator
         // Revenue by billing type, and the months it falls in where that is meaningful.
         decimal revenue;
         decimal forecastRevenue;
+        decimal? capUsed = null;
+        decimal overCap = 0;
+        IReadOnlyList<RetainerMonth>? retainerMonths = null;
+        int unpricedSeats = 0;
         switch (project.BillingType)
         {
             case "TimeAndMaterial":
                 revenue = people.Values.Sum(person => person.Revenue);
                 forecastRevenue = revenue + Projection(input, billableOnly: true, useBillingRate: true);
+                if (input.Terms.NotToExceed is { } cap)
+                {
+                    capUsed = Percent(revenue, cap);
+                    overCap = Math.Max(0, revenue - cap);
+                    IReadOnlyDictionary<DateOnly, decimal> capped = CommercialRules.CapMonths(months.ToDictionary(pair => pair.Key, pair => pair.Value.Revenue), cap);
+                    foreach ((DateOnly month, decimal counted) in capped)
+                    {
+                        var current = months[month];
+                        months[month] = (current.Hours, current.Labour, current.Other, counted, current.Billed);
+                    }
+
+                    revenue = Math.Min(revenue, cap);
+                    forecastRevenue = Math.Min(forecastRevenue, cap);
+                }
+
                 break;
 
             case "FixedPrice":
@@ -126,11 +167,11 @@ public static class FinanceCalculator
 
             case "Milestone":
                 revenue = 0;
-                foreach (MilestoneFact milestone in project.Milestones.Where(milestone => milestone.Status == "Achieved" && input.MilestoneAmounts.ContainsKey(milestone.Id)))
+                foreach (MilestoneFact milestone in project.Milestones.Where(milestone => milestone.Status == "Achieved" && input.MilestoneAmounts.ContainsKey(milestone.Id) && (!milestone.RequiresAcceptance || milestone.AcceptedOn is not null)))
                 {
                     decimal amount = input.MilestoneAmounts[milestone.Id];
                     revenue += amount;
-                    DateOnly achieved = milestone.ActualDate ?? milestone.PlannedDate;
+                    DateOnly achieved = milestone.RequiresAcceptance ? milestone.AcceptedOn!.Value : milestone.ActualDate ?? milestone.PlannedDate;
                     DateOnly month = new(achieved.Year, achieved.Month, 1);
                     var current = months.GetValueOrDefault(month);
                     months[month] = (current.Hours, current.Labour, current.Other, current.Revenue + amount, current.Billed);
@@ -139,17 +180,38 @@ public static class FinanceCalculator
                 forecastRevenue = project.Milestones.Where(milestone => input.MilestoneAmounts.ContainsKey(milestone.Id)).Sum(milestone => input.MilestoneAmounts[milestone.Id]);
                 break;
 
-            case "Retainer":
+            case "Retainer" or "ManagedService":
                 decimal fee = input.RetainerMonthlyFee ?? 0;
                 DateOnly last = today < project.EndDate ? today : project.EndDate;
-                int elapsed = last < project.StartDate ? 0 : MonthsBetween(project.StartDate, last);
-                revenue = fee * elapsed;
-                forecastRevenue = fee * MonthsBetween(project.StartDate, project.EndDate);
-                for (int i = 0; i < elapsed; i++)
+                Dictionary<DateOnly, decimal> used = input.Hours.Where(row => row.Approved && row.Category == HourCategory.Billable)
+                    .GroupBy(row => new DateOnly(row.Date.Year, row.Date.Month, 1))
+                    .ToDictionary(group => group.Key, group => group.Sum(row => row.Hours));
+                retainerMonths = last < project.StartDate ? [] : CommercialRules.RetainerMonths(project.StartDate, last, fee, input.Terms, used);
+                revenue = retainerMonths.Sum(row => row.Revenue);
+                forecastRevenue = (fee * MonthsBetween(project.StartDate, project.EndDate)) + retainerMonths.Sum(row => row.OverageAmount);
+                foreach (RetainerMonth row in retainerMonths)
                 {
-                    DateOnly month = new DateOnly(project.StartDate.Year, project.StartDate.Month, 1).AddMonths(i);
-                    var current = months.GetValueOrDefault(month);
-                    months[month] = (current.Hours, current.Labour, current.Other, current.Revenue + fee, current.Billed);
+                    var current = months.GetValueOrDefault(row.Month);
+                    months[row.Month] = (current.Hours, current.Labour, current.Other, current.Revenue + row.Revenue, current.Billed);
+                }
+
+                break;
+
+            case "DedicatedTeam":
+                revenue = 0;
+                forecastRevenue = 0;
+                unpricedSeats = project.Team.Where(seat => seat.Billable && seat.IsActive && seat.MonthlyRate is null).Select(seat => seat.EmployeeId).Distinct().Count();
+                DateOnly earnedTo = today < project.EndDate ? today : project.EndDate;
+                foreach (ProjectAllocation seat in project.Team)
+                {
+                    foreach ((DateOnly month, decimal amount) in CommercialRules.SeatRevenueByMonth(seat, project.StartDate, earnedTo))
+                    {
+                        revenue += amount;
+                        var current = months.GetValueOrDefault(month);
+                        months[month] = (current.Hours, current.Labour, current.Other, current.Revenue + amount, current.Billed);
+                    }
+
+                    forecastRevenue += CommercialRules.SeatRevenueByMonth(seat, project.StartDate, project.EndDate).Values.Sum();
                 }
 
                 break;
@@ -183,7 +245,16 @@ public static class FinanceCalculator
             [.. people.Select(pair => new PersonLabour(pair.Key, pair.Value.Hours, pair.Value.Billable, Math.Round(pair.Value.Cost, 2), Math.Round(pair.Value.Revenue, 2), pair.Value.CostRate, pair.Value.BillingRate))
                 .OrderByDescending(person => person.Hours)],
             [.. months.OrderBy(pair => pair.Key).Select(pair => new MonthFinance(pair.Key, pair.Value.Hours, Math.Round(pair.Value.Labour, 2), pair.Value.Other, Math.Round(pair.Value.Revenue, 2), pair.Value.Billed))],
-            categories);
+            categories)
+        {
+            CapUsedPercent = capUsed,
+            OverCapAmount = Math.Round(overCap, 2),
+            PoBalance = input.Terms.PoValue is { } po ? Math.Round(po - billed, 2) : null,
+            RetainerMonths = retainerMonths,
+            UnpricedSeats = unpricedSeats,
+            CostPerDoneTask = project.DoneTasks > 0 ? Math.Round(actual / project.DoneTasks, 2) : null,
+            CostPerStoryPoint = project.DoneStoryPoints > 0 ? Math.Round(actual / project.DoneStoryPoints, 2) : null,
+        };
     }
 
     /// <summary>The cost and billing rate of an hour by this person on this day.</summary>

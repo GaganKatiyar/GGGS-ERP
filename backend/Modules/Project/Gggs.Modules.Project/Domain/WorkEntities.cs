@@ -303,7 +303,8 @@ public sealed record MilestonePlan(
     Guid? PhaseId,
     MilestoneStatus Status,
     int PercentComplete,
-    bool IsBillable);
+    bool IsBillable,
+    bool RequiresAcceptance = false);
 
 /// <summary>A checkpoint the project commits to (spec §46).</summary>
 public sealed class ProjectMilestone : TenantAggregateRoot
@@ -334,6 +335,17 @@ public sealed class ProjectMilestone : TenantAggregateRoot
     /// <summary>Invoiced on achievement; project billing (M7) picks these up.</summary>
     public bool IsBillable { get; private set; }
 
+    /// <summary>The client has to accept it before it counts as earned.</summary>
+    public bool RequiresAcceptance { get; private set; }
+
+    public DateOnly? AcceptedOn { get; private set; }
+
+    /// <summary>Who at the client accepted it.</summary>
+    public string? AcceptedBy { get; private set; }
+
+    /// <summary>What shows it was met: a sign-off email, a test report, an AI model's evaluation results.</summary>
+    public string? AcceptanceEvidence { get; private set; }
+
     public static ProjectMilestone Create(Guid projectId, MilestonePlan plan)
     {
         var milestone = new ProjectMilestone { ProjectId = Guard.NotEmpty(projectId) };
@@ -356,10 +368,14 @@ public sealed class ProjectMilestone : TenantAggregateRoot
         OwnerEmployeeId = plan.OwnerEmployeeId;
         PhaseId = plan.PhaseId;
         IsBillable = plan.IsBillable;
+        RequiresAcceptance = plan.RequiresAcceptance;
 
         if (plan.Status != MilestoneStatus.Achieved)
         {
             ActualDate = null;
+            AcceptedOn = null;
+            AcceptedBy = null;
+            AcceptanceEvidence = null;
         }
 
         Status = plan.Status;
@@ -376,6 +392,19 @@ public sealed class ProjectMilestone : TenantAggregateRoot
         Status = MilestoneStatus.Achieved;
         ActualDate = on;
         PercentComplete = 100;
+    }
+
+    /// <summary>The client's acceptance. A milestone accepted without having been marked achieved has plainly been reached.</summary>
+    public void Accept(DateOnly on, string acceptedBy, string? evidence)
+    {
+        if (Status != MilestoneStatus.Achieved)
+        {
+            Achieve(on);
+        }
+
+        AcceptedOn = on;
+        AcceptedBy = Guard.MaxLength(Guard.NotNullOrWhiteSpace(acceptedBy).Trim(), 200);
+        AcceptanceEvidence = Project.Clean(evidence, 2000);
     }
 
     public bool IsOpen => Status is MilestoneStatus.Planned or MilestoneStatus.InProgress;
