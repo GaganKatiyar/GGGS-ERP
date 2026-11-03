@@ -1,4 +1,6 @@
+using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.Web.Modules;
+using Gggs.Modules.Platform.Contracts;
 using Gggs.Modules.Workflow.Application;
 using Gggs.Modules.Workflow.Contracts;
 using Gggs.Modules.Workflow.Endpoints;
@@ -20,12 +22,16 @@ public sealed class WorkflowModule : IModule
         services.AddScoped<IWorkflowStarter>(provider => provider.GetRequiredService<WorkflowEngine>());
         services.AddScoped<IWorkflowTasks>(provider => provider.GetRequiredService<WorkflowEngine>());
         services.AddScoped<WorkflowQueries>();
+        services.AddScoped<WorkflowDefaultsSeeder>();
     }
 
     public void AddBackgroundServices(IServiceCollection services, ModuleContext context)
     {
         services.AddScoped<WorkflowSlaSweep>();
         services.AddScoped<WorkflowSlaJob>();
+        services.AddScoped<WorkflowDefaultsSweep>();
+        services.AddScoped<WorkflowDefaultsJob>();
+        services.AddGggsEventConsumer<TenantProvisionedIntegrationEvent, SeedWorkflowDefaultsOnTenantProvisioned>();
         services.AddHostedService<WorkflowJobRegistration>();
     }
 

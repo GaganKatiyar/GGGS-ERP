@@ -106,6 +106,26 @@ public sealed class Timesheet : TenantAggregateRoot
 
     public void AwaitApproval(Guid workflowInstanceId) => WorkflowInstanceId = workflowInstanceId;
 
+    /// <summary>Takes the status its approvals add up to; <paramref name="openRequest"/> is a request still open, if any.</summary>
+    public void Settle(TimesheetStatus status, Guid? openRequest, DateTime now)
+    {
+        Status = status;
+        WorkflowInstanceId = openRequest;
+        DecidedDate = status is TimesheetStatus.Approved or TimesheetStatus.Rejected ? now : null;
+    }
+
+    /// <summary>Notes a correction to approved hours (spec §71). Locked periods stay shut.</summary>
+    public void RecordCorrection(string reason, DateOnly? lockedThrough)
+    {
+        if (lockedThrough is { } locked && WeekStart <= locked)
+        {
+            throw new DomainRuleException("TIMESHEET_LOCKED", $"Timesheets up to {locked:d MMM yyyy} are locked.");
+        }
+
+        CorrectionCount++;
+        LastCorrectionReason = Guard.MaxLength(Guard.NotNullOrWhiteSpace(reason).Trim(), 500);
+    }
+
     public void Approve(DateTime now)
     {
         if (Status != TimesheetStatus.Submitted)
@@ -169,6 +189,9 @@ public sealed class TimesheetEntry : TenantAggregateRoot
 
     public Guid EmployeeId { get; private set; }
 
+    /// <summary>The share of the week this went to an approver in; none until it is submitted.</summary>
+    public Guid? ApprovalId { get; private set; }
+
     public DateOnly Date { get; private set; }
 
     public Guid? ProjectId { get; private set; }
@@ -183,6 +206,8 @@ public sealed class TimesheetEntry : TenantAggregateRoot
     public string? Activity { get; private set; }
 
     public string? Description { get; private set; }
+
+    public void AssignTo(Guid approvalId) => ApprovalId = approvalId;
 
     public static TimesheetEntry Book(Timesheet timesheet, DateOnly date, Guid? projectId, Guid? taskId, HourCategory category, decimal hours, string? activity, string? description)
     {

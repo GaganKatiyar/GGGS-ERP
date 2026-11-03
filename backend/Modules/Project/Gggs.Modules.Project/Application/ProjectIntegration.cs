@@ -31,7 +31,7 @@ internal sealed class ProjectDirectory(AppDbContext dbContext, DefaultProjectSer
             project => project.Id,
             project => new ProjectSummary(
                 project.Id, project.Code, project.Name, project.ClientId, project.Status.ToString(), project.Stage.ToString(),
-                project.ProjectManagerEmployeeId, project.StartDate, project.EndDate));
+                project.ProjectManagerEmployeeId, project.StartDate, project.EndDate, project.Type == ProjectType.DepartmentDefault));
     }
 
     public async Task<IReadOnlyList<ProjectMembership>> MembershipsAsync(Guid employeeId, CancellationToken cancellationToken = default)
@@ -314,9 +314,9 @@ internal sealed class ReturnChangeOnSendBack(GovernanceService governance) : IIn
 }
 
 /// <summary>Approved timesheet hours become tasks' actual hours (spec §70: timesheets feed the project).</summary>
-internal sealed class AddHoursOnTimesheetApproval(AppDbContext dbContext) : IIntegrationEventConsumer<TimesheetApprovedIntegrationEvent>
+internal sealed class AddHoursOnTimesheetApproval(AppDbContext dbContext) : IIntegrationEventConsumer<TimesheetHoursApprovedIntegrationEvent>
 {
-    public Task HandleAsync(TimesheetApprovedIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
+    public Task HandleAsync(TimesheetHoursApprovedIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(integrationEvent);
         return TaskHoursLedger.ApplyAsync(dbContext, integrationEvent.TaskHours, sign: 1, cancellationToken);

@@ -52,7 +52,7 @@ public sealed class ProjectModule : IModule
         services.AddGggsEventConsumer<WorkflowApprovedIntegrationEvent, ApproveChangeOnApproval>();
         services.AddGggsEventConsumer<WorkflowRejectedIntegrationEvent, RejectChangeOnRejection>();
         services.AddGggsEventConsumer<WorkflowSentBackIntegrationEvent, ReturnChangeOnSendBack>();
-        services.AddGggsEventConsumer<TimesheetApprovedIntegrationEvent, AddHoursOnTimesheetApproval>();
+        services.AddGggsEventConsumer<TimesheetHoursApprovedIntegrationEvent, AddHoursOnTimesheetApproval>();
         services.AddGggsEventConsumer<TimesheetReopenedIntegrationEvent, RemoveHoursOnTimesheetReopened>();
     }
 

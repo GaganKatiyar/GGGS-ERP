@@ -19233,6 +19233,107 @@ namespace Gggs.Data.Migrations.Migrations
                     b.HasAnnotation("Gggs:TenantOwned", true);
                 });
 
+            modelBuilder.Entity("Gggs.Modules.Timesheets.Domain.TimesheetApproval", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("BillableHours")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateTime?>("DecidedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Hours")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("OwnerEmployeeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime>("SubmittedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TimesheetId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("WeekStart")
+                        .HasColumnType("date");
+
+                    b.Property<Guid?>("WorkflowInstanceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("TimesheetId");
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_TimesheetApproval_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "OwnerEmployeeId", "Status")
+                        .HasDatabaseName("IX_TimesheetApproval_TenantId_Owner_Status");
+
+                    b.HasIndex("TenantId", "ProjectId", "Status")
+                        .HasDatabaseName("IX_TimesheetApproval_TenantId_Project_Status");
+
+                    b.HasIndex("TenantId", "TimesheetId", "ProjectId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_TimesheetApproval_TenantId_Timesheet_Project")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("TimesheetApproval", "ts");
+
+                    b.HasAnnotation("Gggs:TenantOwned", true);
+                });
+
             modelBuilder.Entity("Gggs.Modules.Timesheets.Domain.TimesheetEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -19242,6 +19343,9 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<string>("Activity")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid?>("ApprovalId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<byte>("Category")
                         .HasColumnType("tinyint");
@@ -19722,6 +19826,9 @@ namespace Gggs.Data.Migrations.Migrations
 
                     b.Property<DateTime?>("ModifiedDate")
                         .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("OwnerEmployeeId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("RequestedByUserId")
                         .HasColumnType("uniqueidentifier");
@@ -21897,6 +22004,15 @@ namespace Gggs.Data.Migrations.Migrations
                     b.HasOne("Gggs.Modules.Skills.Domain.Skill", null)
                         .WithMany()
                         .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Gggs.Modules.Timesheets.Domain.TimesheetApproval", b =>
+                {
+                    b.HasOne("Gggs.Modules.Timesheets.Domain.Timesheet", null)
+                        .WithMany()
+                        .HasForeignKey("TimesheetId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

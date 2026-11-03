@@ -26,11 +26,14 @@ internal sealed class WorkflowSlaJob(WorkflowEngine engine, ILogger<WorkflowSlaJ
 }
 
 /// <summary>Puts the sweep on the worker's recurring schedule at startup. Idempotent.</summary>
-internal sealed class WorkflowJobRegistration(IRecurringJobManager recurringJobs) : IHostedService
+internal sealed class WorkflowJobRegistration(IRecurringJobManager recurringJobs, IBackgroundJobClient backgroundJobs) : IHostedService
 {
     public Task StartAsync(CancellationToken cancellationToken)
     {
         recurringJobs.AddOrUpdate<WorkflowSlaSweep>(WorkflowSlaSweep.RecurringJobName, sweep => sweep.RunAsync(), "*/10 * * * *");
+
+        // Adds only approvals never set up, so queuing it at every start is harmless.
+        backgroundJobs.Enqueue<WorkflowDefaultsSweep>(sweep => sweep.RunAsync());
         return Task.CompletedTask;
     }
 

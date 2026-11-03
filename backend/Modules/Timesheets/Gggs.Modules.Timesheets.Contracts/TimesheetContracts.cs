@@ -37,10 +37,14 @@ public interface ITimesheetLedger
 
 public sealed record TaskHours(Guid TaskId, decimal Hours);
 
-/// <summary>A timesheet was approved: its hours count. Projects add them to their tasks' actual hours.</summary>
+/// <summary>One approver's share of a week was approved: its hours count. Projects add them to their tasks' actual hours.</summary>
+[MessageType("gggs.timesheets.hours-approved")]
+public sealed record TimesheetHoursApprovedIntegrationEvent(Guid TimesheetId, Guid EmployeeId, DateOnly WeekStart, Guid? ProjectId, IReadOnlyList<TaskHours> TaskHours) : IntegrationEvent;
+
+/// <summary>Every hour of a week is now approved.</summary>
 [MessageType("gggs.timesheets.approved")]
 public sealed record TimesheetApprovedIntegrationEvent(Guid TimesheetId, Guid EmployeeId, DateOnly WeekStart, IReadOnlyList<TaskHours> TaskHours) : IntegrationEvent;
 
-/// <summary>An approved timesheet was reopened for correction: its hours no longer count until approved again.</summary>
+/// <summary>Approved hours were reopened for correction: they no longer count until approved again.</summary>
 [MessageType("gggs.timesheets.reopened")]
 public sealed record TimesheetReopenedIntegrationEvent(Guid TimesheetId, Guid EmployeeId, DateOnly WeekStart, IReadOnlyList<TaskHours> TaskHours) : IntegrationEvent;

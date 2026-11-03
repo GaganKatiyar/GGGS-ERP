@@ -12,7 +12,8 @@ public sealed record ProjectSummary(
     string Stage,
     Guid? ProjectManagerEmployeeId,
     DateOnly StartDate,
-    DateOnly EndDate);
+    DateOnly EndDate,
+    bool IsDefault = false);
 
 /// <summary>One person's place on one project: the role, the share of their time and the dates.</summary>
 public sealed record ProjectMembership(
