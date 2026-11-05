@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, model, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, input, model, output } from '@angular/core';
 import { DialogModule } from 'primeng/dialog';
 import { DrawerModule } from 'primeng/drawer';
 
@@ -113,4 +113,31 @@ export class FormDialog {
   /** An exact width, overriding `size`. */
   readonly width = input<string | undefined>(undefined);
   readonly save = output<void>();
+
+  constructor() {
+    // PrimeNG binds Escape and the outside click once, on opening, so turning them off for a busy
+    // dialog does not reach it. Closing mid-save would lose the form and any error the save returns.
+    effect((onCleanup) => {
+      if (!this.busy()) {
+        return;
+      }
+
+      const blockEscape = (event: KeyboardEvent): void => {
+        if (event.key === 'Escape') {
+          event.stopImmediatePropagation();
+        }
+      };
+      const blockOutsideClick = (event: MouseEvent): void => {
+        if ((event.target as Element).classList?.contains('p-dialog-mask')) {
+          event.stopImmediatePropagation();
+        }
+      };
+      document.addEventListener('keydown', blockEscape, true);
+      document.addEventListener('mousedown', blockOutsideClick, true);
+      onCleanup(() => {
+        document.removeEventListener('keydown', blockEscape, true);
+        document.removeEventListener('mousedown', blockOutsideClick, true);
+      });
+    });
+  }
 }
