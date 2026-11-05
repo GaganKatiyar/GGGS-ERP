@@ -1,5 +1,5 @@
 import { formatDate } from '@angular/common';
-import { ChangeDetectionStrategy, Component, LOCALE_ID, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Injector, LOCALE_ID, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { MyPhotoStore, myPhotoUrl } from '@gggs/core/auth';
 import { ApiError } from '@gggs/core/http';
@@ -7,7 +7,8 @@ import { PermissionStore } from '@gggs/core/permissions';
 import { EmployeeDirectoryApi } from '@gggs/shared/employee-reference';
 import type { Address, EmployeeProfile } from '@gggs/shared/models';
 import { EmptyState, Skeleton, StatusBadge, Tabs, type TabItem } from '@gggs/shared/ui';
-import { PHOTO_ACCEPT, preparePhoto } from './profile-photo';
+import { PhotoCropDialog } from './photo-crop-dialog';
+import { PHOTO_ACCEPT, cropPhoto, decodePhoto, type SquareCrop } from './profile-photo';
 import { initialsOf, nextAnniversary, profileCompleteness, tenureLabel, type ProfileGap } from './profile-summary';
 import { EducationTab } from './tabs/education-tab';
 import { ExperienceTab } from './tabs/experience-tab';
@@ -34,7 +35,7 @@ const RING = 2 * Math.PI * 32;
  */
 @Component({
   selector: 'gggs-my-profile-page',
-  imports: [StatusBadge, Skeleton, EmptyState, Tabs, PersonalTab, ProfileCoverTiles, EducationTab, ExperienceTab, HistoryTab, MyDocumentsTab],
+  imports: [StatusBadge, Skeleton, EmptyState, Tabs, PersonalTab, ProfileCoverTiles, EducationTab, ExperienceTab, HistoryTab, MyDocumentsTab, PhotoCropDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (error()) {
@@ -88,7 +89,7 @@ const RING = 2 * Math.PI * 32;
 
           <div class="profile-hero__actions">
             @if (canEditPhoto) {
-              <button type="button" class="btn" [disabled]="photoBusy()" (click)="photoInput.click()">
+              <button #photoButton type="button" class="btn" [disabled]="photoBusy()" (click)="photoInput.click()">
                 <i class="pi pi-camera" aria-hidden="true"></i> {{ p.photoId ? 'Change photo' : 'Add photo' }}
               </button>
               @if (p.photoId) {
@@ -103,6 +104,7 @@ const RING = 2 * Math.PI * 32;
           </div>
           <!-- Opened by the photo buttons; hidden from the tab order, since they are its keyboard route. -->
           <input #photoInput type="file" class="sr-only" tabindex="-1" aria-hidden="true" [accept]="photoAccept" (change)="onPhotoChosen($event)" />
+          <gggs-photo-crop-dialog [picture]="cropping()" [busy]="photoBusy()" [error]="cropError()" (confirmed)="usePhoto($event)" (cancelled)="closeCrop()" />
         </div>
 
         @if (notice(); as message) {
@@ -674,6 +676,13 @@ export class MyProfilePage {
   protected readonly notice = signal<string | null>(null);
   protected readonly photoError = signal<string | null>(null);
   protected readonly photoBusy = signal(false);
+  /** The picture being cropped; the crop window is open while there is one. */
+  protected readonly cropping = signal<ImageBitmap | null>(null);
+  protected readonly cropError = signal<string | null>(null);
+  private readonly injector = inject(Injector);
+  private readonly photoButton = viewChild<ElementRef<HTMLElement>>('photoButton');
+  /** What had focus when the picture was chosen, so closing the crop window can put it back. */
+  private photoOpener: HTMLElement | null = null;
 
   /** The photo is the employee's own; everything else on the page is HR's to edit. */
   protected readonly canEditPhoto = this.permissions.has('self.profile.edit');
@@ -795,6 +804,7 @@ export class MyProfilePage {
   });
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => this.cropping()?.close());
     void this.load();
     this.api.education().then((entries) => this.educationCount.set(entries.length), () => undefined);
   }
@@ -829,12 +839,55 @@ export class MyProfilePage {
       return;
     }
 
-    await this.runPhoto(async () => {
-      const picture = await preparePhoto(file);
-      const photoId = await this.api.uploadMyPhoto(picture, picture.type === 'image/webp' ? 'photo.webp' : 'photo.jpg');
+    this.notice.set(null);
+    this.photoError.set(null);
+    this.cropError.set(null);
+    this.photoOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    try {
+      this.cropping.set(await decodePhoto(file));
+    } catch {
+      this.photoError.set('That picture could not be used. Choose a JPEG, PNG or WebP photo.');
+    }
+  }
+
+  /** Crops and uploads. A failure keeps the window open, so the person can retry without choosing the picture again. */
+  protected async usePhoto(crop: SquareCrop): Promise<void> {
+    const picture = this.cropping();
+    if (!picture) {
+      return;
+    }
+
+    this.photoBusy.set(true);
+    this.cropError.set(null);
+    try {
+      const cropped = await cropPhoto(picture, crop);
+      const photoId = await this.api.uploadMyPhoto(cropped, cropped.type === 'image/webp' ? 'photo.webp' : 'photo.jpg');
       this.setPhoto(photoId);
-      return 'Your photo is updated.';
-    }, 'That picture could not be used. Choose a JPEG, PNG or WebP photo.');
+      this.closeCrop();
+      this.notice.set('Your photo is updated.');
+    } catch (error) {
+      this.cropError.set(error instanceof ApiError ? error.message : 'The photo could not be saved. Try again.');
+    } finally {
+      this.photoBusy.set(false);
+    }
+  }
+
+  /** Closes the crop window and lets go of the picture, which can be large. */
+  protected closeCrop(): void {
+    const picture = this.cropping();
+    this.cropping.set(null);
+    picture?.close();
+
+    // Once rendered, because the photo buttons are disabled during an upload. "Add" on the
+    // completeness card has gone by then if this added the photo, so the photo button stands in.
+    const opener = this.photoOpener;
+    afterNextRender(
+      () => {
+        const target = opener?.isConnected && opener !== document.body ? opener : this.photoButton()?.nativeElement;
+        target?.focus();
+      },
+      { injector: this.injector },
+    );
   }
 
   protected async removePhoto(): Promise<void> {
