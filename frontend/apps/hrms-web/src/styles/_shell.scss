@@ -673,19 +673,24 @@ gggs-shell {
     outline-offset: -2px;
   }
 
+  // A ring rather than a filled tile, which would hide a picture in the same colour.
   &--active .launcher__tile-icon {
-    border-color: transparent;
-    background: linear-gradient(180deg, var(--gggs-color-nav-active), var(--gggs-color-nav-active-deep));
-    color: var(--gggs-color-nav-on-active);
+    border-color: var(--gggs-color-nav-art);
+    box-shadow:
+      0 0 0 1px var(--gggs-color-nav-art),
+      0 0 14px -2px var(--gggs-color-nav-art);
   }
 }
 
 .launcher__tile-icon {
+  --gggs-art-main: var(--gggs-color-nav-art);
+  --gggs-art-soft: var(--gggs-color-nav-art-soft);
+
   position: relative;
   display: grid;
   place-items: center;
-  width: 3.25rem;
-  height: 3.25rem;
+  width: 3.5rem;
+  height: 3.5rem;
   border: 1px solid color-mix(in srgb, var(--gggs-color-nav-overlay) 12%, transparent);
   border-radius: var(--gggs-radius-xl);
   background: linear-gradient(160deg, color-mix(in srgb, var(--gggs-color-nav-overlay) 14%, transparent), color-mix(in srgb, var(--gggs-color-nav-overlay) 5%, transparent));

@@ -72,6 +72,13 @@
   --gggs-color-nav-on-active: #ffffff;
   --gggs-color-nav-overlay: #ffffff;
   --gggs-color-nav-focus: #ffffff;
+  /* Pictures on app tiles (AppArt): a main colour, a tint of it and a light detail. The menu has its
+     own pair because it can be dark while the page is light. */
+  --gggs-art-main: var(--gggs-color-primary);
+  --gggs-art-soft: color-mix(in srgb, var(--gggs-art-main) 32%, #ffffff);
+  --gggs-art-detail: #ffffff;
+  --gggs-color-nav-art: #ff5a63;
+  --gggs-color-nav-art-soft: color-mix(in srgb, var(--gggs-color-nav-art) 48%, #2a3644);
 
   /* Categorical palette for charts and calendar kinds - distinguishable, not semantic. */
   --gggs-cat-1: #d81324;
@@ -254,6 +261,7 @@
   --gggs-color-nav-bg-deep: #090e13;
   --gggs-color-nav-bg-hover: #1a2531;
   --gggs-color-nav-border: #1c2733;
+  --gggs-art-soft: color-mix(in srgb, var(--gggs-art-main) 48%, #2a3644);
 
   --gggs-cat-1: #ff5a63;
   --gggs-cat-2: #c9d2dc;
@@ -296,6 +304,8 @@
   --gggs-color-nav-border: #dde3e9;
   --gggs-color-nav-overlay: #16202b;
   --gggs-color-nav-focus: #16202b;
+  --gggs-color-nav-art: #d81324;
+  --gggs-color-nav-art-soft: color-mix(in srgb, var(--gggs-color-nav-art) 32%, #ffffff);
 }
 
 /* Classic: the electric blue, navy and cyan palette Nuts and Bolts had before the GGGS brand. */
@@ -330,6 +340,8 @@
   --gggs-color-nav-active: #2563eb;
   --gggs-color-nav-active-deep: #1d4ed8;
   --gggs-color-nav-border: #1e3858;
+  --gggs-color-nav-art: #7aa7ff;
+  --gggs-color-nav-art-soft: color-mix(in srgb, var(--gggs-color-nav-art) 48%, #2a3f5e);
 
   --gggs-cat-1: #2563eb;
   --gggs-cat-2: #06b6d4;
@@ -375,6 +387,7 @@
   --gggs-color-nav-bg-deep: #08111f;
   --gggs-color-nav-bg-hover: #182a47;
   --gggs-color-nav-border: #1a2a44;
+  --gggs-art-soft: color-mix(in srgb, var(--gggs-art-main) 48%, #2a3f5e);
 
   --gggs-cat-1: #7aa7ff;
   --gggs-cat-2: #22d3ee;

@@ -17,7 +17,7 @@ import { MyPhotoStore, SessionStore, StepUpPrompt } from '@gggs/core/auth';
 import { PermissionStore } from '@gggs/core/permissions';
 import { TenantStore } from '@gggs/core/tenant';
 import { NotificationsApi } from '@gggs/shared/notifications';
-import { BrandMark } from '@gggs/shared/ui';
+import { AppArt, BrandMark } from '@gggs/shared/ui';
 import { WorkflowApi } from '@gggs/shared/workflow';
 import { filter } from 'rxjs';
 import { SETTINGS_SECTIONS, entryRoute, filterMenu, locate, moduleTabs, searchNavigation, sectionsOf, type NavItem } from './navigation';
@@ -48,7 +48,7 @@ interface Crumb {
  */
 @Component({
   selector: 'gggs-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, GlobalSearch, EdgeScroll, BrandMark],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, GlobalSearch, EdgeScroll, BrandMark, AppArt],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell.html',
   // Styled by apps/hrms-web/src/styles/_shell.scss.

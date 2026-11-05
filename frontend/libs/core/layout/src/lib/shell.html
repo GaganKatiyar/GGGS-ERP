@@ -391,7 +391,7 @@
             (click)="closeLauncher(false)"
           >
             <span class="launcher__tile-icon">
-              <i class="{{ item.icon }}" aria-hidden="true"></i>
+              <gggs-app-art [icon]="item.icon" />
               @if (badgeFor(item) > 0) {
               <span class="launcher__badge" [attr.aria-label]="badgeFor(item) + ' waiting'">{{ badgeFor(item) }}</span>
               }

@@ -158,6 +158,16 @@ one animation frame. It does nothing on touch screens or for users who prefer re
 is for a few hero cards, currently the home dashboard's headline row, and should not be put on
 list items.
 
+**`gggs-app-art`** (`libs/shared/ui`) draws a menu icon as a two-tone picture, for app tiles only: the
+launcher's modules and the home screen's Recent links and Quick links. Everywhere else, including the
+rail, stays a PrimeIcons line icon, because these pictures need about 40 px to read. The drawings are
+original and live in one file, `public/app-art.svg`, with `ICON_ART` in `app-art.ts` saying which icon
+shows which; a test fails if a menu icon has no drawing. Drawings use a 48 grid, filled shapes and only
+three colours (`--art-main`, `--art-soft`, `--art-detail`), which come from `--gggs-art-*` and, on the
+menu, `--gggs-color-nav-art*`, so they follow palette and theme. Raise `ART_VERSION` after changing
+the file. The launcher marks the current module with a ring, since a filled tile would hide a picture
+in the same colour.
+
 **`gggs-chart`** handles all chart styling. A single line series gets a fill that fades to the
 floor; several series are drawn unfilled so none hides another. Points are hollow, the grid is
 dashed, tooltips use the tokens, and hovering anywhere in a column shows every series' value
