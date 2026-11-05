@@ -91,6 +91,14 @@ export const DEFAULT_STATUS_VARIANTS: Readonly<Record<string, BadgeVariant>> = {
   waitingonrequester: 'warning',
   cleared: 'success',
   breached: 'danger',
+  // Attendance: how a day counted.
+  present: 'success',
+  absent: 'danger',
+  missingpunch: 'warning',
+  halfday: 'warning',
+  onleave: 'primary',
+  holiday: 'primary',
+  weeklyoff: 'neutral',
 };
 
 /** A status as a coloured pill, with a readable label ("OnNotice" shows as "On notice"). */
