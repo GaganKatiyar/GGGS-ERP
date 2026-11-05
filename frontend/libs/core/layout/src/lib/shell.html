@@ -317,7 +317,7 @@
       }
     </header>
 
-    @if (tabs().length) {
+    @if (tabs().length || settingsLink()) {
     <nav class="module-tabs" [attr.aria-label]="activeGroup()?.label + ' pages'">
       <!-- A long module (My Space) overflows: resting the mouse near an end scrolls it (edge-scroll.ts). -->
       <div class="module-tabs__track" gggsEdgeScroll>

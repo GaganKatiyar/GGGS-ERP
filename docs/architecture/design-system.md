@@ -194,6 +194,14 @@ The menu closes when a page is chosen (including the page already showing), on a
 on Escape, or when keyboard focus leaves it. It is not remembered: reloading starts with the rail.
 There is no scrim, so a click on the page closes the menu and also does what it would have done.
 
+Work is grouped by department rather than by feature. HR Portal, Talent Acquisition, Finance &
+Accounts and General Administration each hold pages from several modules, so each page there
+carries a `heading` and the menu lists them under those captions (`sectionsOf`). The tabs under the
+header are the current heading's pages (`moduleTabs`), and each heading can point at its own
+Settings category through `settingsSection`. A page's route and permissions do not depend on where
+it sits, and a page that left a module needing another plan feature says so with
+`alsoNeedsFeature`. Searching a heading's name finds all its pages.
+
 Below 48rem the menu is hidden and the header logo opens the launcher. Both forms mark each
 module's entry page with `data-nav-module`, which the role audit crawls. The module tabs under the
 header stay in both.

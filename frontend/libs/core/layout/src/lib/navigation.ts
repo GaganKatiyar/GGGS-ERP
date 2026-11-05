@@ -15,6 +15,8 @@ export interface NavItem {
   readonly permissions?: readonly string[];
   /** Feature the tenant's plan must include. */
   readonly feature?: string;
+  /** A second plan feature it also needs, for a page that depends on another module (Billing on Projects). */
+  readonly alsoNeedsFeature?: string;
   /**
    * The page is about the user's own employee record, so an account not linked to one (an
    * auditor, an outside recruiter) has nothing to see there even with the permission.
@@ -31,6 +33,8 @@ export interface NavItem {
   readonly section?: SettingsSectionKey;
   /** On a module: the Settings category its set-up pages live in, linked from the end of its tabs. */
   readonly settingsSection?: SettingsSectionKey;
+  /** On a page of a department menu: the heading it sits under; its tabs are that heading's pages. */
+  readonly heading?: string;
 }
 
 export type SettingsSectionKey = 'organization' | 'time' | 'payroll' | 'hiring' | 'exits' | 'projects' | 'lookups' | 'access' | 'studio' | 'platform';
@@ -135,7 +139,7 @@ export function locate(items: readonly NavItem[], url: string): NavLocation | nu
 /**
  * The pages a module offers as tabs above the content: every module with more than one page. In
  * Settings, where forty pages share one group, the tabs are the current page's category - and the
- * Settings home itself has none.
+ * Settings home itself has none. In a department menu they are the current page's heading.
  */
 export function moduleTabs(group: NavItem | null | undefined, entry?: NavItem | null): readonly NavItem[] {
   const children = group?.children ?? [];
@@ -143,6 +147,10 @@ export function moduleTabs(group: NavItem | null | undefined, entry?: NavItem | 
     const section = entry?.section;
     const inSection = section ? children.filter((child) => child.section === section) : [];
     return inSection.length >= 2 ? inSection : [];
+  }
+  if (children.some((child) => child.heading)) {
+    const inHeading = entry?.heading ? children.filter((child) => child.heading === entry.heading) : [];
+    return inHeading.length >= 2 ? inHeading : [];
   }
   return children.length >= 2 ? children : [];
 }
@@ -156,10 +164,15 @@ export interface NavSection {
 
 /**
  * A module's pages as the expanded menu and the rail's pop-out list them: one run for an ordinary
- * module, and for Settings one run per category, in {@link SETTINGS_SECTIONS} order, under its name.
+ * module, for Settings one run per category, in {@link SETTINGS_SECTIONS} order, under its name, and
+ * for a department menu one run per heading, in the order they are written.
  */
 export function sectionsOf(group: NavItem): readonly NavSection[] {
   const pages = group.children ?? [];
+  if (pages.some((page) => page.heading)) {
+    return [...new Set(pages.map((page) => page.heading))].map((heading) => ({ key: heading ?? group.label, label: heading, pages: pages.filter((page) => page.heading === heading) }));
+  }
+
   if (!pages.some((page) => page.section)) {
     return pages.length ? [{ key: group.label, pages }] : [];
   }
@@ -171,7 +184,8 @@ export function sectionsOf(group: NavItem): readonly NavSection[] {
 
 /**
  * The expanded menu's search: a module whose name matches keeps all its pages, otherwise only the
- * pages whose names match - and a module left with nothing is dropped. An empty search is the menu.
+ * pages whose names or headings match - and a module left with nothing is dropped. An empty search
+ * is the menu.
  */
 export function filterMenu(items: readonly NavItem[], query: string): readonly NavItem[] {
   const term = query.trim().toLowerCase();
@@ -179,7 +193,7 @@ export function filterMenu(items: readonly NavItem[], query: string): readonly N
     return items;
   }
 
-  const matches = (item: NavItem) => item.label.toLowerCase().includes(term) || (item.railLabel?.toLowerCase().includes(term) ?? false);
+  const matches = matcher(term);
   return items.flatMap((item) => {
     if (matches(item)) {
       return [item];
@@ -187,6 +201,11 @@ export function filterMenu(items: readonly NavItem[], query: string): readonly N
     const pages = (item.children ?? []).filter(matches);
     return pages.length ? [{ ...item, children: pages }] : [];
   });
+}
+
+/** Whether an entry answers a search, by its name, its short name or the heading it sits under. */
+function matcher(term: string): (item: NavItem) => boolean {
+  return (item) => [item.label, item.railLabel, item.heading].some((text) => text?.toLowerCase().includes(term));
 }
 
 /** Where a rail icon or an app tile leads: the entry's own page, else the first page of its module. */
@@ -217,7 +236,7 @@ export function searchNavigation(items: readonly NavItem[], query: string, pageL
     return { apps: items, pages: [] };
   }
 
-  const matches = (item: NavItem) => item.label.toLowerCase().includes(term) || (item.railLabel?.toLowerCase().includes(term) ?? false);
+  const matches = matcher(term);
   const pages =
     term.length < 2
       ? []
@@ -239,9 +258,14 @@ export const isBuilt = (item: NavItem): boolean => item.planned !== true;
 /**
  * Organization masters appear in Settings for the people who can change them. Anyone who can view
  * the structure still reaches these pages (their route needs only the view permission) and browses
- * it from Employees > Org structure.
+ * it from Finance & Accounts > Org structure.
  */
 const ORG_MANAGE = ['org.structure.manage', 'org.legal-entity.manage', 'org.department.manage'];
+
+/** Pages under one heading of a department menu, with what they share; a page's own value wins. */
+function under(shared: Pick<NavItem, 'heading' | 'feature' | 'alsoNeedsFeature' | 'settingsSection'>, pages: readonly NavItem[]): NavItem[] {
+  return pages.map((page) => ({ ...shared, ...page }));
+}
 
 export const NAVIGATION: readonly NavItem[] = [
   {
@@ -302,51 +326,138 @@ export const NAVIGATION: readonly NavItem[] = [
     ],
   },
   {
-    label: 'Workforce',
-    icon: 'pi pi-chart-line',
-    feature: 'Workforce',
-    children: [
-      { label: 'Workforce overview', icon: 'pi pi-chart-bar', route: '/workforce', permissions: ['workforce.plan.view'] },
-      { label: 'Workforce plans', icon: 'pi pi-compass', route: '/workforce/plans', permissions: ['workforce.plan.view'] },
-      { label: 'Manpower requests', icon: 'pi pi-user-plus', route: '/workforce/requests', permissions: ['workforce.request.view', 'workforce.request.manage'] },
-    ],
-  },
-  {
-    label: 'Recruitment',
-    settingsSection: 'hiring',
-    icon: 'pi pi-search',
-    feature: 'Recruitment',
-    children: [
-      { label: 'Requisitions', icon: 'pi pi-file-edit', route: '/recruitment/requisitions', permissions: ['recruitment.requisition.view'] },
-      { label: 'Job postings', icon: 'pi pi-megaphone', route: '/recruitment/postings', permissions: ['recruitment.posting.view'] },
-      { label: 'Candidates', icon: 'pi pi-id-card', route: '/recruitment/candidates', permissions: ['recruitment.application.view'] },
-      { label: 'Interviews', icon: 'pi pi-comments', route: '/recruitment/interviews', permissions: ['recruitment.application.view'] },
-      { label: 'Offers', icon: 'pi pi-envelope', route: '/recruitment/offers', permissions: ['recruitment.offer.view'] },
-      { label: 'Recruitment analytics', icon: 'pi pi-chart-line', route: '/recruitment/analytics', permissions: ['recruitment.analytics.view'] },
-      { label: 'Onboarding', icon: 'pi pi-sign-in', route: '/onboarding', permissions: ['onboarding.case.view'], feature: 'Onboarding' },
-    ],
-  },
-  {
-    label: 'Employees',
-    settingsSection: 'organization',
+    label: 'HR Portal',
     icon: 'pi pi-users',
     children: [
-      { label: 'Directory', icon: 'pi pi-list', route: '/employees', permissions: ['employee.profile.view'] },
-      { label: 'Org chart', icon: 'pi pi-sitemap', route: '/employees/org-chart', permissions: ['employee.profile.view'] },
-      // The structure to browse; changing it is under Settings > Organization.
-      { label: 'Org structure', icon: 'pi pi-share-alt', route: '/org/structure', permissions: ['org.structure.view'] },
-      { label: 'Import', icon: 'pi pi-upload', route: '/employees/import', permissions: ['employee.profile.create'] },
+      ...under({ heading: 'Workforce', feature: 'Workforce' }, [
+        { label: 'Workforce overview', icon: 'pi pi-chart-bar', route: '/workforce', permissions: ['workforce.plan.view'] },
+        { label: 'Workforce plans', icon: 'pi pi-compass', route: '/workforce/plans', permissions: ['workforce.plan.view'] },
+      ]),
+      ...under({ heading: 'Time & leave', feature: 'Time', settingsSection: 'time' }, [
+        { label: 'Attendance', icon: 'pi pi-check-circle', route: '/attendance', permissions: ['attendance.record.view'] },
+        { label: 'Regularization', icon: 'pi pi-pencil', route: '/attendance/regularizations', permissions: ['attendance.regularization.view'] },
+        { label: 'Leave requests', icon: 'pi pi-calendar-minus', route: '/leave/requests', permissions: ['leave.request.view'] },
+      ]),
+      ...under({ heading: 'Benefits', feature: 'Benefits', settingsSection: 'payroll' }, [
+        { label: 'Benefit plans', icon: 'pi pi-heart', route: '/benefits', permissions: ['benefit.plan.view'] },
+        { label: 'Benefit enrollments', icon: 'pi pi-users', route: '/benefits/enrollments', permissions: ['benefit.enrollment.view'] },
+      ]),
+      ...under({ heading: 'Performance', feature: 'Performance' }, [
+        { label: 'Performance', icon: 'pi pi-chart-line', route: '/performance', permissions: ['performance.cycle.view'] },
+        { label: 'Improvement plans', icon: 'pi pi-flag', route: '/performance/pips', permissions: ['performance.pip.view', 'performance.pip.manage'] },
+        { label: 'Goals', icon: 'pi pi-bullseye', route: '/goals', permissions: ['performance.goal.manage', 'performance.review.view'] },
+      ]),
+      ...under({ heading: 'Learning & skills' }, [
+        { label: 'Learning', icon: 'pi pi-book', route: '/learning', permissions: ['learning.enrollment.view'], feature: 'Learning' },
+        { label: 'Courses', icon: 'pi pi-list', route: '/learning/courses', permissions: ['learning.course.view'], feature: 'Learning' },
+        { label: 'Skills', icon: 'pi pi-bolt', route: '/skills', permissions: ['skill.skill.view'] },
+      ]),
+      ...under({ heading: 'Career', feature: 'Career' }, [
+        { label: 'Career paths', icon: 'pi pi-arrow-up-right', route: '/career', permissions: ['career.path.view'] },
+        { label: 'Promotions', icon: 'pi pi-angle-double-up', route: '/career/promotions', permissions: ['career.promotion.view', 'career.promotion.manage'] },
+        { label: 'Succession', icon: 'pi pi-users', route: '/career/succession', permissions: ['career.succession.view', 'career.succession.manage'] },
+        { label: 'Talent review', icon: 'pi pi-th-large', route: '/career/talent-review', permissions: ['career.talent-review.manage'] },
+      ]),
+      ...under({ heading: 'Engagement' }, [
+        { label: 'Rewards', icon: 'pi pi-gift', route: '/rewards', permissions: ['reward.recognition.view', 'reward.program.manage', 'reward.catalog.manage', 'reward.redemption.manage'], feature: 'Rewards' },
+        { label: 'Engagement', icon: 'pi pi-heart', route: '/engagement', permissions: ['engagement.survey.view'], feature: 'Engagement' },
+        { label: 'Policies', icon: 'pi pi-book', route: '/policies', permissions: ['policy.policy.view'] },
+      ]),
     ],
   },
   {
-    label: 'Time',
-    settingsSection: 'time',
-    icon: 'pi pi-clock',
-    feature: 'Time',
+    label: 'Talent Acquisition',
+    icon: 'pi pi-user-plus',
     children: [
-      { label: 'Attendance', icon: 'pi pi-check-circle', route: '/attendance', permissions: ['attendance.record.view'] },
-      { label: 'Regularization', icon: 'pi pi-pencil', route: '/attendance/regularizations', permissions: ['attendance.regularization.view'] },
-      { label: 'Leave requests', icon: 'pi pi-calendar-minus', route: '/leave/requests', permissions: ['leave.request.view'] },
+      ...under({ heading: 'Planning' }, [
+        { label: 'Manpower requests', icon: 'pi pi-user-plus', route: '/workforce/requests', permissions: ['workforce.request.view', 'workforce.request.manage'], feature: 'Workforce' },
+        { label: 'Requisitions', icon: 'pi pi-file-edit', route: '/recruitment/requisitions', permissions: ['recruitment.requisition.view'], feature: 'Recruitment', settingsSection: 'hiring' },
+      ]),
+      ...under({ heading: 'Hiring', feature: 'Recruitment', settingsSection: 'hiring' }, [
+        { label: 'Job postings', icon: 'pi pi-megaphone', route: '/recruitment/postings', permissions: ['recruitment.posting.view'] },
+        { label: 'Candidates', icon: 'pi pi-id-card', route: '/recruitment/candidates', permissions: ['recruitment.application.view'] },
+        { label: 'Interviews', icon: 'pi pi-comments', route: '/recruitment/interviews', permissions: ['recruitment.application.view'] },
+        { label: 'Offers', icon: 'pi pi-envelope', route: '/recruitment/offers', permissions: ['recruitment.offer.view'] },
+      ]),
+      ...under({ heading: 'Incentives', feature: 'Recruitment', settingsSection: 'hiring' }, [
+        { label: 'Referrals & incentives', icon: 'pi pi-share-alt', route: '/recruitment/referrals', permissions: ['recruitment.application.view'] },
+      ]),
+      ...under({ heading: 'Onboarding', settingsSection: 'hiring' }, [
+        { label: 'Onboarding', icon: 'pi pi-sign-in', route: '/onboarding', permissions: ['onboarding.case.view'], feature: 'Onboarding', alsoNeedsFeature: 'Recruitment' },
+      ]),
+      ...under({ heading: 'Reports', feature: 'Recruitment', settingsSection: 'hiring' }, [
+        { label: 'Recruitment analytics', icon: 'pi pi-chart-line', route: '/recruitment/analytics', permissions: ['recruitment.analytics.view'] },
+      ]),
+    ],
+  },
+  {
+    label: 'Finance & Accounts',
+    icon: 'pi pi-wallet',
+    children: [
+      ...under({ heading: 'Employees', settingsSection: 'organization' }, [
+        { label: 'Directory', icon: 'pi pi-list', route: '/employees', permissions: ['employee.profile.view'] },
+        { label: 'Org chart', icon: 'pi pi-sitemap', route: '/employees/org-chart', permissions: ['employee.profile.view'] },
+        // The structure to browse; changing it is under Settings > Organization.
+        { label: 'Org structure', icon: 'pi pi-share-alt', route: '/org/structure', permissions: ['org.structure.view'] },
+        { label: 'Import', icon: 'pi pi-upload', route: '/employees/import', permissions: ['employee.profile.create'] },
+      ]),
+      ...under({ heading: 'Payroll', feature: 'Payroll', settingsSection: 'payroll' }, [
+        { label: 'Payroll overview', icon: 'pi pi-chart-bar', route: '/payroll', permissions: ['payroll.run.view'] },
+        { label: 'Payroll runs', icon: 'pi pi-play', route: '/payroll/runs', permissions: ['payroll.run.view'] },
+        { label: 'Salaries', icon: 'pi pi-wallet', route: '/payroll/salaries', permissions: ['payroll.employee-salary.view'] },
+        { label: 'Inputs', icon: 'pi pi-plus-circle', route: '/payroll/inputs', permissions: ['payroll.input.manage'] },
+        { label: 'Loans', icon: 'pi pi-money-bill', route: '/loans', permissions: ['loan.loan.view'] },
+        { label: 'Payslips', icon: 'pi pi-file', route: '/payroll/payslips', permissions: ['payroll.run.view'] },
+        { label: 'Tax declarations', icon: 'pi pi-file-edit', route: '/payroll/declarations', permissions: ['payroll.tax-declaration.view'] },
+      ]),
+      ...under({ heading: 'Compensation', feature: 'Compensation', settingsSection: 'payroll' }, [
+        { label: 'Salary revisions', icon: 'pi pi-arrow-up-right', route: '/compensation/revisions', permissions: ['compensation.revision.view'] },
+        { label: 'Variable pay', icon: 'pi pi-star', route: '/compensation/variable-pay', permissions: ['compensation.variable-pay.view'] },
+        { label: 'Equity', icon: 'pi pi-chart-line', route: '/compensation/equity', permissions: ['compensation.equity.view'] },
+      ]),
+      ...under({ heading: 'Expenses' }, [
+        { label: 'Expenses', icon: 'pi pi-receipt', route: '/expenses', permissions: ['spend.claim.view', 'spend.travel.view'], feature: 'Expenses' },
+      ]),
+      ...under({ heading: 'Project finance', feature: 'ProjectFinancials', alsoNeedsFeature: 'Projects', settingsSection: 'projects' }, [
+        { label: 'Financials', icon: 'pi pi-money-bill', route: '/projects/financials', permissions: ['project.financials.view'] },
+        { label: 'Billing', icon: 'pi pi-file-edit', route: '/projects/billing', permissions: ['project.financials.view'] },
+      ]),
+      ...under({ heading: 'Compliance', feature: 'Compliance', settingsSection: 'payroll' }, [
+        { label: 'Compliance overview', icon: 'pi pi-chart-bar', route: '/compliance', permissions: ['compliance.rule.view', 'compliance.filing.view'] },
+        { label: 'Filing calendar', icon: 'pi pi-calendar', route: '/compliance/filings', permissions: ['compliance.filing.view'] },
+        { label: 'Licences and certificates', icon: 'pi pi-verified', route: '/compliance/registrations', permissions: ['compliance.filing.view'] },
+      ]),
+    ],
+  },
+  {
+    label: 'General Administration',
+    railLabel: 'General admin',
+    icon: 'pi pi-briefcase',
+    children: [
+      ...under({ heading: 'Inventory & assets' }, [
+        { label: 'Assets', icon: 'pi pi-desktop', route: '/assets', permissions: ['asset.asset.view'], feature: 'Assets' },
+      ]),
+      ...under({ heading: 'Support', feature: 'Helpdesk' }, [
+        { label: 'Helpdesk', icon: 'pi pi-question-circle', route: '/helpdesk', permissions: ['helpdesk.ticket.view'] },
+        { label: 'Knowledge base', icon: 'pi pi-book', route: '/helpdesk/knowledge', permissions: ['helpdesk.knowledge.manage'] },
+      ]),
+      ...under({ heading: 'Records' }, [
+        { label: 'Documents', icon: 'pi pi-folder-open', route: '/documents', permissions: ['document.file.view'], feature: 'Documents' },
+      ]),
+    ],
+  },
+  {
+    label: 'Exits',
+    settingsSection: 'exits',
+    icon: 'pi pi-sign-out',
+    children: [
+      { label: 'Separations', icon: 'pi pi-sign-out', route: '/separation', permissions: ['separation.case.view'], feature: 'Separation' },
+      { label: 'Clearance', icon: 'pi pi-check-square', route: '/separation/clearance', permissions: ['separation.clearance.manage'], feature: 'Separation' },
+      { label: 'Offboarding', icon: 'pi pi-list-check', route: '/separation/offboarding', permissions: ['separation.offboarding.manage', 'separation.clearance.manage', 'separation.case.view'], feature: 'Separation' },
+      { label: 'Disciplinary', icon: 'pi pi-file-edit', route: '/separation/disciplinary', permissions: ['separation.termination.manage'], feature: 'Separation' },
+      { label: 'Absconding', icon: 'pi pi-user-minus', route: '/separation/absconding', permissions: ['separation.termination.manage'], feature: 'Separation' },
+      { label: 'Retrenchment', icon: 'pi pi-users', route: '/separation/retrenchment', permissions: ['separation.termination.manage'], feature: 'Separation' },
+      { label: 'Attrition', icon: 'pi pi-chart-line', route: '/separation/analytics', permissions: ['separation.analytics.view'], feature: 'Separation' },
     ],
   },
   {
@@ -373,15 +484,13 @@ export const NAVIGATION: readonly NavItem[] = [
       { label: 'Change requests', icon: 'pi pi-arrow-right-arrow-left', route: '/projects/change-requests', permissions: ['project.change-request.view'] },
       { label: 'RAID log', icon: 'pi pi-exclamation-triangle', route: '/projects/raid', permissions: ['project.raid.view'] },
       { label: 'Portfolio', icon: 'pi pi-chart-bar', route: '/projects/portfolio', permissions: ['project.financials.view'], feature: 'ProjectFinancials' },
-      { label: 'Financials', icon: 'pi pi-money-bill', route: '/projects/financials', permissions: ['project.financials.view'], feature: 'ProjectFinancials' },
-      { label: 'Billing', icon: 'pi pi-file-edit', route: '/projects/billing', permissions: ['project.financials.view'], feature: 'ProjectFinancials' },
       { label: 'Service levels', icon: 'pi pi-stopwatch', route: '/projects/service-levels', permissions: ['project.task.view'] },
     ],
   },
   {
     label: 'Resources',
     settingsSection: 'time',
-    icon: 'pi pi-users',
+    icon: 'pi pi-chart-line',
     feature: 'Resources',
     children: [
       { label: 'Resource directory', icon: 'pi pi-address-book', route: '/resources', permissions: ['resource.profile.view'] },
@@ -392,89 +501,6 @@ export const NAVIGATION: readonly NavItem[] = [
       { label: 'Utilization', icon: 'pi pi-gauge', route: '/resources/utilization', permissions: ['resource.utilization.view'] },
       { label: 'Timesheet approvals', icon: 'pi pi-stopwatch', route: '/timesheets/approvals', permissions: ['timesheet.entry.approve', 'workflow.task.act'], feature: 'Timesheets' },
       { label: 'Transfers', icon: 'pi pi-arrow-right-arrow-left', route: '/resources/transfers', permissions: ['resource.allocation.view'] },
-    ],
-  },
-  {
-    label: 'Payroll',
-    settingsSection: 'payroll',
-    icon: 'pi pi-wallet',
-    feature: 'Payroll',
-    children: [
-      { label: 'Payroll overview', icon: 'pi pi-chart-bar', route: '/payroll', permissions: ['payroll.run.view'] },
-      { label: 'Payroll runs', icon: 'pi pi-play', route: '/payroll/runs', permissions: ['payroll.run.view'] },
-      { label: 'Salaries', icon: 'pi pi-wallet', route: '/payroll/salaries', permissions: ['payroll.employee-salary.view'] },
-      { label: 'Inputs', icon: 'pi pi-plus-circle', route: '/payroll/inputs', permissions: ['payroll.input.manage'] },
-      { label: 'Loans', icon: 'pi pi-money-bill', route: '/loans', permissions: ['loan.loan.view'] },
-      { label: 'Payslips', icon: 'pi pi-file', route: '/payroll/payslips', permissions: ['payroll.run.view'] },
-      { label: 'Tax declarations', icon: 'pi pi-file-edit', route: '/payroll/declarations', permissions: ['payroll.tax-declaration.view'] },
-    ],
-  },
-  {
-    label: 'Compensation & benefits',
-    settingsSection: 'payroll',
-    railLabel: 'Comp & benefits',
-    icon: 'pi pi-gift',
-    children: [
-      { label: 'Salary revisions', icon: 'pi pi-arrow-up-right', route: '/compensation/revisions', permissions: ['compensation.revision.view'], feature: 'Compensation' },
-      { label: 'Variable pay', icon: 'pi pi-star', route: '/compensation/variable-pay', permissions: ['compensation.variable-pay.view'], feature: 'Compensation' },
-      { label: 'Equity', icon: 'pi pi-chart-line', route: '/compensation/equity', permissions: ['compensation.equity.view'], feature: 'Compensation' },
-      { label: 'Benefit plans', icon: 'pi pi-heart', route: '/benefits', permissions: ['benefit.plan.view'], feature: 'Benefits' },
-      { label: 'Benefit enrollments', icon: 'pi pi-users', route: '/benefits/enrollments', permissions: ['benefit.enrollment.view'], feature: 'Benefits' },
-    ],
-  },
-  {
-    label: 'Compliance',
-    settingsSection: 'payroll',
-    icon: 'pi pi-shield',
-    feature: 'Compliance',
-    children: [
-      { label: 'Compliance overview', icon: 'pi pi-chart-bar', route: '/compliance', permissions: ['compliance.rule.view', 'compliance.filing.view'] },
-      { label: 'Filing calendar', icon: 'pi pi-calendar', route: '/compliance/filings', permissions: ['compliance.filing.view'] },
-      { label: 'Licences and certificates', icon: 'pi pi-verified', route: '/compliance/registrations', permissions: ['compliance.filing.view'] },
-    ],
-  },
-  {
-    label: 'Talent',
-    icon: 'pi pi-star',
-    children: [
-      { label: 'Performance', icon: 'pi pi-chart-line', route: '/performance', permissions: ['performance.cycle.view'], feature: 'Performance' },
-      { label: 'Improvement plans', icon: 'pi pi-flag', route: '/performance/pips', permissions: ['performance.pip.view', 'performance.pip.manage'], feature: 'Performance' },
-      { label: 'Goals', icon: 'pi pi-bullseye', route: '/goals', permissions: ['performance.goal.manage', 'performance.review.view'], feature: 'Performance' },
-      { label: 'Learning', icon: 'pi pi-book', route: '/learning', permissions: ['learning.enrollment.view'], feature: 'Learning' },
-      { label: 'Courses', icon: 'pi pi-list', route: '/learning/courses', permissions: ['learning.course.view'], feature: 'Learning' },
-      { label: 'Skills', icon: 'pi pi-bolt', route: '/skills', permissions: ['skill.skill.view'] },
-      { label: 'Career paths', icon: 'pi pi-arrow-up-right', route: '/career', permissions: ['career.path.view'], feature: 'Career' },
-      { label: 'Promotions', icon: 'pi pi-angle-double-up', route: '/career/promotions', permissions: ['career.promotion.view', 'career.promotion.manage'], feature: 'Career' },
-      { label: 'Succession', icon: 'pi pi-users', route: '/career/succession', permissions: ['career.succession.view', 'career.succession.manage'], feature: 'Career' },
-      { label: 'Talent review', icon: 'pi pi-th-large', route: '/career/talent-review', permissions: ['career.talent-review.manage'], feature: 'Career' },
-      { label: 'Rewards', icon: 'pi pi-gift', route: '/rewards', permissions: ['reward.recognition.view', 'reward.program.manage', 'reward.catalog.manage', 'reward.redemption.manage'], feature: 'Rewards' },
-      { label: 'Engagement', icon: 'pi pi-heart', route: '/engagement', permissions: ['engagement.survey.view'], feature: 'Engagement' },
-    ],
-  },
-  {
-    label: 'Services',
-    icon: 'pi pi-briefcase',
-    children: [
-      { label: 'Expenses', icon: 'pi pi-receipt', route: '/expenses', permissions: ['spend.claim.view', 'spend.travel.view'], feature: 'Expenses' },
-      { label: 'Assets', icon: 'pi pi-desktop', route: '/assets', permissions: ['asset.asset.view'], feature: 'Assets' },
-      { label: 'Helpdesk', icon: 'pi pi-question-circle', route: '/helpdesk', permissions: ['helpdesk.ticket.view'], feature: 'Helpdesk' },
-      { label: 'Knowledge base', icon: 'pi pi-book', route: '/helpdesk/knowledge', permissions: ['helpdesk.knowledge.manage'], feature: 'Helpdesk' },
-      { label: 'Documents', icon: 'pi pi-folder-open', route: '/documents', permissions: ['document.file.view'], feature: 'Documents' },
-      { label: 'Policies', icon: 'pi pi-book', route: '/policies', permissions: ['policy.policy.view'] },
-    ],
-  },
-  {
-    label: 'Exits',
-    settingsSection: 'exits',
-    icon: 'pi pi-sign-out',
-    children: [
-      { label: 'Separations', icon: 'pi pi-sign-out', route: '/separation', permissions: ['separation.case.view'], feature: 'Separation' },
-      { label: 'Clearance', icon: 'pi pi-check-square', route: '/separation/clearance', permissions: ['separation.clearance.manage'], feature: 'Separation' },
-      { label: 'Offboarding', icon: 'pi pi-list-check', route: '/separation/offboarding', permissions: ['separation.offboarding.manage', 'separation.clearance.manage', 'separation.case.view'], feature: 'Separation' },
-      { label: 'Disciplinary', icon: 'pi pi-file-edit', route: '/separation/disciplinary', permissions: ['separation.termination.manage'], feature: 'Separation' },
-      { label: 'Absconding', icon: 'pi pi-user-minus', route: '/separation/absconding', permissions: ['separation.termination.manage'], feature: 'Separation' },
-      { label: 'Retrenchment', icon: 'pi pi-users', route: '/separation/retrenchment', permissions: ['separation.termination.manage'], feature: 'Separation' },
-      { label: 'Attrition', icon: 'pi pi-chart-line', route: '/separation/analytics', permissions: ['separation.analytics.view'], feature: 'Separation' },
     ],
   },
   {

@@ -811,16 +811,16 @@ export class OfferPage {
 
 const blankAgency = (): AgencyInput => ({ name: '', contactName: null, email: null, phone: null, feePercent: 8.33, isActive: true });
 
-/** Recruitment settings: the referral bonus, offer validity, scorecard criteria, agencies and referrals. */
+/** Referrals & incentives: what a referral earns the employee, and every referral with its bonus. */
 @Component({
-  selector: 'gggs-recruitment-settings-page',
-  imports: [DatePipe, MoneyPipe, PageHeader, StatusBadge, EmptyState, FormDialog],
+  selector: 'gggs-recruitment-referrals-page',
+  imports: [DatePipe, MoneyPipe, PageHeader, StatusBadge, EmptyState],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <gggs-page-header title="Recruitment settings" subtitle="Referral bonus, offer validity, interview criteria and the agencies you work with." />
+    <gggs-page-header title="Referrals & incentives" subtitle="The bonus an employee earns for a successful referral, and every referral so far." />
     @if (rules(); as r) {
       <section class="panel stack">
-        <h2 class="rec__heading">Rules</h2>
+        <h2 class="rec__heading">Referral bonus</h2>
         <div class="rec__grid">
           <label class="field">
             <span class="field__label">Referral bonus</span>
@@ -830,6 +830,87 @@ const blankAgency = (): AgencyInput => ({ name: '', contactName: null, email: nu
             <span class="field__label">Paid after (months in the job)</span>
             <input type="number" min="0" max="24" [value]="r.referralBonusAfterMonths" [disabled]="!canManage" (input)="patch({ referralBonusAfterMonths: +$any($event.target).value })" />
           </label>
+        </div>
+        @if (canManage) {
+          <div class="toolbar">
+            <button type="button" class="btn btn--primary" [disabled]="busy()" (click)="save(r)">Save bonus</button>
+            @if (notice()) {
+              <span class="muted" role="status">{{ notice() }}</span>
+            }
+          </div>
+        }
+      </section>
+    }
+    <section class="panel stack">
+      <h2 class="rec__heading">Referrals</h2>
+      @for (referral of referrals(); track referral.id) {
+        <div class="rec__row">
+          <span><strong>{{ referral.candidateName }}</strong> <span class="muted">by {{ referral.referrerName ?? '—' }}</span></span>
+          <span>{{ referral.requisitionTitle ?? 'General referral' }}</span>
+          <span class="muted">{{ referral.createdDate | date: 'd MMM y' }}{{ referral.stage ? ' · ' + referral.stage : '' }}</span>
+          <span>{{ referral.bonusAmount ? (referral.bonusAmount | gggsMoney) + (referral.bonusDueOn ? ' due ' + (referral.bonusDueOn | date: 'd MMM y') : '') : '' }}</span>
+          <span><gggs-status-badge [status]="referral.status" /></span>
+        </div>
+      } @empty {
+        <gggs-empty-state icon="pi pi-share-alt" title="No referrals yet" />
+      }
+    </section>
+    @if (error()) {
+      <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
+    }
+  `,
+  styleUrl: './recruitment.css',
+})
+export class ReferralsPage {
+  private readonly api = inject(RecruitmentApi);
+
+  protected readonly canManage = inject(PermissionStore).has('recruitment.settings.manage');
+  protected readonly rules = signal<RecruitmentRules | null>(null);
+  protected readonly referrals = signal<readonly ReferralItem[]>([]);
+  protected readonly busy = signal(false);
+  protected readonly notice = signal<string | null>(null);
+  protected readonly error = signal<string | null>(null);
+
+  constructor() {
+    Promise.all([this.api.rules(), this.api.referrals()]).then(
+      ([rules, referrals]) => {
+        this.rules.set(rules);
+        this.referrals.set(referrals);
+      },
+      (error: unknown) => this.error.set(errorText(error, 'Referrals could not be loaded.')),
+    );
+  }
+
+  protected patch(change: Partial<RecruitmentRules>): void {
+    this.rules.update((rules) => (rules ? { ...rules, ...change } : rules));
+  }
+
+  protected async save(rules: RecruitmentRules): Promise<void> {
+    this.busy.set(true);
+    this.notice.set(null);
+    this.error.set(null);
+    try {
+      this.rules.set(await this.api.saveRules(rules));
+      this.notice.set('Saved.');
+    } catch (error) {
+      this.error.set(errorText(error, 'The bonus could not be saved.'));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+}
+
+/** Recruitment settings: offer validity, scorecard criteria and agencies. */
+@Component({
+  selector: 'gggs-recruitment-settings-page',
+  imports: [PageHeader, StatusBadge, EmptyState, FormDialog],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <gggs-page-header title="Recruitment settings" subtitle="Offer validity, interview criteria and the agencies you work with." />
+    @if (rules(); as r) {
+      <section class="panel stack">
+        <h2 class="rec__heading">Rules</h2>
+        <div class="rec__grid">
           <label class="field">
             <span class="field__label">Offers valid for (days)</span>
             <input type="number" min="1" max="90" [value]="r.offerValidDays" [disabled]="!canManage" (input)="patch({ offerValidDays: +$any($event.target).value })" />
@@ -878,20 +959,6 @@ const blankAgency = (): AgencyInput => ({ name: '', contactName: null, email: nu
         <gggs-empty-state icon="pi pi-building" title="No agencies" />
       }
     </section>
-    <section class="panel stack">
-      <h2 class="rec__heading">Referrals</h2>
-      @for (referral of referrals(); track referral.id) {
-        <div class="rec__row">
-          <span><strong>{{ referral.candidateName }}</strong> <span class="muted">by {{ referral.referrerName ?? '—' }}</span></span>
-          <span>{{ referral.requisitionTitle ?? 'General referral' }}</span>
-          <span class="muted">{{ referral.createdDate | date: 'd MMM y' }}{{ referral.stage ? ' · ' + referral.stage : '' }}</span>
-          <span>{{ referral.bonusAmount ? (referral.bonusAmount | gggsMoney) + (referral.bonusDueOn ? ' due ' + (referral.bonusDueOn | date: 'd MMM y') : '') : '' }}</span>
-          <span><gggs-status-badge [status]="referral.status" /></span>
-        </div>
-      } @empty {
-        <gggs-empty-state icon="pi pi-share-alt" title="No referrals yet" />
-      }
-    </section>
     @if (error()) {
       <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
@@ -931,7 +998,6 @@ export class RecruitmentSettingsPage {
   protected readonly split = splitList;
   protected readonly rules = signal<RecruitmentRules | null>(null);
   protected readonly agencies = signal<readonly AgencyItem[]>([]);
-  protected readonly referrals = signal<readonly ReferralItem[]>([]);
   protected readonly agencyOpen = signal(false);
   protected readonly agencyId = signal<string | null>(null);
   protected readonly agency = signal<AgencyInput>(blankAgency());
@@ -941,11 +1007,10 @@ export class RecruitmentSettingsPage {
   protected readonly formError = signal<string | null>(null);
 
   constructor() {
-    Promise.all([this.api.rules(), this.api.agencies(), this.api.referrals()]).then(
-      ([rules, agencies, referrals]) => {
+    Promise.all([this.api.rules(), this.api.agencies()]).then(
+      ([rules, agencies]) => {
         this.rules.set(rules);
         this.agencies.set(agencies);
-        this.referrals.set(referrals);
       },
       (error: unknown) => this.error.set(errorText(error, 'Settings could not be loaded.')),
     );

@@ -119,7 +119,7 @@ describe('filterNavigation', () => {
     expect(labels).toContain('My Space');
     // Nothing administrative leaks into an employee's sidebar.
     expect(labels).not.toContain('Settings');
-    expect(labels).not.toContain('Employees');
+    expect(labels).not.toContain('Finance & Accounts');
   });
 
   it('shows an account without an employee record no My Space, since every page there needs one', () => {
@@ -180,58 +180,11 @@ describe('filterNavigation', () => {
       '/team/timesheets',
       '/workforce',
       '/workforce/plans',
-      '/workforce/requests',
-      '/recruitment/requisitions',
-      '/recruitment/postings',
-      '/recruitment/candidates',
-      '/recruitment/interviews',
-      '/recruitment/offers',
-      '/recruitment/analytics',
-      '/onboarding',
-      '/employees',
-      '/employees/org-chart',
-      '/org/structure',
-      '/employees/import',
       '/attendance',
       '/attendance/regularizations',
       '/leave/requests',
-      '/clients',
-      '/clients/contacts',
-      '/contracts',
-      '/projects',
-      '/projects/tasks',
-      '/projects/board',
-      '/projects/milestones',
-      '/projects/sprints',
-      '/projects/change-requests',
-      '/projects/raid',
-      '/projects/portfolio',
-      '/projects/financials',
-      '/projects/billing',
-      '/projects/service-levels',
-      '/resources',
-      '/resources/requests',
-      '/resources/calendar',
-      '/resources/capacity',
-      '/resources/bench',
-      '/resources/utilization',
-      '/timesheets/approvals',
-      '/resources/transfers',
-      '/payroll',
-      '/payroll/runs',
-      '/payroll/salaries',
-      '/payroll/inputs',
-      '/loans',
-      '/payroll/payslips',
-      '/payroll/declarations',
-      '/compensation/revisions',
-      '/compensation/variable-pay',
-      '/compensation/equity',
       '/benefits',
       '/benefits/enrollments',
-      '/compliance',
-      '/compliance/filings',
-      '/compliance/registrations',
       '/performance',
       '/performance/pips',
       '/goals',
@@ -244,12 +197,40 @@ describe('filterNavigation', () => {
       '/career/talent-review',
       '/rewards',
       '/engagement',
+      '/policies',
+      '/workforce/requests',
+      '/recruitment/requisitions',
+      '/recruitment/postings',
+      '/recruitment/candidates',
+      '/recruitment/interviews',
+      '/recruitment/offers',
+      '/recruitment/referrals',
+      '/onboarding',
+      '/recruitment/analytics',
+      '/employees',
+      '/employees/org-chart',
+      '/org/structure',
+      '/employees/import',
+      '/payroll',
+      '/payroll/runs',
+      '/payroll/salaries',
+      '/payroll/inputs',
+      '/loans',
+      '/payroll/payslips',
+      '/payroll/declarations',
+      '/compensation/revisions',
+      '/compensation/variable-pay',
+      '/compensation/equity',
       '/expenses',
+      '/projects/financials',
+      '/projects/billing',
+      '/compliance',
+      '/compliance/filings',
+      '/compliance/registrations',
       '/assets',
       '/helpdesk',
       '/helpdesk/knowledge',
       '/documents',
-      '/policies',
       '/separation',
       '/separation/clearance',
       '/separation/offboarding',
@@ -257,6 +238,26 @@ describe('filterNavigation', () => {
       '/separation/absconding',
       '/separation/retrenchment',
       '/separation/analytics',
+      '/clients',
+      '/clients/contacts',
+      '/contracts',
+      '/projects',
+      '/projects/tasks',
+      '/projects/board',
+      '/projects/milestones',
+      '/projects/sprints',
+      '/projects/change-requests',
+      '/projects/raid',
+      '/projects/portfolio',
+      '/projects/service-levels',
+      '/resources',
+      '/resources/requests',
+      '/resources/calendar',
+      '/resources/capacity',
+      '/resources/bench',
+      '/resources/utilization',
+      '/timesheets/approvals',
+      '/resources/transfers',
       '/analytics',
       '/calendar',
       '/ai',
@@ -332,7 +333,7 @@ describe('locate', () => {
 
   it('prefers the longest matching route', () => {
     const location = locate(nav, '/payroll/runs/123?tab=items');
-    expect(location?.group.label).toBe('Payroll');
+    expect(location?.group.label).toBe('Finance & Accounts');
     expect(location?.entry.route).toBe('/payroll/runs');
   });
 
@@ -365,6 +366,38 @@ describe('moduleTabs', () => {
   });
 });
 
+describe('department menus', () => {
+  const nav = filterNavigation(NAVIGATION, isBuilt);
+  const finance = nav.find((group) => group.label === 'Finance & Accounts')!;
+
+  it('are in the agreed order among the top-level entries', () => {
+    expect(nav.map((group) => group.label)).toEqual([
+      'Dashboard', 'Approvals', 'My Space', 'My Team', 'HR Portal', 'Talent Acquisition', 'Finance & Accounts', 'General Administration',
+      'Exits', 'Clients', 'Projects', 'Resources', 'Analytics', 'Calendar', 'AI Assistant', 'Settings',
+    ]);
+  });
+
+  it('give every page a heading', () => {
+    for (const label of ['HR Portal', 'Talent Acquisition', 'Finance & Accounts', 'General Administration']) {
+      expect(nav.find((group) => group.label === label)!.children!.every((page) => page.heading), label).toBe(true);
+    }
+  });
+
+  it('offer the current heading as tabs, none on a heading with one page', () => {
+    const salaries = finance.children!.find((page) => page.route === '/payroll/salaries')!;
+    expect(moduleTabs(finance, salaries).every((page) => page.heading === 'Payroll')).toBe(true);
+    expect(moduleTabs(finance, salaries)).toHaveLength(7);
+    expect(moduleTabs(finance, finance.children!.find((page) => page.route === '/expenses'))).toEqual([]);
+    expect(moduleTabs(finance, finance)).toEqual([]);
+  });
+
+  it('keep what a page needs from its plan after leaving its old module', () => {
+    const billing = finance.children!.find((page) => page.route === '/projects/billing')!;
+    expect([billing.feature, billing.alsoNeedsFeature]).toEqual(['ProjectFinancials', 'Projects']);
+    expect(finance.children!.find((page) => page.route === '/payroll/runs')!.feature).toBe('Payroll');
+  });
+});
+
 describe('Settings', () => {
   const nav = filterNavigation(NAVIGATION, isBuilt);
   const settings = nav.find((group) => group.label === 'Settings')!;
@@ -378,22 +411,22 @@ describe('Settings', () => {
     expect([...keys].every((key) => settings.children!.some((page) => page.section === key))).toBe(true);
   });
 
-  it('lists organization masters for those who can change them, while viewers browse the structure from Employees', () => {
+  it('lists organization masters for those who can change them, while viewers browse the structure from Finance & Accounts', () => {
     const viewer = filterNavigation(NAVIGATION, (item) => isBuilt(item) && (item.permissions === undefined || item.permissions.includes('org.structure.view')));
     expect(viewer.find((group) => group.label === 'Settings')).toBeUndefined();
-    expect(viewer.find((group) => group.label === 'Employees')?.children?.map((page) => page.route)).toEqual(['/org/structure']);
+    expect(viewer.find((group) => group.label === 'Finance & Accounts')?.children?.map((page) => page.route)).toEqual(['/org/structure']);
   });
 
   it('keeps set-up pages out of the modules, and every route in one place only', () => {
     const routes = nav.flatMap((group) => [group.route, ...(group.children ?? []).map((page) => page.route)]).filter(Boolean);
     expect(new Set(routes).size).toBe(routes.length);
     expect(nav.find((group) => group.label === 'Organization')).toBeUndefined();
-    expect(nav.find((group) => group.label === 'Payroll')!.children!.map((page) => page.route)).not.toContain('/payroll/settings');
+    expect(nav.find((group) => group.label === 'Finance & Accounts')!.children!.map((page) => page.route)).not.toContain('/payroll/settings');
   });
 
   it('points each module that gave up pages at their category', () => {
-    for (const group of nav.filter((candidate) => candidate.settingsSection)) {
-      expect(settings.children!.some((page) => page.section === group.settingsSection), group.label).toBe(true);
+    for (const item of nav.flatMap((group) => [group, ...(group.children ?? [])]).filter((candidate) => candidate.settingsSection)) {
+      expect(settings.children!.some((page) => page.section === item.settingsSection), item.label).toBe(true);
     }
   });
 
@@ -411,17 +444,23 @@ describe('sectionsOf', () => {
   const nav = filterNavigation(NAVIGATION, isBuilt);
 
   it('gives an ordinary module one run of pages, without a caption', () => {
-    const payroll = nav.find((group) => group.label === 'Payroll')!;
-    const sections = sectionsOf(payroll);
+    const team = nav.find((group) => group.label === 'My Team')!;
+    const sections = sectionsOf(team);
     expect(sections).toHaveLength(1);
     expect(sections[0]!.label).toBeUndefined();
-    expect(sections[0]!.pages).toBe(payroll.children);
+    expect(sections[0]!.pages).toBe(team.children);
   });
 
   it('gives Settings one captioned run per category, in category order', () => {
     const sections = sectionsOf(nav.find((group) => group.label === 'Settings')!);
     expect(sections.map((section) => section.label)).toEqual(SETTINGS_SECTIONS.map((section) => section.label));
     expect(sections[0]!.pages.every((page) => page.section === 'organization')).toBe(true);
+  });
+
+  it('gives a department menu one captioned run per heading, in the order written', () => {
+    const sections = sectionsOf(nav.find((group) => group.label === 'General Administration')!);
+    expect(sections.map((section) => section.label)).toEqual(['Inventory & assets', 'Support', 'Records']);
+    expect(sections[1]!.pages.map((page) => page.label)).toEqual(['Helpdesk', 'Knowledge base']);
   });
 
   it('has nothing to list for a module that is a page itself', () => {
@@ -433,12 +472,17 @@ describe('filterMenu', () => {
   const nav = filterNavigation(NAVIGATION, isBuilt);
 
   it('keeps a module whose name matches whole, and otherwise only its matching pages', () => {
-    const payroll = filterMenu(nav, 'payroll').find((group) => group.label === 'Payroll');
-    expect(payroll?.children).toBe(nav.find((group) => group.label === 'Payroll')!.children);
+    const finance = filterMenu(nav, 'finance').find((group) => group.label === 'Finance & Accounts');
+    expect(finance?.children).toBe(nav.find((group) => group.label === 'Finance & Accounts')!.children);
 
     const result = filterMenu(nav, 'payslip');
     expect(result.find((group) => group.label === 'My Space')?.children?.map((page) => page.label)).toEqual(['My payslips']);
-    expect(result.find((group) => group.label === 'Talent')).toBeUndefined();
+    expect(result.find((group) => group.label === 'HR Portal')).toBeUndefined();
+  });
+
+  it('finds every page under a heading by the heading, as it did when the heading was a module', () => {
+    const pages = filterMenu(nav, 'payroll').find((group) => group.label === 'Finance & Accounts')?.children?.map((page) => page.label);
+    expect(pages).toEqual(expect.arrayContaining(['Salaries', 'Loans', 'Payslips']));
   });
 
   it('is the whole menu for an empty search and nothing for a term nothing matches', () => {
@@ -471,14 +515,14 @@ describe('searchNavigation', () => {
   });
 
   it('finds modules by name or short name, ignoring case', () => {
-    expect(searchNavigation(visible, 'PAY').apps.map((item) => item.label)).toContain('Payroll');
-    expect(searchNavigation(visible, 'comp &').apps.map((item) => item.label)).toEqual(['Compensation & benefits']);
+    expect(searchNavigation(visible, 'FINANCE').apps.map((item) => item.label)).toContain('Finance & Accounts');
+    expect(searchNavigation(visible, 'general adm').apps.map((item) => item.label)).toEqual(['General Administration']);
   });
 
   it('finds pages from two characters, each with its module', () => {
     expect(searchNavigation(visible, 'p').pages).toEqual([]);
     const pages = searchNavigation(visible, 'payslip').pages.map((match) => `${match.group.label} > ${match.page.label}`);
-    expect(pages).toEqual(expect.arrayContaining(['My Space > My payslips', 'Payroll > Payslips']));
+    expect(pages).toEqual(expect.arrayContaining(['My Space > My payslips', 'Finance & Accounts > Payslips']));
   });
 
   it('caps the pages it lists', () => {

@@ -109,11 +109,11 @@ export class Shell {
   protected readonly tabs = computed(() => moduleTabs(this.activeGroup(), this.activeEntry()));
 
   /**
-   * The module's set-up pages now live in Settings: a gear at the end of its tabs leads to that
-   * category, when the user can open at least one page in it.
+   * A module's set-up pages live in Settings: a gear at the end of its tabs leads to that category,
+   * when the user can open at least one page in it. In a department menu each heading has its own.
    */
   protected readonly settingsLink = computed(() => {
-    const key = this.activeGroup()?.settingsSection;
+    const key = this.activeEntry()?.settingsSection ?? this.activeGroup()?.settingsSection;
     const reachable = key && this.navigation().some((group) => group.children?.some((child) => child.section === key));
     return reachable ? { key, label: SETTINGS_SECTIONS.find((section) => section.key === key)?.label ?? 'Settings' } : null;
   });

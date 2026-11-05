@@ -186,7 +186,7 @@ export class PayslipDocumentView {
           }
         </div>
       } @else {
-        <gggs-empty-state icon="pi pi-wallet" title="No salary assigned" description="Assign a salary in Payroll > Salaries before the first payroll." />
+        <gggs-empty-state icon="pi pi-wallet" title="No salary assigned" description="Assign a salary in Finance & Accounts > Salaries before the first payroll." />
       }
     }
     @if (error()) {
