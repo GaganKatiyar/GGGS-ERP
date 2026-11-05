@@ -21,7 +21,6 @@ import { BrandMark } from '@gggs/shared/ui';
 import { WorkflowApi } from '@gggs/shared/workflow';
 import { filter } from 'rxjs';
 import { SETTINGS_SECTIONS, entryRoute, filterMenu, locate, moduleTabs, searchNavigation, sectionsOf, type NavItem } from './navigation';
-import { NavStyleStore } from './nav-style';
 import { VisibleNavigation } from './visible-navigation';
 import { PALETTES, ThemeStore, type Palette } from './theme';
 import { EdgeScroll } from './edge-scroll';
@@ -70,6 +69,8 @@ export class Shell {
   private readonly paletteMenu = viewChild<ElementRef<HTMLElement>>('paletteMenu');
   private readonly launcherElement = viewChild<ElementRef<HTMLElement>>('launcher');
   private readonly launcherSearch = viewChild<ElementRef<HTMLInputElement>>('launcherSearch');
+  private readonly navigationElement = viewChild<ElementRef<HTMLElement>>('shellNavigation');
+  private readonly menuToggle = viewChild<ElementRef<HTMLElement>>('menuToggle');
   /** What opened the launcher, so focus goes back there when it closes. */
   private launcherTrigger: HTMLElement | null = null;
   private stepUpLoaded = false;
@@ -145,9 +146,10 @@ export class Shell {
 
   protected readonly photo = inject(MyPhotoStore);
 
-  // ----- Menu: the expanded sidebar, or the icon rail with a pop-out of a module's pages -----
+  // ----- Menu: the icon rail with a pop-out of a module's pages, or the menu floating over the page -----
 
-  protected readonly navStyle = inject(NavStyleStore);
+  /** The floating menu: it starts closed on every load and closes again once a page is chosen. */
+  protected readonly isMenuOpen = signal(false);
   protected readonly sectionsOf = sectionsOf;
   /** The sidebar's search. */
   protected readonly menuQuery = signal('');
@@ -205,6 +207,7 @@ export class Shell {
         this.isUserMenuOpen.set(false);
         this.isPaletteMenuOpen.set(false);
         this.closeFlyout();
+        this.closeMenu();
         // In a long tab bar (My Space has two dozen pages) bring the current page's tab into view.
         setTimeout(() => document.querySelector('.module-tabs__tab--active')?.scrollIntoView({ block: 'nearest', inline: 'center' }));
       });
@@ -270,6 +273,11 @@ export class Shell {
   /** Opens the app launcher with an empty search, which takes the focus. */
   protected openLauncher(event: Event): void {
     this.launcherTrigger = event.currentTarget as HTMLElement | null;
+    if (this.isMenuOpen()) {
+      // The grid button goes with the menu, so focus comes back to the menu's edge instead.
+      this.closeMenu();
+      this.launcherTrigger = this.menuToggle()?.nativeElement ?? null;
+    }
     this.launcherQuery.set('');
     this.isUserMenuOpen.set(false);
     this.isPaletteMenuOpen.set(false);
@@ -337,6 +345,38 @@ export class Shell {
   protected choosePalette(palette: Palette): void {
     this.theme.setPalette(palette);
     this.isPaletteMenuOpen.set(false);
+  }
+
+  protected toggleMenu(): void {
+    if (this.isMenuOpen()) {
+      this.closeMenu();
+      return;
+    }
+
+    this.closeFlyout();
+    this.isMenuOpen.set(true);
+    // A long menu opens scrolled to where the person is.
+    setTimeout(() => document.querySelector('.sidebar__page--active, .sidebar__item--active')?.scrollIntoView({ block: 'nearest' }));
+  }
+
+  protected closeMenu(restoreFocus = false): void {
+    if (!this.isMenuOpen()) {
+      return;
+    }
+
+    this.isMenuOpen.set(false);
+    this.menuQuery.set('');
+    if (restoreFocus) {
+      this.menuToggle()?.nativeElement.focus();
+    }
+  }
+
+  /** Tabbing out of the open menu closes it, as a click outside does. */
+  protected onNavigationFocusOut(event: FocusEvent): void {
+    const next = event.relatedTarget as Node | null;
+    if (next && !this.navigationElement()?.nativeElement.contains(next)) {
+      this.closeMenu();
+    }
   }
 
   /** Arrow keys move between the rail's icons, Home and End to the ends. */
@@ -484,6 +524,7 @@ export class Shell {
     if (this.flyout()) {
       this.closeFlyout(true);
     }
+    this.closeMenu(true);
     this.isUserMenuOpen.set(false);
     this.isPaletteMenuOpen.set(false);
     this.closeLauncher();
@@ -491,6 +532,10 @@ export class Shell {
 
   protected onDocumentClick(event: MouseEvent): void {
     const target = event.target as Node;
+    if (!this.navigationElement()?.nativeElement.contains(target)) {
+      this.closeMenu();
+    }
+
     const menu = this.userMenu()?.nativeElement;
     if (this.isUserMenuOpen() && menu && !menu.contains(target)) {
       this.isUserMenuOpen.set(false);

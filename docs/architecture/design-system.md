@@ -177,22 +177,26 @@ server and is not affected.
 
 ## Rail and app launcher
 
-There are two menus, and each user picks one with the « / » tab on the menu's edge
-(`NavStyleStore`, kept per browser under `gggs-nav-style`):
+Every page starts with the rail, and the « / » tab on the menu's edge opens the full menu over it:
 
-- **Expanded (the default):** a `--gggs-sidebar-width` sidebar listing every module with its name.
-  A module with pages is a disclosure button that opens them, indented, beneath it. The current
-  module opens by itself and others stay open once opened. Settings lists its pages under category
-  captions (`sectionsOf`). A search at the top filters modules and pages (`filterMenu`). The keys
-  work as in a tree: Up and Down move, Right opens a module or steps into it, Left closes it or
-  steps back up, and Home and End jump to the ends.
 - **Icons:** the rail described below. Resting the pointer on a module's icon, or focusing it, pops
   its pages out beside the rail after about 150 ms. Right steps into the pop-out, and Escape or
   Left returns to the icon.
+- **Open menu:** a `--gggs-sidebar-width` panel floating over the header and the page, which keep
+  their position and width, so the panel covers the header logo while it is open. It lists every
+  module with its name. A module with pages is a disclosure button that opens them, indented,
+  beneath it. The current module opens by itself and others stay open once opened. Settings lists
+  its pages under category captions (`sectionsOf`). A search at the top filters modules and pages
+  (`filterMenu`). The keys work as in a tree: Up and Down move, Right opens a module or steps into
+  it, Left closes it or steps back up, and Home and End jump to the ends.
 
-Below 64rem the expanded menu gives way to the rail whatever was chosen, and below 48rem the menu
-is hidden and the header logo opens the launcher. Both menus mark each module's entry page with
-`data-nav-module`, which the role audit crawls. The module tabs under the header stay in both.
+The menu closes when a page is chosen (including the page already showing), on a click outside it,
+on Escape, or when keyboard focus leaves it. It is not remembered: reloading starts with the rail.
+There is no scrim, so a click on the page closes the menu and also does what it would have done.
+
+Below 48rem the menu is hidden and the header logo opens the launcher. Both forms mark each
+module's entry page with `data-nav-module`, which the role audit crawls. The module tabs under the
+header stay in both.
 
 The rail shows one icon per module, built from the permission-filtered navigation manifest
 (`navigation.ts`). Each icon opens its module on its first page (`entryRoute`); the module's pages

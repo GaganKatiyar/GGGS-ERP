@@ -17,16 +17,9 @@ gggs-shell {
   height: 100%;
   background: var(--gggs-color-surface);
 
-  // The expanded menu takes a sidebar's width; below 64rem NavStyleStore shows the rail instead.
-  &--expanded {
-    grid-template-columns: var(--gggs-sidebar-width) minmax(0, 1fr);
-  }
-
+  // The column stays the rail's width with the menu open too: the menu floats, so the page never moves.
   @media (max-width: 48rem) {
-    &,
-    &--expanded {
-      grid-template-columns: minmax(0, 1fr);
-    }
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -206,19 +199,26 @@ gggs-shell {
   inset-inline-end: -0.25rem;
 }
 
-// ----- Expanded sidebar -------------------------------------------------------------------------------
+// ----- Floating menu ---------------------------------------------------------------------------------
 
-// Every module with its name, opening onto its pages - the rail's other form. Same navy, same tokens,
-// so the light-menu palette and dark mode follow without a rule of their own.
+// Every module with its name, opening onto its pages - the rail's other form. It floats over the
+// header and the page rather than taking room from them. Same navy, same tokens, so the light-menu
+// palette and dark mode follow without a rule of their own.
 .sidebar {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
   display: flex;
   flex-direction: column;
   width: var(--gggs-sidebar-width);
   min-width: 0;
   min-height: 0;
   background: var(--gggs-gradient-nav);
-  box-shadow: inset -1px 0 0 var(--gggs-color-nav-border);
+  box-shadow:
+    inset -1px 0 0 var(--gggs-color-nav-border),
+    var(--gggs-shadow-4);
   color: var(--gggs-color-nav-text);
+  animation: gggs-flyout-in var(--gggs-duration) var(--gggs-ease-out);
 }
 
 .sidebar__top {
@@ -462,12 +462,17 @@ gggs-shell {
 
 // ----- Menu toggle ---------------------------------------------------------------------------------
 
-// A tab on the menu's edge that swaps the sidebar and the rail.
+// A tab on the menu's edge that opens and closes it, riding on whichever edge is showing.
 .nav-toggle {
   position: absolute;
   inset-block-start: 50%;
   inset-inline-end: -0.875rem;
   z-index: 1;
+
+  .shell--menu-open & {
+    inset-inline-end: calc(var(--gggs-rail-width) - var(--gggs-sidebar-width) - 0.875rem);
+  }
+
   display: grid;
   place-items: center;
   width: 1.75rem;

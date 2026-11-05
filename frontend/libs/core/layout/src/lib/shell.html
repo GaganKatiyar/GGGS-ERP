@@ -1,11 +1,25 @@
 <a class="skip-link" href="#main-content" (click)="focusContent($event)">Skip to content</a>
 
-<div class="shell" [class.shell--expanded]="navStyle.isExpanded()">
-  <!-- Two menus, the user's choice (NavStyleStore): the expanded sidebar - every module with its
-       pages, and a search - or the rail of icons, whose pages pop out on hover or focus. Either way
-       the grid button (and the logo in the header) opens the app launcher. -->
-  <nav id="shell-navigation" class="shell__nav" aria-label="Main" tabindex="-1" (keydown)="onNavigationKeydown($event)">
-    @if (navStyle.isExpanded()) {
+<div class="shell" [class.shell--menu-open]="isMenuOpen()">
+  <!-- The rail of icons, whose pages pop out on hover or focus, or the menu floating over the page:
+       every module with its pages, and a search, until a page is chosen. Either way the grid button
+       (and the logo in the header) opens the app launcher. -->
+  <nav #shellNavigation id="shell-navigation" class="shell__nav" aria-label="Main" tabindex="-1" (keydown)="onNavigationKeydown($event)" (focusout)="onNavigationFocusOut($event)">
+    <!-- First, so that Tab goes from here into the open menu. -->
+    <button
+      #menuToggle
+      type="button"
+      class="nav-toggle"
+      aria-controls="shell-navigation"
+      [attr.aria-expanded]="isMenuOpen()"
+      [attr.aria-label]="isMenuOpen() ? 'Close menu' : 'Open menu'"
+      [title]="isMenuOpen() ? 'Close menu' : 'Open menu'"
+      (click)="toggleMenu()"
+    >
+      <i class="pi" [class.pi-angle-double-left]="isMenuOpen()" [class.pi-angle-double-right]="!isMenuOpen()" aria-hidden="true"></i>
+    </button>
+
+    @if (isMenuOpen()) {
     <div class="sidebar">
       <div class="sidebar__top">
         <button
@@ -61,6 +75,7 @@
                 [class.sidebar__page--active]="activeEntry()?.route === page.route"
                 [attr.aria-current]="activeEntry()?.route === page.route ? 'page' : null"
                 [attr.data-module]="item.label"
+                (click)="closeMenu()"
               >{{ page.label }}</a>
             </li>
             }
@@ -75,6 +90,7 @@
             [attr.aria-current]="active ? 'page' : null"
             [attr.data-module]="item.label"
             [attr.data-nav-module]="entryRoute(item)"
+            (click)="closeMenu()"
           >
             <i class="sidebar__icon {{ item.icon }}" aria-hidden="true"></i>
             <span class="sidebar__label">{{ item.label }}</span>
@@ -156,21 +172,6 @@
       </ul>
     </div>
     }
-    }
-
-    @if (navStyle.canExpand()) {
-    <!-- The switch between the two menus, on the menu's edge; the choice is remembered. -->
-    <button
-      type="button"
-      class="nav-toggle"
-      aria-controls="shell-navigation"
-      [attr.aria-expanded]="navStyle.isExpanded()"
-      [attr.aria-label]="navStyle.isExpanded() ? 'Collapse menu to icons' : 'Expand menu'"
-      [title]="navStyle.isExpanded() ? 'Collapse menu' : 'Expand menu'"
-      (click)="navStyle.toggle()"
-    >
-      <i class="pi" [class.pi-angle-double-left]="navStyle.isExpanded()" [class.pi-angle-double-right]="!navStyle.isExpanded()" aria-hidden="true"></i>
-    </button>
     }
   </nav>
 
