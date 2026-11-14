@@ -1011,3 +1011,59 @@ export interface SeparationDashboard {
   readonly topExitReasons: Readonly<Record<string, number>>;
   readonly settlementsOverdue: number;
 }
+
+/** What a home dashboard banner slide is about, which sets its label and its picture. */
+export type BannerKind = 'Announcement' | 'Payroll' | 'Holiday' | 'Deadline' | 'WhatsNew' | 'Recognition';
+
+export const BANNER_KINDS: readonly { readonly value: BannerKind; readonly label: string }[] = [
+  { value: 'Announcement', label: 'Announcement' },
+  { value: 'Payroll', label: 'Payroll' },
+  { value: 'Holiday', label: 'Holiday' },
+  { value: 'Deadline', label: 'Deadline (shows its last day as the due date)' },
+  { value: 'WhatsNew', label: "What's new" },
+  { value: 'Recognition', label: 'Recognition' },
+];
+
+/** How a slide uses its space. In a full picture, the title is the picture's description and is not shown. */
+export type BannerLayout = 'PictureWithText' | 'FullPicture';
+
+/** A slide as the banner shows it. */
+export interface MyFeatureBanner {
+  readonly id: string;
+  readonly title: string;
+  readonly body: string | null;
+  readonly kind: BannerKind;
+  readonly actionLabel: string | null;
+  readonly actionLink: string | null;
+  readonly secondaryLabel: string | null;
+  readonly secondaryLink: string | null;
+  readonly endsOn: string | null;
+  /** The label on a built-in slide, in place of the one its kind would give. */
+  readonly chip?: string;
+  /** A photo for the slide; without one it uses the drawn picture for its kind. */
+  readonly imageUrl?: string | null;
+  /** Picture with text when left out. */
+  readonly layout?: BannerLayout;
+}
+
+export interface FeatureBannerInput {
+  readonly title: string;
+  readonly body: string | null;
+  readonly kind: BannerKind;
+  readonly actionLabel: string | null;
+  readonly actionLink: string | null;
+  readonly secondaryLabel: string | null;
+  readonly secondaryLink: string | null;
+  readonly startsOn: string;
+  readonly endsOn: string | null;
+  readonly position: number;
+  readonly audienceDepartmentIds: readonly string[];
+  readonly audienceLocationIds: readonly string[];
+  readonly layout: BannerLayout;
+}
+
+export interface FeatureBannerItem extends FeatureBannerInput {
+  readonly id: string;
+  readonly isPublished: boolean;
+  readonly imageUrl?: string | null;
+}

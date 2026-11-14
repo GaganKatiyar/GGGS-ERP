@@ -90,6 +90,19 @@ internal sealed class IdentityModel : IModuleModel
             entity.Ignore(user => user.DomainEvents);
         });
 
+        modelBuilder.Entity<RecentPage>(entity =>
+        {
+            entity.ToTable("RecentPage", Schema);
+            entity.Property(page => page.Route).HasMaxLength(RecentPage.MaxRouteLength).IsRequired();
+
+            // No key to User: these rows are disposable, and nothing should have to clear them first.
+            entity.HasIndex(page => new { page.TenantId, page.UserId, page.Route })
+                .HasDatabaseName("UX_RecentPage_TenantId_UserId_Route")
+                .IsUnique();
+
+            entity.Ignore(page => page.DomainEvents);
+        });
+
         modelBuilder.Entity<Role>(entity =>
         {
             entity.ToTable("Role", Schema);
@@ -249,6 +262,8 @@ internal static class IdentityData
     extension(AppDbContext db)
     {
         public DbSet<User> Users => db.Set<User>();
+
+        public DbSet<RecentPage> RecentPages => db.Set<RecentPage>();
 
         public DbSet<Role> Roles => db.Set<Role>();
 

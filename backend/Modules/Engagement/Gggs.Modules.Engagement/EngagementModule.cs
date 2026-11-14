@@ -6,6 +6,8 @@ using Gggs.Modules.Engagement.Application;
 using Gggs.Modules.Engagement.Domain;
 using Gggs.Modules.Insight.Contracts;
 using Hangfire;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Net.Http.Headers;
 
 namespace Gggs.Modules.Engagement;
 
@@ -17,6 +19,7 @@ public sealed class EngagementModule : IModule
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
         services.AddScoped<EngagementService>();
+        services.AddScoped<FeatureBannerService>();
         services.AddScoped<IMetricSource, EngagementMetrics>();
         services.AddScoped<ICalendarSource, SurveyCalendar>();
     }
@@ -60,6 +63,55 @@ public sealed class EngagementModule : IModule
                 return TypedResults.NoContent();
             })
             .WithName("RespondToSurvey").RequirePermission(Permissions.Self.SurveyRespond);
+
+        // Reuses the survey permission: both are HR talking to staff, and existing organisations' saved
+        // roles never receive a newly added permission, so a new one would leave them unable to use this.
+        RouteGroupBuilder banners = group.MapGroup("/banners");
+        banners.MapGet("/", async (FeatureBannerService service, CancellationToken ct) => TypedResults.Ok(await service.ListAsync(ct)))
+            .WithName("ListFeatureBanners").RequirePermission(Permissions.Engagement.SurveyManage);
+        banners.MapPost("/", async (FeatureBannerContent body, FeatureBannerService service, CancellationToken ct) => TypedResults.Ok(await service.SaveAsync(null, body, ct)))
+            .WithName("CreateFeatureBanner").RequirePermission(Permissions.Engagement.SurveyManage);
+        banners.MapPut("/{id:guid}", async (Guid id, FeatureBannerContent body, FeatureBannerService service, CancellationToken ct) => TypedResults.Ok(await service.SaveAsync(id, body, ct)))
+            .WithName("UpdateFeatureBanner").RequirePermission(Permissions.Engagement.SurveyManage);
+        banners.MapPost("/{id:guid}/publish", async (Guid id, FeatureBannerService service, CancellationToken ct) => TypedResults.Ok(await service.SetPublishedAsync(id, true, ct)))
+            .WithName("PublishFeatureBanner").RequirePermission(Permissions.Engagement.SurveyManage);
+        banners.MapPost("/{id:guid}/unpublish", async (Guid id, FeatureBannerService service, CancellationToken ct) => TypedResults.Ok(await service.SetPublishedAsync(id, false, ct)))
+            .WithName("UnpublishFeatureBanner").RequirePermission(Permissions.Engagement.SurveyManage);
+        banners.MapDelete("/{id:guid}", async (Guid id, FeatureBannerService service, CancellationToken ct) =>
+            {
+                await service.DeleteAsync(id, ct);
+                return TypedResults.NoContent();
+            })
+            .WithName("DeleteFeatureBanner").RequirePermission(Permissions.Engagement.SurveyManage);
+        banners.MapPut("/{id:guid}/image", async (Guid id, IFormFile file, FeatureBannerService service, CancellationToken ct) =>
+            {
+                ArgumentNullException.ThrowIfNull(file);
+                return TypedResults.Ok(await service.ReplaceImageAsync(id, new IncomingBannerImage(file.Length, file.OpenReadStream), ct));
+            })
+            .WithName("ReplaceFeatureBannerImage").RequirePermission(Permissions.Engagement.SurveyManage)
+            .DisableAntiforgery(); // Guarded by the X-CSRF header check (BrowserRequestGuard), as every cookie write is.
+        banners.MapDelete("/{id:guid}/image", async (Guid id, FeatureBannerService service, CancellationToken ct) => TypedResults.Ok(await service.RemoveImageAsync(id, ct)))
+            .WithName("RemoveFeatureBannerImage").RequirePermission(Permissions.Engagement.SurveyManage);
+        banners.MapGet("/{id:guid}/image", async (Guid id, Guid? v, HttpContext http, FeatureBannerService service, CancellationToken ct) => Image(http, v, await service.OpenImageAsync(id, ct)))
+            .WithName("GetFeatureBannerImage").RequirePermission(Permissions.Engagement.SurveyManage);
+
+        // Everyone with a home dashboard: the same permission that opens the calendar on it.
+        endpoints.MapGet("/api/v1/me/banners", async (FeatureBannerService service, CancellationToken ct) => TypedResults.Ok(await service.MineAsync(ct)))
+            .WithTags("Engagement").WithName("MyFeatureBanners").RequirePermission(Permissions.Self.ProfileView, Permissions.Employee.View);
+        endpoints.MapGet("/api/v1/me/banners/{id:guid}/image", async (Guid id, Guid? v, HttpContext http, FeatureBannerService service, CancellationToken ct) => Image(http, v, await service.OpenMyImageAsync(id, ct)))
+            .WithTags("Engagement").WithName("MyFeatureBannerImage").RequirePermission(Permissions.Self.ProfileView, Permissions.Employee.View);
+    }
+
+    /// <summary>Image tags fetch these with the session cookie. A request naming the current picture may be cached for good, because a new picture gets a new id and so a new URL.</summary>
+    private static IResult Image(HttpContext http, Guid? version, BannerImage? image)
+    {
+        if (image is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        http.Response.Headers.CacheControl = version == image.ImageId ? "private, max-age=31536000, immutable" : "private, no-cache";
+        return TypedResults.File(image.Content, image.ContentType, entityTag: new EntityTagHeaderValue($"\"{image.ImageId:N}\""));
     }
 }
 

@@ -131,7 +131,8 @@ No gradient sits behind body text.
 - Reduced motion: `_base.scss` sets `--gggs-lift` to 0, removes entrance delays and shortens every
   transition to effectively nothing. Chart animation and `gggsTilt` check the same preference
   themselves.
-- Nothing loops except loading spinners and skeleton shimmer.
+- Nothing loops except loading spinners and skeleton shimmer. The dashboard banner moves by itself
+  but does not loop: it goes through its slides once and rests on the first.
 
 ## Components
 
@@ -158,6 +159,52 @@ one animation frame. It does nothing on touch screens or for users who prefer re
 is for a few hero cards, currently the home dashboard's headline row, and should not be put on
 list items.
 
+**`gggs-feature-banner`** (`libs/shared/experience`) is the carousel at the top of the home dashboard.
+HR writes its slides at Settings > Platform > Dashboard banner (`/engagement/banner`): headline,
+sentence, an optional picture, what it is about (which sets its label, and the drawing used when there is
+no picture), up to two links, dates, order and audience. The browser scales a picture to at most 1600 px
+across, and the API accepts JPEG, PNG or WebP up to 3 MB, judged by the file's bytes. A person can fetch a
+slide's picture only while that slide is showing to them. The API returns at most eight. Until HR publishes one, or if the slides cannot be loaded, it
+shows built-in tips (`banner-tips.ts`), each only to someone who can use what it describes. Tips say what
+the app does and never claim anything about the person, because no one has checked them against that
+person's data.
+
+- A slide is either a **full picture** or a **picture with text**, in any order. A full picture is only
+  the image, edge to edge, and clicking it can open a page. Its title is the picture's description, required
+  and never shown on the slide: screen readers read it, and it appears if the picture cannot load. It cannot
+  be published without its picture. On a phone the whole picture shows over a blurred copy of itself, so
+  words in it are not cropped, though they do get small. There is no pause button.
+- On a picture with text, a photo fills the right side and fades into the slide's solid colour, so text never sits on it. If it
+  fails to load, the slide falls back to its drawing. The built-in tips use placeholder photos from
+  `public/banners`; replace those with the company's own before going live.
+- Slides alternate charcoal and deep red, taken from the rail's tokens so they follow the palette but
+  stay dark in both themes. Text sits on the solid colour; the gradient stays in the picture, so the
+  rule against gradients behind text holds.
+- Each slide stays 7 seconds, and the fill on its bar is the timer, so pausing that animation pauses
+  the slide. It holds while the pointer or keyboard focus is on the banner and while the browser tab
+  is hidden. Using an arrow, a bar, an arrow key or a swipe stops it for good. With reduced motion it never
+  starts.
+- All slides share one grid cell, so the banner is as tall as its tallest slide and the page below does
+  not jump. Below 34rem of its own width the picture becomes a band above the text.
+- Links are a page in the app or an https site; the API refuses anything else.
+
+**Home dashboard layout.** Two parts: the wide one holds the banner, quick links and what is coming up,
+and a 21rem one holds what to do now (clock in, approvals, requests). The last card in each column takes
+up any slack, so both end level and no hole opens above what follows. Approvals and requests are one line
+each, and grids that hold cards use `auto-fit`, so they fill their row however many cards there are. Below
+60rem of its own width it becomes one column, with the clock-in card straight after the banner. Profile
+reminders and the executive figures stay across the full width underneath.
+
+**`gggs-app-art`** (`libs/shared/ui`) draws a menu icon as a two-tone picture, for app tiles only: the
+launcher's modules and the home screen's Recent links and Quick links. Everywhere else, including the
+rail, stays a PrimeIcons line icon, because these pictures need about 40 px to read. The drawings are
+original and live in one file, `public/app-art.svg`, with `ICON_ART` in `app-art.ts` saying which icon
+shows which; a test fails if a menu icon has no drawing. Drawings use a 48 grid, filled shapes and only
+three colours (`--art-main`, `--art-soft`, `--art-detail`), which come from `--gggs-art-*` and, on the
+menu, `--gggs-color-nav-art*`, so they follow palette and theme. Raise `ART_VERSION` after changing
+the file. The launcher marks the current module with a ring, since a filled tile would hide a picture
+in the same colour.
+
 **`gggs-chart`** handles all chart styling. A single line series gets a fill that fades to the
 floor; several series are drawn unfilled so none hides another. Points are hollow, the grid is
 dashed, tooltips use the tokens, and hovering anywhere in a column shows every series' value
@@ -177,22 +224,34 @@ server and is not affected.
 
 ## Rail and app launcher
 
-There are two menus, and each user picks one with the « / » tab on the menu's edge
-(`NavStyleStore`, kept per browser under `gggs-nav-style`):
+Every page starts with the rail, and the « / » tab on the menu's edge opens the full menu over it:
 
-- **Expanded (the default):** a `--gggs-sidebar-width` sidebar listing every module with its name.
-  A module with pages is a disclosure button that opens them, indented, beneath it. The current
-  module opens by itself and others stay open once opened. Settings lists its pages under category
-  captions (`sectionsOf`). A search at the top filters modules and pages (`filterMenu`). The keys
-  work as in a tree: Up and Down move, Right opens a module or steps into it, Left closes it or
-  steps back up, and Home and End jump to the ends.
 - **Icons:** the rail described below. Resting the pointer on a module's icon, or focusing it, pops
   its pages out beside the rail after about 150 ms. Right steps into the pop-out, and Escape or
   Left returns to the icon.
+- **Open menu:** a `--gggs-sidebar-width` panel floating over the header and the page, which keep
+  their position and width, so the panel covers the header logo while it is open. It lists every
+  module with its name. A module with pages is a disclosure button that opens them, indented,
+  beneath it. The current module opens by itself and others stay open once opened. Settings lists
+  its pages under category captions (`sectionsOf`). A search at the top filters modules and pages
+  (`filterMenu`). The keys work as in a tree: Up and Down move, Right opens a module or steps into
+  it, Left closes it or steps back up, and Home and End jump to the ends.
 
-Below 64rem the expanded menu gives way to the rail whatever was chosen, and below 48rem the menu
-is hidden and the header logo opens the launcher. Both menus mark each module's entry page with
-`data-nav-module`, which the role audit crawls. The module tabs under the header stay in both.
+The menu closes when a page is chosen (including the page already showing), on a click outside it,
+on Escape, or when keyboard focus leaves it. It is not remembered: reloading starts with the rail.
+There is no scrim, so a click on the page closes the menu and also does what it would have done.
+
+Work is grouped by department rather than by feature. HR Portal, Talent Acquisition, Finance &
+Accounts and General Administration each hold pages from several modules, so each page there
+carries a `heading` and the menu lists them under those captions (`sectionsOf`). The tabs under the
+header are the current heading's pages (`moduleTabs`), and each heading can point at its own
+Settings category through `settingsSection`. A page's route and permissions do not depend on where
+it sits, and a page that left a module needing another plan feature says so with
+`alsoNeedsFeature`. Searching a heading's name finds all its pages.
+
+Below 48rem the menu is hidden and the header logo opens the launcher. Both forms mark each
+module's entry page with `data-nav-module`, which the role audit crawls. The module tabs under the
+header stay in both.
 
 The rail shows one icon per module, built from the permission-filtered navigation manifest
 (`navigation.ts`). Each icon opens its module on its first page (`entryRoute`); the module's pages

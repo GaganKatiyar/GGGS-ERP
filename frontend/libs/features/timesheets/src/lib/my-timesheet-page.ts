@@ -7,7 +7,25 @@ import type { HourCategory, TimesheetApproval, TimesheetDay, TimesheetView } fro
 import { BOOKABLE_HOUR_CATEGORIES, humanize } from '@gggs/shared/models';
 import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
 import { CopyTimesheetDialog, type CopiedLines } from './copy-timesheet-dialog';
-import { attendanceLabel, blankCells, buildRows, copyInto, dayTotal, groupRows, mondayOf, rowTotal, toEntries, weekTotal, workedLabel, type GridRow } from './timesheet-grid';
+import {
+  WEEKS_AHEAD,
+  WEEKS_BACK,
+  attendanceLabel,
+  bankState,
+  blankCells,
+  buildRows,
+  copyInto,
+  dayTotal,
+  groupRows,
+  mondayOf,
+  rowTotal,
+  toEntries,
+  weekChoices,
+  weekTotal,
+  workedLabel,
+  type GridRow,
+  type WeekState,
+} from './timesheet-grid';
 import { TimesheetTabs } from './timesheet-tabs';
 
 /** A column of the grid: a day, and where it sits in the week. */
@@ -27,11 +45,14 @@ interface Column {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <gggs-page-header title="My timesheet" subtitle="Book the week against your projects, then submit it for approval.">
-      <div class="toolbar">
+      <div class="toolbar ts__weeks">
         <button type="button" class="btn btn--sm" aria-label="Previous week" (click)="shift(-7)"><i class="pi pi-chevron-left" aria-hidden="true"></i></button>
-        <strong class="ts__week">{{ weekStart() | date: 'd MMM' }} – {{ weekEnd() | date: 'd MMM y' }}</strong>
+        <select class="ts__week" aria-label="Week" (change)="pickWeek($event)">
+          @for (choice of weeks(); track choice.value) {
+            <option [value]="choice.value" [selected]="choice.value === weekStart()">{{ choice.label }}</option>
+          }
+        </select>
         <button type="button" class="btn btn--sm" aria-label="Next week" (click)="shift(7)"><i class="pi pi-chevron-right" aria-hidden="true"></i></button>
-        <button type="button" class="btn btn--link btn--sm" (click)="goTo(isoToday())">This week</button>
       </div>
     </gggs-page-header>
     <gggs-timesheet-tabs />
@@ -282,9 +303,18 @@ interface Column {
     }
   `,
   styles: `
-    .ts__week {
-      min-width: 12rem;
-      text-align: center;
+    // The arrows stay either side of the picker on one line; on a narrow screen the picker gives way.
+    .ts__weeks {
+      flex-wrap: nowrap;
+      max-width: 100%;
+    }
+
+    // Long enough for "Last week · 26 Oct – 1 Nov 2026 · Submitted, 40.00 h". On a phone it leaves room
+    // for the page's margins and both arrows, since a fixed width would push the page sideways.
+    .ts__weeks > .ts__week {
+      flex: 1 1 auto;
+      width: min(22rem, calc(100vw - 8.5rem));
+      min-width: 0;
     }
 
     .ts__spacer {
@@ -477,12 +507,22 @@ export class MyTimesheetPage {
   readonly week = input<string | undefined>(undefined);
 
   protected readonly humanize = humanize;
-  protected readonly isoToday = isoToday;
   protected readonly rowTotal = rowTotal;
   protected readonly attendanceLabel = attendanceLabel;
   protected readonly workedLabel = workedLabel;
   protected readonly weekStart = signal(mondayOf(isoToday()));
-  protected readonly weekEnd = computed(() => addDaysIso(this.weekStart(), 6));
+  /** Where each recent week stands, for the week picker; empty until loaded, or if it could not be. */
+  private readonly savedWeeks = signal<readonly WeekState[]>([]);
+  /** Hours, notes or kinds of hour changed since the week was loaded or saved. */
+  private readonly dirty = signal(false);
+
+  /** The week picker. The open week reads from what is on screen, which is never out of date. */
+  protected readonly weeks = computed(() => {
+    const sheet = this.view()?.timesheet;
+    const open: WeekState[] = sheet?.weekStart === this.weekStart() && sheet.id ? [{ weekStart: sheet.weekStart, status: sheet.status, hours: sheet.totalHours, isLate: sheet.isLate }] : [];
+    const others = this.savedWeeks().filter((week) => week.weekStart !== this.weekStart());
+    return weekChoices(isoToday(), this.weekStart(), [...open, ...others]);
+  });
   protected readonly view = signal<TimesheetView | null>(null);
   protected readonly rows = signal<readonly GridRow[]>([]);
   protected readonly collapsed = signal<ReadonlySet<string>>(new Set());
@@ -539,16 +579,36 @@ export class MyTimesheetPage {
     effect(() => {
       void this.load(this.weekStart());
     });
+    void this.loadSavedWeeks();
   }
 
   protected shift(days: number): void {
     this.goTo(addDaysIso(this.weekStart(), days));
   }
 
-  protected goTo(day: string): void {
+  /** A week chosen in the picker; if the person stays to save, the picker goes back to the open week. */
+  protected pickWeek(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    if (!this.goTo(select.value)) {
+      select.value = this.weekStart();
+    }
+  }
+
+  /** Opens another week, after asking if that would throw away unsaved hours. False when the person stays. */
+  protected goTo(day: string): boolean {
     const monday = mondayOf(day);
+    if (monday === this.weekStart()) {
+      return true;
+    }
+
+    if (this.dirty() && !confirm('Leave this week without saving? The hours you changed will be lost.')) {
+      return false;
+    }
+
+    this.dirty.set(false);
     this.weekStart.set(monday);
     void this.router.navigate([], { queryParams: { week: monday }, replaceUrl: true });
+    return true;
   }
 
   /** The day to open the day view on: today when it is in this week, otherwise the Monday. */
@@ -614,15 +674,18 @@ export class MyTimesheetPage {
   }
 
   protected setCategory(rowId: number, category: HourCategory): void {
+    this.dirty.set(true);
     this.patch(rowId, (row) => ({ ...row, category }));
   }
 
   protected setHours(rowId: number, day: number, value: string): void {
     const hours = value === '' ? null : Number(value);
+    this.dirty.set(true);
     this.patch(rowId, (row) => ({ ...row, cells: row.cells.map((cell, index) => (index === day ? { ...cell, hours } : cell)) }));
   }
 
   protected setNote(rowId: number, day: number, note: string): void {
+    this.dirty.set(true);
     this.patch(rowId, (row) => ({ ...row, cells: row.cells.map((cell, index) => (index === day ? { ...cell, note } : cell)) }));
   }
 
@@ -635,14 +698,17 @@ export class MyTimesheetPage {
   }
 
   protected saveNote(): void {
-    if (this.noteAt) {
-      this.setNote(this.noteAt.rowId, this.noteAt.day, this.noteText().trim());
+    const at = this.noteAt;
+    const note = this.noteText().trim();
+    if (at && this.rows().find((row) => row.id === at.rowId)?.cells[at.day].note !== note) {
+      this.setNote(at.rowId, at.day, note);
     }
     this.noteOpen.set(false);
   }
 
   protected applyCopy(copied: CopiedLines): void {
     this.rows.update((rows) => copyInto(rows, copied.rows, copied.withNotes, this.newId));
+    this.dirty.set(true);
     this.message.set('Copied. Check the hours, then save the week to keep them.');
   }
 
@@ -650,6 +716,7 @@ export class MyTimesheetPage {
     return this.run(async () => {
       this.apply(await this.api.saveWeek(this.weekStart(), toEntries(this.rows(), this.view()?.days ?? []), null));
       this.message.set('Saved.');
+      void this.loadSavedWeeks();
     });
   }
 
@@ -662,6 +729,7 @@ export class MyTimesheetPage {
       const result = await this.api.submit(this.weekStart());
       this.message.set(result.status === 'Approved' ? 'Submitted and approved.' : 'Submitted for approval.');
       this.apply(await this.api.week(this.weekStart()));
+      void this.loadSavedWeeks();
     });
   }
 
@@ -670,7 +738,19 @@ export class MyTimesheetPage {
       await this.api.withdraw(this.weekStart());
       this.message.set('Withdrawn: the week is a draft again.');
       this.apply(await this.api.week(this.weekStart()));
+      void this.loadSavedWeeks();
     });
+  }
+
+  /** Where the weeks in the picker stand. Without it the picker still offers the weeks, by date only. */
+  private async loadSavedWeeks(): Promise<void> {
+    const thisWeek = mondayOf(isoToday());
+    try {
+      const weeks = await this.api.bank({ from: addDaysIso(thisWeek, -7 * WEEKS_BACK), to: addDaysIso(thisWeek, 7 * WEEKS_AHEAD + 6) });
+      this.savedWeeks.set(weeks.map(bankState));
+    } catch {
+      // The picker works without statuses; the timesheet itself reports its own errors.
+    }
   }
 
   protected async load(week: string): Promise<void> {
@@ -688,6 +768,7 @@ export class MyTimesheetPage {
   }
 
   private apply(view: TimesheetView): void {
+    this.dirty.set(false);
     this.view.set(view);
     this.rows.set(buildRows(view, this.newId));
   }

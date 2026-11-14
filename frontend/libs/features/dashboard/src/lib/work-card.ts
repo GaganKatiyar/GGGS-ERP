@@ -27,6 +27,9 @@ import { clockLabel, workedMs } from './work-time';
             Day off today
           } @else {
             Shift: {{ time(day.start) }}–{{ time(day.end) }} <span class="muted">· {{ day.shiftName }}</span>
+            @if (!day.requiresPunchOut) {
+              <span class="muted">· punching out is optional</span>
+            }
           }
         } @else {
           <span class="muted">Loading your shift…</span>

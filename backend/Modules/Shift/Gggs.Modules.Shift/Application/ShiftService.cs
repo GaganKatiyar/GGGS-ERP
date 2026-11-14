@@ -25,7 +25,8 @@ public sealed record ShiftItem(
     IReadOnlyList<DayOfWeek> WeeklyOff,
     bool IsDefault,
     bool IsActive,
-    int People = 0);
+    int People = 0,
+    bool RequiresPunchOut = true);
 
 public sealed record ShiftRequest(
     string Code,
@@ -36,7 +37,8 @@ public sealed record ShiftRequest(
     int GraceMinutes,
     int HalfDayMinutes,
     int FullDayMinutes,
-    IReadOnlyList<DayOfWeek> WeeklyOff);
+    IReadOnlyList<DayOfWeek> WeeklyOff,
+    bool RequiresPunchOut = true);
 
 public sealed record AssignmentItem(Guid Id, Guid EmployeeId, string? EmployeeName, Guid ShiftId, string ShiftName, DateOnly EffectiveFrom, DateOnly? EffectiveTo);
 
@@ -191,7 +193,7 @@ internal sealed class ShiftService(
             throw new DomainRuleException("SHIFT_CODE_IN_USE", $"A shift with code '{code}' already exists.");
         }
 
-        var shift = WorkShift.Create(code, request.Name, request.StartTime, request.EndTime, request.BreakMinutes, request.GraceMinutes, request.HalfDayMinutes, request.FullDayMinutes, request.WeeklyOff);
+        var shift = WorkShift.Create(code, request.Name, request.StartTime, request.EndTime, request.BreakMinutes, request.GraceMinutes, request.HalfDayMinutes, request.FullDayMinutes, request.WeeklyOff, request.RequiresPunchOut);
         bool first = !await dbContext.Shifts.AnyAsync(cancellationToken);
         if (first)
         {
@@ -208,7 +210,7 @@ internal sealed class ShiftService(
     {
         ArgumentNullException.ThrowIfNull(request);
         WorkShift shift = await FindAsync(id, cancellationToken);
-        shift.Update(request.Name, request.StartTime, request.EndTime, request.BreakMinutes, request.GraceMinutes, request.HalfDayMinutes, request.FullDayMinutes, request.WeeklyOff);
+        shift.Update(request.Name, request.StartTime, request.EndTime, request.BreakMinutes, request.GraceMinutes, request.HalfDayMinutes, request.FullDayMinutes, request.WeeklyOff, request.RequiresPunchOut);
         await dbContext.SaveChangesAsync(cancellationToken);
         return ToItem(shift);
     }
@@ -561,7 +563,8 @@ internal sealed class ShiftService(
             shift.GraceMinutes,
             shift.HalfDayMinutes,
             shift.FullDayMinutes,
-            weeklyOff);
+            weeklyOff,
+            shift.RequiresPunchOut);
 
     private static ScheduledDay DayOff(Guid employeeId, DateOnly day, WorkShift basis)
         => Scheduled(employeeId, day, basis, weeklyOff: true) with { ShiftId = null, ShiftName = "Day off" };
@@ -569,7 +572,7 @@ internal sealed class ShiftService(
     private static ShiftItem ToItem(WorkShift shift)
         => new(
             shift.Id, shift.Code, shift.Name, shift.StartTime, shift.EndTime, shift.BreakMinutes, shift.GraceMinutes,
-            shift.HalfDayMinutes, shift.FullDayMinutes, shift.WeeklyOffDays, shift.IsDefault, shift.IsActive);
+            shift.HalfDayMinutes, shift.FullDayMinutes, shift.WeeklyOffDays, shift.IsDefault, shift.IsActive, RequiresPunchOut: shift.RequiresPunchOut);
 }
 
 internal sealed class ApplySwapOnApproval(ShiftService shifts) : IIntegrationEventConsumer<WorkflowApprovedIntegrationEvent>

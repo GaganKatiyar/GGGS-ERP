@@ -125,6 +125,44 @@ public sealed class AttendanceTests(PeopleOsApiFactory factory)
     }
 
     [Fact]
+    public async Task OnAShiftWithoutAPunchOut_APunchInAloneIsAFullDay()
+    {
+        using HttpClient admin = await factory.CreateAdminClientAsync();
+        TestOrg org = await OrgAsync(admin);
+
+        Guid field = await CoreHrApi.CreateAsync(admin, "/api/v1/shifts", new
+        {
+            Code = CoreHrApi.Unique("FIELD"),
+            Name = "Field staff",
+            StartTime = "09:00",
+            EndTime = "18:00",
+            BreakMinutes = 60,
+            GraceMinutes = 15,
+            HalfDayMinutes = 240,
+            FullDayMinutes = 480,
+            WeeklyOff = new[] { "Saturday", "Sunday" },
+            RequiresPunchOut = false,
+        });
+        JsonElement[] shifts = (await admin.GetFromJsonAsync<JsonElement[]>("/api/v1/shifts", Ct))!;
+        shifts.Single(shift => shift.GetProperty("id").GetGuid() == field).GetProperty("requiresPunchOut").GetBoolean().ShouldBeFalse();
+
+        DateOnly from = Previous(DayOfWeek.Monday, daysBack: 14);
+        HttpResponseMessage assigned = await admin.PostAsJsonAsync("/api/v1/shifts/assignments", new { EmployeeIds = new[] { org.Requester }, ShiftId = field, EffectiveFrom = Iso(from) }, Ct);
+        assigned.StatusCode.ShouldBe(HttpStatusCode.OK, await assigned.Content.ReadAsStringAsync(Ct));
+
+        DateOnly tuesday = from.AddDays(1);
+        await PunchAtAsync(factory, org.Requester, (tuesday, new TimeOnly(9, 40)));
+
+        using HttpClient employee = await EmployeeAsync(factory, org.Requester);
+        JsonElement day = await MyDayAsync(employee, tuesday);
+        day.GetProperty("status").GetString().ShouldBe("Present");
+        day.GetProperty("lateMinutes").GetInt32().ShouldBe(25, "still late beyond the grace");
+        day.GetProperty("workedMinutes").GetInt32().ShouldBe(0);
+        day.GetProperty("requiresPunchOut").GetBoolean().ShouldBeFalse();
+        (await MyDayAsync(employee, tuesday.AddDays(1))).GetProperty("status").GetString().ShouldBe("Absent", "the punch in is still required");
+    }
+
+    [Fact]
     public async Task ANightShift_SpansMidnight_AndSwapsTradeTheDay()
     {
         using HttpClient admin = await factory.CreateAdminClientAsync();

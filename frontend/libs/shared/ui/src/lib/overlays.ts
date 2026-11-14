@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, model, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, effect, input, model, output, viewChild } from '@angular/core';
 import { DialogModule } from 'primeng/dialog';
 import { DrawerModule } from 'primeng/drawer';
 
@@ -64,7 +64,7 @@ let nextFormId = 0;
         <ng-content />
 
         @if (error()) {
-          <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ error() }}</p>
+          <p #errorAlert class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i>{{ error() }}</p>
         }
       </form>
 
@@ -113,4 +113,36 @@ export class FormDialog {
   /** An exact width, overriding `size`. */
   readonly width = input<string | undefined>(undefined);
   readonly save = output<void>();
+
+  private readonly errorAlert = viewChild<ElementRef<HTMLElement>>('errorAlert');
+
+  constructor() {
+    // The message sits after the fields, which on a long form is below the fold: Save would seem to do nothing.
+    effect(() => this.errorAlert()?.nativeElement.scrollIntoView?.({ block: 'nearest' }));
+
+    // PrimeNG binds Escape and the outside click once, on opening, so turning them off for a busy
+    // dialog does not reach it. Closing mid-save would lose the form and any error the save returns.
+    effect((onCleanup) => {
+      if (!this.busy()) {
+        return;
+      }
+
+      const blockEscape = (event: KeyboardEvent): void => {
+        if (event.key === 'Escape') {
+          event.stopImmediatePropagation();
+        }
+      };
+      const blockOutsideClick = (event: MouseEvent): void => {
+        if ((event.target as Element).classList?.contains('p-dialog-mask')) {
+          event.stopImmediatePropagation();
+        }
+      };
+      document.addEventListener('keydown', blockEscape, true);
+      document.addEventListener('mousedown', blockOutsideClick, true);
+      onCleanup(() => {
+        document.removeEventListener('keydown', blockEscape, true);
+        document.removeEventListener('mousedown', blockOutsideClick, true);
+      });
+    });
+  }
 }

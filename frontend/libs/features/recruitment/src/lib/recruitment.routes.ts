@@ -10,6 +10,7 @@ import {
   PostingsPage,
   RecruitmentAnalyticsPage,
   RecruitmentSettingsPage,
+  ReferralsPage,
   RequisitionPage,
   RequisitionsPage,
 } from './recruitment-pages';
@@ -27,6 +28,7 @@ export const RECRUITMENT_ROUTES: Routes = [
   { path: 'interviews', component: InterviewsPage, title: 'Interviews', ...withPermissions(['recruitment.application.view']) },
   { path: 'offers', component: OffersPage, title: 'Offers', ...withPermissions(['recruitment.offer.view']) },
   { path: 'offers/:id', component: OfferPage, title: 'Offer', ...withPermissions(['recruitment.offer.view', 'workflow.task.act']) },
+  { path: 'referrals', component: ReferralsPage, title: 'Referrals & incentives', ...withPermissions(['recruitment.application.view']) },
   { path: 'settings', component: RecruitmentSettingsPage, title: 'Recruitment settings', ...withPermissions(['recruitment.settings.manage', 'recruitment.application.view']) },
   { path: 'analytics', component: RecruitmentAnalyticsPage, title: 'Recruitment analytics', ...withPermissions(['recruitment.analytics.view']) },
 ];

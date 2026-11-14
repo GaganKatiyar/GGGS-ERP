@@ -45,6 +45,25 @@ internal sealed class EngagementModel : IModuleModel
             entity.Ignore(row => row.Answers);
             entity.Ignore(row => row.DomainEvents);
         });
+
+        modelBuilder.Entity<FeatureBanner>(entity =>
+        {
+            entity.ToTable("FeatureBanner", Schema);
+            entity.Property(row => row.Title).HasMaxLength(120);
+            entity.Property(row => row.Body).HasMaxLength(300);
+            entity.Property(row => row.Kind).HasConversion<byte>();
+            entity.Property(row => row.Layout).HasConversion<byte>();
+            entity.Property(row => row.ActionLabel).HasMaxLength(40);
+            entity.Property(row => row.ActionLink).HasMaxLength(300);
+            entity.Property(row => row.SecondaryLabel).HasMaxLength(40);
+            entity.Property(row => row.SecondaryLink).HasMaxLength(300);
+            entity.Property(row => row.AudienceDepartmentIdsJson).IsRequired();
+            entity.Property(row => row.AudienceLocationIdsJson).IsRequired();
+            entity.HasIndex(row => new { row.TenantId, row.IsPublished, row.StartsOn }).HasDatabaseName("IX_FeatureBanner_TenantId_Published_StartsOn");
+            entity.Ignore(row => row.AudienceDepartmentIds);
+            entity.Ignore(row => row.AudienceLocationIds);
+            entity.Ignore(row => row.DomainEvents);
+        });
     }
 }
 
@@ -57,5 +76,7 @@ internal static class EngagementData
         public DbSet<SurveyInvitation> SurveyInvitations => db.Set<SurveyInvitation>();
 
         public DbSet<SurveyResponse> SurveyResponses => db.Set<SurveyResponse>();
+
+        public DbSet<FeatureBanner> FeatureBanners => db.Set<FeatureBanner>();
     }
 }

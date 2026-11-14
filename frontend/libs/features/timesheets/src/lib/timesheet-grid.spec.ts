@@ -1,6 +1,21 @@
 import type { TimesheetDay, TimesheetEntryItem, TimesheetTarget } from '@gggs/shared/models';
 import { describe, expect, it } from 'vitest';
-import { attendanceLabel, buildRows, copyableRows, copyInto, dayTotal, defaultCategory, groupRows, mondayOf, rowTotal, toEntries, weekTotal, workedLabel } from './timesheet-grid';
+import {
+  attendanceLabel,
+  buildRows,
+  copyableRows,
+  copyInto,
+  dayTotal,
+  defaultCategory,
+  groupRows,
+  mondayOf,
+  rowTotal,
+  toEntries,
+  weekChoices,
+  weekRange,
+  weekTotal,
+  workedLabel,
+} from './timesheet-grid';
 
 const days: readonly TimesheetDay[] = ['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08'].map((date, index) => ({
   date,
@@ -142,5 +157,48 @@ describe('timesheet grid', () => {
     expect(attendanceLabel({ ...days[0], holiday: 'Diwali' })).toBe('Holiday');
     expect(workedLabel(485)).toBe('08:05');
     expect(workedLabel(undefined)).toBe('');
+  });
+});
+
+describe('the week picker', () => {
+  const values = (choices: readonly { value: string }[]) => choices.map((choice) => choice.value);
+
+  it('offers four weeks ahead to eight back, newest first, naming the three nearest', () => {
+    const choices = weekChoices('2026-11-06', '2026-11-02', []);
+    expect(choices).toHaveLength(13);
+    expect(choices[0].value).toBe('2026-11-30');
+    expect(choices.at(-1)?.value).toBe('2026-09-07');
+    expect(values(choices)).toEqual([...values(choices)].sort().reverse());
+    expect(choices.find((choice) => choice.value === '2026-11-09')?.label).toBe('Next week · 9 – 15 Nov 2026 · Not started');
+    expect(choices.find((choice) => choice.value === '2026-11-02')?.label).toBe('This week · 2 – 8 Nov 2026 · Not started');
+    expect(choices.find((choice) => choice.value === '2026-10-26')?.label).toBe('Last week · 26 Oct – 1 Nov 2026 · Not started');
+    expect(choices.find((choice) => choice.value === '2026-10-19')?.label).toBe('19 – 25 Oct 2026 · Not started');
+  });
+
+  it("shows each saved week's status and hours", () => {
+    const choices = weekChoices('2026-11-06', '2026-11-02', [
+      { weekStart: '2026-10-26', status: 'Draft', hours: 12.5, isLate: false },
+      { weekStart: '2026-10-19', status: 'Submitted', hours: 40, isLate: true },
+      { weekStart: '2026-10-12', status: 'Approved', hours: 0, isLate: false },
+    ]);
+    const label = (week: string) => choices.find((choice) => choice.value === week)?.label;
+    expect(label('2026-10-26')).toBe('Last week · 26 Oct – 1 Nov 2026 · Draft, 12.50 h');
+    expect(label('2026-10-19')).toBe('19 – 25 Oct 2026 · Submitted, late, 40.00 h');
+    expect(label('2026-10-12')).toBe('12 – 18 Oct 2026 · Approved');
+  });
+
+  it('adds an open week from further off, in date order, so the picker always shows it', () => {
+    const choices = weekChoices('2026-11-06', '2026-06-17', []);
+    expect(choices).toHaveLength(14);
+    expect(choices.at(-1)?.value).toBe('2026-06-15');
+    const ahead = weekChoices('2026-11-06', '2027-02-03', []);
+    expect(ahead[0].value).toBe('2027-02-01');
+  });
+
+  it('counts from the Monday on a Sunday, and across a year end', () => {
+    expect(weekChoices('2026-11-08', '2026-11-08', []).find((choice) => choice.label.startsWith('This week'))?.value).toBe('2026-11-02');
+    const newYear = weekChoices('2026-01-01', '2026-01-01', []);
+    expect(newYear.find((choice) => choice.label.startsWith('This week'))?.label).toBe('This week · 29 Dec 2025 – 4 Jan 2026 · Not started');
+    expect(weekRange('2026-03-30')).toBe('30 Mar – 5 Apr 2026');
   });
 });

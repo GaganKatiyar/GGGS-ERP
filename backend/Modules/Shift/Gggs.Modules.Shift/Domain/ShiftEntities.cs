@@ -6,7 +6,8 @@ namespace Gggs.Modules.Shift.Domain;
 
 /// <summary>
 /// A working pattern: when the day starts and ends, how long the break is, how late still counts
-/// as on time, how much work makes a half or a full day, and which weekdays are off.
+/// as on time, how much work makes a half or a full day, which weekdays are off, and whether people
+/// must punch out or only in.
 /// </summary>
 public sealed class WorkShift : TenantAggregateRoot
 {
@@ -35,6 +36,12 @@ public sealed class WorkShift : TenantAggregateRoot
     /// <summary>Days off as a bit set over <see cref="DayOfWeek"/> (bit 0 = Sunday).</summary>
     public int WeeklyOffMask { get; private set; }
 
+    /// <summary>
+    /// False where only a punch in is expected: a working day with just one punch then counts as a
+    /// full day present, still late if that punch is after the grace.
+    /// </summary>
+    public bool RequiresPunchOut { get; private set; } = true;
+
     /// <summary>The shift of anyone without an assignment. One per tenant.</summary>
     public bool IsDefault { get; private set; }
 
@@ -50,10 +57,11 @@ public sealed class WorkShift : TenantAggregateRoot
         int graceMinutes,
         int halfDayMinutes,
         int fullDayMinutes,
-        IReadOnlyCollection<DayOfWeek> weeklyOff)
+        IReadOnlyCollection<DayOfWeek> weeklyOff,
+        bool requiresPunchOut = true)
     {
         var shift = new WorkShift { Code = Guard.MaxLength(Guard.NotNullOrWhiteSpace(code).Trim().ToUpperInvariant(), 32) };
-        shift.Update(name, start, end, breakMinutes, graceMinutes, halfDayMinutes, fullDayMinutes, weeklyOff);
+        shift.Update(name, start, end, breakMinutes, graceMinutes, halfDayMinutes, fullDayMinutes, weeklyOff, requiresPunchOut);
         return shift;
     }
 
@@ -65,7 +73,8 @@ public sealed class WorkShift : TenantAggregateRoot
         int graceMinutes,
         int halfDayMinutes,
         int fullDayMinutes,
-        IReadOnlyCollection<DayOfWeek> weeklyOff)
+        IReadOnlyCollection<DayOfWeek> weeklyOff,
+        bool requiresPunchOut = true)
     {
         ArgumentNullException.ThrowIfNull(weeklyOff);
 
@@ -103,6 +112,7 @@ public sealed class WorkShift : TenantAggregateRoot
         HalfDayMinutes = halfDayMinutes;
         FullDayMinutes = fullDayMinutes;
         WeeklyOffMask = weeklyOff.Aggregate(0, (mask, day) => mask | (1 << (int)day));
+        RequiresPunchOut = requiresPunchOut;
     }
 
     public bool IsOff(DayOfWeek day) => (WeeklyOffMask & (1 << (int)day)) != 0;

@@ -1,5 +1,5 @@
 import { addDaysIso } from '@gggs/shared/delivery';
-import type { HourCategory, TimesheetDay, TimesheetEntryInput, TimesheetTarget, TimesheetTask, TimesheetView } from '@gggs/shared/models';
+import type { HourCategory, TimesheetBankWeek, TimesheetDay, TimesheetEntryInput, TimesheetStatus, TimesheetTarget, TimesheetTask, TimesheetView } from '@gggs/shared/models';
 
 /** One day of one line: its hours, and the note saved with them. */
 export interface GridCell {
@@ -38,6 +38,78 @@ export const mondayOf = (iso: string): string => {
   const [year, month, day] = iso.split('-').map(Number);
   return addDaysIso(iso, -((new Date(year, month - 1, day).getDay() + 6) % 7));
 };
+
+/** How far the week picker reaches either side of this week. */
+export const WEEKS_BACK = 8;
+export const WEEKS_AHEAD = 4;
+
+/** Where a week stands, for the week picker. */
+export interface WeekState {
+  readonly weekStart: string;
+  readonly status: TimesheetStatus;
+  readonly hours: number;
+  readonly isLate: boolean;
+}
+
+/** One week in the week picker: its Monday, and how it reads. */
+export interface WeekChoice {
+  readonly value: string;
+  readonly label: string;
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "2 – 8 Nov 2026", "26 Oct – 1 Nov 2026" or "29 Dec 2025 – 4 Jan 2026". */
+export function weekRange(monday: string): string {
+  const [startYear, startMonth, startDay] = monday.split('-').map(Number);
+  const [endYear, endMonth, endDay] = addDaysIso(monday, 6).split('-').map(Number);
+  const end = `${endDay} ${MONTHS[endMonth - 1]} ${endYear}`;
+  if (startYear !== endYear) {
+    return `${startDay} ${MONTHS[startMonth - 1]} ${startYear} – ${end}`;
+  }
+
+  return startMonth === endMonth ? `${startDay} – ${end}` : `${startDay} ${MONTHS[startMonth - 1]} – ${end}`;
+}
+
+/** A saved week as the picker needs it. */
+export const bankState = (week: TimesheetBankWeek): WeekState => ({ weekStart: week.weekStart, status: week.status, hours: week.workingHours, isLate: week.isLate });
+
+function stateLabel(state: WeekState | undefined): string {
+  if (!state) {
+    return 'Not started';
+  }
+
+  const status = state.status + (state.isLate ? ', late' : '');
+  return state.hours > 0 ? `${status}, ${state.hours.toFixed(2)} h` : status;
+}
+
+/**
+ * The weeks to offer, newest first: from {@link WEEKS_AHEAD} ahead of this week to {@link WEEKS_BACK}
+ * back, each with its status and hours. A week further off that is open anyway (by the arrows or a
+ * reminder's link) is added in its place, so the picker always shows where the person is.
+ */
+export function weekChoices(today: string, selected: string, states: readonly WeekState[]): readonly WeekChoice[] {
+  const thisWeek = mondayOf(today);
+  const byWeek = new Map(states.map((state) => [state.weekStart, state]));
+  const mondays = Array.from({ length: WEEKS_AHEAD + WEEKS_BACK + 1 }, (_, index) => addDaysIso(thisWeek, (WEEKS_AHEAD - index) * 7));
+  const chosen = mondayOf(selected);
+  if (!mondays.includes(chosen)) {
+    mondays.push(chosen);
+    mondays.sort((a, b) => b.localeCompare(a));
+  }
+
+  const names = new Map([
+    [addDaysIso(thisWeek, 7), 'Next week'],
+    [thisWeek, 'This week'],
+    [addDaysIso(thisWeek, -7), 'Last week'],
+  ]);
+
+  return mondays.map((monday) => {
+    const name = names.get(monday);
+    const parts = [name, weekRange(monday), stateLabel(byWeek.get(monday))].filter(Boolean);
+    return { value: monday, label: parts.join(' · ') };
+  });
+}
 
 const targetLabel = (target: TimesheetTarget): string => `${target.projectCode} · ${target.projectName}`;
 

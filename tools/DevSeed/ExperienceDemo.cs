@@ -52,6 +52,7 @@ internal static class ExperienceDemo
         await SeedExpensesAsync(db, people);
         await SeedHelpdeskAsync(db, people);
         await SeedEngagementAsync(scope, db, people);
+        await SeedBannersAsync(scope, db);
         await SeedRewardsAsync(db, people);
         await SeedSeparationAsync(scope, db, people);
         await SeedOffboardingAsync(scope, db, people);
@@ -242,6 +243,34 @@ internal static class ExperienceDemo
         SurveyView open = await service.SaveAsync(null, new SurveyBody("Hybrid work check-in", "Tell us how the hybrid policy is working for you.", true, pulse, null, today, today.AddDays(14)), CancellationToken.None);
         await service.PublishAsync(open.Survey.Id, CancellationToken.None);
         Console.WriteLine("Engagement: a closed pulse with 7 responses (eNPS) and an open survey for everyone.");
+    }
+
+    private static async Task SeedBannersAsync(IServiceProvider scope, AppDbContext db)
+    {
+        if (await db.Set<FeatureBanner>().AnyAsync())
+        {
+            Console.WriteLine("Banner slides already present.");
+            return;
+        }
+
+        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+        FeatureBannerService banners = scope.GetRequiredService<FeatureBannerService>();
+        FeatureBannerContent[] slides =
+        [
+            new("Your payslip is ready", "Pay has been credited. Open your payslip to see the details or print it.", BannerKind.Payroll, "View payslip", "/me/payslips", "Tax declaration", "/me/tax-declaration", today, today.AddDays(10), 10, null, null),
+            new("The office closes for the holiday next week", "Taking extra days around it? Apply soon so your manager can plan cover.", BannerKind.Holiday, "Apply for leave", "/me/leave", "Open the calendar", "/calendar", today, today.AddDays(7), 20, null, null),
+            new("Finish your POSH refresher", "It is mandatory for everyone and takes about 25 minutes.", BannerKind.Deadline, "Continue course", "/me/learning", null, null, today, today.AddDays(25), 30, null, null),
+            new("The menu now floats over your page", "Open it from the tab on the rail. Your page stays where it was, and the menu closes once you pick a page.", BannerKind.WhatsNew, null, null, null, null, today, today.AddDays(30), 40, null, null),
+            new("Who made your week easier?", "Send a colleague a thank-you from My rewards. It takes less than a minute.", BannerKind.Recognition, "Recognise a colleague", "/me/rewards", null, null, today, null, 50, null, null),
+        ];
+
+        foreach (FeatureBannerContent slide in slides)
+        {
+            FeatureBannerItem saved = await banners.SaveAsync(null, slide, CancellationToken.None);
+            await banners.SetPublishedAsync(saved.Id, true, CancellationToken.None);
+        }
+
+        Console.WriteLine("Banner: five published slides on the home dashboard.");
     }
 
     private static async Task SeedRewardsAsync(AppDbContext db, IReadOnlyDictionary<string, Guid> people)

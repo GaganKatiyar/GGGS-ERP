@@ -3,6 +3,9 @@ import { Injectable, inject } from '@angular/core';
 import type {
   AlumniItem,
   AssetAction,
+  FeatureBannerInput,
+  FeatureBannerItem,
+  MyFeatureBanner,
   AssetCategoryInput,
   AssetCategoryItem,
   AssetCondition,
@@ -739,5 +742,42 @@ export class SeparationApi {
 
   myInterview(body: ExitInterviewInput): Promise<SeparationCaseView> {
     return firstValueFrom(this.http.put<SeparationCaseView>('/api/v1/me/separation/interview', body));
+  }
+}
+
+/** The home dashboard banner: the slides showing to me, and HR's management of them. */
+@Injectable({ providedIn: 'root' })
+export class FeatureBannerApi {
+  private readonly http = inject(HttpClient);
+  private readonly base = '/api/v1/engagement/banners';
+
+  mine(): Promise<readonly MyFeatureBanner[]> {
+    return firstValueFrom(this.http.get<readonly MyFeatureBanner[]>('/api/v1/me/banners'));
+  }
+
+  list(): Promise<readonly FeatureBannerItem[]> {
+    return firstValueFrom(this.http.get<readonly FeatureBannerItem[]>(this.base));
+  }
+
+  save(id: string | null, body: FeatureBannerInput): Promise<FeatureBannerItem> {
+    return firstValueFrom(id ? this.http.put<FeatureBannerItem>(`${this.base}/${id}`, body) : this.http.post<FeatureBannerItem>(this.base, body));
+  }
+
+  setPublished(id: string, published: boolean): Promise<FeatureBannerItem> {
+    return firstValueFrom(this.http.post<FeatureBannerItem>(`${this.base}/${id}/${published ? 'publish' : 'unpublish'}`, null));
+  }
+
+  delete(id: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`${this.base}/${id}`));
+  }
+
+  uploadImage(id: string, picture: Blob, fileName: string): Promise<FeatureBannerItem> {
+    const form = new FormData();
+    form.append('file', picture, fileName);
+    return firstValueFrom(this.http.put<FeatureBannerItem>(`${this.base}/${id}/image`, form));
+  }
+
+  removeImage(id: string): Promise<FeatureBannerItem> {
+    return firstValueFrom(this.http.delete<FeatureBannerItem>(`${this.base}/${id}/image`));
   }
 }

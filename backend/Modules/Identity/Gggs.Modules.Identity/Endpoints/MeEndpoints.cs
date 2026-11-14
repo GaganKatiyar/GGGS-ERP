@@ -86,6 +86,9 @@ public sealed record SessionResponse
 /// <summary>A user's own settings; only the time zone so far.</summary>
 public sealed record MyPreferences(string? TimeZone);
 
+/// <summary>A menu page the user just opened.</summary>
+public sealed record RecentPageVisit(string Route);
+
 /// <summary>What the signed-in user may know about themselves.</summary>
 public static class MeEndpoints
 {
@@ -110,8 +113,70 @@ public static class MeEndpoints
             .WithName("SaveMyPreferences")
             .WithTags("Me")
             .RequireAuthorization();
+        endpoints.MapGet("/api/v1/me/recent-pages", GetRecentPagesAsync)
+            .WithName("GetMyRecentPages")
+            .WithTags("Me")
+            .RequireAuthorization();
+        endpoints.MapPost("/api/v1/me/recent-pages", RecordRecentPageAsync)
+            .WithName("RecordMyRecentPage")
+            .WithTags("Me")
+            .RequireAuthorization();
 
         return endpoints;
+    }
+
+    /// <summary>The menu pages the user opened lately, newest first. What each one is called, and whether they may still see it, is the menu's to say.</summary>
+    private static async Task<Ok<IReadOnlyList<string>>> GetRecentPagesAsync(ICurrentUser currentUser, AppDbContext database, CancellationToken cancellationToken)
+    {
+        List<string> routes = await database.RecentPages.AsNoTracking()
+            .Where(page => page.UserId == currentUser.UserId)
+            .OrderByDescending(page => page.LastVisitedAt)
+            .Take(RecentPage.KeptPerUser)
+            .Select(page => page.Route)
+            .ToListAsync(cancellationToken);
+
+        return TypedResults.Ok<IReadOnlyList<string>>(routes);
+    }
+
+    /// <summary>Records that the user opened a menu page: moves it to the top, and lets the oldest go beyond what is kept.</summary>
+    private static async Task<NoContent> RecordRecentPageAsync(RecentPageVisit body, ICurrentUser currentUser, AppDbContext database, TimeProvider timeProvider, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        if (!RecentPage.IsValidRoute(body.Route))
+        {
+            throw new DomainRuleException("RECENT_PAGE_INVALID", "That is not a page address.");
+        }
+
+        DateTime now = timeProvider.GetUtcNow().UtcDateTime;
+        List<RecentPage> pages = await database.RecentPages
+            .Where(page => page.UserId == currentUser.UserId)
+            .ToListAsync(cancellationToken);
+
+        RecentPage? visited = pages.Find(page => page.Route == body.Route);
+        if (visited is null)
+        {
+            visited = new RecentPage(currentUser.UserId, body.Route, now);
+            database.RecentPages.Add(visited);
+            pages.Add(visited);
+        }
+        else
+        {
+            visited.VisitedAgain(now);
+        }
+
+        database.RecentPages.RemoveRange(pages.OrderByDescending(page => page.LastVisitedAt).Skip(RecentPage.KeptPerUser));
+
+        try
+        {
+            await database.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // Another tab recorded or removed the same page at the same moment. The list is right
+            // either way, and a convenience like this is no reason to fail anything.
+        }
+
+        return TypedResults.NoContent();
     }
 
     private static async Task<Results<Ok<MyPreferences>, NotFound>> GetPreferencesAsync(ICurrentUser currentUser, AppDbContext database, CancellationToken cancellationToken)

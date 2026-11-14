@@ -36,9 +36,11 @@ const SHOWN = 3;
           @for (nudge of nudges(); track nudge.section) {
             <a class="nudge elevated" routerLink="/me/profile" [queryParams]="nudge.section === 'education' ? { section: 'education' } : null">
               <span class="nudge__icon" aria-hidden="true"><i [class]="nudge.icon"></i></span>
-              <strong>{{ nudge.title }}</strong>
-              <span class="muted">{{ nudge.text }}</span>
-              <span class="nudge__missing">Missing: {{ missing(nudge.section) }}</span>
+              <span class="nudge__text">
+                <strong>{{ nudge.title }}</strong>
+                <span class="nudge__why">{{ nudge.text }}</span>
+                <span class="nudge__missing">Missing: {{ missing(nudge.section) }}</span>
+              </span>
             </a>
           }
         </div>
@@ -47,7 +49,7 @@ const SHOWN = 3;
   `,
   styles: `
     .nudges {
-      margin-block-start: var(--gggs-space-6);
+      margin-block-start: var(--gggs-space-5);
     }
 
     .nudges__title {
@@ -57,15 +59,14 @@ const SHOWN = 3;
 
     .nudges__grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(min(16rem, 100%), 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
       gap: var(--gggs-space-4);
     }
 
     .nudge {
       display: flex;
-      flex-direction: column;
-      gap: var(--gggs-space-2);
-      padding: var(--gggs-space-5);
+      gap: var(--gggs-space-3);
+      padding: var(--gggs-space-4);
       color: inherit;
       text-decoration: none;
       transition: transform var(--gggs-transition), box-shadow var(--gggs-transition);
@@ -76,11 +77,24 @@ const SHOWN = 3;
       }
     }
 
+    .nudge__text {
+      display: flex;
+      flex-direction: column;
+      gap: var(--gggs-space-1);
+      min-width: 0;
+    }
+
+    .nudge__why {
+      color: var(--gggs-color-text-muted);
+      font-size: var(--gggs-font-size-sm);
+    }
+
     .nudge__icon {
       display: grid;
+      flex: none;
       place-items: center;
-      width: 2.5rem;
-      height: 2.5rem;
+      width: 2.25rem;
+      height: 2.25rem;
       border-radius: 50%;
       background: var(--gggs-gradient-tile);
       color: var(--gggs-color-primary);
@@ -88,6 +102,7 @@ const SHOWN = 3;
 
     .nudge__missing {
       margin-block-start: auto;
+      padding-block-start: var(--gggs-space-1);
       color: var(--gggs-color-primary);
       font-size: var(--gggs-font-size-sm);
       font-weight: var(--gggs-font-weight-semibold);

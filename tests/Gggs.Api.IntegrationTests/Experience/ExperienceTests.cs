@@ -57,6 +57,111 @@ public sealed class ExperienceTests(PeopleOsApiFactory factory)
     }
 
     [Fact]
+    public async Task The_home_banner_shows_published_slides_in_their_window_to_their_audience_in_order()
+    {
+        using HttpClient admin = await factory.CreateAdminClientAsync();
+        Guid department = await CoreHrApi.DepartmentAsync(admin);
+        Guid elsewhere = await CoreHrApi.DepartmentAsync(admin);
+        Guid person = await CoreHrApi.HireAsync(admin, department);
+        using HttpClient self = await factory.CreateScopedUserClientAsync(Email("banner"), person, [(Permissions.Self.ProfileView, DataScope.Own)]);
+
+        string today = DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        string yesterday = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2)).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        string marker = Guid.NewGuid().ToString("N");
+
+        async Task<Guid> SlideAsync(string title, int position, string startsOn, string? endsOn, Guid[] departments, bool publish)
+        {
+            JsonElement saved = await OkAsync(await admin.PostAsJsonAsync("/api/v1/engagement/banners", new
+            {
+                title = $"{marker} {title}",
+                body = "Sample",
+                kind = "Holiday",
+                actionLabel = "Open",
+                actionLink = "/me/leave",
+                startsOn,
+                endsOn,
+                position,
+                audienceDepartmentIds = departments,
+            }, Ct));
+            Guid id = saved.GetProperty("id").GetGuid();
+            if (publish)
+            {
+                await OkAsync(await admin.PostAsync($"/api/v1/engagement/banners/{id}/publish", null, Ct));
+            }
+
+            return id;
+        }
+
+        await SlideAsync("second", 20, today, null, [], publish: true);
+        Guid first = await SlideAsync("first", 10, today, null, [department], publish: true);
+        await SlideAsync("other department", 5, today, null, [elsewhere], publish: true);
+        await SlideAsync("draft", 5, today, null, [], publish: false);
+        await SlideAsync("ended", 5, yesterday, yesterday, [], publish: true);
+
+        async Task<string[]> MineAsync() =>
+            [.. (await self.GetFromJsonAsync<JsonElement[]>("/api/v1/me/banners", Ct))!
+                .Select(row => row.GetProperty("title").GetString()!)
+                .Where(title => title.StartsWith(marker, StringComparison.Ordinal))];
+
+        (await MineAsync()).ShouldBe([$"{marker} first", $"{marker} second"]);
+
+        (await self.PostAsJsonAsync("/api/v1/engagement/banners", new { title = "Not allowed" }, Ct)).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+
+        (await admin.DeleteAsync($"/api/v1/engagement/banners/{first}", Ct)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        (await MineAsync()).ShouldBe([$"{marker} second"]);
+    }
+
+    [Fact]
+    public async Task A_banner_picture_is_checked_stored_and_shown_only_to_its_audience()
+    {
+        using HttpClient admin = await factory.CreateAdminClientAsync();
+        Guid department = await CoreHrApi.DepartmentAsync(admin);
+        Guid elsewhere = await CoreHrApi.DepartmentAsync(admin);
+        using HttpClient self = await factory.CreateScopedUserClientAsync(Email("banner-in"), await CoreHrApi.HireAsync(admin, department), [(Permissions.Self.ProfileView, DataScope.Own)]);
+        using HttpClient other = await factory.CreateScopedUserClientAsync(Email("banner-out"), await CoreHrApi.HireAsync(admin, elsewhere), [(Permissions.Self.ProfileView, DataScope.Own)]);
+
+        JsonElement saved = await OkAsync(await admin.PostAsJsonAsync("/api/v1/engagement/banners", new
+        {
+            title = "With a picture",
+            kind = "Announcement",
+            startsOn = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+            position = 1,
+            audienceDepartmentIds = new[] { department },
+        }, Ct));
+        Guid id = saved.GetProperty("id").GetGuid();
+        await OkAsync(await admin.PostAsync($"/api/v1/engagement/banners/{id}/publish", null, Ct));
+
+        static MultipartFormDataContent Upload(byte[] bytes)
+        {
+            MultipartFormDataContent form = [];
+            form.Add(new ByteArrayContent(bytes), "file", "picture.jpg");
+            return form;
+        }
+
+        // Named .jpg, but not a picture: judged by its bytes, not its name.
+        (await admin.PutAsync($"/api/v1/engagement/banners/{id}/image", Upload("<svg onload=alert(1)>"u8.ToArray()), Ct)).StatusCode.ShouldNotBe(HttpStatusCode.OK);
+
+        byte[] jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01];
+        JsonElement withImage = await OkAsync(await admin.PutAsync($"/api/v1/engagement/banners/{id}/image", Upload(jpeg), Ct));
+        withImage.GetProperty("imageUrl").GetString()!.ShouldContain($"/banners/{id}/image?v=");
+
+        (await self.PutAsync($"/api/v1/engagement/banners/{id}/image", Upload(jpeg), Ct)).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+
+        JsonElement mine = (await self.GetFromJsonAsync<JsonElement[]>("/api/v1/me/banners", Ct))!.Single(row => row.GetProperty("id").GetGuid() == id);
+        string url = mine.GetProperty("imageUrl").GetString()!;
+
+        HttpResponseMessage shown = await self.GetAsync(url, Ct);
+        shown.StatusCode.ShouldBe(HttpStatusCode.OK);
+        shown.Content.Headers.ContentType!.MediaType.ShouldBe("image/jpeg");
+        (await shown.Content.ReadAsByteArrayAsync(Ct)).ShouldBe(jpeg);
+
+        (await other.GetAsync(url, Ct)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+
+        await OkAsync(await admin.DeleteAsync($"/api/v1/engagement/banners/{id}/image", Ct));
+        (await self.GetAsync(url, Ct)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task An_asset_is_assigned_seen_by_its_holder_and_returned()
     {
         (HttpClient admin, _, Guid person, HttpClient self) = await PersonAsync();

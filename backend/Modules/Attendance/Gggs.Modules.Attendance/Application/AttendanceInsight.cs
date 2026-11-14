@@ -23,9 +23,11 @@ internal sealed class AttendanceMetrics(AppDbContext dbContext) : IMetricSource
             query = query.Where(row => scope.Contains(row.EmployeeId));
         }
 
-        var days = await query.Select(row => new { row.Date, row.Status, row.LateMinutes, row.WorkedMinutes }).ToListAsync(cancellationToken);
+        var days = await query.Select(row => new { row.Date, row.Status, row.LateMinutes, row.WorkedMinutes, row.LastOut }).ToListAsync(cancellationToken);
         var working = days.Where(row => row.Status is AttendanceStatus.Present or AttendanceStatus.HalfDay or AttendanceStatus.Absent or AttendanceStatus.MissingPunch).ToList();
         var present = working.Where(row => row.Status is AttendanceStatus.Present or AttendanceStatus.HalfDay).ToList();
+        // A day judged from its punch in alone has no time worked to average.
+        var timed = present.Where(row => row.LastOut != null).ToList();
         return
         [
             new Metric("time.attendance-rate", MetricAreas.Time, "Attendance (30 days)", Rate(working.Select(row => row.Status)), MetricUnit.Percent, "Present over working days",
@@ -33,7 +35,7 @@ internal sealed class AttendanceMetrics(AppDbContext dbContext) : IMetricSource
                 Executive: true),
             new Metric("time.late", MetricAreas.Time, "Late arrivals (30 days)", present.Count(row => row.LateMinutes > 0), MetricUnit.Count, null,
                 [.. days.GroupBy(row => row.Status).Select(group => new MetricPoint(group.Key.ToString(), group.Count())).OrderByDescending(point => point.Value)], HigherIsBetter: false),
-            new Metric("time.worked-hours", MetricAreas.Time, "Average hours worked", present.Count == 0 ? 0 : Math.Round((decimal)present.Average(row => row.WorkedMinutes) / 60m, 1), MetricUnit.Hours, "Per day present"),
+            new Metric("time.worked-hours", MetricAreas.Time, "Average hours worked", timed.Count == 0 ? 0 : Math.Round((decimal)timed.Average(row => row.WorkedMinutes) / 60m, 1), MetricUnit.Hours, "Per day present with a punch out"),
         ];
     }
 

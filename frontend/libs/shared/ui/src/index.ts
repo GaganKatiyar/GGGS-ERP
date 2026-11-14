@@ -1,3 +1,4 @@
+export * from './lib/app-art';
 export * from './lib/badge';
 export * from './lib/brand-mark';
 export * from './lib/button';

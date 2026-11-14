@@ -109,6 +109,35 @@ public sealed class AttendanceEvaluatorTests
     public void OnePunch_IsAMissingPunch()
         => AttendanceEvaluator.Evaluate(Someone, Day, Office(), [At(9, 0)], false, false, null).Status.ShouldBe(AttendanceStatus.MissingPunch);
 
+    private static DaySchedule PunchInOnly(bool weeklyOff = false) => Office(weeklyOff) with { RequiresPunchOut = false };
+
+    [Fact]
+    public void WithoutAPunchOutRequired_APunchInAloneIsAFullDay_AndStillLateBeyondGrace()
+    {
+        DayEvaluation onTime = AttendanceEvaluator.Evaluate(Someone, Day, PunchInOnly(), [At(9, 10)], false, false, null);
+        onTime.Status.ShouldBe(AttendanceStatus.Present);
+        onTime.LateMinutes.ShouldBe(0);
+        onTime.EarlyLeaveMinutes.ShouldBe(0);
+        onTime.WorkedMinutes.ShouldBe(0, "no time worked is invented");
+        onTime.LastOut.ShouldBeNull();
+        onTime.Note.ShouldBe(AttendanceEvaluator.NoPunchOutNeeded);
+
+        DayEvaluation late = AttendanceEvaluator.Evaluate(Someone, Day, PunchInOnly(), [At(9, 40)], false, false, null);
+        late.Status.ShouldBe(AttendanceStatus.Present);
+        late.LateMinutes.ShouldBe(25);
+    }
+
+    [Fact]
+    public void WithoutAPunchOutRequired_APunchOutIsStillJudged()
+        => AttendanceEvaluator.Evaluate(Someone, Day, PunchInOnly(), [At(9, 0), At(14, 30)], false, false, null).Status.ShouldBe(AttendanceStatus.HalfDay);
+
+    [Fact]
+    public void WithoutAPunchOutRequired_DaysOffAndNoPunchAreUnchanged()
+    {
+        AttendanceEvaluator.Evaluate(Someone, Day, PunchInOnly(weeklyOff: true), [At(10, 0)], false, false, null).Status.ShouldBe(AttendanceStatus.MissingPunch);
+        AttendanceEvaluator.Evaluate(Someone, Day, PunchInOnly(), [], false, false, null).Status.ShouldBe(AttendanceStatus.Absent);
+    }
+
     [Fact]
     public void ANightShift_IsJudgedAcrossMidnight()
     {
@@ -124,6 +153,18 @@ public sealed class ShiftRuleTests
     [Fact]
     public void ANightShift_LastsAcrossMidnight()
         => WorkShift.Create("N", "Night", new TimeOnly(22, 0), new TimeOnly(6, 0), 30, 10, 200, 420, [DayOfWeek.Sunday]).DurationMinutes.ShouldBe(480);
+
+    [Fact]
+    public void APunchOut_IsRequiredUnlessTurnedOff()
+    {
+        WorkShift shift = WorkShift.Create("D", "Day", new TimeOnly(9, 0), new TimeOnly(18, 0), 60, 15, 240, 480, [DayOfWeek.Sunday]);
+        shift.RequiresPunchOut.ShouldBeTrue();
+
+        shift.Update("Day", new TimeOnly(9, 0), new TimeOnly(18, 0), 60, 15, 240, 480, [DayOfWeek.Sunday], requiresPunchOut: false);
+        shift.RequiresPunchOut.ShouldBeFalse();
+
+        WorkShift.Create("F", "Field", new TimeOnly(9, 0), new TimeOnly(18, 0), 60, 15, 240, 480, [], requiresPunchOut: false).RequiresPunchOut.ShouldBeFalse();
+    }
 
     [Fact]
     public void WeeklyOffs_RoundTripThroughTheMask()

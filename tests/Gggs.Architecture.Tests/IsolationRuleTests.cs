@@ -4,6 +4,7 @@ using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.Persistence;
 using Gggs.Composition;
 using Gggs.Data;
+using Gggs.Modules.Identity.Domain.Users;
 using Gggs.Modules.Platform.Domain.Audit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -39,6 +40,8 @@ public sealed class IsolationRuleTests
     {
         [typeof(AuditLog)] =
             "The audit log is append-only: it is the record of who changed what, and is never edited or deleted.",
+        [typeof(RecentPage)] =
+            "A person's own recent menu pages, rewritten on every page they open: auditing them would bury the audit log in clicks.",
     };
 
     [Fact]

@@ -22,6 +22,8 @@ export interface WorkShift {
   readonly isActive: boolean;
   /** Current employees working it today: its own assignees, plus everyone unassigned on the default. */
   readonly people: number;
+  /** False when only a punch in is expected: a working day with just that punch counts as a full day. */
+  readonly requiresPunchOut: boolean;
 }
 
 /** "From this date (until that date) this person works that shift." */
@@ -45,6 +47,7 @@ export interface WorkShiftInput {
   readonly halfDayMinutes: number;
   readonly fullDayMinutes: number;
   readonly weeklyOff: readonly Weekday[];
+  readonly requiresPunchOut: boolean;
 }
 
 export interface ScheduledDay {
@@ -60,6 +63,7 @@ export interface ScheduledDay {
   readonly fullDayMinutes: number;
   readonly isWeeklyOff: boolean;
   readonly isOvernight: boolean;
+  readonly requiresPunchOut: boolean;
 }
 
 export interface RosterRow {
@@ -106,6 +110,8 @@ export interface AttendanceDay {
   readonly isRegularized: boolean;
   readonly isToday: boolean;
   readonly note?: string;
+  /** False when the day's shift only needs a punch in. */
+  readonly requiresPunchOut: boolean;
 }
 
 /** An attendance day keyed for tables: one person, one date. */

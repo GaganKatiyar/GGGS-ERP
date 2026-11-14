@@ -244,7 +244,8 @@ public sealed record DaySchedule(
     int GraceMinutes,
     int HalfDayMinutes,
     int FullDayMinutes,
-    bool IsWeeklyOff);
+    bool IsWeeklyOff,
+    bool RequiresPunchOut = true);
 
 /// <summary>A punch as the evaluator sees it: local wall-clock time, and whether it came from a regularization.</summary>
 public sealed record LocalPunch(DateTime Local, DateTime Utc, bool IsRegularization);
@@ -253,10 +254,14 @@ public sealed record LocalPunch(DateTime Local, DateTime Utc, bool IsRegularizat
 /// Judges a day (spec §18 rules). Leave and holidays come first; otherwise the first and last punch
 /// decide: worked time (less the break), lateness against the start plus grace, leaving early
 /// against the end, and present, half-day or absent by the shift's thresholds - halved on a day
-/// with half-day leave.
+/// with half-day leave. A lone punch is a missing punch, except on a working day of a shift that
+/// does not require punching out: there it is the punch in, and the day counts as worked.
 /// </summary>
 public static class AttendanceEvaluator
 {
+    /// <summary>The note on a day judged from its punch in alone.</summary>
+    public const string NoPunchOutNeeded = "No punch out needed";
+
     public static DayEvaluation Evaluate(
         Guid employeeId,
         DateOnly date,
@@ -297,6 +302,12 @@ public static class AttendanceEvaluator
 
         if (ordered.Count == 1)
         {
+            if (!schedule.RequiresPunchOut && !dayOff)
+            {
+                int lateIn = Math.Max(0, (int)(ordered[0].Local - schedule.ScheduledStart.AddMinutes(schedule.GraceMinutes)).TotalMinutes);
+                return Result(AttendanceStatus.Present, late: lateIn, note: halfDayLeave ? "Half-day leave" : NoPunchOutNeeded);
+            }
+
             return Result(AttendanceStatus.MissingPunch, note: "Only one punch recorded");
         }
 

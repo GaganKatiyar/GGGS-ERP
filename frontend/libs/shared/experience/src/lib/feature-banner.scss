@@ -1,0 +1,412 @@
+// The banner is dark in every theme, so white on it is a fixed colour rather than a token, and the
+// reds come from the rail's tokens, which follow the palette but not the light/dark switch.
+:host {
+  --banner-ink: var(--gggs-color-brand);
+  --banner-red: var(--gggs-color-nav-active-deep);
+  --banner-glow: var(--gggs-color-nav-active);
+  --banner-art-accent: var(--gggs-color-nav-active);
+  --banner-dwell: 7s;
+  --banner-cta-ink: #1b2733;
+
+  display: block;
+  container: banner / inline-size;
+}
+
+.banner {
+  overflow: hidden;
+  border: 1px solid var(--gggs-color-border);
+  border-radius: var(--gggs-radius-lg);
+  background: var(--gggs-color-surface-raised);
+  box-shadow: var(--gggs-shadow-2);
+}
+
+.panels {
+  display: grid;
+  background: var(--banner-ink);
+  touch-action: pan-y;
+}
+
+.slide {
+  --slide-bg: var(--banner-ink);
+  --art-to: var(--banner-glow);
+  --gggs-color-focus: #fff;
+
+  display: grid;
+  grid-area: 1 / 1;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  min-height: 13rem;
+  background: var(--slide-bg);
+  color: #fff;
+  visibility: hidden;
+}
+
+.slide--red {
+  --slide-bg: var(--banner-red);
+  --art-to: var(--banner-ink);
+}
+
+.slide.is-active {
+  visibility: visible;
+}
+
+// Text sits on the slide's solid colour; the gradient stays in the picture.
+.slide__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gggs-space-2);
+  min-width: 0;
+  padding: var(--gggs-space-5) var(--gggs-space-2) var(--gggs-space-5) var(--gggs-space-6);
+}
+
+.slide__art {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  background-image: linear-gradient(90deg, var(--slide-bg) 0%, color-mix(in srgb, var(--art-to) 55%, var(--slide-bg)) 62%, var(--art-to) 100%);
+}
+
+// A photo fades into the slide's solid colour on its left, so the text never sits on it.
+.slide__art--photo {
+  position: relative;
+  overflow: hidden;
+  background-image: none;
+}
+
+.slide__photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  mask-image: linear-gradient(90deg, transparent 0%, black 38%);
+}
+
+// Full picture: nothing but the image, edge to edge. The blurred copy only shows on a phone.
+.slide--full {
+  display: block;
+  position: relative;
+  overflow: hidden;
+}
+
+.full {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+a.full:focus-visible {
+  outline-offset: -5px;
+}
+
+.full__img,
+.full__blur {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.full__blur {
+  display: none;
+}
+
+.panels--moved {
+  .is-active {
+    animation: fade-in var(--gggs-duration-slow) var(--gggs-ease-out);
+  }
+
+  .is-leaving {
+    animation: fade-out var(--gggs-duration-slow) var(--gggs-ease-out);
+  }
+
+  .is-active .slide__text {
+    animation: slide-in var(--gggs-duration-slow) var(--gggs-ease-out);
+  }
+
+  .is-leaving .slide__text {
+    animation: slide-out var(--gggs-duration-slow) var(--gggs-ease-out);
+  }
+
+  .is-active gggs-banner-art {
+    animation: art-in var(--gggs-duration-slow) var(--gggs-ease-out);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(calc(var(--x) * 20px));
+  }
+}
+
+@keyframes slide-out {
+  to {
+    transform: translateX(calc(var(--x) * 20px));
+  }
+}
+
+@keyframes art-in {
+  from {
+    transform: translateX(calc(var(--x) * 48px));
+  }
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gggs-space-2);
+  padding: var(--gggs-space-1) var(--gggs-space-3);
+  border-radius: var(--gggs-radius-pill);
+  background: rgb(255 255 255 / 14%);
+  font-size: var(--gggs-font-size-xs);
+  font-weight: var(--gggs-font-weight-medium);
+}
+
+.chip--due {
+  background: var(--gggs-color-warning-subtle);
+  color: var(--gggs-color-warning-strong);
+  font-weight: var(--gggs-font-weight-semibold);
+}
+
+h2 {
+  margin: 0;
+  color: inherit;
+  font-family: var(--gggs-font-family-display);
+  font-size: 1.5rem;
+  font-weight: var(--gggs-font-weight-bold);
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+p {
+  max-width: 46ch;
+  margin: 0;
+  color: inherit;
+  opacity: 0.92;
+}
+
+.slide__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gggs-space-2) var(--gggs-space-4);
+  margin-block-start: auto;
+  padding-block-start: var(--gggs-space-2);
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gggs-space-2);
+  min-height: 2.5rem;
+  padding-inline: var(--gggs-space-4);
+  border-radius: var(--gggs-radius-md);
+  background: #fff;
+  color: var(--banner-cta-ink);
+  font-weight: var(--gggs-font-weight-semibold);
+  text-decoration: none;
+  transition: transform var(--gggs-transition-fast);
+
+  &:hover {
+    color: var(--banner-cta-ink);
+    transform: translateY(-1px);
+  }
+}
+
+.more {
+  color: #fff;
+  font-weight: var(--gggs-font-weight-medium);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+
+  &:hover {
+    color: #fff;
+  }
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--gggs-space-3);
+  padding-inline: var(--gggs-space-3);
+  border-block-start: 1px solid var(--gggs-color-border);
+}
+
+.bars {
+  display: flex;
+  flex: 1 1 auto;
+  gap: var(--gggs-space-2);
+  min-width: 0;
+}
+
+.tab {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.tab__rail {
+  display: block;
+  width: 100%;
+  height: 3px;
+  overflow: hidden;
+  border-radius: var(--gggs-radius-pill);
+  background: var(--gggs-color-border-strong);
+}
+
+.tab__fill {
+  display: block;
+  height: 100%;
+  background-image: var(--gggs-gradient-accent);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.tab[aria-selected='true'] .tab__fill {
+  transform: scaleX(1);
+}
+
+.banner[data-auto='on'] .tab[aria-selected='true'] .tab__fill {
+  animation: dwell var(--banner-dwell) linear forwards;
+}
+
+.banner:hover .tab__fill,
+.banner:focus-within .tab__fill,
+.banner[data-hidden='true'] .tab__fill {
+  animation-play-state: paused !important;
+}
+
+@keyframes dwell {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.controls {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--gggs-space-0);
+}
+
+.count {
+  min-width: 3.25rem;
+  color: var(--gggs-color-text-muted);
+  font-size: var(--gggs-font-size-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.nav {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--gggs-radius-md);
+  background: transparent;
+  color: var(--gggs-color-text-muted);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--gggs-color-surface-hover);
+    color: var(--gggs-color-text);
+  }
+}
+
+// Narrow: the picture becomes a band above the text, and the bars say where you are.
+@container banner (max-width: 34rem) {
+  .slide {
+    grid-template-rows: 5.5rem auto;
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .slide__art {
+    grid-row: 1;
+    height: 5.5rem;
+    overflow: hidden;
+  }
+
+  gggs-banner-art {
+    height: 5.5rem;
+  }
+
+  .slide__photo {
+    mask-image: none;
+  }
+
+  // A wide picture would lose most of itself to cropping here, words included: show all of it.
+  .slide--full {
+    display: block;
+    min-height: 11rem;
+  }
+
+  .full__blur {
+    display: block;
+    filter: blur(18px) brightness(0.7);
+    transform: scale(1.15);
+  }
+
+  .full__img {
+    object-fit: contain;
+  }
+
+  .slide__text {
+    grid-row: 2;
+    padding: var(--gggs-space-4) var(--gggs-space-5) var(--gggs-space-5);
+  }
+
+  h2 {
+    font-size: 1.3125rem;
+  }
+
+  .bar {
+    gap: var(--gggs-space-1);
+    padding-inline: var(--gggs-space-3) var(--gggs-space-1);
+  }
+
+  .bars {
+    gap: var(--gggs-space-1);
+  }
+
+  .count {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    min-width: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}

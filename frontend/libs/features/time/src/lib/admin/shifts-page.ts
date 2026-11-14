@@ -52,6 +52,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
                     <th scope="col">Grace</th>
                     <th scope="col">Half / full day</th>
                     <th scope="col">Days off</th>
+                    <th scope="col">Punches</th>
                     <th scope="col" class="shifts__number">People</th>
                     <th scope="col">Status</th>
                     <th scope="col"><span class="grid__hidden">Actions</span></th>
@@ -66,6 +67,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
                       <td>{{ shift.graceMinutes }}m</td>
                       <td>{{ shift.halfDayMinutes / 60 }}h / {{ shift.fullDayMinutes / 60 }}h</td>
                       <td>{{ shortDays(shift.weeklyOff) }}</td>
+                      <td>{{ shift.requiresPunchOut ? 'In and out' : 'In only' }}</td>
                       <td class="shifts__number">{{ shift.people }}</td>
                       <td><gggs-status-badge [status]="shift.isActive ? 'Active' : 'Inactive'" /></td>
                       <td class="grid__actions" *gggsHasPermission="'attendance.shift.manage'">
@@ -259,6 +261,17 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
             <label class="weekdays__day"><input type="checkbox" [checked]="draft().weeklyOff.includes(day)" (change)="toggleDay(day)" /> {{ day.slice(0, 3) }}</label>
           }
         </fieldset>
+        <div class="form-grid__full">
+          <label class="shifts__check">
+            <input type="checkbox" [checked]="draft().requiresPunchOut" (change)="setPunchOut($any($event.target).checked)" aria-describedby="shift-punch-out-hint" />
+            Punch out required
+          </label>
+          <p class="field__hint" id="shift-punch-out-hint">
+            {{ draft().requiresPunchOut
+              ? 'A day with only a punch in shows as a missing punch until it is corrected.'
+              : 'Punching in counts as a full day, and lateness still counts. A punch out, if made, is still judged. Applies to days judged from now on.' }}
+          </p>
+        </div>
       </div>
     </gggs-form-dialog>
 
@@ -426,6 +439,17 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
       gap: var(--gggs-space-1, 0.25rem);
       align-items: center;
     }
+
+    .shifts__check {
+      display: flex;
+      gap: var(--gggs-space-2);
+      align-items: center;
+      font-weight: var(--gggs-font-weight-semibold);
+    }
+
+    .shifts__check + .field__hint {
+      margin: var(--gggs-space-1) 0 0;
+    }
   `,
 })
 export class ShiftsPage {
@@ -465,6 +489,7 @@ export class ShiftsPage {
     halfDayMinutes: 240,
     fullDayMinutes: 480,
     weeklyOff: ['Saturday', 'Sunday'] as Weekday[],
+    requiresPunchOut: true,
   });
 
   protected readonly assignOpen = signal(false);
@@ -547,6 +572,10 @@ export class ShiftsPage {
     this.draft.update((draft) => ({ ...draft, [field]: value }));
   }
 
+  protected setPunchOut(required: boolean): void {
+    this.draft.update((draft) => ({ ...draft, requiresPunchOut: required }));
+  }
+
   protected toggleDay(day: Weekday): void {
     this.draft.update((draft) => ({ ...draft, weeklyOff: draft.weeklyOff.includes(day) ? draft.weeklyOff.filter((value) => value !== day) : [...draft.weeklyOff, day] }));
   }
@@ -565,8 +594,9 @@ export class ShiftsPage {
             halfDayMinutes: shift.halfDayMinutes,
             fullDayMinutes: shift.fullDayMinutes,
             weeklyOff: [...shift.weeklyOff],
+            requiresPunchOut: shift.requiresPunchOut,
           }
-        : { code: '', name: '', startTime: '09:00', endTime: '18:00', breakMinutes: 60, graceMinutes: 15, halfDayMinutes: 240, fullDayMinutes: 480, weeklyOff: ['Saturday', 'Sunday'] },
+        : { code: '', name: '', startTime: '09:00', endTime: '18:00', breakMinutes: 60, graceMinutes: 15, halfDayMinutes: 240, fullDayMinutes: 480, weeklyOff: ['Saturday', 'Sunday'], requiresPunchOut: true },
     );
     this.dialogError.set(null);
     this.shiftOpen.set(true);

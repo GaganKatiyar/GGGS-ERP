@@ -30,7 +30,8 @@ public sealed record AttendanceDayItem(
     bool WorkedOnDayOff,
     bool IsRegularized,
     bool IsToday,
-    string? Note);
+    string? Note,
+    bool RequiresPunchOut = true);
 
 public sealed record PunchItem(DateTime At, TimeOnly LocalTime, PunchSource Source);
 
@@ -148,6 +149,10 @@ internal sealed class AttendanceService(
                     // The day is still open: one punch is someone at work, not a missing punch yet.
                     evaluation = evaluation with { Note = "Punched in, day in progress" };
                 }
+                else if (day.Date == today && evaluation.Note == AttendanceEvaluator.NoPunchOutNeeded)
+                {
+                    evaluation = evaluation with { Note = "Punched in" };
+                }
 
                 if (onLeave.Count > 0 && evaluation.Status == AttendanceStatus.OnLeave)
                 {
@@ -235,7 +240,8 @@ internal sealed class AttendanceService(
                     evaluation.WorkedOnDayOff,
                     evaluation.IsRegularized,
                     evaluation.Date == today,
-                    evaluation.Note);
+                    evaluation.Note,
+                    plan.RequiresPunchOut);
             })];
     }
 
@@ -535,7 +541,7 @@ internal sealed class AttendanceService(
     {
         DateTime start = day.Date.ToDateTime(day.Start);
         DateTime end = (day.IsOvernight ? day.Date.AddDays(1) : day.Date).ToDateTime(day.End);
-        return new DaySchedule(day.ShiftName, start, end, day.BreakMinutes, day.GraceMinutes, day.HalfDayMinutes, day.FullDayMinutes, day.IsWeeklyOff);
+        return new DaySchedule(day.ShiftName, start, end, day.BreakMinutes, day.GraceMinutes, day.HalfDayMinutes, day.FullDayMinutes, day.IsWeeklyOff, day.RequiresPunchOut);
     }
 
     private static TimeOnly? Local(DateTime? utc, TimeZoneInfo zone)

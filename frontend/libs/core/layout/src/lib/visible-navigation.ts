@@ -20,6 +20,10 @@ export function canSee(item: NavItem, access: NavigationAccess): boolean {
     return false;
   }
 
+  if (item.alsoNeedsFeature !== undefined && !access.hasFeature(item.alsoNeedsFeature)) {
+    return false;
+  }
+
   if (item.needsEmployee === true && !access.hasEmployee) {
     return false;
   }
