@@ -21,8 +21,24 @@ Everything else in the navigation is marked planned and stays hidden until its m
 
 ## One-time setup
 
-1. A local SQL Server reachable at `Server=localhost;Integrated Security=True` (the same one the
-   test suite uses - see the repository README's prerequisites).
+1. A local SQL Server reachable at `Server=localhost` with SQL logins enabled (mixed mode). The test
+   suite connects with Windows sign-in (`Integrated Security=True`), because it creates and drops its
+   own databases; the apps use SQL logins:
+
+   | Login | Used by | Access |
+   |---|---|---|
+   | `gggs_admin` | migrations, DevSeed, the platform console server | owner of `peopleos` and `NaBPlatform` |
+   | `gggs_app` | HR API and worker (`AppDb`) | read/write `peopleos`; row-level security stays on |
+   | `gggs_tenant` | HR API and worker (`PlatformDb`) | only the NaBPlatform tables in [the contract](../nabplatform-contract.md) |
+
+   Create them once the databases exist, as a sysadmin (passwords as in the `appsettings.Development.json`
+   files and `AppDbContextFactory`):
+
+   ```powershell
+   sqlcmd -S localhost -E -I -i infra/sql/peopleos-logins.sql -v Database=peopleos AdminPassword="..." AppPassword="..."
+   # and, in GGGS-ERP-PLATFORM:
+   sqlcmd -S localhost -E -I -i scripts/nabplatform-logins.sql -v Database=NaBPlatform AdminPassword="..." TenantPassword="..."
+   ```
 2. `npm ci` inside `frontend/`.
 3. `dotnet tool restore` inside `backend/` (for `dotnet ef`).
 

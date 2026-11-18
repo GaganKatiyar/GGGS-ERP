@@ -14,8 +14,10 @@ public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
 {
     public AppDbContext CreateDbContext(string[] args)
     {
+        // Migrations change the schema, so they run as the owner login, never the app's (see
+        // infra/sql/peopleos-logins.sql).
         string connectionString = Environment.GetEnvironmentVariable("GGGS_APP_DB")
-            ?? "Server=localhost;Database=peopleos;Integrated Security=True;TrustServerCertificate=True;Encrypt=False";
+            ?? "Server=localhost;Database=peopleos;User ID=gggs_admin;Password=user149;TrustServerCertificate=True;Encrypt=False";
 
         DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
             .UseSqlServer(connectionString, DataExtensions.ConfigureSqlServer)

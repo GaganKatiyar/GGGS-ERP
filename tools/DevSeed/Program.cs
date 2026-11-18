@@ -34,14 +34,23 @@ string tenantCode = args.Length > 0 ? args[0] : "gggs";
 string adminEmail = args.Length > 1 ? args[1] : $"admin@{tenantCode}.example";
 string adminPassword = args.Length > 2 ? args[2] : "Passw0rd!2026";
 
+// Seeding creates organisations in the platform database and reads across organisations here, so it
+// runs as the owner login on both (infra/sql/peopleos-logins.sql, GGGS-ERP-PLATFORM scripts/nabplatform-logins.sql).
 string connectionString = Environment.GetEnvironmentVariable("GGGS_APP_DB")
-    ?? "Server=localhost;Database=peopleos;Integrated Security=True;TrustServerCertificate=True;Encrypt=False";
+    ?? "Server=localhost;Database=peopleos;User ID=gggs_admin;Password=user149;TrustServerCertificate=True;Encrypt=False";
 
 string platformConnectionString = Environment.GetEnvironmentVariable("GGGS_PLATFORM_DB")
-    ?? "Server=localhost;Database=NaBPlatform;Integrated Security=True;TrustServerCertificate=True;Encrypt=False";
+    ?? "Server=localhost;Database=NaBPlatform;User ID=gggs_admin;Password=user149;TrustServerCertificate=True;Encrypt=False";
 
-Console.WriteLine($"Database: {connectionString}");
-Console.WriteLine($"Platform database: {platformConnectionString}");
+Console.WriteLine($"Database: {WithoutPassword(connectionString)}");
+Console.WriteLine($"Platform database: {WithoutPassword(platformConnectionString)}");
+
+static string WithoutPassword(string value)
+{
+    var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(value);
+    builder.Remove("Password");
+    return builder.ConnectionString;
+}
 
 IConfiguration configuration = new ConfigurationBuilder()
     .AddInMemoryCollection(new Dictionary<string, string?>

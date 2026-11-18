@@ -19,8 +19,18 @@ released together. The same file is kept in both repos; edit both.
 | `hr.JobHealth` (one row, Id = 1) | HR (every 5 minutes) | Platform |
 | `platform.PlatformStaff`, `PlatformRole`, `PlatformRoleAssignment`, `PlatformAuditEntry`, `DedicatedDatabase` | Platform | Platform only |
 
-SQL permissions for the HR app's login: `SELECT` on schema `platform`; `SELECT, INSERT, UPDATE,
-DELETE` on schema `hr`; `UPDATE (Status, Result, CompletedDate)` on `platform.ProvisioningRequest`.
+## SQL logins
+
+| Login | Database | Can do | Used by |
+|---|---|---|---|
+| `gggs_admin` | NaBPlatform and the HR database | owner (`db_owner`; in the HR database also `rls_bypass`) | platform console server, migrations, DevSeed, support |
+| `gggs_tenant` | NaBPlatform only | `SELECT` on `platform.Tenant`, `Plan`, `Subscription`, `ProvisioningRequest`; `UPDATE (Status, Result, CompletedDate)` on `platform.ProvisioningRequest`; `SELECT, INSERT, UPDATE, DELETE` on schema `hr` | HR API and worker (`ConnectionStrings:PlatformDb`) |
+| `gggs_app` | HR database only | `db_datareader`, `db_datawriter`; never owner, never `rls_bypass` | HR API and worker (`ConnectionStrings:AppDb`) |
+
+`gggs_tenant` is granted table by table, so a new platform table stays invisible to the HR app until it
+is added to this contract and to `scripts/nabplatform-logins.sql` (GGGS-ERP-PLATFORM). The HR
+database's logins are created by `infra/sql/peopleos-logins.sql` (GGGS-ERP). Both scripts are safe to
+re-run and never change an existing password.
 
 ## Columns the HR app relies on
 
