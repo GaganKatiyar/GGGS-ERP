@@ -37,12 +37,19 @@ string adminPassword = args.Length > 2 ? args[2] : "Passw0rd!2026";
 string connectionString = Environment.GetEnvironmentVariable("GGGS_APP_DB")
     ?? "Server=localhost;Database=peopleos;Integrated Security=True;TrustServerCertificate=True;Encrypt=False";
 
+string platformConnectionString = Environment.GetEnvironmentVariable("GGGS_PLATFORM_DB")
+    ?? "Server=localhost;Database=NaBPlatform;Integrated Security=True;TrustServerCertificate=True;Encrypt=False";
+
 Console.WriteLine($"Database: {connectionString}");
+Console.WriteLine($"Platform database: {platformConnectionString}");
 
 IConfiguration configuration = new ConfigurationBuilder()
     .AddInMemoryCollection(new Dictionary<string, string?>
     {
         [$"ConnectionStrings:{DataExtensions.ConnectionStringName}"] = connectionString,
+
+        // The platform console's database (repository GGGS-ERP-PLATFORM): organisations, plans, subscriptions.
+        [$"ConnectionStrings:{Gggs.Modules.Platform.Infrastructure.PlatformCatalogDbContext.ConnectionStringName}"] = platformConnectionString,
 
         // The same folder the API serves files from in development (run DevSeed from the repository root).
         ["Gggs:Storage:FileSystem:RootPath"] = Environment.GetEnvironmentVariable("GGGS_FILES_ROOT") ?? Path.GetFullPath(Path.Combine(".local", "files")),
@@ -83,8 +90,25 @@ await RunAsync(provider, "migrate", async (scope, tenant) =>
     Console.WriteLine("Database migrated.");
 });
 
+// Plans belong to the platform console, which applies its catalogue at start. On a NaBPlatform nobody
+// has started the console against yet, put the same catalogue in so this seed can run on its own.
 await RunAsync(provider, "plans", async (scope, _) =>
-    await scope.GetRequiredService<PlanCatalogSynchronizer>().SyncAsync());
+{
+    var catalog = scope.GetRequiredService<Gggs.Modules.Platform.Infrastructure.PlatformCatalogDbContext>();
+    if (await catalog.Plans.AnyAsync())
+    {
+        return;
+    }
+
+    foreach (PlanDefinition definition in PlanCatalog.Definitions)
+    {
+        catalog.Plans.Add(Gggs.Modules.Platform.Domain.Subscriptions.Plan.Create(
+            definition.Code, definition.Name, definition.Edition, definition.MaxEmployees, isPubliclyAvailable: true, definition.Features));
+    }
+
+    await catalog.SaveChangesAsync();
+    Console.WriteLine("Plans added to NaBPlatform.");
+});
 
 Guid tenantId = Guid.Empty;
 

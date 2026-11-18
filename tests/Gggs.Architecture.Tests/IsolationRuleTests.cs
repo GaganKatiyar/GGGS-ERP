@@ -141,11 +141,13 @@ public sealed class IsolationRuleTests
     public void Modules_NeverDeclareTheirOwnDbContext()
     {
         // One database, one context (ADR-12). A module-local context would split the unit of work
-        // and escape the shared conventions.
+        // and escape the shared conventions. The one exception is not this database at all: the
+        // platform console's NaBPlatform, owned by another repository, read through its own context.
         foreach (Assembly module in ModuleCatalog.ModelAssemblies)
         {
-            Types.InAssembly(module).That().Inherit(typeof(DbContext)).GetTypes().ShouldBeEmpty(
-                $"{module.GetName().Name} declares its own DbContext; use AppDbContext and an IModuleModel.");
+            Types.InAssembly(module).That().Inherit(typeof(DbContext)).GetTypes()
+                .Where(type => type != typeof(Gggs.Modules.Platform.Infrastructure.PlatformCatalogDbContext))
+                .ShouldBeEmpty($"{module.GetName().Name} declares its own DbContext; use AppDbContext and an IModuleModel.");
         }
     }
 

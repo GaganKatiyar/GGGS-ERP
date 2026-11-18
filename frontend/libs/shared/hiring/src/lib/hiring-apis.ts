@@ -10,6 +10,7 @@ import type {
   CandidateProfile,
   CandidateSource,
   CandidateView,
+  CvReadResult,
   HireDetails,
   HireResult,
   HireableOffer,
@@ -155,8 +156,33 @@ export class RecruitmentApi {
     return firstValueFrom(this.http.get<CandidateView>(`${this.base}/candidates/${id}`));
   }
 
-  addCandidate(body: { details: CandidateDetailsInput; source: CandidateSource; agencyId?: string | null; referrerEmployeeId?: string | null; requisitionId?: string | null }): Promise<CandidateView> {
+  addCandidate(body: {
+    details: CandidateDetailsInput;
+    source: CandidateSource;
+    agencyId?: string | null;
+    referrerEmployeeId?: string | null;
+    requisitionId?: string | null;
+    cvKey?: string | null;
+    cvFileName?: string | null;
+  }): Promise<CandidateView> {
     return firstValueFrom(this.http.post<CandidateView>(`${this.base}/candidates`, body));
+  }
+
+  /** Reads a CV on the server (PDF, Word or text) and keeps the file for the candidate about to be saved. */
+  readCv(file: File): Promise<CvReadResult> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return firstValueFrom(this.http.post<CvReadResult>(`${this.base}/cv/read`, form));
+  }
+
+  /** Puts a CV read earlier on a candidate already on file. */
+  attachCv(candidateId: string, cvKey: string, fileName: string): Promise<CandidateView> {
+    return firstValueFrom(this.http.post<CandidateView>(`${this.base}/candidates/${candidateId}/cv`, { cvKey, fileName }));
+  }
+
+  /** The candidate's CV as a file, for a download link built from a blob URL. */
+  candidateCv(candidateId: string): Promise<Blob> {
+    return firstValueFrom(this.http.get(`${this.base}/candidates/${candidateId}/cv`, { responseType: 'blob' }));
   }
 
   updateCandidate(id: string, details: CandidateDetailsInput): Promise<CandidateView> {

@@ -1,10 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, model, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, model, output, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiError } from '@gggs/core/http';
 import { EmployeeSelect } from '@gggs/shared/employee-reference';
 import { RecruitmentApi } from '@gggs/shared/hiring';
 import { LookupSelect } from '@gggs/shared/master-data';
-import type { AgencyItem, CandidateDetailsInput, CandidateProfile, CandidateSource, CandidateView, OrgUnit, RequisitionInput, RequisitionItem } from '@gggs/shared/models';
+import type { AgencyItem, CandidateDetailsInput, CandidateProfile, CandidateSource, CandidateView, CvFields, CvReadResult, OrgUnit, RequisitionInput, RequisitionItem } from '@gggs/shared/models';
 import { CANDIDATE_SOURCES, LOOKUP_LISTS, humanize } from '@gggs/shared/models';
 import { OrgSelect, OrgStructureApi, rolesFor } from '@gggs/shared/org-reference';
 import { FormDialog } from '@gggs/shared/ui';
@@ -18,6 +18,27 @@ export const splitList = (value: string): string[] =>
     .filter(Boolean);
 
 const num = (value: string): number | null => (value === '' ? null : +value);
+
+/** The candidate fields a CV can fill. */
+export type CvField = Exclude<keyof CvFields, never>;
+
+const isEmpty = (value: unknown): boolean => value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0);
+
+/** Whether a field still holds what the CV gave (skills compared as a list). */
+export const sameValue = (a: unknown, b: unknown): boolean =>
+  Array.isArray(a) && Array.isArray(b) ? a.length === b.length && a.every((item, index) => item === b[index]) : a === b;
+
+/** What a CV adds to the form: its values for the fields that are still empty, and nothing else. */
+export function cvFill(fields: CvFields, current: CandidateDetailsInput): Partial<Record<CvField, unknown>> & Partial<CandidateDetailsInput> {
+  const fill: Record<string, unknown> = {};
+  const now = current as unknown as Record<string, unknown>;
+  for (const [key, value] of Object.entries(fields)) {
+    if (!isEmpty(value) && isEmpty(now[key])) {
+      fill[key] = value;
+    }
+  }
+  return fill as Partial<CandidateDetailsInput>;
+}
 
 const blankRequisition = (): RequisitionInput => ({
   title: '',
@@ -345,66 +366,68 @@ export class RequisitionForm {
   template: `
     <div class="rec__grid">
       <label class="field">
-        <span class="field__label">First name</span>
-        <input type="text" maxlength="100" [value]="value().firstName" (input)="patch({ firstName: $any($event.target).value })" />
+        <span class="field__label">First name @if (marked().has('firstName')) {<span class="rec__cv-tag">from CV</span>}</span>
+        <input type="text" maxlength="100" [class.rec__cv-filled]="marked().has('firstName')" [value]="value().firstName" (input)="patch({ firstName: $any($event.target).value })" />
       </label>
       <label class="field">
-        <span class="field__label">Last name</span>
-        <input type="text" maxlength="100" [value]="value().lastName ?? ''" (input)="patch({ lastName: $any($event.target).value || null })" />
+        <span class="field__label">Last name @if (marked().has('lastName')) {<span class="rec__cv-tag">from CV</span>}</span>
+        <input type="text" maxlength="100" [class.rec__cv-filled]="marked().has('lastName')" [value]="value().lastName ?? ''" (input)="patch({ lastName: $any($event.target).value || null })" />
       </label>
       <label class="field">
-        <span class="field__label">Email</span>
-        <input type="email" maxlength="256" [value]="value().email" (input)="patch({ email: $any($event.target).value })" />
+        <span class="field__label">Email @if (marked().has('email')) {<span class="rec__cv-tag">from CV</span>}</span>
+        <input type="email" maxlength="256" [class.rec__cv-filled]="marked().has('email')" [value]="value().email" (input)="patch({ email: $any($event.target).value })" />
       </label>
       <label class="field">
-        <span class="field__label">Mobile</span>
-        <input type="tel" maxlength="20" [value]="value().mobile ?? ''" (input)="patch({ mobile: $any($event.target).value || null })" />
+        <span class="field__label">Mobile @if (marked().has('mobile')) {<span class="rec__cv-tag">from CV</span>}</span>
+        <input type="tel" maxlength="20" [class.rec__cv-filled]="marked().has('mobile')" [value]="value().mobile ?? ''" (input)="patch({ mobile: $any($event.target).value || null })" />
       </label>
       <label class="field">
-        <span class="field__label">Current company</span>
-        <input type="text" maxlength="200" [value]="value().currentCompany ?? ''" (input)="patch({ currentCompany: $any($event.target).value || null })" />
+        <span class="field__label">Current company @if (marked().has('currentCompany')) {<span class="rec__cv-tag">from CV</span>}</span>
+        <input type="text" maxlength="200" [class.rec__cv-filled]="marked().has('currentCompany')" [value]="value().currentCompany ?? ''" (input)="patch({ currentCompany: $any($event.target).value || null })" />
       </label>
       <label class="field">
-        <span class="field__label">Current title</span>
-        <input type="text" maxlength="200" [value]="value().currentTitle ?? ''" (input)="patch({ currentTitle: $any($event.target).value || null })" />
+        <span class="field__label">Current title @if (marked().has('currentTitle')) {<span class="rec__cv-tag">from CV</span>}</span>
+        <input type="text" maxlength="200" [class.rec__cv-filled]="marked().has('currentTitle')" [value]="value().currentTitle ?? ''" (input)="patch({ currentTitle: $any($event.target).value || null })" />
       </label>
       <label class="field">
-        <span class="field__label">Experience (years)</span>
-        <input type="number" min="0" step="0.5" [value]="value().experienceYears ?? ''" (input)="patch({ experienceYears: num($any($event.target).value) })" />
+        <span class="field__label">Experience (years) @if (marked().has('experienceYears')) {<span class="rec__cv-tag">from CV</span>}</span>
+        <input type="number" min="0" step="0.5" [class.rec__cv-filled]="marked().has('experienceYears')" [value]="value().experienceYears ?? ''" (input)="patch({ experienceYears: num($any($event.target).value) })" />
       </label>
       <label class="field">
-        <span class="field__label">Notice period (days)</span>
-        <input type="number" min="0" [value]="value().noticePeriodDays ?? ''" (input)="patch({ noticePeriodDays: num($any($event.target).value) })" />
+        <span class="field__label">Notice period (days) @if (marked().has('noticePeriodDays')) {<span class="rec__cv-tag">from CV</span>}</span>
+        <input type="number" min="0" [class.rec__cv-filled]="marked().has('noticePeriodDays')" [value]="value().noticePeriodDays ?? ''" (input)="patch({ noticePeriodDays: num($any($event.target).value) })" />
       </label>
       @if (showCtc()) {
         <label class="field">
-          <span class="field__label">Current CTC</span>
-          <input type="number" min="0" [value]="value().currentCtc ?? ''" (input)="patch({ currentCtc: num($any($event.target).value) })" />
+          <span class="field__label">Current CTC @if (marked().has('currentCtc')) {<span class="rec__cv-tag">from CV</span>}</span>
+          <input type="number" min="0" [class.rec__cv-filled]="marked().has('currentCtc')" [value]="value().currentCtc ?? ''" (input)="patch({ currentCtc: num($any($event.target).value) })" />
         </label>
         <label class="field">
-          <span class="field__label">Expected CTC</span>
-          <input type="number" min="0" [value]="value().expectedCtc ?? ''" (input)="patch({ expectedCtc: num($any($event.target).value) })" />
+          <span class="field__label">Expected CTC @if (marked().has('expectedCtc')) {<span class="rec__cv-tag">from CV</span>}</span>
+          <input type="number" min="0" [class.rec__cv-filled]="marked().has('expectedCtc')" [value]="value().expectedCtc ?? ''" (input)="patch({ expectedCtc: num($any($event.target).value) })" />
         </label>
       }
       <label class="field">
-        <span class="field__label">Location</span>
-        <input type="text" maxlength="200" [value]="value().location ?? ''" (input)="patch({ location: $any($event.target).value || null })" />
+        <span class="field__label">Location @if (marked().has('location')) {<span class="rec__cv-tag">from CV</span>}</span>
+        <input type="text" maxlength="200" [class.rec__cv-filled]="marked().has('location')" [value]="value().location ?? ''" (input)="patch({ location: $any($event.target).value || null })" />
       </label>
       <label class="field">
-        <span class="field__label">LinkedIn</span>
-        <input type="url" maxlength="500" [value]="value().linkedInUrl ?? ''" (input)="patch({ linkedInUrl: $any($event.target).value || null })" />
+        <span class="field__label">LinkedIn @if (marked().has('linkedInUrl')) {<span class="rec__cv-tag">from CV</span>}</span>
+        <input type="url" maxlength="500" [class.rec__cv-filled]="marked().has('linkedInUrl')" [value]="value().linkedInUrl ?? ''" (input)="patch({ linkedInUrl: $any($event.target).value || null })" />
       </label>
       <label class="field rec__wide">
-        <span class="field__label">Skills (comma-separated)</span>
-        <input type="text" [value]="value().skills.join(', ')" (change)="patch({ skills: split($any($event.target).value) })" />
+        <span class="field__label">Skills (comma-separated) @if (marked().has('skills')) {<span class="rec__cv-tag">from CV</span>}</span>
+        <input type="text" [class.rec__cv-filled]="marked().has('skills')" [value]="value().skills.join(', ')" (change)="patch({ skills: split($any($event.target).value) })" />
       </label>
     </div>
   `,
-  styleUrl: './recruitment.css',
+  styleUrls: ['./recruitment.css', './cv.css'],
 })
 export class CandidateFields {
   readonly value = model.required<CandidateDetailsInput>();
   readonly showCtc = input(true);
+  /** Fields still holding what a CV gave: shown in blue with a "from CV" tag until someone changes them. */
+  readonly marked = input<ReadonlySet<string>>(new Set());
 
   protected readonly num = num;
   protected readonly split = splitList;
@@ -430,7 +453,37 @@ export class CandidateFields {
       (save)="save()"
       size="lg"
     >
-      <gggs-candidate-fields [(value)]="details" />
+      <div
+        class="rec__cv"
+        [class.rec__cv--done]="cv()"
+        [class.rec__cv--over]="dragOver()"
+        (dragover)="$event.preventDefault(); dragOver.set(true)"
+        (dragleave)="dragOver.set(false)"
+        (drop)="drop($event)"
+      >
+        <i class="pi pi-file-arrow-up rec__cv-icon" aria-hidden="true"></i>
+        <div class="rec__cv-text" aria-live="polite">
+          @if (reading()) {
+            <strong>Reading {{ reading() }}…</strong>
+            <span>Taking the text out of the file.</span>
+          } @else if (cv(); as read) {
+            <strong>{{ read.fileName }}</strong>
+            <span>{{ cvSummary() }}</span>
+          } @else {
+            <strong>Fill from a CV</strong>
+            <span>Drop a PDF or Word (.docx) CV here, or choose one. Empty fields fill in from it; check them before saving.</span>
+          }
+        </div>
+        <label class="btn btn--sm" for="candidate-cv-file">{{ cv() ? 'Choose another' : 'Choose CV' }}</label>
+        <input id="candidate-cv-file" class="sr-only" type="file" accept=".pdf,.docx,.txt" [disabled]="!!reading()" (change)="choose($event)" />
+        @if (cv()) {
+          <button type="button" class="btn btn--link btn--sm" (click)="removeCv()">Remove</button>
+        }
+      </div>
+      @if (cvError()) {
+        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ cvError() }}</span></p>
+      }
+      <gggs-candidate-fields [(value)]="details" [marked]="marked()" />
       @if (!candidate()) {
         <div class="rec__grid">
           <label class="field">
@@ -468,7 +521,7 @@ export class CandidateFields {
       </label>
     </gggs-form-dialog>
   `,
-  styleUrl: './recruitment.css',
+  styleUrls: ['./recruitment.css', './cv.css'],
 })
 export class CandidateForm {
   private readonly api = inject(RecruitmentApi);
@@ -489,6 +542,35 @@ export class CandidateForm {
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
 
+  /** The CV read on this form, the values it put in, and how many empty fields it filled. */
+  protected readonly cv = signal<CvReadResult | null>(null);
+  protected readonly cvValues = signal<Partial<Record<CvField, unknown>>>({});
+  protected readonly cvFilled = signal(0);
+  protected readonly reading = signal<string | null>(null);
+  protected readonly cvError = signal<string | null>(null);
+  protected readonly dragOver = signal(false);
+
+  /** Fields still holding the CV's value; editing one takes away its "from CV" mark. */
+  protected readonly marked = computed<ReadonlySet<string>>(() => {
+    const details = this.details() as unknown as Record<string, unknown>;
+    const values = this.cvValues();
+    return new Set((Object.keys(values) as CvField[]).filter((key) => sameValue(values[key], details[key])));
+  });
+
+  protected readonly cvSummary = computed(() => {
+    const read = this.cv();
+    if (!read) {
+      return '';
+    }
+    if (!read.hasText) {
+      return 'No text could be read; it may be a scanned image. The CV is attached; fill the fields by hand.';
+    }
+    const filled = this.cvFilled();
+    return filled
+      ? `Filled ${filled} ${filled === 1 ? 'field' : 'fields'} from the CV and attached it. Check the blue fields before saving.`
+      : 'Attached. The fields already had values, so nothing was changed.';
+  });
+
   constructor() {
     effect(() => {
       if (this.visible()) {
@@ -496,6 +578,7 @@ export class CandidateForm {
         this.details.set(candidate ? candidateInput(candidate) : blankCandidate());
         this.source.set('Direct');
         this.error.set(null);
+        untracked(() => this.removeCv());
         if (!candidate && !this.agencies().length) {
           this.api.agencies().then(
             (agencies) => this.agencies.set(agencies),
@@ -510,12 +593,77 @@ export class CandidateForm {
     this.details.update((details) => ({ ...details, notes: notes || null }));
   }
 
+  protected choose(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (file) {
+      void this.readCv(file);
+    }
+  }
+
+  protected drop(event: DragEvent): void {
+    event.preventDefault();
+    this.dragOver.set(false);
+    const file = event.dataTransfer?.files?.[0];
+    if (file) {
+      void this.readCv(file);
+    }
+  }
+
+  protected removeCv(): void {
+    const values = this.cvValues();
+    // Take back only what the CV put in and nobody has changed since.
+    if (Object.keys(values).length) {
+      const marked = this.marked();
+      this.details.update((details) => {
+        const next = { ...details } as Record<string, unknown>;
+        for (const key of marked) {
+          next[key] = key === 'skills' ? [] : key === 'firstName' || key === 'email' ? '' : null;
+        }
+        return next as unknown as CandidateDetailsInput;
+      });
+    }
+    this.cv.set(null);
+    this.cvValues.set({});
+    this.cvFilled.set(0);
+    this.cvError.set(null);
+  }
+
+  /** Reads the CV on the server; its values go into the fields that are still empty. */
+  private async readCv(file: File): Promise<void> {
+    if (!/\.(pdf|docx|txt)$/i.test(file.name)) {
+      this.cvError.set('Choose a PDF, Word (.docx) or text file. Older .doc files can be saved as .docx first.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      this.cvError.set('The CV must be smaller than 5 MB.');
+      return;
+    }
+
+    this.removeCv();
+    this.reading.set(file.name);
+    try {
+      const read = await this.api.readCv(file);
+      const fill = cvFill(read.fields, this.details());
+      this.details.update((details) => ({ ...details, ...fill }));
+      this.cvValues.set(fill);
+      this.cvFilled.set(Object.keys(fill).length);
+      this.cv.set(read);
+    } catch (error) {
+      this.cvError.set(errorText(error, 'The CV could not be read.'));
+    } finally {
+      this.reading.set(null);
+    }
+  }
+
   protected async save(): Promise<void> {
     this.busy.set(true);
     this.error.set(null);
     try {
       const candidate = this.candidate();
-      const view = candidate
+      const read = this.cv();
+      let view = candidate
         ? await this.api.updateCandidate(candidate.id, this.details())
         : await this.api.addCandidate({
             details: this.details(),
@@ -523,7 +671,12 @@ export class CandidateForm {
             agencyId: this.source() === 'Agency' ? this.agencyId() || null : null,
             referrerEmployeeId: this.source() === 'Referral' ? this.referrerId() : null,
             requisitionId: this.requisitionId(),
+            cvKey: read?.cvKey ?? null,
+            cvFileName: read?.fileName ?? null,
           });
+      if (candidate && read) {
+        view = await this.api.attachCv(candidate.id, read.cvKey, read.fileName);
+      }
       this.visible.set(false);
       this.saved.emit(view);
     } catch (error) {

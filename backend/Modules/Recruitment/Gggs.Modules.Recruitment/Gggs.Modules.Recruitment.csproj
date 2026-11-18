@@ -23,6 +23,13 @@
     <ProjectReference Include="..\..\Workforce\Gggs.Modules.Workforce.Contracts\Gggs.Modules.Workforce.Contracts.csproj" />
     <ProjectReference Include="..\Gggs.Modules.Recruitment.Contracts\Gggs.Modules.Recruitment.Contracts.csproj" />
     <ProjectReference Include="..\..\Separation\Gggs.Modules.Separation.Contracts\Gggs.Modules.Separation.Contracts.csproj" />
+    <ProjectReference Include="..\..\Skills\Gggs.Modules.Skills.Contracts\Gggs.Modules.Skills.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Gggs.BuildingBlocks.Files\Gggs.BuildingBlocks.Files.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Reads the text out of PDF CVs on our own server (Apache-2.0); Word CVs need no package. -->
+    <PackageReference Include="PdfPig" />
   </ItemGroup>
 
   <ItemGroup>

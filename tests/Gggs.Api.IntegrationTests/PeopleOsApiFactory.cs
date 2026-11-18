@@ -27,6 +27,7 @@ using Gggs.Modules.MasterData.Infrastructure;
 using Gggs.Modules.Notification.Application;
 using Gggs.Modules.Platform.Domain.Subscriptions;
 using Gggs.Modules.Platform.Domain.Tenants;
+using Gggs.Modules.Platform.Infrastructure;
 using Gggs.Modules.Workflow.Contracts;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -87,6 +88,14 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
 
     public string ConnectionString { get; private set; } = string.Empty;
 
+    /// <summary>
+    /// This run's copy of the platform console's database (NaBPlatform), where organisations, plans and
+    /// subscriptions live. Built from the contract script <c>nabplatform-schema.sql</c>.
+    /// </summary>
+    public string PlatformDatabaseName => $"{DatabaseName}_nab";
+
+    public string PlatformConnectionString { get; private set; } = string.Empty;
+
     /// <summary>Uploaded documents for this run; removed with the database.</summary>
     public string FileRoot { get; } = Path.Combine(Path.GetTempPath(), $"peopleos-files-{Guid.NewGuid():N}");
 
@@ -101,9 +110,14 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
         {
             await connection.OpenAsync();
             await using SqlCommand command = connection.CreateCommand();
-            command.CommandText = $"CREATE DATABASE [{DatabaseName}];";
+            command.CommandText = $"CREATE DATABASE [{DatabaseName}]; CREATE DATABASE [{PlatformDatabaseName}];";
+            command.CommandTimeout = 300;
             await command.ExecuteNonQueryAsync();
         }
+
+        builder.InitialCatalog = PlatformDatabaseName;
+        PlatformConnectionString = builder.ConnectionString;
+        await CreatePlatformSchemaAsync();
 
         builder.InitialCatalog = DatabaseName;
         ConnectionString = builder.ConnectionString;
@@ -137,10 +151,29 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Helpdesk.Application.HelpdeskSeeder>().SeedCurrentTenantAsync();
             await scope.ServiceProvider.GetRequiredService<Gggs.Modules.Rewards.Application.RewardSeeder>().SeedCurrentTenantAsync();
         }
+    }
 
-        // The worker seeds the platform roles at start-up; this host is the API alone, so run the
-        // same seeder here.
-        await ActivatorUtilities.CreateInstance<PlatformRoleSeeder>(Services).StartAsync(CancellationToken.None);
+    /// <summary>
+    /// Creates NaBPlatform's tables from the contract script (generated from the platform repository's
+    /// migrations), one batch at a time.
+    /// </summary>
+    private async Task CreatePlatformSchemaAsync()
+    {
+        string script = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "nabplatform-schema.sql"));
+        await using var connection = new SqlConnection(PlatformConnectionString);
+        await connection.OpenAsync();
+        foreach (string batch in System.Text.RegularExpressions.Regex.Split(script, @"^\s*GO\s*$", System.Text.RegularExpressions.RegexOptions.Multiline))
+        {
+            if (string.IsNullOrWhiteSpace(batch))
+            {
+                continue;
+            }
+
+            await using SqlCommand command = connection.CreateCommand();
+            command.CommandText = batch;
+            command.CommandTimeout = 120;
+            await command.ExecuteNonQueryAsync();
+        }
     }
 
     public override async ValueTask DisposeAsync()
@@ -148,11 +181,6 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
         if (_worker is not null)
         {
             await _worker.DisposeAsync();
-        }
-
-        if (_console is not null)
-        {
-            await _console.DisposeAsync();
         }
 
         await base.DisposeAsync();
@@ -177,7 +205,9 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             await connection.OpenAsync();
             await using SqlCommand command = connection.CreateCommand();
             command.CommandText =
-                $"ALTER DATABASE [{DatabaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{DatabaseName}];";
+                $"ALTER DATABASE [{DatabaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{DatabaseName}]; " +
+                $"ALTER DATABASE [{PlatformDatabaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{PlatformDatabaseName}];";
+            command.CommandTimeout = 300;
             await command.ExecuteNonQueryAsync();
         }
         catch (SqlException)
@@ -215,6 +245,16 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
 
         await using AsyncServiceScope scope = Worker.CreateAsyncScope();
         scope.ServiceProvider.GetRequiredService<ITenantContextSetter>().SetTenant(tenantId);
+        await work(scope.ServiceProvider);
+    }
+
+    /// <summary>Runs work as a platform-level job of the worker does: outside any tenant.</summary>
+    public async Task RunAsPlatformJobAsync(Func<IServiceProvider, Task> work)
+    {
+        ArgumentNullException.ThrowIfNull(work);
+
+        await using AsyncServiceScope scope = Worker.CreateAsyncScope();
+        using IDisposable platform = scope.ServiceProvider.GetRequiredService<ITenantContextSetter>().BeginPlatformScope("integration-tests");
         await work(scope.ServiceProvider);
     }
 
@@ -452,18 +492,11 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
         builder.ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning));
     }
 
-    /// <summary>
-    /// The platform console's server (Gggs.PlatformApi), hosted in-process against this run's
-    /// database - the same database, as in production. Started on first use.
-    /// </summary>
-    public PlatformConsoleFactory PlatformConsole => _console ??= new PlatformConsoleFactory(this);
-
-    private PlatformConsoleFactory? _console;
-
-    /// <summary>The settings both hosts run with in tests: this run's database, files and secrets.</summary>
+    /// <summary>The settings the API and the worker run with in tests: this run's databases, files and secrets.</summary>
     internal Dictionary<string, string?> TestConfiguration() => new()
     {
         [$"ConnectionStrings:{DataExtensions.ConnectionStringName}"] = ConnectionString,
+        [$"ConnectionStrings:{PlatformCatalogDbContext.ConnectionStringName}"] = PlatformConnectionString,
         ["ConnectionStrings:Redis"] = string.Empty,
         ["Gggs:Platform:DeploymentProfile"] = "OnPremise",
         ["Gggs:Secrets:File:FilePath"] = Path.Combine(Path.GetTempPath(), $"{DatabaseName}-secrets.json"),
@@ -513,8 +546,13 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
         await using var context = new AppDbContext(options, tenantContext, new ModelAssemblies(ModuleCatalog.ModelAssemblies));
         await context.Database.MigrateAsync();
 
+        // The two organisations live in NaBPlatform, as every organisation does; the HR database only
+        // holds their own data.
+        await using var catalog = new PlatformCatalogDbContext(
+            new DbContextOptionsBuilder<PlatformCatalogDbContext>().UseSqlServer(PlatformConnectionString).Options);
+
         Plan plan = Plan.Create("PRO", "Professional", PlanEdition.Professional, 1000, true, [Features.CoreHr, Features.Time, Features.Payroll]);
-        context.Set<Plan>().Add(plan);
+        catalog.Plans.Add(plan);
 
         foreach ((Guid id, string code) in new[] { (SeededTenantId, SeededTenantCode), (OtherTenantId, OtherTenantCode) })
         {
@@ -523,12 +561,13 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             tenant.CompleteProvisioning(DateTime.UtcNow);
 
             // Fixed ids so tests can name them; Register generates its own.
-            context.Entry(tenant).Property(nameof(Tenant.Id)).CurrentValue = id;
-            context.Set<Tenant>().Add(tenant);
-            context.Set<Subscription>().Add(Subscription.Start(id, plan.Id, DateOnly.FromDateTime(DateTime.UtcNow), null, 100, "INV-TEST"));
+            catalog.Entry(tenant).Property(nameof(Tenant.Id)).CurrentValue = id;
+            catalog.Tenants.Add(tenant);
+            catalog.Subscriptions.Add(Subscription.Start(id, plan.Id, DateOnly.FromDateTime(DateTime.UtcNow), null, 100, "INV-TEST"));
+            catalog.TenantSeedStates.Add(new TenantSeedStateRow { TenantId = id, SeededDate = DateTime.UtcNow });
         }
 
-        await context.SaveChangesAsync();
+        await catalog.SaveChangesAsync();
     }
 
     /// <summary>

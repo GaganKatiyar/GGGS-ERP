@@ -99,9 +99,10 @@ public sealed class PlatformRegistryTests(SqlServerFixture fixture)
     {
         (Tenant tenant, _) = await fixture.SeedTenantAsync("resolve-suspended", activate: true, withSubscription: true);
 
-        await using (AppDbContext context = fixture.CreateContext())
+        // Suspended where organisations live: the platform console's database.
+        await using (Gggs.Modules.Platform.Infrastructure.PlatformCatalogDbContext context = fixture.CreateCatalog())
         {
-            Tenant tracked = await context.Set<Tenant>().SingleAsync(
+            Tenant tracked = await context.Tenants.SingleAsync(
                 candidate => candidate.Id == tenant.Id,
                 TestContext.Current.CancellationToken);
 

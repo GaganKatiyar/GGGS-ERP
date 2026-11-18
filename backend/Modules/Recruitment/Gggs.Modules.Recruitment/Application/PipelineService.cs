@@ -36,7 +36,8 @@ public sealed record CandidateItem(
     Guid? EmployeeId,
     DateTime CreatedDate,
     int Applications,
-    FormerEmployee? FormerEmployee = null);
+    FormerEmployee? FormerEmployee = null,
+    string? CvFileName = null);
 
 /// <summary>A candidate who worked here before ("boomerang"), from the alumni network.</summary>
 public sealed record FormerEmployee(Guid EmployeeId, string Name, string? LastDesignation, DateOnly ExitDate, string SeparationType, bool EligibleForRehire);
@@ -50,7 +51,8 @@ public sealed record CandidateQuery
     public string? Skill { get; init; }
 }
 
-public sealed record CandidateBody(CandidateDetails Details, CandidateSource Source, Guid? AgencyId, Guid? ReferrerEmployeeId, Guid? RequisitionId);
+/// <summary><c>CvKey</c> and <c>CvFileName</c>: a CV read on the form (<see cref="CvService"/>), attached to the candidate.</summary>
+public sealed record CandidateBody(CandidateDetails Details, CandidateSource Source, Guid? AgencyId, Guid? ReferrerEmployeeId, Guid? RequisitionId, string? CvKey = null, string? CvFileName = null);
 
 public sealed record ApplicationItem(
     Guid Id,
@@ -176,7 +178,8 @@ internal sealed class PipelineService(
     INotifier notifier,
     TimeProvider timeProvider,
     Gggs.BuildingBlocks.MultiTenancy.ITenantClock clock,
-    Gggs.Modules.Separation.Contracts.IAlumniDirectory alumni)
+    Gggs.Modules.Separation.Contracts.IAlumniDirectory alumni,
+    CvService cvs)
 {
     private DateTime Now => timeProvider.GetUtcNow().UtcDateTime;
 
@@ -235,6 +238,7 @@ internal sealed class PipelineService(
         }
 
         Candidate candidate = await FindOrCreateAsync(body.Details, body.Source, body.AgencyId, body.ReferrerEmployeeId, cancellationToken);
+        await cvs.AttachAsync(candidate, body.CvKey, body.CvFileName, cancellationToken);
         if (body.Source == CandidateSource.Referral && body.ReferrerEmployeeId is { } referredBy
             && !await dbContext.Referrals.AnyAsync(row => row.CandidateId == candidate.Id && row.ReferrerEmployeeId == referredBy, cancellationToken))
         {
@@ -248,6 +252,26 @@ internal sealed class PipelineService(
         }
 
         return await CandidateAsync(candidate.Id, cancellationToken);
+    }
+
+    /// <summary>A CV read on the form, put on a candidate already on file (it replaces the one there).</summary>
+    public async Task<CandidateView> AttachCvAsync(Guid id, AttachCvBody body, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        Candidate visible = await VisibleCandidateAsync(id, Permissions.Recruitment.ApplicationManage, cancellationToken);
+        Candidate candidate = await dbContext.Candidates.FirstAsync(row => row.Id == visible.Id, cancellationToken);
+        await cvs.AttachAsync(candidate, body.CvKey, body.FileName, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await CandidateAsync(id, cancellationToken);
+    }
+
+    /// <summary>The candidate's CV, for whoever may see the candidate.</summary>
+    public async Task<(Stream Content, string FileName, string ContentType)> CvAsync(Guid id, CancellationToken cancellationToken)
+    {
+        Candidate candidate = await VisibleCandidateAsync(id, Permissions.Recruitment.ApplicationView, cancellationToken);
+        Stream content = await cvs.OpenAsync(candidate, cancellationToken);
+        string name = candidate.CvFileName ?? "cv";
+        return (content, name, CvService.ContentTypeOf(name));
     }
 
     public async Task<CandidateView> UpdateCandidateAsync(Guid id, CandidateDetails details, CancellationToken cancellationToken)
@@ -740,7 +764,7 @@ internal sealed class PipelineService(
             row.Id, row.Number, row.FullName, row.FirstName, row.LastName, row.Email, row.Mobile, row.CurrentCompany, row.CurrentTitle, row.ExperienceYears, row.CurrentCtc,
             row.ExpectedCtc, row.NoticePeriodDays, row.Location, row.Skills, row.LinkedInUrl, row.Notes, row.Source, row.AgencyId,
             row.AgencyId is { } agency ? agencies.GetValueOrDefault(agency) : null, row.ReferrerEmployeeId,
-            row.ReferrerEmployeeId is { } referrer ? referrers.GetValueOrDefault(referrer) : null, row.EmployeeId, row.CreatedDate, applications.GetValueOrDefault(row.Id), Former(row)))];
+            row.ReferrerEmployeeId is { } referrer ? referrers.GetValueOrDefault(referrer) : null, row.EmployeeId, row.CreatedDate, applications.GetValueOrDefault(row.Id), Former(row), row.CvFileName))];
     }
 
     private async Task<List<ApplicationItem>> ApplicationItemsAsync(IReadOnlyList<JobApplication> applications, CancellationToken cancellationToken)

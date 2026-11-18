@@ -10,6 +10,9 @@ public interface ISkillDirectory
 {
     Task<IReadOnlyDictionary<Guid, SkillInfo>> GetSkillsAsync(IEnumerable<Guid> skillIds, CancellationToken cancellationToken = default);
 
+    /// <summary>The names of every skill in use, so another module (reading a CV) can match words to the same names.</summary>
+    Task<IReadOnlyList<string>> ActiveSkillNamesAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Every skill of each employee given; null means every employee in the tenant.</summary>
     Task<IReadOnlyList<EmployeeSkillLevel>> LevelsAsync(IEnumerable<Guid>? employeeIds, CancellationToken cancellationToken = default);
 

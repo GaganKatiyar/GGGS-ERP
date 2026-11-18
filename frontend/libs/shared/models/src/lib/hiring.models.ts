@@ -296,6 +296,35 @@ export interface CandidateProfile {
   readonly createdDate: string;
   readonly applications: number;
   readonly formerEmployee?: FormerEmployee;
+  /** The attached CV's file name; download it from `/recruitment/candidates/{id}/cv`. */
+  readonly cvFileName?: string;
+}
+
+/** What a CV gave for the Add a candidate form; anything missing is left for the person to fill. */
+export interface CvFields {
+  readonly firstName?: string;
+  readonly lastName?: string;
+  readonly email?: string;
+  readonly mobile?: string;
+  readonly currentCompany?: string;
+  readonly currentTitle?: string;
+  readonly experienceYears?: number;
+  readonly noticePeriodDays?: number;
+  readonly currentCtc?: number;
+  readonly expectedCtc?: number;
+  readonly location?: string;
+  readonly linkedInUrl?: string;
+  readonly skills: readonly string[];
+}
+
+/** A CV read on the server: its fields, and the stored file to attach when the candidate is saved. */
+export interface CvReadResult {
+  readonly cvKey: string;
+  readonly fileName: string;
+  /** False for a scanned CV: nothing could be read, but the file is kept. */
+  readonly hasText: boolean;
+  readonly found: number;
+  readonly fields: CvFields;
 }
 
 export interface CandidateDetailsInput {

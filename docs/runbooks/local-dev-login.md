@@ -64,48 +64,25 @@ another application already holds the port, run the API elsewhere with
 `ASPNETCORE_URLS=http://localhost:5199 dotnet run --project backend/Host/Gggs.Api --no-launch-profile`
 and point the two proxy entries at the same port (do not commit that change).
 
-## The platform console (GGGS staff)
+## The platform console and NaBPlatform
 
-A separate application for GGGS's own staff: create organisations (tenants), change their plan,
-modules and subscription, invite their first administrator, suspend or offboard them, manage the
-platform team and watch system health. Its code and its server are separate from the HR app; it
-shares only the database, so an organisation created there is a tenant here.
+Organisations (tenants), plans and subscriptions live in **NaBPlatform**, the platform console's own
+database. The console is a separate application in its own repository, **GGGS-ERP-PLATFORM**
+(`C:\Gagan\GGGS-ERP-PLATFORM`); see its README to run it (server on :5200, console on
+http://127.0.0.1:4300). This application reads NaBPlatform directly through
+`ConnectionStrings:PlatformDb` (development: `Server=localhost;Database=NaBPlatform`), and the
+worker's `platform-sync` job carries out the console's requests: it seeds a newly created
+organisation (its first administrator is emailed an invitation), invites or re-invites
+administrators and retries failed jobs. Hourly it reports usage and administrators, and every five
+minutes job health, back into NaBPlatform. The contract between the two is
+[docs/nabplatform-contract.md](../nabplatform-contract.md).
 
-```bash
-# The console's server (terminal 4) - http://localhost:5200, same database as the API
-dotnet run --project backend/Host/Gggs.PlatformApi
-
-# The console (terminal 5) - http://127.0.0.1:4300, proxying /api and /bff to :5200
-cd frontend
-npx nx serve platform-web
-```
-
-Open it at **http://127.0.0.1:4300** - `127.0.0.1`, not `localhost`. Cookies are shared across
-ports on the same host name, so the console on `localhost:4300` would overwrite the HR app's
-session cookie on `localhost:4200`; a different host name keeps the two sign-ins apart.
-
-**The first platform administrator.** While no platform staff account exists, the console offers
-**Create the first administrator** (`/setup`). It asks for the setup key - in development
-`local-platform-setup` (`Gggs:Identity:PlatformBootstrap:SetupKey` in
-`backend/Host/Gggs.PlatformApi/appsettings.Development.json`; in other environments set it from a
-secret store, and leave it empty to keep the page closed). The page closes for good once any
-platform account exists. Platform staff passwords are at least 6 characters.
-
-After that, invite colleagues under **Platform staff › Invite**: the console shows a one-time link
-to pass on yourself (it never emails staff). Four roles are seeded: Platform Staff Administrator
-(everything, the only one that manages staff), Organisation Manager (create and change
-organisations), Billing (subscriptions, suspend/reactivate) and Platform Support (read-only plus
-health).
-
-**Creating an organisation** emails its administrator an invitation once the worker has seeded it
-(locally the email is written to the worker's console unless a mail connection is set up). If the
-link expires, **Organisation › Administrators › Re-send invitation** sends a new one. How that
-organisation's people sign in - password rules or single sign-on - is their own setting, in the HR
-app under Studio.
-
-Figures such as employees, users and sign-ins come from the worker's hourly `platform-usage` job,
-which counts inside each organisation and stores only the totals.
-
+- NaBPlatform must exist before the API starts: run the platform repo's `dotnet ef database update`
+  once (its README), or start its server.
+- Status, plan and module changes made in the console reach this application within a minute (the
+  tenant cache lasts 60 seconds).
+- GGGS staff no longer sign in to this application at all; they use the console.
+- `dotnet ef` commands here need `--context AppDbContext`, since NaBPlatform is a second context.
 ## What the worker is for
 
 Every write stages its audit entry (and any integration event) into `messaging.OutboxMessage` in
@@ -335,7 +312,7 @@ employee, or make Priya the approver of someone else's request.
   restarting the API signs everyone out locally. The API logs a warning saying so.
 - `Secure` cookies (including `__Host-gggs-session`) work over plain HTTP specifically on
   `localhost`, which browsers treat as a secure context. Use `localhost`, not `127.0.0.1`, for the
-  HR app (the platform console deliberately uses `127.0.0.1`, see above).
+  HR app (the platform console deliberately uses `127.0.0.1`).
 
 ## Calling the API without the browser
 

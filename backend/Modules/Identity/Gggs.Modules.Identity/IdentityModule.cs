@@ -4,7 +4,6 @@ using Gggs.BuildingBlocks.Web.Modules;
 using Gggs.Modules.Identity.Application.ApiKeys;
 using Gggs.Modules.Identity.Application.Authentication;
 using Gggs.Modules.Identity.Application.Authorization;
-using Gggs.Modules.Identity.Application.PlatformStaff;
 using Gggs.Modules.Identity.Application.Provisioning;
 using Gggs.Modules.Identity.Application.Roles;
 using Gggs.Modules.Identity.Application.Users;
@@ -21,7 +20,7 @@ using OpenIddict.Validation.AspNetCore;
 namespace Gggs.Modules.Identity;
 
 /// <summary>
-/// Users, roles and permissions, sign-in, platform staff, and the OIDC token server.
+/// Users, roles and permissions, sign-in, and the OIDC token server.
 /// <para>
 /// Owns authentication for the whole application. Two credentials are accepted, and which one
 /// applies is decided per request by <see cref="GggsAuthenticationSchemes.Any"/>:
@@ -45,8 +44,6 @@ public sealed class IdentityModule : IModule
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IPasswordPolicyRepository, PasswordPolicyRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
-        services.AddScoped<IPlatformStaffRepository, PlatformStaffRepository>();
-        services.AddScoped<IPlatformRoleRepository, PlatformRoleRepository>();
 
         services.AddScoped<SignInService>();
         services.AddScoped<PasswordSignInService>();
@@ -64,10 +61,9 @@ public sealed class IdentityModule : IModule
         services.AddScoped<AccessQueries>();
         services.AddScoped<IUserAccounts, UserAccounts>();
         services.AddScoped<TenantBootstrapService>();
+        services.AddScoped<IOrganisationAdministrators, OrganisationAdministrators>();
         services.AddScoped<TenantSeedingService>();
         services.AddScoped<ApiKeyService>();
-        services.AddScoped<PlatformStaffSignInService>();
-        services.AddScoped<PlatformStaffManagementService>();
         services.AddScoped<ITenantUsageProbe, IdentityUsageProbe>();
 
         services.AddSingleton<IInvitationTokenGenerator, InvitationTokenGenerator>();
@@ -130,14 +126,6 @@ public sealed class IdentityModule : IModule
         services.AddGggsEventConsumer<EmployeeExitedIntegrationEvent, SyncRolesOnExit>();
         services.AddGggsEventConsumer<DepartmentHeadChangedIntegrationEvent, SyncRolesOnDepartmentHeadChange>();
 
-        services.AddOptions<PlatformBootstrapOptions>()
-            .Bind(context.Configuration.GetSection(PlatformBootstrapOptions.SectionName));
-
-        // Order matters: the bootstrap seeder needs the PLATFORM_STAFF_ADMINISTRATOR role to exist
-        // already, and hosted services start in registration order.
-        services.AddHostedService<PlatformRoleSeeder>();
-        services.AddHostedService<PlatformStaffBootstrapSeeder>();
-
         services.AddGggsEventConsumer<TenantProvisionedIntegrationEvent, TenantProvisionedConsumer>();
     }
 
@@ -152,8 +140,5 @@ public sealed class IdentityModule : IModule
         endpoints.MapPasswordPolicyEndpoints();
         endpoints.MapRoleEndpoints();
         endpoints.MapAccessEndpoints();
-
-        // Platform staff management and organisation-administrator invitations are served by the
-        // platform console's own server (see Console/IdentityConsoleModule), not by this API.
     }
 }

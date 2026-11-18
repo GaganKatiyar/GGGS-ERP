@@ -16,4 +16,8 @@
     <PackageReference Include="Testcontainers.MsSql" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\Gggs.Api.IntegrationTests\nabplatform-schema.sql" Link="nabplatform-schema.sql" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

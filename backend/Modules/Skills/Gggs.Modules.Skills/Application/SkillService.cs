@@ -308,6 +308,14 @@ internal sealed class SkillDirectory(AppDbContext dbContext, TimeProvider timePr
             .ToDictionaryAsync(skill => skill.Id, skill => new SkillInfo(skill.Id, skill.Code, skill.Name, skill.Category), cancellationToken);
     }
 
+    public async Task<IReadOnlyList<string>> ActiveSkillNamesAsync(CancellationToken cancellationToken = default)
+        => await dbContext.Skills.AsNoTracking()
+            .Where(skill => skill.IsActive)
+            .OrderBy(skill => skill.Name)
+            .Select(skill => skill.Name)
+            .Take(5000)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<EmployeeSkillLevel>> LevelsAsync(IEnumerable<Guid>? employeeIds, CancellationToken cancellationToken = default)
     {
         IQueryable<EmployeeSkill> rows = dbContext.EmployeeSkills.AsNoTracking();

@@ -15,7 +15,7 @@ namespace Gggs.Modules.Platform.Infrastructure;
 /// tenant, so it cannot be filtered by one.
 /// </para>
 /// </summary>
-public sealed class TenantRepository(AppDbContext dbContext) : ITenantRepository
+public sealed class TenantRepository(PlatformCatalogDbContext dbContext) : ITenantRepository
 {
     public async Task<Tenant?> GetAsync(Guid tenantId, CancellationToken cancellationToken = default)
         => await dbContext.Tenants.FirstOrDefaultAsync(tenant => tenant.Id == tenantId, cancellationToken);
@@ -35,7 +35,7 @@ public sealed class TenantRepository(AppDbContext dbContext) : ITenantRepository
     public void AddSubscription(Subscription subscription) => dbContext.Subscriptions.Add(subscription);
 }
 
-public sealed class PlanRepository(AppDbContext dbContext) : IPlanRepository
+public sealed class PlanRepository(PlatformCatalogDbContext dbContext) : IPlanRepository
 {
     public async Task<Plan?> GetByCodeAsync(string planCode, CancellationToken cancellationToken = default)
     {

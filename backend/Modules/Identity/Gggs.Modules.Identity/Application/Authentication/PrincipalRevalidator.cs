@@ -1,8 +1,6 @@
 using System.Globalization;
 using System.Security.Claims;
 using Gggs.BuildingBlocks.MultiTenancy;
-using Gggs.Modules.Identity.Application.PlatformStaff;
-using Gggs.Modules.Identity.Domain.PlatformStaff;
 using Gggs.Modules.Identity.Domain.Users;
 
 namespace Gggs.Modules.Identity.Application.Authentication;
@@ -24,7 +22,6 @@ namespace Gggs.Modules.Identity.Application.Authentication;
 public sealed class PrincipalRevalidator(
     ITenantContextSetter tenantSetter,
     IUserRepository users,
-    IPlatformStaffRepository platformStaff,
     ITenantRegistry registry,
     TimeProvider timeProvider,
     ILogger<PrincipalRevalidator> logger)
@@ -44,16 +41,15 @@ public sealed class PrincipalRevalidator(
             return null;
         }
 
-        bool isPlatformStaff = string.Equals(
-            previous.FindFirstValue(GggsClaims.UserType),
-            GggsClaims.UserTypes.Platform,
-            StringComparison.Ordinal);
+        // A platform staff sign-in has no place here: staff use the platform console's own server.
+        if (string.Equals(previous.FindFirstValue(GggsClaims.UserType), GggsClaims.UserTypes.Platform, StringComparison.Ordinal))
+        {
+            return null;
+        }
 
         (Guid sessionId, DateTimeOffset authenticatedAt) = CarryForwardSession(previous);
 
-        return isPlatformStaff
-            ? await RebuildPlatformStaffAsync(subjectId, sessionId, authenticatedAt, authenticationScheme, cancellationToken)
-            : await RebuildTenantUserAsync(previous, subjectId, sessionId, authenticatedAt, authenticationScheme, cancellationToken);
+        return await RebuildTenantUserAsync(previous, subjectId, sessionId, authenticatedAt, authenticationScheme, cancellationToken);
     }
 
     private async Task<ClaimsPrincipal?> RebuildTenantUserAsync(
@@ -93,26 +89,6 @@ public sealed class PrincipalRevalidator(
             sessionId,
             authenticatedAt,
             authenticationScheme);
-    }
-
-    private async Task<ClaimsPrincipal?> RebuildPlatformStaffAsync(
-        Guid platformStaffId,
-        Guid sessionId,
-        DateTimeOffset authenticatedAt,
-        string authenticationScheme,
-        CancellationToken cancellationToken)
-    {
-        PlatformStaffMember? member = await platformStaff.GetAsync(platformStaffId, cancellationToken);
-
-        if (member is null || !member.CanSignIn)
-        {
-            logger.LogInformation(
-                "Platform sign-in for {PlatformStaffId} ended: the account can no longer sign in.",
-                platformStaffId);
-            return null;
-        }
-
-        return PlatformStaffPrincipalFactory.Create(member, sessionId, authenticatedAt, authenticationScheme);
     }
 
     private (Guid SessionId, DateTimeOffset AuthenticatedAt) CarryForwardSession(ClaimsPrincipal previous)

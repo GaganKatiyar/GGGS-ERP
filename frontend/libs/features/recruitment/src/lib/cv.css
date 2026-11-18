@@ -1,0 +1,66 @@
+/* Fill from a CV: the drop box on the candidate form, and the fields it filled. */
+.rec__cv {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gggs-space-2) var(--gggs-space-3);
+  padding: var(--gggs-space-3);
+  margin-block-end: var(--gggs-space-3);
+  border: 2px dashed var(--gggs-color-border);
+  border-radius: var(--gggs-radius-md);
+  background: var(--gggs-color-surface-sunken);
+  transition: border-color var(--gggs-transition-fast), background var(--gggs-transition-fast);
+}
+
+.rec__cv--over {
+  border-color: var(--gggs-color-primary);
+  background: var(--gggs-color-surface-selected);
+}
+
+.rec__cv--done {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--gggs-color-info) 45%, transparent);
+  background: var(--gggs-color-info-subtle);
+}
+
+.rec__cv-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--gggs-radius-sm);
+  background: var(--gggs-color-surface-raised);
+  color: var(--gggs-color-primary);
+  font-size: 1.1rem;
+}
+
+.rec__cv-text {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.rec__cv-text strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.rec__cv-text span {
+  color: var(--gggs-color-text-muted);
+  font-size: var(--gggs-font-size-sm);
+}
+
+.rec__cv-tag {
+  margin-inline-start: var(--gggs-space-1);
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--gggs-color-info) 45%, transparent);
+  border-radius: 999px;
+  background: var(--gggs-color-info-subtle);
+  color: var(--gggs-color-info);
+  font-size: var(--gggs-font-size-xs);
+  font-weight: var(--gggs-font-weight-semibold);
+}
+
+.rec__cv-filled {
+  border-color: color-mix(in srgb, var(--gggs-color-info) 45%, transparent);
+  background: var(--gggs-color-info-subtle);
+}

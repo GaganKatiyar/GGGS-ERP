@@ -365,6 +365,12 @@ public sealed class Candidate : TenantAggregateRoot
     /// <summary>The employee record the candidate became, once hired.</summary>
     public Guid? EmployeeId { get; private set; }
 
+    /// <summary>Where the candidate's CV is stored (the tenant's file storage), when one was attached.</summary>
+    public string? CvStorageKey { get; private set; }
+
+    /// <summary>The CV's file name as uploaded, for the download.</summary>
+    public string? CvFileName { get; private set; }
+
     public string FullName => string.IsNullOrWhiteSpace(LastName) ? FirstName : $"{FirstName} {LastName}";
 
     public IReadOnlyList<string> Skills => JsonSerializer.Deserialize<List<string>>(SkillsJson) ?? [];
@@ -423,6 +429,13 @@ public sealed class Candidate : TenantAggregateRoot
     }
 
     public void BecameEmployee(Guid employeeId) => EmployeeId = employeeId;
+
+    /// <summary>A newer CV replaces the one on file; the old file stays in storage for the audit trail.</summary>
+    public void AttachCv(string storageKey, string fileName)
+    {
+        CvStorageKey = Guard.MaxLength(Guard.NotNullOrWhiteSpace(storageKey), 500);
+        CvFileName = Guard.MaxLength(Guard.NotNullOrWhiteSpace(fileName).Trim(), 200);
+    }
 
     /// <summary>Digits only, so "+91 98450-12345" and "919845012345" are the same person.</summary>
     public static string? NormalizeMobile(string? mobile)

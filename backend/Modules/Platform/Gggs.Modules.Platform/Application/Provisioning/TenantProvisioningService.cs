@@ -52,23 +52,19 @@ public sealed record ProvisionTenantRequest
 public sealed record ProvisionTenantResult(Guid TenantId, string Code, TenantStatus Status);
 
 /// <summary>
-/// Creates a tenant and announces it.
+/// Creates an organisation directly, for local seeding (tools/DevSeed) and tests.
 /// <para>
-/// Deliberately not a distributed transaction. The tenant and its subscription commit locally
-/// together with the message that tells every other service to seed its defaults; the relay
-/// delivers it afterwards. If a downstream service fails to seed, the tenant stays in
-/// <see cref="TenantStatus.Provisioning"/> and is visible as incomplete rather than half-usable.
-/// </para>
-/// <para>
-/// Activation is therefore a separate step, not the end of this method: a tenant becomes Active
-/// once seeding has actually happened, which is the difference between a customer signing in to a
-/// working system and signing in to an empty one.
+/// Organisations are normally created in the platform console, which writes them to NaBPlatform and
+/// asks this application to seed them. This service does both steps at once: the organisation and its
+/// subscription go to NaBPlatform (marked as seeded), and the provisioning event that every module seeds
+/// from goes into this application's own outbox.
 /// </para>
 /// </summary>
 public sealed class TenantProvisioningService(
     ITenantRepository tenants,
     IPlanRepository plans,
     IIntegrationEventPublisher publisher,
+    Infrastructure.PlatformCatalogDbContext catalog,
     ITenantRegistry registry,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
@@ -130,7 +126,10 @@ public sealed class TenantProvisioningService(
         tenants.Add(tenant);
         tenants.AddSubscription(subscription);
 
-        // Staged, not sent: it commits with the rows above, and the relay publishes it after.
+        // Seeded right here, from the event below: the platform console must not ask for it again.
+        catalog.TenantSeedStates.Add(new Infrastructure.TenantSeedStateRow { TenantId = tenant.Id, SeededDate = now });
+
+        // Staged in this application's outbox; the worker delivers it to every module's seeder.
         publisher.PublishForTenant(tenant.Id, new TenantProvisionedIntegrationEvent(
             tenant.Id,
             tenant.Code,
@@ -142,6 +141,7 @@ public sealed class TenantProvisioningService(
             tenant.DataRegion,
             request.AdministratorEmail));
 
+        await catalog.SaveChangesAsync(cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
@@ -166,6 +166,7 @@ public sealed class TenantProvisioningService(
         tenant.CompleteProvisioning(timeProvider.GetUtcNow().UtcDateTime);
 
         publisher.PublishForTenant(tenant.Id, new TenantActivatedIntegrationEvent(tenant.Id, tenant.Code));
+        await catalog.SaveChangesAsync(cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         // The registry caches tenant status, and a stale entry here means a customer told they are
@@ -183,6 +184,7 @@ public sealed class TenantProvisioningService(
         tenant.Suspend(reason, timeProvider.GetUtcNow().UtcDateTime);
 
         publisher.PublishForTenant(tenant.Id, new TenantSuspendedIntegrationEvent(tenant.Id, tenant.Code, reason));
+        await catalog.SaveChangesAsync(cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Invalidated immediately: a suspension that takes five minutes to bite is a suspension
@@ -200,6 +202,7 @@ public sealed class TenantProvisioningService(
         tenant.Reactivate(timeProvider.GetUtcNow().UtcDateTime);
 
         publisher.PublishForTenant(tenant.Id, new TenantReactivatedIntegrationEvent(tenant.Id, tenant.Code));
+        await catalog.SaveChangesAsync(cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await registry.InvalidateAsync(tenant.Id, cancellationToken);
 
@@ -226,6 +229,7 @@ public sealed class TenantProvisioningService(
             tenant.Code,
             tenant.PurgeEligibleDate!.Value));
 
+        await catalog.SaveChangesAsync(cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await registry.InvalidateAsync(tenant.Id, cancellationToken);
 

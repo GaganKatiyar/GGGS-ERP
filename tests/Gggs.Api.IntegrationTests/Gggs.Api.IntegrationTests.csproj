@@ -6,13 +6,17 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\backend\Host\Gggs.Api\Gggs.Api.csproj" />
-    <ProjectReference Include="..\..\backend\Host\Gggs.PlatformApi\Gggs.PlatformApi.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Shouldly" />
     <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- NaBPlatform's tables, generated from the platform repository's migrations (docs/nabplatform-contract.md). -->
+    <None Include="nabplatform-schema.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

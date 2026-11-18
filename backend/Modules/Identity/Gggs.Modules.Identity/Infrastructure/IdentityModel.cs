@@ -1,5 +1,4 @@
 using Gggs.Data;
-using Gggs.Modules.Identity.Domain.PlatformStaff;
 using Gggs.Modules.Identity.Domain.ApiKeys;
 using Gggs.Modules.Identity.Domain.Roles;
 using Gggs.Modules.Identity.Domain.Sso;
@@ -12,7 +11,7 @@ namespace Gggs.Modules.Identity.Infrastructure;
 /// <summary>
 /// The Identity module's tables, in the <c>iam</c> schema, plus OpenIddict's own in <c>oidc</c>.
 /// <para>
-/// Every <c>iam</c> table except platform staff is tenant-owned, including users: one person working
+/// Every <c>iam</c> table is tenant-owned, including users: one person working
 /// for two customers has two accounts, and the same email address can exist in both. That is
 /// deliberate. Sharing one account across tenants would mean a single password, a single lockout and
 /// a single compromise reaching both customers.
@@ -175,70 +174,6 @@ internal sealed class IdentityModel : IModuleModel
                 .HasFilter("[IsDeleted] = 0");
         });
 
-        modelBuilder.Entity<PlatformStaffMember>(entity =>
-        {
-            entity.ToTable("PlatformStaff", Schema);
-            entity.Property(member => member.Email).HasMaxLength(256).IsRequired();
-            entity.Property(member => member.NormalizedEmail).HasMaxLength(256).IsRequired();
-            entity.Property(member => member.DisplayName).HasMaxLength(200).IsRequired();
-            entity.Property(member => member.SecurityStamp).HasMaxLength(64).IsRequired();
-            entity.Property(member => member.Status).HasConversion<byte>();
-
-            // Global, not per-tenant: there is exactly one platform, so an address can hold at
-            // most one platform staff account, unlike a tenant user's per-tenant uniqueness.
-            entity.HasIndex(member => member.NormalizedEmail)
-                .HasDatabaseName("UX_PlatformStaff_NormalizedEmail")
-                .IsUnique();
-
-            entity.OwnsMany(member => member.PasswordHistory, history =>
-            {
-                history.ToJson("PasswordHistory");
-            });
-            entity.Navigation(member => member.PasswordHistory).UsePropertyAccessMode(PropertyAccessMode.Field);
-
-            entity.Ignore(member => member.DomainEvents);
-        });
-
-        modelBuilder.Entity<PlatformRole>(entity =>
-        {
-            entity.ToTable("PlatformRole", Schema);
-            entity.Property(role => role.Name).HasMaxLength(100).IsRequired();
-            entity.Property(role => role.NormalizedName).HasMaxLength(100).IsRequired();
-            entity.Property(role => role.Description).HasMaxLength(500);
-            entity.Property(role => role.TemplateCode).HasMaxLength(50);
-
-            entity.HasIndex(role => role.NormalizedName)
-                .HasDatabaseName("UX_PlatformRole_NormalizedName")
-                .IsUnique();
-
-            // A JSON array rather than a join table: read as a whole on every permission check,
-            // never queried by element, and a table would mean a migration for every role change.
-            entity.PrimitiveCollection(role => role.PermissionCodes)
-                .HasColumnName("PermissionCodes")
-                .UsePropertyAccessMode(PropertyAccessMode.Field);
-
-            entity.Ignore(role => role.DomainEvents);
-        });
-
-        modelBuilder.Entity<PlatformRoleAssignment>(entity =>
-        {
-            entity.ToTable("PlatformRoleAssignment", Schema);
-
-            entity.HasIndex(grant => grant.PlatformStaffId)
-                .HasDatabaseName("IX_PlatformRoleAssignment_PlatformStaffId");
-
-            entity.HasIndex(grant => grant.PlatformRoleId)
-                .HasDatabaseName("IX_PlatformRoleAssignment_PlatformRoleId");
-
-            // The same role granted to the same person twice is a duplicate, not a second grant -
-            // there is no anchor or date range here to tell two such rows apart.
-            entity.HasIndex(grant => new { grant.PlatformStaffId, grant.PlatformRoleId })
-                .HasDatabaseName("UX_PlatformRoleAssignment_Assignment")
-                .IsUnique();
-
-            entity.Ignore(grant => grant.DomainEvents);
-        });
-
         // The OIDC server's applications, authorizations, scopes and tokens.
         //
         // Deliberately not tenant-owned, for the same reason the outbox is not: the token endpoint
@@ -274,15 +209,5 @@ internal static class IdentityData
         public DbSet<SsoProvider> SsoProviders => db.Set<SsoProvider>();
 
         public DbSet<ApiKey> ApiKeys => db.Set<ApiKey>();
-
-        /// <summary>
-        /// Our own staff. Deliberately not tenant-owned; see <see cref="PlatformStaffMember"/> for why
-        /// it is a separate aggregate rather than a <see cref="User"/> with no tenant.
-        /// </summary>
-        public DbSet<PlatformStaffMember> PlatformStaff => db.Set<PlatformStaffMember>();
-
-        public DbSet<PlatformRole> PlatformRoles => db.Set<PlatformRole>();
-
-        public DbSet<PlatformRoleAssignment> PlatformRoleAssignments => db.Set<PlatformRoleAssignment>();
     }
 }

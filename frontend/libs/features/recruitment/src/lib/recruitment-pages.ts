@@ -332,6 +332,18 @@ export class RequisitionPage {
         @if (v.candidate.linkedInUrl) {
           <div><span class="field__label">LinkedIn</span><p><a [href]="v.candidate.linkedInUrl" target="_blank" rel="noopener">Profile</a></p></div>
         }
+        <div>
+          <span class="field__label">CV</span>
+          <p>
+            @if (v.candidate.cvFileName) {
+              <button type="button" class="btn btn--link btn--sm rec__cv-link" [disabled]="openingCv()" (click)="openCv(v.candidate.id, v.candidate.cvFileName)">
+                <i class="pi pi-file" aria-hidden="true"></i> {{ openingCv() ? 'Opening…' : v.candidate.cvFileName }}
+              </button>
+            } @else {
+              <span class="muted">None attached{{ v.canManage ? ' · add one with Edit' : '' }}</span>
+            }
+          </p>
+        </div>
         @if (v.candidate.employeeId) {
           <div><span class="field__label">Employee</span><p><a [routerLink]="['/employees', v.candidate.employeeId]">View employee record</a></p></div>
         }
@@ -403,6 +415,7 @@ export class CandidatePage {
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly formError = signal<string | null>(null);
+  protected readonly openingCv = signal(false);
 
   constructor() {
     effect(() => {
@@ -411,6 +424,29 @@ export class CandidatePage {
         (error: unknown) => this.error.set(errorText(error, 'The candidate could not be loaded.')),
       );
     });
+  }
+
+  /** Fetched with the signed-in session, then opened: a PDF in a new tab, other files as a download. */
+  protected async openCv(candidateId: string, fileName: string): Promise<void> {
+    this.openingCv.set(true);
+    this.error.set(null);
+    try {
+      const url = URL.createObjectURL(await this.api.candidateCv(candidateId));
+      const link = document.createElement('a');
+      link.href = url;
+      if (/\.pdf$/i.test(fileName)) {
+        link.target = '_blank';
+        link.rel = 'noopener';
+      } else {
+        link.download = fileName;
+      }
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      this.error.set(errorText(error, 'The CV could not be opened.'));
+    } finally {
+      this.openingCv.set(false);
+    }
   }
 
   protected async openApply(): Promise<void> {

@@ -1,6 +1,5 @@
 using Gggs.BuildingBlocks.Caching;
 using Gggs.BuildingBlocks.MultiTenancy;
-using Gggs.Data;
 using Gggs.Modules.Platform.Domain.Subscriptions;
 using Gggs.Modules.Platform.Domain.Tenants;
 using Microsoft.EntityFrameworkCore;
@@ -9,25 +8,21 @@ using Microsoft.Extensions.Logging;
 namespace Gggs.Modules.Platform.Infrastructure;
 
 /// <summary>
-/// The real tenant registry, replacing the Phase 0 stub that read tenants from configuration.
+/// Who the HR application's customers are, read from the platform console's database (NaBPlatform).
 /// <para>
-/// Every request in every service passes through this: the tenant middleware resolves the token's
-/// tenant here before anything else runs. That makes it the hottest lookup in the platform and the
-/// one place where a slow query would tax every screen, so results are cached.
-/// </para>
-/// <para>
-/// The cache is short-lived rather than long, because it decides whether a suspended tenant can
-/// still be served. Five minutes bounds how long a suspension takes to bite; an explicit
-/// invalidation on status change makes it immediate in practice.
+/// Every request passes through this: the tenant middleware resolves the token's tenant here before
+/// anything else runs, so results are cached. The cache is deliberately short - a minute - because the
+/// platform console changes status, plan and modules in another application: a suspension or a module
+/// switched off there takes effect here within that minute, with no message between the two.
 /// </para>
 /// </summary>
 public sealed class PlatformTenantRegistry(
-    AppDbContext dbContext,
+    PlatformCatalogDbContext dbContext,
     IGggsCache cache,
     TimeProvider timeProvider,
     ILogger<PlatformTenantRegistry> logger) : ITenantRegistry
 {
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(60);
 
     public async Task<TenantInfo?> GetAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {

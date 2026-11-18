@@ -75,6 +75,8 @@ internal sealed class RecruitmentModel : IModuleModel
             entity.Property(row => row.SkillsJson).IsRequired();
             entity.Property(row => row.LinkedInUrl).HasMaxLength(500);
             entity.Property(row => row.Notes).HasMaxLength(4000);
+            entity.Property(row => row.CvStorageKey).HasMaxLength(500);
+            entity.Property(row => row.CvFileName).HasMaxLength(200);
             entity.Property(row => row.Source).HasConversion<byte>();
             entity.HasOne<Agency>().WithMany().HasForeignKey(row => row.AgencyId).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(row => new { row.TenantId, row.Number }).HasDatabaseName("UX_Candidate_TenantId_Number").IsUnique().HasFilter("[IsDeleted] = 0");

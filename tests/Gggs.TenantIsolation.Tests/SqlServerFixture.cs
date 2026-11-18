@@ -46,6 +46,9 @@ public sealed class SqlServerFixture : IAsyncLifetime
 
     public string ConnectionString { get; private set; } = string.Empty;
 
+    /// <summary>This run's NaBPlatform (organisations, plans, subscriptions), built from the contract script.</summary>
+    public string PlatformConnectionString { get; private set; } = string.Empty;
+
     /// <summary>Which backing server was used, reported in the test output for diagnosis.</summary>
     public string Provider { get; private set; } = "unknown";
 
@@ -58,9 +61,14 @@ public sealed class SqlServerFixture : IAsyncLifetime
         {
             await connection.OpenAsync();
             await using SqlCommand command = connection.CreateCommand();
-            command.CommandText = $"CREATE DATABASE [{DatabaseName}];";
+            command.CommandText = $"CREATE DATABASE [{DatabaseName}]; CREATE DATABASE [{DatabaseName}_nab];";
+            command.CommandTimeout = 300;
             await command.ExecuteNonQueryAsync();
         }
+
+        builder.InitialCatalog = $"{DatabaseName}_nab";
+        PlatformConnectionString = builder.ConnectionString;
+        await CreatePlatformSchemaAsync();
 
         builder.InitialCatalog = DatabaseName;
         ConnectionString = builder.ConnectionString;
@@ -88,7 +96,8 @@ public sealed class SqlServerFixture : IAsyncLifetime
             await using var connection = new SqlConnection(builder.ConnectionString);
             await connection.OpenAsync();
             await using SqlCommand command = connection.CreateCommand();
-            command.CommandText = $"ALTER DATABASE [{DatabaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{DatabaseName}];";
+            command.CommandText = $"ALTER DATABASE [{DatabaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{DatabaseName}]; ALTER DATABASE [{DatabaseName}_nab] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{DatabaseName}_nab];";
+            command.CommandTimeout = 300;
             await command.ExecuteNonQueryAsync();
         }
         catch (SqlException)
@@ -125,6 +134,27 @@ public sealed class SqlServerFixture : IAsyncLifetime
         return new AppDbContext(options, tenantContext, new ModelAssemblies(ModuleCatalog.ModelAssemblies));
     }
 
+    /// <summary>The HR application's view of NaBPlatform, as the hosts register it.</summary>
+    public PlatformCatalogDbContext CreateCatalog()
+        => new(new DbContextOptionsBuilder<PlatformCatalogDbContext>().UseSqlServer(PlatformConnectionString).Options);
+
+    private async Task CreatePlatformSchemaAsync()
+    {
+        string script = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "nabplatform-schema.sql"));
+        await using var connection = new SqlConnection(PlatformConnectionString);
+        await connection.OpenAsync();
+        foreach (string batch in System.Text.RegularExpressions.Regex.Split(script, @"^\s*GO\s*$", System.Text.RegularExpressions.RegexOptions.Multiline))
+        {
+            if (!string.IsNullOrWhiteSpace(batch))
+            {
+                await using SqlCommand command = connection.CreateCommand();
+                command.CommandText = batch;
+                command.CommandTimeout = 120;
+                await command.ExecuteNonQueryAsync();
+            }
+        }
+    }
+
     /// <summary>Opens a raw connection with the tenant session context set, as Dapper queries do.</summary>
     public async Task<SqlConnection> OpenRawConnectionAsync(Guid? tenantId)
     {
@@ -148,7 +178,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
         TenantContext tenantContext = TenantContextFor(tenantId: null);
 
         return new PlatformTenantRegistry(
-            CreateContext(tenantId: null),
+            CreateCatalog(),
             new GggsHybridCache(
                 _cacheProvider!.GetRequiredService<HybridCache>(),
                 tenantContext,
@@ -164,7 +194,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
         bool withSubscription,
         TenantIsolationTier tier = TenantIsolationTier.Pooled)
     {
-        await using AppDbContext context = CreateContext(tenantId: null);
+        await using PlatformCatalogDbContext context = CreateCatalog();
 
         Tenant tenant = Tenant.Register(
             code, $"{code} Ltd", "IN", "centralindia", "Asia/Kolkata", "INR", "en-IN", tier, DateTime.UtcNow);

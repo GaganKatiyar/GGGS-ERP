@@ -24,6 +24,7 @@ public sealed class RecruitmentModule : IModule
         services.AddScoped<RecruitmentAccess>();
         services.AddScoped<RecruitmentService>();
         services.AddScoped<PipelineService>();
+        services.AddScoped<CvService>();
         services.AddScoped<OfferService>();
         services.AddScoped<IDocumentOwnerAccess, CandidateDocumentAccess>();
         services.AddWorkflowSubject(OfferService.Subject);
@@ -76,6 +77,22 @@ public sealed class RecruitmentModule : IModule
             .WithName("AddCandidate").RequirePermission(Permissions.Recruitment.ApplicationManage);
         group.MapPut("/candidates/{id:guid}", async (Guid id, CandidateDetails body, PipelineService pipeline, CancellationToken ct) => TypedResults.Ok(await pipeline.UpdateCandidateAsync(id, body, ct)))
             .WithName("UpdateCandidate").RequirePermission(Permissions.Recruitment.ApplicationManage);
+        // A CV read for the Add a candidate form: the fields it gave, and the stored file to attach.
+        group.MapPost("/cv/read", async (IFormFile file, CvService cvs, CancellationToken ct) =>
+            {
+                ArgumentNullException.ThrowIfNull(file);
+                await using Stream content = file.OpenReadStream();
+                return TypedResults.Ok(await cvs.ReadAsync(content, file.FileName, file.ContentType, file.Length, ct));
+            })
+            .WithName("ReadCandidateCv").RequirePermission(Permissions.Recruitment.ApplicationManage).DisableAntiforgery();
+        group.MapPost("/candidates/{id:guid}/cv", async (Guid id, AttachCvBody body, PipelineService pipeline, CancellationToken ct) => TypedResults.Ok(await pipeline.AttachCvAsync(id, body, ct)))
+            .WithName("AttachCandidateCv").RequirePermission(Permissions.Recruitment.ApplicationManage);
+        group.MapGet("/candidates/{id:guid}/cv", async (Guid id, PipelineService pipeline, CancellationToken ct) =>
+            {
+                (Stream content, string fileName, string contentType) = await pipeline.CvAsync(id, ct);
+                return TypedResults.File(content, contentType, fileName);
+            })
+            .WithName("DownloadCandidateCv").RequirePermission(Permissions.Recruitment.ApplicationView);
         group.MapPost("/candidates/{id:guid}/apply/{requisitionId:guid}", async (Guid id, Guid requisitionId, PipelineService pipeline, CancellationToken ct) => TypedResults.Ok(await pipeline.ApplyAsync(id, requisitionId, ct)))
             .WithName("ApplyCandidate").RequirePermission(Permissions.Recruitment.ApplicationManage);
 
