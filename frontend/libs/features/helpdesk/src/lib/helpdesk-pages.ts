@@ -78,7 +78,7 @@ const blankCategory = (): HelpdeskCategoryInput => ({ code: '', name: '', descri
             <span><strong>{{ ticket.subject }}</strong> <span class="muted">{{ ticket.number }}{{ ticket.isConfidential ? ' · confidential' : '' }}</span></span>
             <span>{{ ticket.requesterName }} · {{ ticket.categoryName }}</span>
             <span>{{ ticket.assigneeName ?? 'Unassigned' }}</span>
-            <span [class.xp__danger]="ticket.responseBreached || ticket.resolutionBreached">{{ humanize(ticket.priority) }} · due {{ ticket.resolutionDueAt | date: 'd MMM HH:mm' }}</span>
+            <span [class.xp__danger]="ticket.responseBreached || ticket.resolutionBreached">{{ humanize(ticket.priority) }} · due {{ ticket.resolutionDueAt | date: 'd MMM h:mm a' }}</span>
             <gggs-status-badge [status]="ticket.status" />
           </a>
         } @empty {
@@ -246,10 +246,10 @@ export class HelpdeskPage {
       <section class="panel xp__grid">
         <div><span class="muted">Status</span><br /><gggs-status-badge [status]="v.ticket.status" /></div>
         <div><span class="muted">Priority</span><br />{{ humanize(v.ticket.priority) }}</div>
-        <div><span class="muted">Raised by</span><br />{{ v.ticket.requesterName }} · {{ v.ticket.createdDate | date: 'd MMM y HH:mm' }}</div>
+        <div><span class="muted">Raised by</span><br />{{ v.ticket.requesterName }} · {{ v.ticket.createdDate | date: 'd MMM y h:mm a' }}</div>
         <div><span class="muted">Assigned to</span><br />{{ v.ticket.assigneeName ?? 'Unassigned' }}</div>
-        <div [class.xp__danger]="v.ticket.responseBreached"><span class="muted">Respond by</span><br />{{ v.ticket.responseDueAt | date: 'd MMM HH:mm' }}{{ v.ticket.firstRespondedAt ? ' · answered ' + (v.ticket.firstRespondedAt | date: 'd MMM HH:mm') : '' }}</div>
-        <div [class.xp__danger]="v.ticket.resolutionBreached"><span class="muted">Resolve by</span><br />{{ v.ticket.resolutionDueAt | date: 'd MMM HH:mm' }}</div>
+        <div [class.xp__danger]="v.ticket.responseBreached"><span class="muted">Respond by</span><br />{{ v.ticket.responseDueAt | date: 'd MMM h:mm a' }}{{ v.ticket.firstRespondedAt ? ' · answered ' + (v.ticket.firstRespondedAt | date: 'd MMM h:mm a') : '' }}</div>
+        <div [class.xp__danger]="v.ticket.resolutionBreached"><span class="muted">Resolve by</span><br />{{ v.ticket.resolutionDueAt | date: 'd MMM h:mm a' }}</div>
       </section>
       <section class="panel stack">
         <p class="xp__article">{{ v.description }}</p>
@@ -258,7 +258,7 @@ export class HelpdeskPage {
         }
         @for (comment of v.comments; track comment.id) {
           <div class="xp__comment" [class.xp__comment--internal]="comment.isInternal">
-            <span class="muted">{{ comment.authorName ?? 'Someone' }} · {{ comment.createdDate | date: 'd MMM y HH:mm' }}{{ comment.isInternal ? ' · internal note' : '' }}</span>
+            <span class="muted">{{ comment.authorName ?? 'Someone' }} · {{ comment.createdDate | date: 'd MMM y h:mm a' }}{{ comment.isInternal ? ' · internal note' : '' }}</span>
             <span class="xp__article">{{ comment.body }}</span>
           </div>
         }

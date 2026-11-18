@@ -264,7 +264,7 @@ interface Column {
           </div>
         } @else if (v.timesheet.status === 'Submitted') {
           <div class="toolbar">
-            <span class="muted">Submitted {{ v.timesheet.submittedDate | date: 'd MMM, HH:mm' }}. Anything already approved stays approved if you withdraw.</span>
+            <span class="muted">Submitted {{ v.timesheet.submittedDate | date: 'd MMM, h:mm a' }}. Anything already approved stays approved if you withdraw.</span>
             <span class="ts__spacer"></span>
             <button type="button" class="btn" [disabled]="busy()" (click)="withdraw()">Withdraw to edit</button>
           </div>

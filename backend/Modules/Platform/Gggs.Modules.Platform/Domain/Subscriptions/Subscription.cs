@@ -50,6 +50,9 @@ public sealed class Subscription : AggregateRoot, IPlatformOwned, IAuditable, IC
     /// <summary>Reference in the billing system; we do not hold payment details.</summary>
     public string? BillingReference { get; private set; }
 
+    /// <summary>When the paid term renews, as agreed with the customer; informational, nothing ends on it.</summary>
+    public DateOnly? RenewsOn { get; private set; }
+
     public Guid CreatedBy { get; private set; }
 
     public DateTime CreatedDate { get; private set; }
@@ -120,6 +123,25 @@ public sealed class Subscription : AggregateRoot, IPlatformOwned, IAuditable, IC
         Status = SubscriptionStatus.Active;
         TrialEndsOn = null;
         BillingReference = billingReference ?? BillingReference;
+    }
+
+    /// <summary>Moves the end of a trial, later or earlier, but never into the past.</summary>
+    public void ExtendTrial(DateOnly endsOn, DateOnly today)
+    {
+        Guard.Against(
+            Status != SubscriptionStatus.Trial,
+            "SUBSCRIPTION_NOT_TRIAL",
+            $"Only a trial has an end date to move; this subscription is {Status}.");
+        Guard.Against(endsOn < today, "TRIAL_END_IN_PAST", "A trial cannot end in the past.");
+
+        TrialEndsOn = endsOn;
+    }
+
+    /// <summary>The agreed renewal date and the billing system's reference; both may be cleared.</summary>
+    public void SetTerms(DateOnly? renewsOn, string? billingReference)
+    {
+        RenewsOn = renewsOn;
+        BillingReference = string.IsNullOrWhiteSpace(billingReference) ? null : Guard.MaxLength(billingReference.Trim(), 100);
     }
 
     public void MarkPastDue()

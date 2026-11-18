@@ -3,6 +3,7 @@ import { withPermissions } from '@gggs/core/permissions';
 import { Employee360Page } from './people/employee-360-page';
 import { EmployeeDirectoryPage } from './people/employee-directory-page';
 import { EmployeeImportPage } from './people/employee-import-page';
+import { HireDraftsPage } from './people/hire-drafts-page';
 import { HireEmployeePage } from './people/hire-employee-page';
 import { MyProfilePage } from './people/my-profile-page';
 import { OrgChartPage } from './people/org-chart-page';
@@ -18,6 +19,7 @@ import { TeamPage } from './people/team-page';
 export const EMPLOYEES_ROUTES: Routes = [
   { path: '', component: EmployeeDirectoryPage, title: 'Employees' },
   { path: 'new', component: HireEmployeePage, title: 'Hire employee', ...withPermissions(['employee.profile.create']) },
+  { path: 'drafts', component: HireDraftsPage, title: 'Draft hires', ...withPermissions(['employee.profile.create']) },
   { path: 'import', component: EmployeeImportPage, title: 'Import employees', ...withPermissions(['employee.profile.create']) },
   { path: 'org-chart', component: OrgChartPage, title: 'Org chart' },
   { path: ':id', component: Employee360Page, title: 'Employee 360' },

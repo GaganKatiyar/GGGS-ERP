@@ -48,7 +48,7 @@ public sealed class MasterDataAndOrganizationTests(PeopleOsApiFactory factory)
         JsonElement[] active = (await admin.GetFromJsonAsync<JsonElement[]>("/api/v1/master-data/job-family", TestContext.Current.CancellationToken))!;
         active.ShouldNotContain(value => value.GetProperty("id").GetGuid() == id);
 
-        HttpResponseMessage job = await admin.PostAsJsonAsync("/api/v1/organizations/jobs", new { Code = CoreHrApi.Unique("JOB"), Name = "Uses a retired family", JobFamilyCode = code }, TestContext.Current.CancellationToken);
+        HttpResponseMessage job = await admin.PostAsJsonAsync("/api/v1/organizations/roles", new { Code = CoreHrApi.Unique("JOB"), Name = "Uses a retired family", JobFamilyCode = code }, TestContext.Current.CancellationToken);
         job.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
         (await CoreHrApi.ErrorCodeAsync(job)).ShouldBe("LOOKUP_CODE_INVALID");
     }
@@ -67,17 +67,77 @@ public sealed class MasterDataAndOrganizationTests(PeopleOsApiFactory factory)
     }
 
     [Fact]
-    public async Task ADepartmentCannotBeMovedUnderItsOwnSubDepartment()
+    public async Task ACodeCanBeChanged_ButNotToOneInUse()
     {
         using HttpClient admin = await factory.CreateAdminClientAsync();
-        Guid parent = await CoreHrApi.DepartmentAsync(admin);
-        Guid child = await CoreHrApi.DepartmentAsync(admin, parent);
-        Guid grandchild = await CoreHrApi.DepartmentAsync(admin, child);
+        string taken = CoreHrApi.Unique("LOC");
+        await CoreHrApi.CreateAsync(admin, "/api/v1/organizations/locations", new { Code = taken, Name = "Pune" });
+        Guid location = await CoreHrApi.CreateAsync(admin, "/api/v1/organizations/locations", new { Code = CoreHrApi.Unique("LOC"), Name = "Kannauj HQ" });
 
-        HttpResponseMessage response = await admin.PutAsJsonAsync($"/api/v1/organizations/departments/{parent}", new { Code = "IGNORED", Name = "Parent", ParentDepartmentId = grandchild }, TestContext.Current.CancellationToken);
+        string renamed = CoreHrApi.Unique("KNJ");
+        HttpResponseMessage changed = await admin.PutAsJsonAsync($"/api/v1/organizations/locations/{location}", new { Code = renamed.ToLowerInvariant(), Name = "Kannauj HQ" }, TestContext.Current.CancellationToken);
+        changed.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        JsonElement saved = await admin.GetFromJsonAsync<JsonElement>($"/api/v1/organizations/locations/{location}", TestContext.Current.CancellationToken);
+        saved.GetProperty("code").GetString().ShouldBe(renamed);
+
+        HttpResponseMessage clash = await admin.PutAsJsonAsync($"/api/v1/organizations/locations/{location}", new { Code = taken, Name = "Kannauj HQ" }, TestContext.Current.CancellationToken);
+        clash.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        (await CoreHrApi.ErrorCodeAsync(clash)).ShouldBe("ORG_CODE_IN_USE");
+    }
+
+    [Fact]
+    public async Task ADepartmentCannotBeMovedUnderItsOwnFunction()
+    {
+        using HttpClient admin = await factory.CreateAdminClientAsync();
+        Guid department = await CoreHrApi.DepartmentAsync(admin);
+        Guid function = await CoreHrApi.DepartmentAsync(admin, department);
+
+        HttpResponseMessage response = await admin.PutAsJsonAsync($"/api/v1/organizations/departments/{department}", new { Code = "IGNORED", Name = "Parent", ParentDepartmentId = function }, TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
         (await CoreHrApi.ErrorCodeAsync(response)).ShouldBe("DEPARTMENT_CYCLE");
+    }
+
+    [Fact]
+    public async Task AFunctionCannotHoldAnotherFunction()
+    {
+        using HttpClient admin = await factory.CreateAdminClientAsync();
+        Guid department = await CoreHrApi.DepartmentAsync(admin);
+        Guid function = await CoreHrApi.DepartmentAsync(admin, department);
+
+        HttpResponseMessage response = await admin.PostAsJsonAsync("/api/v1/organizations/departments", new { Code = CoreHrApi.Unique("FN"), Name = "Too deep", ParentDepartmentId = function }, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        (await CoreHrApi.ErrorCodeAsync(response)).ShouldBe("FUNCTION_IN_FUNCTION");
+    }
+
+    [Fact]
+    public async Task ADepartmentWithFunctionsCannotBecomeAFunction()
+    {
+        using HttpClient admin = await factory.CreateAdminClientAsync();
+        Guid department = await CoreHrApi.DepartmentAsync(admin);
+        await CoreHrApi.DepartmentAsync(admin, department);
+        Guid other = await CoreHrApi.DepartmentAsync(admin);
+
+        HttpResponseMessage response = await admin.PutAsJsonAsync($"/api/v1/organizations/departments/{department}", new { Code = "IGNORED", Name = "Moved", ParentDepartmentId = other }, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        (await CoreHrApi.ErrorCodeAsync(response)).ShouldBe("DEPARTMENT_HAS_FUNCTIONS");
+    }
+
+    [Fact]
+    public async Task AFunction_TakesItsDepartmentsBusinessUnit()
+    {
+        using HttpClient admin = await factory.CreateAdminClientAsync();
+        Guid unit = await CoreHrApi.CreateAsync(admin, "/api/v1/organizations/business-units", new { Code = CoreHrApi.Unique("BU"), Name = "Delivery" });
+        Guid otherUnit = await CoreHrApi.CreateAsync(admin, "/api/v1/organizations/business-units", new { Code = CoreHrApi.Unique("BU"), Name = "Corporate" });
+        Guid department = await CoreHrApi.CreateAsync(admin, "/api/v1/organizations/departments", new { Code = CoreHrApi.Unique("DEPT"), Name = "Engineering", BusinessUnitId = unit });
+
+        // Whatever business unit the caller names, a function sits in its department's.
+        Guid function = await CoreHrApi.CreateAsync(admin, "/api/v1/organizations/departments", new { Code = CoreHrApi.Unique("FN"), Name = "Backend", ParentDepartmentId = department, BusinessUnitId = otherUnit });
+
+        JsonElement saved = await admin.GetFromJsonAsync<JsonElement>($"/api/v1/organizations/departments/{function}", TestContext.Current.CancellationToken);
+        saved.GetProperty("businessUnitId").GetGuid().ShouldBe(unit);
     }
 
     [Fact]
@@ -136,18 +196,27 @@ public sealed class MasterDataAndOrganizationTests(PeopleOsApiFactory factory)
     }
 
     [Fact]
-    public async Task PositionOccupancy_CountsWhoHoldsEachSeat()
+    public async Task ACompany_StartsWithADefaultCostCenter_ThatStaysUntilAnotherTakesOver()
     {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         using HttpClient admin = await factory.CreateAdminClientAsync();
-        Guid department = await CoreHrApi.DepartmentAsync(admin);
-        Guid job = await CoreHrApi.JobAsync(admin);
-        Guid position = await CoreHrApi.PositionAsync(admin, job, department, headcount: 2);
-        await CoreHrApi.HireAsync(admin, department, positionId: position);
+        string code = CoreHrApi.Unique("CO");
+        Guid company = await CoreHrApi.CreateAsync(admin, "/api/v1/organizations/companies", new { Code = code, Name = "Sister Co", CountryCode = "IN", CurrencyCode = "INR" });
 
-        JsonElement[] occupancy = (await admin.GetFromJsonAsync<JsonElement[]>($"/api/v1/organizations/positions/occupancy?ids={position}", TestContext.Current.CancellationToken))!;
+        JsonElement page = (await admin.GetFromJsonAsync<JsonElement>($"/api/v1/organizations/cost-centers?search={code}", ct))!;
+        JsonElement original = page.GetProperty("items").EnumerateArray().ShouldHaveSingleItem();
+        original.GetProperty("isDefault").GetBoolean().ShouldBeTrue();
+        original.GetProperty("companyId").GetGuid().ShouldBe(company);
+        Guid originalId = original.GetProperty("id").GetGuid();
 
-        JsonElement seat = occupancy.ShouldHaveSingleItem();
-        seat.GetProperty("occupied").GetInt32().ShouldBe(1);
-        seat.GetProperty("vacant").GetInt32().ShouldBe(1);
+        HttpResponseMessage refused = await admin.PostAsync($"/api/v1/organizations/cost-centers/{originalId}/deactivate", null, ct);
+        refused.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        (await CoreHrApi.ErrorCodeAsync(refused)).ShouldBe("COST_CENTER_DEFAULT");
+
+        // Making another the default hands the flag over.
+        Guid other = await CoreHrApi.CreateAsync(admin, "/api/v1/organizations/cost-centers", new { Code = CoreHrApi.Unique("CC"), Name = "Sister Co Pune", CompanyId = company, IsDefault = true });
+        JsonElement after = (await admin.GetFromJsonAsync<JsonElement>($"/api/v1/organizations/cost-centers/{originalId}", ct))!;
+        after.GetProperty("isDefault").GetBoolean().ShouldBeFalse();
+        (await admin.GetFromJsonAsync<JsonElement>($"/api/v1/organizations/cost-centers/{other}", ct)).GetProperty("isDefault").GetBoolean().ShouldBeTrue();
     }
 }

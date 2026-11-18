@@ -398,7 +398,7 @@ export class CompensationApi {
     return firstValueFrom(this.http.get<readonly BandItem[]>(`${this.base}/bands`));
   }
 
-  saveBand(id: string | null, body: { gradeId: string; currency?: string | null; minimum: number; midpoint: number; maximum: number; effectiveFrom: string; notes?: string | null }): Promise<BandItem> {
+  saveBand(id: string | null, body: { levelId: string; currency?: string | null; minimum: number; midpoint: number; maximum: number; effectiveFrom: string; notes?: string | null }): Promise<BandItem> {
     return firstValueFrom(id ? this.http.put<BandItem>(`${this.base}/bands/${id}`, body) : this.http.post<BandItem>(`${this.base}/bands`, body));
   }
 

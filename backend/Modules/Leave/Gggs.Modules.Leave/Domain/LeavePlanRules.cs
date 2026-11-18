@@ -41,20 +41,72 @@ public enum PlanSource
 
     /// <summary>A policy HR gave this employee on their own, for a time.</summary>
     Exception = 2,
+
+    /// <summary>The policy assigned to their cost center.</summary>
+    CostCenter = 3,
 }
 
 public sealed record PlanChoice(Guid PlanId, PlanSource Source);
 
-/// <summary>Which policy applies to an employee on a day: their own exception first, then their engagement type's.</summary>
+/// <summary>
+/// The cost centers' own policies: per engagement type, and for everyone. <see cref="For"/> answers the most
+/// specific one a person on a cost center gets, or null when the cost center leaves it to the organisation.
+/// </summary>
+public sealed class CostCenterPlans
+{
+    public static readonly CostCenterPlans None = new([]);
+
+    private readonly Dictionary<(Guid CostCenterId, string Type), Guid> _byType = [];
+    private readonly Dictionary<Guid, Guid> _everyone = [];
+
+    public CostCenterPlans(IEnumerable<(Guid CostCenterId, string? EmploymentTypeCode, Guid PlanId)> rows)
+    {
+        ArgumentNullException.ThrowIfNull(rows);
+        foreach ((Guid center, string? type, Guid plan) in rows)
+        {
+            if (string.IsNullOrWhiteSpace(type))
+            {
+                _everyone[center] = plan;
+            }
+            else
+            {
+                _byType[(center, type.Trim().ToUpperInvariant())] = plan;
+            }
+        }
+    }
+
+    public Guid? For(Guid? costCenterId, string? employmentTypeCode)
+    {
+        if (costCenterId is not { } center)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(employmentTypeCode) && _byType.TryGetValue((center, employmentTypeCode.Trim().ToUpperInvariant()), out Guid typed))
+        {
+            return typed;
+        }
+
+        return _everyone.TryGetValue(center, out Guid everyone) ? everyone : null;
+    }
+}
+
+/// <summary>
+/// Which policy applies to an employee on a day: their own exception first, then their cost center's (for
+/// their engagement type, then for everyone), then the organisation's default for their engagement type.
+/// </summary>
 public static class LeavePlanResolver
 {
     public static PlanChoice? Resolve(
         IEnumerable<EmployeeLeavePlan> employeeExceptions,
+        CostCenterPlans costCenterAssignments,
+        Guid? costCenterId,
         IReadOnlyDictionary<string, Guid> assignments,
         string? employmentTypeCode,
         DateOnly day)
     {
         ArgumentNullException.ThrowIfNull(employeeExceptions);
+        ArgumentNullException.ThrowIfNull(costCenterAssignments);
         ArgumentNullException.ThrowIfNull(assignments);
 
         EmployeeLeavePlan? exception = employeeExceptions
@@ -64,6 +116,11 @@ public static class LeavePlanResolver
         if (exception is not null)
         {
             return new PlanChoice(exception.PlanId, PlanSource.Exception);
+        }
+
+        if (costCenterAssignments.For(costCenterId, employmentTypeCode) is { } centerPlanId)
+        {
+            return new PlanChoice(centerPlanId, PlanSource.CostCenter);
         }
 
         return !string.IsNullOrWhiteSpace(employmentTypeCode) && assignments.TryGetValue(employmentTypeCode.Trim().ToUpperInvariant(), out Guid planId)

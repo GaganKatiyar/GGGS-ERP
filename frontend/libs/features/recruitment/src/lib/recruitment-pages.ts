@@ -7,8 +7,6 @@ import type {
   AgencyInput,
   AgencyItem,
   ApplicationStage,
-  CandidateProfile,
-  CandidateSource,
   CandidateView,
   InterviewItem,
   JobApplicationItem,
@@ -19,9 +17,8 @@ import type {
   RecruitmentRules,
   ReferralItem,
   RequisitionItem,
-  RequisitionStatus,
 } from '@gggs/shared/models';
-import { CANDIDATE_SOURCES, PIPELINE_STAGES, humanize } from '@gggs/shared/models';
+import { PIPELINE_STAGES, humanize } from '@gggs/shared/models';
 import { MoneyPipe } from '@gggs/shared/money';
 import { Chart, EmptyState, FormDialog, KpiCard, localIsoDate, PageHeader, Skeleton, StatusBadge, Tabs } from '@gggs/shared/ui';
 import type { TabItem } from '@gggs/shared/ui';
@@ -29,84 +26,7 @@ import { CandidateForm, RequisitionForm, errorText, splitList } from './recruitm
 
 const iso = (date: Date) => localIsoDate(date);
 
-/** Requisitions (spec §12): the openings recruitment is working on. */
-@Component({
-  selector: 'gggs-requisitions-page',
-  imports: [DatePipe, RouterLink, PageHeader, StatusBadge, EmptyState, RequisitionForm],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <gggs-page-header title="Requisitions" subtitle="Openings being recruited for - from approved manpower requests or opened directly.">
-      @if (canManage) {
-        <button type="button" class="btn btn--primary" (click)="formOpen.set(true)"><i class="pi pi-plus" aria-hidden="true"></i> Open a requisition</button>
-      }
-    </gggs-page-header>
-    <section class="panel toolbar rec__filters">
-      <label class="field">
-        <span class="field__label">Status</span>
-        <select [value]="status()" (change)="status.set($any($event.target).value); load()">
-          <option value="">Any</option>
-          @for (option of statuses; track option) {
-            <option [value]="option">{{ humanize(option) }}</option>
-          }
-        </select>
-      </label>
-      <label class="field">
-        <span class="field__label">Search</span>
-        <input type="search" [value]="search()" (change)="search.set($any($event.target).value); load()" placeholder="Title or number" />
-      </label>
-    </section>
-    <section class="panel stack">
-      @for (requisition of requisitions(); track requisition.id) {
-        <a class="rec__row rec__row--link" [routerLink]="['/recruitment/requisitions', requisition.id]">
-          <span><strong>{{ requisition.title }}</strong> <span class="muted">{{ requisition.number }}</span></span>
-          <span>{{ requisition.departmentName ?? '—' }}{{ requisition.locationName ? ' · ' + requisition.locationName : '' }}</span>
-          <span>{{ requisition.hired }} / {{ requisition.openings }} filled · {{ requisition.applications }} applied</span>
-          <span class="muted">{{ requisition.recruiterName ?? 'no recruiter' }} · opened {{ requisition.openedOn | date: 'd MMM' }}</span>
-          <span><gggs-status-badge [status]="requisition.status" /></span>
-        </a>
-      } @empty {
-        <gggs-empty-state icon="pi pi-file-edit" title="No requisitions here" />
-      }
-      @if (error()) {
-        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
-      }
-    </section>
-    <gggs-requisition-form [(visible)]="formOpen" (saved)="opened($event)" />
-  `,
-  styleUrl: './recruitment.css',
-})
-export class RequisitionsPage {
-  private readonly api = inject(RecruitmentApi);
-  private readonly router = inject(Router);
-
-  protected readonly canManage = inject(PermissionStore).has('recruitment.requisition.manage');
-  protected readonly humanize = humanize;
-  protected readonly statuses: readonly RequisitionStatus[] = ['Open', 'OnHold', 'Filled', 'Closed', 'Cancelled'];
-  protected readonly requisitions = signal<readonly RequisitionItem[]>([]);
-  protected readonly status = signal<RequisitionStatus | ''>('Open');
-  protected readonly search = signal('');
-  protected readonly formOpen = signal(false);
-  protected readonly error = signal<string | null>(null);
-
-  constructor() {
-    void this.load();
-  }
-
-  protected opened(requisition: RequisitionItem): void {
-    void this.router.navigate(['/recruitment/requisitions', requisition.id]);
-  }
-
-  protected async load(): Promise<void> {
-    this.error.set(null);
-    try {
-      this.requisitions.set(await this.api.requisitions({ status: this.status() || null, search: this.search() || null }));
-    } catch (error) {
-      this.error.set(errorText(error, 'Requisitions could not be loaded.'));
-    }
-  }
-}
-
-/** A requisition and its pipeline board: candidates by stage, best match first. */
+/** One requirement in full: its pipeline board, job postings and details. */
 @Component({
   selector: 'gggs-requisition-page',
   imports: [DatePipe, RouterLink, MoneyPipe, PageHeader, StatusBadge, KpiCard, EmptyState, Skeleton, Tabs, FormDialog, RequisitionForm, CandidateForm],
@@ -126,7 +46,7 @@ export class RequisitionsPage {
           }
         }
       </gggs-page-header>
-      <p><a routerLink="/recruitment/requisitions">← All requisitions</a></p>
+      <p><a routerLink="/recruitment/requirements">← All requirements</a></p>
       <div class="xp__kpis">
         <gggs-kpi-card label="Openings" [value]="r.openings" [hint]="r.remaining + ' remaining'" />
         <gggs-kpi-card label="Applications" [value]="r.applications" />
@@ -206,7 +126,7 @@ export class RequisitionsPage {
             <div><span class="field__label">Experience</span><p>{{ r.minExperienceYears ?? 0 }}–{{ r.maxExperienceYears ?? 'any' }} years</p></div>
             <div><span class="field__label">Skills</span><p>{{ r.skills.join(', ') || '—' }}</p></div>
             <div><span class="field__label">Recruiter</span><p>{{ r.recruiterName ?? '—' }}</p></div>
-            <div><span class="field__label">Job · location</span><p>{{ r.jobName ?? '—' }} · {{ r.locationName ?? '—' }}</p></div>
+            <div><span class="field__label">Role · location</span><p>{{ r.roleName ?? '—' }} · {{ r.locationName ?? '—' }}</p></div>
             <div>
               <span class="field__label">From</span>
               <p>
@@ -377,128 +297,6 @@ export class RequisitionPage {
   }
 }
 
-/** Every posting across requisitions. */
-@Component({
-  selector: 'gggs-postings-page',
-  imports: [DatePipe, RouterLink, PageHeader, StatusBadge, EmptyState],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <gggs-page-header title="Job postings" subtitle="Where each opening is advertised. Postings are created from their requisition." />
-    <section class="panel stack">
-      @for (posting of postings(); track posting.id) {
-        <a class="rec__row rec__row--link" [routerLink]="['/recruitment/requisitions', posting.requisitionId]">
-          <span><strong>{{ posting.title }}</strong> <span class="muted">{{ posting.requisitionNumber }}</span></span>
-          <span>{{ posting.departmentName ?? '' }}{{ posting.locationName ? ' · ' + posting.locationName : '' }}</span>
-          <span>{{ posting.internal ? 'Internal' : '' }}{{ posting.internal && posting.external ? ' + ' : '' }}{{ posting.external ? 'Careers page' : '' }}</span>
-          <span class="muted">{{ posting.publishedOn ? (posting.publishedOn | date: 'd MMM y') : 'not published' }}</span>
-          <span><gggs-status-badge [status]="posting.status" /></span>
-        </a>
-      } @empty {
-        <gggs-empty-state icon="pi pi-megaphone" title="No postings yet" />
-      }
-      @if (error()) {
-        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
-      }
-    </section>
-  `,
-  styleUrl: './recruitment.css',
-})
-export class PostingsPage {
-  protected readonly postings = signal<readonly PostingItem[]>([]);
-  protected readonly error = signal<string | null>(null);
-
-  constructor() {
-    inject(RecruitmentApi)
-      .postings()
-      .then(
-        (postings) => this.postings.set(postings),
-        (error: unknown) => this.error.set(errorText(error, 'Postings could not be loaded.')),
-      );
-  }
-}
-
-/** The candidate database: one profile per person, searchable by name, email, mobile, company or skill. */
-@Component({
-  selector: 'gggs-candidates-page',
-  imports: [DatePipe, RouterLink, PageHeader, EmptyState, CandidateForm],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <gggs-page-header title="Candidates" subtitle="Everyone who has applied, been sourced or been referred.">
-      @if (canManage) {
-        <button type="button" class="btn btn--primary" (click)="formOpen.set(true)"><i class="pi pi-user-plus" aria-hidden="true"></i> Add candidate</button>
-      }
-    </gggs-page-header>
-    <section class="panel toolbar rec__filters">
-      <label class="field">
-        <span class="field__label">Search</span>
-        <input type="search" [value]="search()" (change)="search.set($any($event.target).value); load()" placeholder="Name, email, mobile, company" />
-      </label>
-      <label class="field">
-        <span class="field__label">Skill</span>
-        <input type="search" [value]="skill()" (change)="skill.set($any($event.target).value); load()" />
-      </label>
-      <label class="field">
-        <span class="field__label">Source</span>
-        <select [value]="source()" (change)="source.set($any($event.target).value); load()">
-          <option value="">Any</option>
-          @for (option of sources; track option) {
-            <option [value]="option">{{ humanize(option) }}</option>
-          }
-        </select>
-      </label>
-    </section>
-    <section class="panel stack">
-      @for (candidate of candidates(); track candidate.id) {
-        <a class="rec__row rec__row--link" [routerLink]="['/recruitment/candidates', candidate.id]">
-          <span><strong>{{ candidate.fullName }}</strong> <span class="muted">{{ candidate.number }}</span>@if (candidate.formerEmployee; as former) {<span class="badge" [title]="'Former employee - ' + (former.eligibleForRehire ? 'eligible' : 'not eligible') + ' for rehire'"> former employee</span>}</span>
-          <span>{{ candidate.currentTitle ?? '' }}{{ candidate.currentCompany ? ' at ' + candidate.currentCompany : '' }}</span>
-          <span class="muted">{{ candidate.skills.slice(0, 4).join(', ') }}</span>
-          <span class="muted">{{ humanize(candidate.source) }}{{ candidate.agencyName ? ' · ' + candidate.agencyName : '' }}{{ candidate.referrerName ? ' · ' + candidate.referrerName : '' }}</span>
-          <span>{{ candidate.employeeId ? 'Hired' : candidate.applications + ' application(s)' }} <span class="muted">{{ candidate.createdDate | date: 'd MMM' }}</span></span>
-        </a>
-      } @empty {
-        <gggs-empty-state icon="pi pi-id-card" title="No candidates found" />
-      }
-      @if (error()) {
-        <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
-      }
-    </section>
-    <gggs-candidate-form [(visible)]="formOpen" (saved)="added($event)" />
-  `,
-  styleUrl: './recruitment.css',
-})
-export class CandidatesPage {
-  private readonly api = inject(RecruitmentApi);
-  private readonly router = inject(Router);
-
-  protected readonly canManage = inject(PermissionStore).has('recruitment.application.manage');
-  protected readonly humanize = humanize;
-  protected readonly sources = CANDIDATE_SOURCES;
-  protected readonly candidates = signal<readonly CandidateProfile[]>([]);
-  protected readonly search = signal('');
-  protected readonly skill = signal('');
-  protected readonly source = signal<CandidateSource | ''>('');
-  protected readonly formOpen = signal(false);
-  protected readonly error = signal<string | null>(null);
-
-  constructor() {
-    void this.load();
-  }
-
-  protected added(view: CandidateView): void {
-    void this.router.navigate(['/recruitment/candidates', view.candidate.id]);
-  }
-
-  protected async load(): Promise<void> {
-    this.error.set(null);
-    try {
-      this.candidates.set(await this.api.candidates({ search: this.search() || null, skill: this.skill() || null, source: this.source() || null }));
-    } catch (error) {
-      this.error.set(errorText(error, 'Candidates could not be loaded.'));
-    }
-  }
-}
-
 /** One candidate: profile, applications, background checks; apply them to another opening. */
 @Component({
   selector: 'gggs-candidate-page',
@@ -661,7 +459,7 @@ export class CandidatePage {
     <section class="panel stack">
       @for (interview of interviews(); track interview.id) {
         <a class="rec__row rec__row--link" [routerLink]="['/recruitment/applications', interview.applicationId]">
-          <span><strong>{{ interview.scheduledAt | date: 'EEE d MMM, HH:mm' }}</strong> <span class="muted">{{ interview.durationMinutes }} min</span></span>
+          <span><strong>{{ interview.scheduledAt | date: 'EEE d MMM, h:mm a' }}</strong> <span class="muted">{{ interview.durationMinutes }} min</span></span>
           <span>{{ interview.candidateName }} · {{ interview.round }}</span>
           <span class="muted">{{ interview.requisitionTitle }}</span>
           <span class="muted">{{ interview.panelNames.join(', ') }} · {{ interview.scorecards }}/{{ interview.panel.length }} feedback</span>

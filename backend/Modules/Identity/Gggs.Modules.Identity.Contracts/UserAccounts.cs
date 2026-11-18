@@ -13,4 +13,7 @@ public interface IUserAccounts
 
     /// <summary>Disables every enabled account linked to the employee; returns how many were disabled.</summary>
     Task<int> DisableForEmployeeAsync(Guid employeeId, CancellationToken cancellationToken = default);
+
+    /// <summary>The accounts that hold a permission today, through any role, so a module can tell the people who can act.</summary>
+    Task<IReadOnlyList<Guid>> UserIdsWithPermissionAsync(string permissionCode, CancellationToken cancellationToken = default);
 }

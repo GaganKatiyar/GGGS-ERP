@@ -51,8 +51,8 @@ async function signIn(browser) {
   const context = await browser.newContext({ viewport: VIEWPORTS.desktop });
   const page = await context.newPage();
   await page.goto(`${BASE}/sign-in`);
-  await page.fill('input[formcontrolname=tenantCode]', process.env.UI_AUDIT_TENANT ?? 'acme');
-  await page.fill('input[formcontrolname=email]', process.env.UI_AUDIT_EMAIL ?? 'admin@acme.example');
+  await page.fill('input[formcontrolname=tenantCode]', process.env.UI_AUDIT_TENANT ?? 'gggs');
+  await page.fill('input[formcontrolname=email]', process.env.UI_AUDIT_EMAIL ?? 'admin@gggs.example');
   await page.fill('input[formcontrolname=password]', process.env.UI_AUDIT_PASSWORD ?? 'Passw0rd!2026');
   await page.click('button[type=submit]');
   await page.waitForURL((url) => !url.pathname.startsWith('/sign-in'), { timeout: 30000 });

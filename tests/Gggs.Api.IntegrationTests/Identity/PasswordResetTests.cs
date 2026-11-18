@@ -93,9 +93,8 @@ public sealed partial class PasswordResetTests(PeopleOsApiFactory factory)
             {
                 EmailMessage record = await provider.GetRequiredService<AppDbContext>().Set<EmailMessage>().AsNoTracking().SingleAsync(row => row.ToAddress == email, Ct);
                 record.Status.ShouldBe(EmailStatus.Sent);
-                record.Body.ShouldNotContain(token);
-                record.Body.ShouldNotContain("/reset-password");
-                record.Body.ShouldContain("••••");
+                record.IsMasked.ShouldBeTrue("its stored copy can never be sent again");
+                record.Body.ShouldBeEmpty("a sent email keeps who and when, not the message, let alone the link");
             });
         });
     }

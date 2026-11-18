@@ -23,13 +23,13 @@ public sealed class SeparationPolicyTests
             NoticeRule.Create(null, null, true, 15),
         ];
 
-        NoticeRule Pick(Guid? grade, string type, bool onProbation)
-            => rules.Where(rule => rule.Matches(grade, type, onProbation)).OrderByDescending(rule => rule.Specificity).First();
+        NoticeRule Pick(Guid? level, string type, bool onProbation)
+            => rules.Where(rule => rule.Matches(level, type, onProbation)).OrderByDescending(rule => rule.Specificity).First();
 
         Pick(Senior, "FULL_TIME", false).NoticeDays.ShouldBe(120);
         Pick(Senior, "CONTRACT", false).NoticeDays.ShouldBe(90);
         Pick(null, "FULL_TIME", false).NoticeDays.ShouldBe(60);
-        Pick(Senior, "FULL_TIME", true).NoticeDays.ShouldBe(15, "a probation rule overrides grade and type");
+        Pick(Senior, "FULL_TIME", true).NoticeDays.ShouldBe(15, "a probation rule overrides level and type");
     }
 
     [Fact]

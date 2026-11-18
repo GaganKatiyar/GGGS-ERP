@@ -26,7 +26,25 @@ export interface SsoProviderRequest {
   readonly enabled: boolean;
 }
 
-/** The organisation's single sign-on providers. */
+/** The organisation's password rules (Studio > Password policy). */
+export interface PasswordPolicy {
+  readonly minimumLength: number;
+  /** The lowest minimum the platform allows. */
+  readonly lowestMinimumLength: number;
+  readonly requireComplexity: boolean;
+  readonly rejectBreachedPasswords: boolean;
+  readonly historyCount: number;
+  /** 0 means passwords never expire. */
+  readonly maximumAgeDays: number;
+  readonly lockoutThreshold: number;
+  readonly lockoutMinutes: number;
+  /** True while nothing has been saved and the built-in defaults apply. */
+  readonly isDefault: boolean;
+}
+
+export type PasswordPolicyRequest = Omit<PasswordPolicy, 'lowestMinimumLength' | 'isDefault'>;
+
+/** The organisation's single sign-on providers, and its password rules. */
 @Injectable({ providedIn: 'root' })
 export class SecurityApi {
   private readonly http = inject(HttpClient);
@@ -45,5 +63,13 @@ export class SecurityApi {
 
   deleteProvider(id: string): Promise<void> {
     return firstValueFrom(this.http.delete<void>(`/api/v1/admin/identity-providers/${id}`));
+  }
+
+  passwordPolicy(): Promise<PasswordPolicy> {
+    return firstValueFrom(this.http.get<PasswordPolicy>('/api/v1/admin/password-policy'));
+  }
+
+  savePasswordPolicy(body: PasswordPolicyRequest): Promise<PasswordPolicy> {
+    return firstValueFrom(this.http.put<PasswordPolicy>('/api/v1/admin/password-policy', body));
   }
 }

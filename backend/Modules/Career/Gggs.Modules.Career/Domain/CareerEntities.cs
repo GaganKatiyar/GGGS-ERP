@@ -11,8 +11,8 @@ public enum CareerTrack
     Management = 2,
 }
 
-/// <summary>A step on a career path: the role (by job or grade), how long people usually spend before it, and what it asks for.</summary>
-public sealed record CareerStep(string Title, Guid? JobId, Guid? GradeId, int MinMonthsInRole, IReadOnlyList<string> Skills, string? Description);
+/// <summary>A step on a career path: the role (by role or level), how long people usually spend before it, and what it asks for.</summary>
+public sealed record CareerStep(string Title, Guid? RoleId, Guid? LevelId, int MinMonthsInRole, IReadOnlyList<string> Skills, string? Description);
 
 /// <summary>A career path: the steps from one role to the next on an individual or management track.</summary>
 public sealed class CareerPath : TenantAggregateRoot
@@ -67,14 +67,14 @@ public sealed class CareerPath : TenantAggregateRoot
     }
 
     /// <summary>
-    /// Where someone in this job and grade stands on the path, or -1: the step naming their job, or
-    /// failing that the last step by their grade alone.
+    /// Where someone in this role and level stands on the path, or -1: the step naming their role, or
+    /// failing that the last step by their level alone.
     /// </summary>
-    public int StepOf(Guid? jobId, Guid? gradeId)
+    public int StepOf(Guid? roleId, Guid? levelId)
     {
         List<CareerStep> steps = [.. Steps];
-        int byJob = jobId is null ? -1 : steps.FindLastIndex(step => step.JobId == jobId);
-        return byJob >= 0 ? byJob : gradeId is null ? -1 : steps.FindLastIndex(step => step.JobId is null && step.GradeId == gradeId);
+        int byJob = roleId is null ? -1 : steps.FindLastIndex(step => step.RoleId == roleId);
+        return byJob >= 0 ? byJob : levelId is null ? -1 : steps.FindLastIndex(step => step.RoleId is null && step.LevelId == levelId);
     }
 }
 
@@ -90,9 +90,9 @@ public enum PromotionStatus
 
 public sealed record PromotionDetails(
     string ProposedDesignation,
-    Guid? ProposedJobId,
-    Guid? ProposedGradeId,
-    Guid? ProposedPositionId,
+    Guid? ProposedRoleId,
+    Guid? ProposedLevelId,
+    Guid? ProposedDesignationId,
     decimal? ProposedAnnualCtc,
     DateOnly EffectiveDate,
     string Justification);
@@ -116,11 +116,11 @@ public sealed class PromotionNomination : TenantAggregateRoot
 
     public string ProposedDesignation { get; private set; }
 
-    public Guid? ProposedJobId { get; private set; }
+    public Guid? ProposedRoleId { get; private set; }
 
-    public Guid? ProposedGradeId { get; private set; }
+    public Guid? ProposedLevelId { get; private set; }
 
-    public Guid? ProposedPositionId { get; private set; }
+    public Guid? ProposedDesignationId { get; private set; }
 
     public decimal? ProposedAnnualCtc { get; private set; }
 
@@ -165,9 +165,9 @@ public sealed class PromotionNomination : TenantAggregateRoot
             throw new DomainRuleException("PROMOTION_STATE", "Only a draft or rejected nomination can change.");
         }
 
-        if (details.ProposedJobId is null && details.ProposedGradeId is null && details.ProposedPositionId is null && string.IsNullOrWhiteSpace(details.ProposedDesignation))
+        if (details.ProposedRoleId is null && details.ProposedLevelId is null && details.ProposedDesignationId is null && string.IsNullOrWhiteSpace(details.ProposedDesignation))
         {
-            throw new DomainRuleException("PROMOTION_TARGET", "Say what the promotion is to: a job, grade, position or designation.");
+            throw new DomainRuleException("PROMOTION_TARGET", "Say what the promotion is to: a role, level or designation.");
         }
 
         if (details.ProposedAnnualCtc is <= 0)
@@ -181,9 +181,9 @@ public sealed class PromotionNomination : TenantAggregateRoot
         }
 
         ProposedDesignation = Guard.MaxLength(Guard.NotNullOrWhiteSpace(details.ProposedDesignation).Trim(), 200);
-        ProposedJobId = details.ProposedJobId;
-        ProposedGradeId = details.ProposedGradeId;
-        ProposedPositionId = details.ProposedPositionId;
+        ProposedRoleId = details.ProposedRoleId;
+        ProposedLevelId = details.ProposedLevelId;
+        ProposedDesignationId = details.ProposedDesignationId;
         ProposedAnnualCtc = details.ProposedAnnualCtc;
         EffectiveDate = details.EffectiveDate;
         Justification = Guard.MaxLength(Guard.NotNullOrWhiteSpace(details.Justification).Trim(), 4000);
@@ -272,8 +272,6 @@ public sealed class SuccessionPlan : TenantAggregateRoot
 
     public string RoleTitle { get; private set; }
 
-    public Guid? PositionId { get; private set; }
-
     public Guid? DepartmentId { get; private set; }
 
     public Guid? IncumbentEmployeeId { get; private set; }
@@ -292,14 +290,14 @@ public sealed class SuccessionPlan : TenantAggregateRoot
     /// <summary>Whether someone is ready to step in now.</summary>
     public bool Covered => Successors.Any(successor => successor.Readiness == Readiness.ReadyNow);
 
-    public static SuccessionPlan Create(string roleTitle, Guid? positionId, Guid? departmentId, Guid? incumbent, Criticality criticality, Criticality vacancyRisk, string? notes, IReadOnlyList<SuccessorEntry> successors)
+    public static SuccessionPlan Create(string roleTitle, Guid? departmentId, Guid? incumbent, Criticality criticality, Criticality vacancyRisk, string? notes, IReadOnlyList<SuccessorEntry> successors)
     {
         var plan = new SuccessionPlan();
-        plan.Update(roleTitle, positionId, departmentId, incumbent, criticality, vacancyRisk, notes, successors);
+        plan.Update(roleTitle, departmentId, incumbent, criticality, vacancyRisk, notes, successors);
         return plan;
     }
 
-    public void Update(string roleTitle, Guid? positionId, Guid? departmentId, Guid? incumbent, Criticality criticality, Criticality vacancyRisk, string? notes, IReadOnlyList<SuccessorEntry> successors)
+    public void Update(string roleTitle, Guid? departmentId, Guid? incumbent, Criticality criticality, Criticality vacancyRisk, string? notes, IReadOnlyList<SuccessorEntry> successors)
     {
         List<SuccessorEntry> list = [.. (successors ?? []).Where(entry => entry.EmployeeId != Guid.Empty)
             .GroupBy(entry => entry.EmployeeId).Select(group => group.First())
@@ -315,7 +313,6 @@ public sealed class SuccessionPlan : TenantAggregateRoot
         }
 
         RoleTitle = Guard.MaxLength(Guard.NotNullOrWhiteSpace(roleTitle).Trim(), 200);
-        PositionId = positionId;
         DepartmentId = departmentId;
         IncumbentEmployeeId = incumbent;
         Criticality = criticality;

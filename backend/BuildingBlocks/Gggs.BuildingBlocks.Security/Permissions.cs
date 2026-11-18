@@ -29,6 +29,12 @@ public static class Permissions
 
         /// <summary>Creating and editing platform roles - deciding what any platform account may do.</summary>
         public const string RoleManage = "platform.role.manage";
+
+        /// <summary>
+        /// Seeing and changing where an organisation's data is stored, including revealing its
+        /// database password. Held by platform staff administrators only.
+        /// </summary>
+        public const string DatabaseManage = "platform.database.manage";
     }
 
     /// <summary>Tenant administration: users, roles, settings and configuration.</summary>
@@ -51,7 +57,7 @@ public static class Permissions
     {
         public const string View = "org.structure.view";
         public const string Manage = "org.structure.manage";
-        public const string LegalEntityManage = "org.legal-entity.manage";
+        public const string CompanyManage = "org.legal-entity.manage";
         public const string DepartmentManage = "org.department.manage";
     }
 

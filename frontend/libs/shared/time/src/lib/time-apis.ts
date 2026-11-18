@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import type {
   AttendanceDay,
   AttendanceDevice,
+  AttendanceMode,
   AttendanceSummary,
   Holiday,
   HolidayCalendar,
@@ -13,6 +14,8 @@ import type {
   EmployeeLeavePlanInput,
   LeaveBalance,
   LeavePlanAssignment,
+  LeaveCostCenterAssignment,
+  LeaveCostCenterChange,
   LeavePlanDetail,
   LeavePlanInput,
   LeavePlanItemInput,
@@ -114,6 +117,15 @@ export class LeaveApi {
 
   saveAssignments(changes: readonly { employmentTypeCode: string; planId: string | null }[]): Promise<readonly LeavePlanAssignment[]> {
     return firstValueFrom(this.http.put<readonly LeavePlanAssignment[]>(`${this.base}/plan-assignments`, changes));
+  }
+
+  costCenterAssignments(): Promise<readonly LeaveCostCenterAssignment[]> {
+    return firstValueFrom(this.http.get<readonly LeaveCostCenterAssignment[]>(`${this.base}/plan-assignments/cost-centers`));
+  }
+
+  /** A null plan removes the row: the type falls back to the cost center's everyone policy, that to the organisation default. */
+  saveCostCenterAssignments(changes: readonly LeaveCostCenterChange[]): Promise<readonly LeaveCostCenterAssignment[]> {
+    return firstValueFrom(this.http.put<readonly LeaveCostCenterAssignment[]>(`${this.base}/plan-assignments/cost-centers`, changes));
   }
 
   exceptions(employeeId?: string): Promise<readonly EmployeeLeavePlan[]> {
@@ -242,7 +254,16 @@ export class AttendanceApi {
   private readonly http = inject(HttpClient);
   private readonly base = '/api/v1/attendance';
 
-  days(query: { from: string; to: string; departmentId?: string | null; employeeId?: string | null }): Promise<readonly AttendanceDay[]> {
+  /** How the employee may record attendance; Web and Device when HR never chose. */
+  async modes(employeeId: string): Promise<readonly AttendanceMode[]> {
+    return (await firstValueFrom(this.http.get<{ modes: readonly AttendanceMode[] }>(`${this.base}/employees/${employeeId}/modes`))).modes;
+  }
+
+  async setModes(employeeId: string, modes: readonly AttendanceMode[]): Promise<readonly AttendanceMode[]> {
+    return (await firstValueFrom(this.http.put<{ modes: readonly AttendanceMode[] }>(`${this.base}/employees/${employeeId}/modes`, { modes }))).modes;
+  }
+
+  days(query:{ from: string; to: string; departmentId?: string | null; employeeId?: string | null }): Promise<readonly AttendanceDay[]> {
     return firstValueFrom(this.http.get<readonly AttendanceDay[]>(`${this.base}/days`, { params: params(query) }));
   }
 

@@ -5,9 +5,9 @@ import { RouterLink } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import { PermissionStore } from '@gggs/core/permissions';
 import { EngagementApi } from '@gggs/shared/experience';
-import type { EngagementDashboard, MySurveyItem, OrgUnit, QuestionType, SurveyInput, SurveyItem, SurveyQuestion, SurveyResults, SurveyView } from '@gggs/shared/models';
+import type { EngagementDashboard, MySurveyItem, QuestionType, SurveyInput, SurveyItem, SurveyQuestion, SurveyResults, SurveyView } from '@gggs/shared/models';
 import { QUESTION_TYPES } from '@gggs/shared/models';
-import { OrgStructureApi } from '@gggs/shared/org-reference';
+import { departmentOptions, OrgStructureApi, type DepartmentOption } from '@gggs/shared/org-reference';
 import { EmptyState, FormDialog, KpiCard, localIsoDate, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
@@ -44,7 +44,7 @@ const blankSurvey = (): SurveyInput => ({ title: '', description: null, isAnonym
         <legend>Audience (none ticked means everyone)</legend>
         <div class="xp__grid">
           @for (department of departments(); track department.id) {
-            <label class="xp__flag"><input type="checkbox" [checked]="form()().audienceDepartmentIds.includes(department.id)" (change)="toggleDepartment(department.id, $any($event.target).checked)" /> {{ department.name }}</label>
+            <label class="xp__flag"><input type="checkbox" [checked]="form()().audienceDepartmentIds.includes(department.id)" (change)="toggleDepartment(department.id, $any($event.target).checked)" /> {{ department.label }}</label>
           }
         </div>
       </fieldset>
@@ -92,12 +92,12 @@ export class SurveyBuilder {
   readonly form = input.required<WritableSignal<SurveyInput>>();
 
   protected readonly types = QUESTION_TYPES;
-  protected readonly departments = signal<readonly OrgUnit[]>([]);
+  protected readonly departments = signal<readonly DepartmentOption[]>([]);
 
   constructor() {
     inject(OrgStructureApi)
       .active('departments')
-      .then((departments) => this.departments.set(departments), () => undefined);
+      .then((departments) => this.departments.set(departmentOptions(departments)), () => undefined);
   }
 
   protected split(value: string): string[] {

@@ -242,6 +242,8 @@ export interface LeavePlanSummary {
   /** Engagement-type codes this policy is assigned to. */
   readonly assignedTo: readonly string[];
   readonly exceptionCount: number;
+  /** Names of the cost centers this policy is assigned to. */
+  readonly assignedCostCenters?: readonly string[];
 }
 
 export interface LeavePlanDetail {
@@ -254,6 +256,7 @@ export interface LeavePlanDetail {
   readonly isActive: boolean;
   readonly assignedTo: readonly string[];
   readonly items: readonly LeavePlanRuleItem[];
+  readonly assignedCostCenters?: readonly string[];
 }
 
 export interface LeavePlanInput {
@@ -269,6 +272,39 @@ export interface LeavePlanAssignment {
   readonly label: string;
   readonly planId?: string;
   readonly planName?: string;
+}
+
+/**
+ * One cost center and its own leave policies: `planId` for everyone on it (none: the organisation default),
+ * and `overrides` for single engagement types there.
+ */
+export interface LeaveCostCenterAssignment {
+  readonly costCenterId: string;
+  readonly code: string;
+  readonly name: string;
+  readonly isActive: boolean;
+  readonly companyName?: string;
+  /** ISO country code: the cost center's own address's, else its company's. */
+  readonly countryCode?: string;
+  readonly employeeCount: number;
+  readonly planId?: string;
+  readonly planName?: string;
+  readonly overrides?: readonly LeaveCostCenterTypeOverride[];
+}
+
+/** One engagement type on one cost center with a policy of its own. */
+export interface LeaveCostCenterTypeOverride {
+  readonly employmentTypeCode: string;
+  readonly label: string;
+  readonly planId: string;
+  readonly planName?: string;
+}
+
+/** A change to one cost center's policy: no engagement type is its "everyone" policy; a null plan removes it. */
+export interface LeaveCostCenterChange {
+  readonly costCenterId: string;
+  readonly employmentTypeCode?: string;
+  readonly planId: string | null;
 }
 
 /** A single employee on another policy than their engagement type's, for a time. */
@@ -300,8 +336,10 @@ export interface ResolvedLeavePolicy {
   readonly leaveYear: string;
   readonly yearStart: string;
   readonly yearEnd: string;
-  readonly source: 'EngagementType' | 'Exception';
+  readonly source: 'EngagementType' | 'Exception' | 'CostCenter';
   readonly items: readonly LeavePlanRuleItem[];
+  /** Set when the policy comes from the employee's cost center. */
+  readonly costCenterName?: string;
 }
 
 export interface LeaveBalance {
@@ -380,6 +418,15 @@ export interface LedgerEntry {
   readonly requestId?: string;
 }
 
+/** A way an employee may record attendance. */
+export type AttendanceMode = 'Web' | 'Device' | 'Mobile';
+
+export const ATTENDANCE_MODES: readonly { readonly value: AttendanceMode; readonly label: string; readonly hint: string }[] = [
+  { value: 'Web', label: 'Web punch', hint: 'Punch in and out from the browser.' },
+  { value: 'Device', label: 'Biometric device', hint: 'Punches from the office device.' },
+  { value: 'Mobile', label: 'Mobile app', hint: 'Punch from the phone app.' },
+];
+
 export interface HolidayCalendar {
   readonly id: string;
   readonly code: string;
@@ -413,7 +460,10 @@ export function formatMinutes(minutes: number): string {
   return hours ? `${hours}h ${String(rest).padStart(2, '0')}m` : `${rest}m`;
 }
 
-/** "09:05" from the API's "09:05:00". */
-export function shortTime(time?: string): string {
+/**
+ * "09:05" from the API's "09:05:00", for an `<input type="time">`, which takes 24-hour values. To show
+ * a time to people use `clockTime` from `@gggs/shared/ui`, which gives "9:05 AM".
+ */
+export function inputTime(time?: string): string {
   return time ? time.slice(0, 5) : '';
 }

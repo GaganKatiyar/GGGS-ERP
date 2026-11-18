@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <RootNamespace>Gggs.Modules.Organization</RootNamespace>
-    <Description>Organization structure (spec §10): companies, business units, divisions, departments, locations, cost and profit centers, grades, job levels, jobs and positions.</Description>
+    <Description>Organization structure (spec §10): companies, business units, departments and their functions, locations, cost centers, roles, levels and designations.</Description>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Gggs.Api.IntegrationTests" />
+    <InternalsVisibleTo Include="Gggs.Employee.UnitTests" />
   </ItemGroup>
 
 </Project>

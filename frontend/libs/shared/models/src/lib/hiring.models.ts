@@ -32,8 +32,8 @@ export interface WorkforcePlanLineItem {
   readonly departmentName?: string;
   readonly locationId?: string;
   readonly locationName?: string;
-  readonly jobId?: string;
-  readonly jobName?: string;
+  readonly roleId?: string;
+  readonly roleName?: string;
   readonly currentHeadcount: number;
   readonly liveHeadcount: number;
   readonly plannedHeadcount: number;
@@ -61,7 +61,7 @@ export interface WorkforcePlanInput {
 export interface WorkforcePlanLineInput {
   readonly departmentId: string;
   readonly locationId?: string | null;
-  readonly jobId?: string | null;
+  readonly roleId?: string | null;
   readonly plannedHeadcount: number;
   readonly salaryBudget: number;
   readonly hiringBudget: number;
@@ -83,9 +83,8 @@ export interface ManpowerRequestItem {
   readonly title: string;
   readonly departmentId: string;
   readonly departmentName?: string;
-  readonly positionId?: string;
-  readonly jobId?: string;
-  readonly jobName?: string;
+  readonly roleId?: string;
+  readonly roleName?: string;
   readonly locationId?: string;
   readonly locationName?: string;
   readonly positions: number;
@@ -115,8 +114,7 @@ export interface ManpowerRequestItem {
 export interface ManpowerRequestInput {
   readonly title: string;
   readonly departmentId: string;
-  readonly positionId?: string | null;
-  readonly jobId?: string | null;
+  readonly roleId?: string | null;
   readonly locationId?: string | null;
   readonly positions: number;
   readonly skills: readonly string[];
@@ -184,9 +182,8 @@ export interface RequisitionItem {
   readonly title: string;
   readonly departmentId: string;
   readonly departmentName?: string;
-  readonly positionId?: string;
-  readonly jobId?: string;
-  readonly jobName?: string;
+  readonly roleId?: string;
+  readonly roleName?: string;
   readonly locationId?: string;
   readonly locationName?: string;
   readonly openings: number;
@@ -216,8 +213,7 @@ export interface RequisitionItem {
 export interface RequisitionInput {
   readonly title: string;
   readonly departmentId: string;
-  readonly positionId?: string | null;
-  readonly jobId?: string | null;
+  readonly roleId?: string | null;
   readonly locationId?: string | null;
   readonly openings: number;
   readonly employmentTypeCode: string;
@@ -339,6 +335,14 @@ export interface JobApplicationItem {
   readonly averageRating?: number;
   readonly interviews: number;
   readonly offerStatus?: OfferStatus;
+  readonly currentCompany?: string;
+  readonly noticePeriodDays?: number;
+  readonly expectedCtc?: number;
+  readonly referrerName?: string;
+  /** What has to happen next, worked out on the server from the stage, interviews and offer. Absent once closed. */
+  readonly nextStep?: string;
+  /** When the next step is due (YYYY-MM-DD); before today means it is late. */
+  readonly nextStepDue?: string;
 }
 
 export interface InterviewItem {
@@ -424,7 +428,7 @@ export interface OfferItem {
   readonly currency: string;
   readonly joiningDate: string;
   readonly designation: string;
-  readonly gradeId?: string;
+  readonly levelId?: string;
   readonly expiresOn?: string;
   readonly notes?: string;
   readonly status: OfferStatus;
@@ -441,7 +445,7 @@ export interface OfferTermsInput {
   readonly currency: string;
   readonly joiningDate: string;
   readonly designation: string;
-  readonly gradeId?: string | null;
+  readonly levelId?: string | null;
   readonly expiresOn?: string | null;
   readonly notes?: string | null;
 }
@@ -477,6 +481,32 @@ export interface HireResult {
   readonly employeeId: string;
   readonly employeeCode: string;
   readonly requisitionFilled: boolean;
+}
+
+/** An accepted offer whose candidate has not joined yet, with what the hire form fills in from it. */
+export interface HireableOffer {
+  readonly offerId: string;
+  readonly offerNumber: string;
+  readonly candidateId: string;
+  readonly candidateNumber: string;
+  readonly firstName: string;
+  readonly lastName?: string;
+  readonly email: string;
+  readonly mobile?: string;
+  readonly experienceYears?: number;
+  readonly currentCompany?: string;
+  readonly requisitionTitle: string;
+  readonly joiningDate: string;
+  readonly annualCtc: number;
+  readonly currency: string;
+  readonly designation: string;
+  readonly levelId?: string;
+  readonly departmentId?: string;
+  readonly roleId?: string;
+  readonly locationId?: string;
+  readonly managerEmployeeId?: string;
+  readonly employmentTypeCode?: string;
+  readonly workModeCode?: string;
 }
 
 export interface AgencyItem {

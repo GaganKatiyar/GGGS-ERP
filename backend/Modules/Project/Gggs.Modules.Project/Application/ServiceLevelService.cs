@@ -360,7 +360,7 @@ internal sealed class ServiceLevelService(
                             ["taskCode"] = task.Code,
                             ["taskTitle"] = task.Title,
                             ["kind"] = kind,
-                            ["dueAt"] = (kind == "response" ? ticket.ResponseDueAt : ticket.ResolutionDueAt).ToString("d MMM yyyy HH:mm 'UTC'", CultureInfo.InvariantCulture),
+                            ["dueAt"] = await clock.FormatAsync(kind == "response" ? ticket.ResponseDueAt : ticket.ResolutionDueAt, cancellationToken: cancellationToken),
                         },
                         $"/projects/{ticket.ProjectId}?tab=service"),
                     cancellationToken);

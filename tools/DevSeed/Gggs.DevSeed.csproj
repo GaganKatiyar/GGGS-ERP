@@ -19,4 +19,9 @@
     <ProjectReference Include="..\..\backend\Host\Gggs.Composition\Gggs.Composition.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The demo company's departments, functions and roles: the same file the import screen takes. -->
+    <None Include="org-structure.csv" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

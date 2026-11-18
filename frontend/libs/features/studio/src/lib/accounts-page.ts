@@ -75,7 +75,7 @@ import { ACCOUNT_STATUS_VARIANTS, accountsNeedingAttention, accountStatusLabel }
                   <td>
                     {{ account.lastMessage ?? '—' }}
                     @if (account.nextAttemptAt) {
-                      <span class="accounts__meta">Next try {{ account.nextAttemptAt | date: 'HH:mm' }}</span>
+                      <span class="accounts__meta">Next try {{ account.nextAttemptAt | date: 'h:mm a' }}</span>
                     }
                   </td>
                   <td class="accounts__actions">

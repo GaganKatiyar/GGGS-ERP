@@ -5,7 +5,7 @@ using Gggs.BuildingBlocks.Domain.Primitives;
 namespace Gggs.Modules.Compensation.Domain;
 
 /// <summary>
-/// A salary band for a grade (spec §23): the annual minimum, midpoint and maximum. A new band from a
+/// A salary band for a level (spec §23): the annual minimum, midpoint and maximum. A new band from a
 /// later date replaces the old one; compa-ratio measures each person against the midpoint.
 /// </summary>
 public sealed class SalaryBand : TenantAggregateRoot
@@ -15,7 +15,7 @@ public sealed class SalaryBand : TenantAggregateRoot
         Currency = null!;
     }
 
-    public Guid GradeId { get; private set; }
+    public Guid LevelId { get; private set; }
 
     public string Currency { get; private set; }
 
@@ -29,9 +29,9 @@ public sealed class SalaryBand : TenantAggregateRoot
 
     public string? Notes { get; private set; }
 
-    public static SalaryBand Create(Guid gradeId, string currency, decimal minimum, decimal midpoint, decimal maximum, DateOnly effectiveFrom, string? notes)
+    public static SalaryBand Create(Guid levelId, string currency, decimal minimum, decimal midpoint, decimal maximum, DateOnly effectiveFrom, string? notes)
     {
-        var band = new SalaryBand { GradeId = Guard.NotEmpty(gradeId) };
+        var band = new SalaryBand { LevelId = Guard.NotEmpty(levelId) };
         band.Update(currency, minimum, midpoint, maximum, effectiveFrom, notes);
         return band;
     }
@@ -163,7 +163,7 @@ public sealed class CompensationRevision : TenantAggregateRoot
 
     public DateOnly EffectiveDate { get; private set; }
 
-    public Guid? NewGradeId { get; private set; }
+    public Guid? NewLevelId { get; private set; }
 
     public Guid? NewStructureId { get; private set; }
 
@@ -226,7 +226,7 @@ public sealed class CompensationRevision : TenantAggregateRoot
         Type = details.Type;
         ProposedCtc = Math.Round(details.ProposedCtc, 2);
         EffectiveDate = details.EffectiveDate;
-        NewGradeId = details.NewGradeId;
+        NewLevelId = details.NewLevelId;
         NewStructureId = details.NewStructureId;
         NewDesignation = string.IsNullOrWhiteSpace(details.NewDesignation) ? null : Guard.MaxLength(details.NewDesignation.Trim(), 200);
         Justification = Guard.MaxLength(Guard.NotNullOrWhiteSpace(details.Justification).Trim(), 2000);
@@ -302,7 +302,7 @@ public sealed record RevisionDetails(
     RevisionType Type,
     decimal ProposedCtc,
     DateOnly EffectiveDate,
-    Guid? NewGradeId,
+    Guid? NewLevelId,
     Guid? NewStructureId,
     string? NewDesignation,
     string Justification,

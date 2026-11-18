@@ -45,22 +45,87 @@ public sealed class LeavePlanResolverTests
         ["CONTRACT"] = Contract,
     };
 
+    private static readonly Guid India = Guid.NewGuid();
+    private static readonly Guid IndiaOffice = Guid.NewGuid();
+    private static readonly Guid DubaiOffice = Guid.NewGuid();
+
+    private static readonly Guid IndiaPartTime = Guid.NewGuid();
+    private static readonly Guid DubaiFullTime = Guid.NewGuid();
+
+    private static readonly CostCenterPlans CostCenters = new([(IndiaOffice, null, India)]);
+
+    private static readonly CostCenterPlans NoCostCenters = CostCenterPlans.None;
+
+    /// <summary>India: everyone on the India policy, part-timers on their own. Dubai: only full-timers have one.</summary>
+    private static readonly CostCenterPlans ByType = new(
+    [
+        (IndiaOffice, null, India),
+        (IndiaOffice, "part_time", IndiaPartTime),
+        (DubaiOffice, "FULL_TIME", DubaiFullTime),
+    ]);
+
     [Fact]
     public void TheEngagementTypesPolicy_Applies_WhenThereIsNoException()
-        => LeavePlanResolver.Resolve([], Assignments, "contract", new DateOnly(2026, 5, 1)).ShouldBe(new PlanChoice(Contract, PlanSource.EngagementType));
+        => LeavePlanResolver.Resolve([], NoCostCenters, null, Assignments, "contract", new DateOnly(2026, 5, 1)).ShouldBe(new PlanChoice(Contract, PlanSource.EngagementType));
 
     [Fact]
     public void AnExceptionCoveringTheDay_WinsOverTheEngagementType()
     {
         EmployeeLeavePlan exception = EmployeeLeavePlan.Create(Guid.NewGuid(), Senior, new DateOnly(2026, 4, 1), new DateOnly(2026, 9, 30), "Senior hire");
 
-        LeavePlanResolver.Resolve([exception], Assignments, "FULL_TIME", new DateOnly(2026, 6, 1)).ShouldBe(new PlanChoice(Senior, PlanSource.Exception));
-        LeavePlanResolver.Resolve([exception], Assignments, "FULL_TIME", new DateOnly(2026, 10, 1)).ShouldBe(new PlanChoice(Standard, PlanSource.EngagementType), "after it ends, the engagement type's policy is back");
+        LeavePlanResolver.Resolve([exception], NoCostCenters, null, Assignments, "FULL_TIME", new DateOnly(2026, 6, 1)).ShouldBe(new PlanChoice(Senior, PlanSource.Exception));
+        LeavePlanResolver.Resolve([exception], NoCostCenters, null, Assignments, "FULL_TIME", new DateOnly(2026, 10, 1)).ShouldBe(new PlanChoice(Standard, PlanSource.EngagementType), "after it ends, the engagement type's policy is back");
     }
 
     [Fact]
     public void AnEngagementTypeWithoutAPolicy_ResolvesToNone()
-        => LeavePlanResolver.Resolve([], Assignments, "INTERN", new DateOnly(2026, 5, 1)).ShouldBeNull();
+        => LeavePlanResolver.Resolve([], NoCostCenters, null, Assignments, "INTERN", new DateOnly(2026, 5, 1)).ShouldBeNull();
+
+    [Fact]
+    public void TheCostCentersPolicy_WinsOverTheEngagementType()
+        => LeavePlanResolver.Resolve([], CostCenters, IndiaOffice, Assignments, "CONTRACT", new DateOnly(2026, 5, 1)).ShouldBe(new PlanChoice(India, PlanSource.CostCenter));
+
+    [Fact]
+    public void AnException_WinsOverTheCostCenter()
+    {
+        EmployeeLeavePlan exception = EmployeeLeavePlan.Create(Guid.NewGuid(), Senior, new DateOnly(2026, 4, 1), null, "Senior hire");
+
+        LeavePlanResolver.Resolve([exception], CostCenters, IndiaOffice, Assignments, "FULL_TIME", new DateOnly(2026, 6, 1)).ShouldBe(new PlanChoice(Senior, PlanSource.Exception));
+    }
+
+    [Fact]
+    public void ACostCenterWithoutAPolicy_LeavesItToTheEngagementType()
+        => LeavePlanResolver.Resolve([], CostCenters, DubaiOffice, Assignments, "FULL_TIME", new DateOnly(2026, 5, 1)).ShouldBe(new PlanChoice(Standard, PlanSource.EngagementType));
+
+    [Fact]
+    public void SomeoneWithoutACostCenter_FollowsTheirEngagementType()
+        => LeavePlanResolver.Resolve([], CostCenters, null, Assignments, "FULL_TIME", new DateOnly(2026, 5, 1)).ShouldBe(new PlanChoice(Standard, PlanSource.EngagementType));
+
+    [Fact]
+    public void ACostCentersPolicyForTheEngagementType_WinsOverItsEveryonePolicy()
+    {
+        LeavePlanResolver.Resolve([], ByType, IndiaOffice, Assignments, "PART_TIME", new DateOnly(2026, 5, 1)).ShouldBe(new PlanChoice(IndiaPartTime, PlanSource.CostCenter));
+        LeavePlanResolver.Resolve([], ByType, IndiaOffice, Assignments, "FULL_TIME", new DateOnly(2026, 5, 1)).ShouldBe(new PlanChoice(India, PlanSource.CostCenter), "a type it did not set takes its everyone policy");
+    }
+
+    [Fact]
+    public void ATypeACostCenterLeftBlank_WithNoEveryonePolicy_FollowsTheOrganisationDefault()
+    {
+        LeavePlanResolver.Resolve([], ByType, DubaiOffice, Assignments, "FULL_TIME", new DateOnly(2026, 5, 1)).ShouldBe(new PlanChoice(DubaiFullTime, PlanSource.CostCenter));
+        LeavePlanResolver.Resolve([], ByType, DubaiOffice, Assignments, "CONTRACT", new DateOnly(2026, 5, 1)).ShouldBe(new PlanChoice(Contract, PlanSource.EngagementType));
+    }
+
+    [Fact]
+    public void AnException_WinsOverACostCentersTypePolicy()
+    {
+        EmployeeLeavePlan exception = EmployeeLeavePlan.Create(Guid.NewGuid(), Senior, new DateOnly(2026, 4, 1), null, "Senior hire");
+
+        LeavePlanResolver.Resolve([exception], ByType, IndiaOffice, Assignments, "PART_TIME", new DateOnly(2026, 6, 1)).ShouldBe(new PlanChoice(Senior, PlanSource.Exception));
+    }
+
+    [Fact]
+    public void ACostCenterPolicy_CoversAnEngagementTypeThatHasNone()
+        => LeavePlanResolver.Resolve([], CostCenters, IndiaOffice, Assignments, "INTERN", new DateOnly(2026, 5, 1)).ShouldBe(new PlanChoice(India, PlanSource.CostCenter));
 
     [Fact]
     public void OverlappingExceptions_AreDetected()

@@ -96,31 +96,31 @@ internal static class HiringDemo
 
         // A manager's request, approved into a requisition; another still waiting for approval.
         var approved = ManpowerRequest.Raise($"MPR-{today.Year}-0001", lead, new RequestDetails(
-            "Senior .NET Engineer", department, null, null, null, 2, ["C#", "ASP.NET Core", "SQL Server", "Azure"], 4, 9, "FULL_TIME", "HYBRID",
+            "Senior .NET Engineer", department, null, null, 2, ["C#", "ASP.NET Core", "SQL Server", "Azure"], 4, 9, "FULL_TIME", "HYBRID",
             1_800_000m, 2_800_000m, 5_200_000m, RequestPriority.High, today.AddDays(45), RequestReason.Expansion, null, "Northwind modernisation needs two more seniors."));
         approved.Submit();
         approved.Decide(approved: true, now);
         var pending = ManpowerRequest.Raise($"MPR-{today.Year}-0002", lead, new RequestDetails(
-            "QA Automation Engineer", department, null, null, null, 1, ["Playwright", "TypeScript"], 2, 5, "FULL_TIME", "OFFICE",
+            "QA Automation Engineer", department, null, null, 1, ["Playwright", "TypeScript"], 2, 5, "FULL_TIME", "OFFICE",
             900_000m, 1_400_000m, 1_400_000m, RequestPriority.Medium, today.AddDays(60), RequestReason.NewRole, null, "Release testing is the bottleneck."));
         pending.Submit();
         db.AddRange(approved, pending);
         await db.SaveChangesAsync();
 
         await recruitment.OpenFromRequestAsync(new ManpowerRequestApprovedIntegrationEvent(
-            approved.Id, approved.Number, approved.Title, approved.DepartmentId, null, null, null, approved.Positions, approved.EmploymentTypeCode, approved.WorkModeCode,
+            approved.Id, approved.Number, approved.Title, approved.DepartmentId, null, null, approved.Positions, approved.EmploymentTypeCode, approved.WorkModeCode,
             approved.MinExperienceYears, approved.MaxExperienceYears, approved.SalaryMin, approved.SalaryMax, approved.Skills, approved.RequiredBy, lead,
             approved.Priority.ToString(), approved.Justification), CancellationToken.None);
         Requisition senior = await db.Set<Requisition>().FirstAsync(row => row.ManpowerRequestId == approved.Id);
         senior.Update(new RequisitionDetails(
-            senior.Title, senior.DepartmentId, null, null, null, senior.Openings, senior.EmploymentTypeCode, senior.WorkModeCode, senior.MinExperienceYears, senior.MaxExperienceYears,
+            senior.Title, senior.DepartmentId, null, null, senior.Openings, senior.EmploymentTypeCode, senior.WorkModeCode, senior.MinExperienceYears, senior.MaxExperienceYears,
             senior.SalaryMin, senior.SalaryMax, senior.Skills,
             "Lead the API modernisation for our largest retail client: design services on ASP.NET Core, own the SQL Server data layer and ship to Azure.",
             lead, recruiter, "High", senior.TargetDate ?? today.AddDays(45)));
         await db.SaveChangesAsync();
 
         RequisitionItem designer = await recruitment.CreateRequisitionAsync(new RequisitionDetails(
-            "Product Designer", department, null, null, null, 1, "FULL_TIME", "REMOTE", 3, 7, 1_200_000m, 1_900_000m, ["Figma", "Design systems", "User research"],
+            "Product Designer", department, null, null, 1, "FULL_TIME", "REMOTE", 3, 7, 1_200_000m, 1_900_000m, ["Figma", "Design systems", "User research"],
             "Own the end-to-end design of PeopleOS self-service.", lead, recruiter, "Medium", today.AddDays(30)), CancellationToken.None);
 
         PostingItem posting = await recruitment.SavePostingAsync(null, new PostingBody(senior.Id, senior.Title, senior.Description ?? senior.Title, true, true, today.AddDays(30)), CancellationToken.None);

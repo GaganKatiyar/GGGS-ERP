@@ -35,14 +35,21 @@ public sealed record OrgListQuery
 /// </summary>
 internal static class OrgEndpointKit
 {
-    /// <summary>Maps list, get, activate and deactivate for one kind. Create and update are the kind's own.</summary>
+    /// <summary>
+    /// Maps list, get, activate and deactivate for one kind. Create and update are the kind's own.
+    /// <paramref name="beforeDeactivate"/> may throw to refuse a deactivation.
+    /// <paramref name="activeChanged"/> runs after activate or deactivate, in the same save, for
+    /// records that carry others with them (a role's designations).
+    /// </summary>
     public static void MapStandardRoutes<T, TItem>(
         RouteGroupBuilder group,
         string name,
         Func<AppDbContext, DbSet<T>> set,
         Expression<Func<T, TItem>> select,
         string viewPermission,
-        string managePermission)
+        string managePermission,
+        Action<T>? beforeDeactivate = null,
+        Func<AppDbContext, T, CancellationToken, Task>? activeChanged = null)
         where T : OrgUnit
     {
         group.MapGet("/", async ([AsParameters] OrgListQuery query, AppDbContext database, CancellationToken cancellationToken) =>
@@ -82,6 +89,11 @@ internal static class OrgEndpointKit
             {
                 T unit = await FindAsync(set(database), id, cancellationToken);
                 unit.Activate();
+                if (activeChanged is not null)
+                {
+                    await activeChanged(database, unit, cancellationToken);
+                }
+
                 await unitOfWork.SaveChangesAsync(cancellationToken);
                 return TypedResults.NoContent();
             })
@@ -91,7 +103,13 @@ internal static class OrgEndpointKit
         group.MapPost("/{id:guid}/deactivate", async (Guid id, AppDbContext database, IUnitOfWork unitOfWork, CancellationToken cancellationToken) =>
             {
                 T unit = await FindAsync(set(database), id, cancellationToken);
+                beforeDeactivate?.Invoke(unit);
                 unit.Deactivate();
+                if (activeChanged is not null)
+                {
+                    await activeChanged(database, unit, cancellationToken);
+                }
+
                 await unitOfWork.SaveChangesAsync(cancellationToken);
                 return TypedResults.NoContent();
             })
@@ -114,6 +132,24 @@ internal static class OrgEndpointKit
         {
             throw new DomainRuleException("ORG_CODE_IN_USE", $"The code '{normalized}' is already used by another {Describe<T>()}.");
         }
+    }
+
+    /// <summary>
+    /// Applies an edited code, refusing one another live record of the same kind uses. A blank or
+    /// unchanged code leaves the record as it is, so callers that do not send one keep working.
+    /// </summary>
+    public static async Task ChangeCodeAsync<T>(IQueryable<T> set, T unit, string? code, CancellationToken cancellationToken)
+        where T : OrgUnit
+    {
+        ArgumentNullException.ThrowIfNull(unit);
+
+        if (string.IsNullOrWhiteSpace(code) || OrgUnit.NormalizeCode(code) == unit.Code)
+        {
+            return;
+        }
+
+        await EnsureCodeFreeAsync(set, code, unit.Id, cancellationToken);
+        unit.ChangeCode(code);
     }
 
     /// <summary>Refuses a reference to a record that does not exist in this tenant or is inactive.</summary>
@@ -160,11 +196,11 @@ internal static class OrgEndpointKit
 
     private static string Describe<T>() => typeof(T).Name switch
     {
-        nameof(LegalEntity) => "company",
+        nameof(Company) => "company",
         nameof(BusinessUnit) => "business unit",
         nameof(CostCenter) => "cost center",
-        nameof(ProfitCenter) => "profit center",
-        nameof(JobLevel) => "job level",
+        nameof(Level) => "level",
+        nameof(Role) => "role",
         string other => other.ToLowerInvariant(),
     };
 }

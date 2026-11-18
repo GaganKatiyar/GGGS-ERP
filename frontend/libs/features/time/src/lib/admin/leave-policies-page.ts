@@ -58,9 +58,13 @@ import { MONTHS } from './leave-policy-model';
                 <td>{{ plan.leaveYear }}</td>
                 <td>{{ plan.leaveTypeCount }}</td>
                 <td>
+                  @for (center of plan.assignedCostCenters ?? []; track center) {
+                    <span class="policies__chip"><i class="pi pi-building" aria-hidden="true"></i> {{ center }}</span>
+                  }
                   @for (code of plan.assignedTo; track code) {
                     <span class="policies__chip">{{ label(code) }}</span>
-                  } @empty {
+                  }
+                  @if (!plan.assignedTo.length && !plan.assignedCostCenters?.length) {
                     <span class="muted">Not assigned</span>
                   }
                 </td>

@@ -76,6 +76,13 @@ internal static class LeavePlanEndpoints
         group.MapPut("/plan-assignments", async (IReadOnlyList<PlanAssignmentChange> body, LeavePlanService plans, CancellationToken ct) => TypedResults.Ok(await plans.SetAssignmentsAsync(body, ct)))
             .WithName("SetLeavePlanAssignments").RequirePermission(Permissions.Leave.PolicyManage);
 
+        // Cost centers come before engagement types: an office abroad follows its own rules.
+        group.MapGet("/plan-assignments/cost-centers", async (LeavePlanService plans, CancellationToken ct) => TypedResults.Ok(await plans.CostCenterAssignmentsAsync(ct)))
+            .WithName("ListLeaveCostCenterAssignments").RequirePermission(Permissions.Leave.PolicyManage);
+
+        group.MapPut("/plan-assignments/cost-centers", async (IReadOnlyList<CostCenterAssignmentChange> body, LeavePlanService plans, CancellationToken ct) => TypedResults.Ok(await plans.SetCostCenterAssignmentsAsync(body, ct)))
+            .WithName("SetLeaveCostCenterAssignments").RequirePermission(Permissions.Leave.PolicyManage);
+
         group.MapGet("/employee-plans", async (Guid? employeeId, LeavePlanService plans, CancellationToken ct) => TypedResults.Ok(await plans.ExceptionsAsync(employeeId, ct)))
             .WithName("ListEmployeeLeavePlans").RequirePermission(Permissions.Leave.PolicyManage);
 

@@ -8,7 +8,7 @@ export const REACHES: readonly { readonly scope: DataScope; readonly short: stri
   { scope: 'AllReports', short: 'All reports', long: 'All reports (whole team below)' },
   { scope: 'Department', short: 'Dept', long: 'Their department' },
   { scope: 'Branch', short: 'Branch', long: 'Their branch' },
-  { scope: 'LegalEntity', short: 'Entity', long: 'Their company' },
+  { scope: 'Company', short: 'Entity', long: 'Their company' },
   { scope: 'BusinessUnit', short: 'BU', long: 'Their business unit' },
   { scope: 'Tenant', short: 'All', long: 'Everyone' },
 ];

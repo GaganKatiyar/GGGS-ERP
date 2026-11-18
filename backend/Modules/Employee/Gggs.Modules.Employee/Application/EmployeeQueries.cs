@@ -62,13 +62,17 @@ public sealed record AddressView(string? Line1, string? Line2, string? City, str
 
 public sealed record CurrentAssignmentView(
     DateOnly EffectiveFrom,
-    NamedRef? LegalEntity,
+    NamedRef? Company,
     NamedRef? BusinessUnit,
-    NamedRef? Division,
+    /// <summary>Where the employee is placed: a department, or a function inside one.</summary>
     NamedRef? Department,
-    NamedRef? Job,
-    NamedRef? Position,
-    NamedRef? Grade,
+    /// <summary>When <see cref="Department"/> is a function, the department it belongs to; otherwise null.</summary>
+    NamedRef? ParentDepartment,
+    /// <summary>Their role: the work they do.</summary>
+    NamedRef? Role,
+    NamedRef? Level,
+    NamedRef? DesignationRef,
+    NamedRef? CostCenter,
     NamedRef? Location,
     NamedRef? Manager,
     NamedRef? Hrbp,
@@ -77,7 +81,18 @@ public sealed record CurrentAssignmentView(
     string? Designation);
 
 /// <summary>Statutory and bank details as most callers see them: masked hints, never the values.</summary>
-public sealed record SensitiveSummary(string? PanHint, string? UanHint, string? EsicHint, string? NationalIdHint, string? ProfessionalTaxStateCode, string? BankName, string? BankIfsc, string? BankAccountHint);
+public sealed record SensitiveSummary(
+    string? PanHint,
+    string? UanHint,
+    string? EsicHint,
+    string? NationalIdHint,
+    string? ProfessionalTaxStateCode,
+    string? BankName,
+    string? BankIfsc,
+    string? BankAccountHint,
+    string? PassportHint = null,
+    DateOnly? PassportExpiry = null,
+    decimal? PreviousExperienceYears = null);
 
 public sealed record EmployeeDetail(
     Guid Id,
@@ -110,7 +125,7 @@ public sealed record EmployeeDetail(
     DateOnly? ContractEndDate = null,
     Guid? PhotoId = null);
 
-public sealed record StatutoryView(string? Pan, string? Uan, string? EsicNumber, string? NationalId, string? ProfessionalTaxStateCode);
+public sealed record StatutoryView(string? Pan, string? Uan, string? EsicNumber, string? NationalId, string? ProfessionalTaxStateCode, string? PassportNumber = null);
 
 public sealed record BankView(string? BankName, string? Ifsc, string? AccountHolder, string? AccountNumber);
 
@@ -120,9 +135,9 @@ public sealed record EmploymentHistoryItem(
     DateOnly EffectiveFrom,
     DateOnly? EffectiveTo,
     string? DepartmentName,
-    string? JobName,
-    string? PositionName,
-    string? GradeName,
+    string? RoleName,
+    string? LevelName,
+    string? CostCenterName,
     string? LocationName,
     string? ManagerName,
     string? Designation,
@@ -185,7 +200,10 @@ public sealed class EmployeeQueries(
 
         if (query.DepartmentId is { } departmentId)
         {
-            rows = rows.Where(employee => employee.DepartmentId == departmentId);
+            // A department includes the people in its functions.
+            IReadOnlyList<Gggs.Modules.Organization.Contracts.DepartmentNode> tree = await orgStructure.DepartmentsAsync(cancellationToken);
+            List<Guid> ids = [departmentId, .. tree.Where(node => node.ParentDepartmentId == departmentId).Select(node => node.Id)];
+            rows = rows.Where(employee => employee.DepartmentId != null && ids.Contains(employee.DepartmentId.Value));
         }
 
         if (query.LocationId is { } locationId)
@@ -255,7 +273,8 @@ public sealed class EmployeeQueries(
             Reveal(SensitiveDataPurposes.Uan, employee.Uan),
             Reveal(SensitiveDataPurposes.Esic, employee.EsicNumber),
             Reveal(SensitiveDataPurposes.NationalId, employee.NationalId),
-            employee.ProfessionalTaxStateCode);
+            employee.ProfessionalTaxStateCode,
+            Reveal(SensitiveDataPurposes.Passport, employee.PassportNumber));
     }
 
     /// <summary>The real bank account number. Only for callers holding the bank permission; the endpoint checks it.</summary>
@@ -291,9 +310,9 @@ public sealed class EmployeeQueries(
             .ToListAsync(cancellationToken);
 
         IReadOnlyDictionary<Guid, string> departments = await orgStructure.GetNamesAsync(OrgUnitKind.Department, records.Select(record => record.DepartmentId), cancellationToken);
-        IReadOnlyDictionary<Guid, string> jobs = await orgStructure.GetNamesAsync(OrgUnitKind.Job, records.Select(record => record.JobId).OfType<Guid>(), cancellationToken);
-        IReadOnlyDictionary<Guid, string> positions = await orgStructure.GetNamesAsync(OrgUnitKind.Position, records.Select(record => record.PositionId).OfType<Guid>(), cancellationToken);
-        IReadOnlyDictionary<Guid, string> grades = await orgStructure.GetNamesAsync(OrgUnitKind.Grade, records.Select(record => record.GradeId).OfType<Guid>(), cancellationToken);
+        IReadOnlyDictionary<Guid, string> roles = await orgStructure.GetNamesAsync(OrgUnitKind.Role, records.Select(record => record.RoleId).OfType<Guid>(), cancellationToken);
+        IReadOnlyDictionary<Guid, string> levels = await orgStructure.GetNamesAsync(OrgUnitKind.Level, records.Select(record => record.LevelId).OfType<Guid>(), cancellationToken);
+        IReadOnlyDictionary<Guid, string> costCenters = await orgStructure.GetNamesAsync(OrgUnitKind.CostCenter, records.Select(record => record.CostCenterId).OfType<Guid>(), cancellationToken);
         IReadOnlyDictionary<Guid, string> locations = await orgStructure.GetNamesAsync(OrgUnitKind.Location, records.Select(record => record.LocationId).OfType<Guid>(), cancellationToken);
         Dictionary<Guid, string> managers = await NamesOfAsync(records.Select(record => record.ManagerEmployeeId), cancellationToken);
 
@@ -301,8 +320,8 @@ public sealed class EmployeeQueries(
         [
             .. records.Select(record => new EmploymentHistoryItem(
                 record.Id, record.ChangeType, record.EffectiveFrom, record.EffectiveTo,
-                Name(departments, record.DepartmentId), Name(jobs, record.JobId), Name(positions, record.PositionId),
-                Name(grades, record.GradeId), Name(locations, record.LocationId), Name(managers, record.ManagerEmployeeId),
+                Name(departments, record.DepartmentId), Name(roles, record.RoleId), Name(levels, record.LevelId),
+                Name(costCenters, record.CostCenterId), Name(locations, record.LocationId), Name(managers, record.ManagerEmployeeId),
                 record.Designation, record.EmploymentTypeCode, record.WorkModeCode, record.Reason)),
         ];
     }
@@ -463,15 +482,24 @@ public sealed class EmployeeQueries(
             .Select(record => record.EffectiveFrom)
             .FirstOrDefaultAsync(cancellationToken);
 
+        // A person placed in a function also belongs to that function's department.
+        Guid? parentDepartmentId = null;
+        if (employee.DepartmentId is { } departmentId)
+        {
+            IReadOnlyList<Gggs.Modules.Organization.Contracts.DepartmentNode> departments = await orgStructure.DepartmentsAsync(cancellationToken);
+            parentDepartmentId = departments.FirstOrDefault(node => node.Id == departmentId)?.ParentDepartmentId;
+        }
+
         var assignment = new CurrentAssignmentView(
             effectiveFrom,
-            await Org(OrgUnitKind.LegalEntity, employee.LegalEntityId),
+            await Org(OrgUnitKind.Company, employee.CompanyId),
             await Org(OrgUnitKind.BusinessUnit, employee.BusinessUnitId),
-            await Org(OrgUnitKind.Division, employee.DivisionId),
             await Org(OrgUnitKind.Department, employee.DepartmentId),
-            await Org(OrgUnitKind.Job, employee.JobId),
-            await Org(OrgUnitKind.Position, employee.PositionId),
-            await Org(OrgUnitKind.Grade, employee.GradeId),
+            await Org(OrgUnitKind.Department, parentDepartmentId),
+            await Org(OrgUnitKind.Role, employee.RoleId),
+            await Org(OrgUnitKind.Level, employee.LevelId),
+            await Org(OrgUnitKind.Designation, employee.DesignationId),
+            await Org(OrgUnitKind.CostCenter, employee.CostCenterId),
             await Org(OrgUnitKind.Location, employee.LocationId),
             employee.ManagerEmployeeId is { } managerId && people.TryGetValue(managerId, out string? manager) ? new NamedRef(managerId, manager) : null,
             employee.HrbpEmployeeId is { } hrbpId && people.TryGetValue(hrbpId, out string? hrbp) ? new NamedRef(hrbpId, hrbp) : null,
@@ -492,7 +520,8 @@ public sealed class EmployeeQueries(
             assignment,
             new SensitiveSummary(
                 employee.Pan?.Hint, employee.Uan?.Hint, employee.EsicNumber?.Hint, employee.NationalId?.Hint, employee.ProfessionalTaxStateCode,
-                employee.BankName, employee.BankIfsc, employee.BankAccountNumber?.Hint),
+                employee.BankName, employee.BankIfsc, employee.BankAccountNumber?.Hint,
+                employee.PassportNumber?.Hint, employee.PassportExpiry, employee.PreviousExperienceYears),
             employee.ContractEndDate,
             employee.PhotoId);
     }

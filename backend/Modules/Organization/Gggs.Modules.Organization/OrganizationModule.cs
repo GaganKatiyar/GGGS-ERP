@@ -6,8 +6,8 @@ using Gggs.Modules.Organization.Infrastructure;
 namespace Gggs.Modules.Organization;
 
 /// <summary>
-/// Organization structure (spec §10): companies, business units, divisions, departments,
-/// locations, cost and profit centers, grades, job levels, jobs and positions.
+/// Organization structure (spec §10): companies, business units, departments and their functions,
+/// locations, cost centers, roles, levels and designations.
 /// </summary>
 public sealed class OrganizationModule : IModule
 {

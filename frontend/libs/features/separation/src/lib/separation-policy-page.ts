@@ -145,7 +145,7 @@ export class SeparationPolicyPage {
     const probation = this.ruleProbation();
     return this.run(async () => {
       await this.api.addNoticeRule({
-        gradeId: null,
+        levelId: null,
         employmentTypeCode: this.ruleType().trim() || null,
         onProbation: probation === 'yes' ? true : probation === 'no' ? false : null,
         noticeDays: this.ruleDays(),

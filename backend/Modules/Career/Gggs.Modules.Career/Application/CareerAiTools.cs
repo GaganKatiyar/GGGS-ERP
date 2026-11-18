@@ -9,7 +9,7 @@ internal sealed class MyCareerTool(CareerService career) : IAiTool
 {
     public string Name => "my_career";
 
-    public string Description => "This person's career picture: current role and grade, latest rating, their position on each career path with the next step and the skills it needs, and promotions.";
+    public string Description => "This person's career picture: current role and level, latest rating, their position on each career path with the next step and the skills it needs, and promotions.";
 
     public JsonElement InputSchema { get; } = AiJson.Schema();
 

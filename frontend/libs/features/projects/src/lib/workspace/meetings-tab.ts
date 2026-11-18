@@ -6,7 +6,7 @@ import { ProjectsApi, isoToday } from '@gggs/shared/delivery';
 import { EmployeeSelect } from '@gggs/shared/employee-reference';
 import type { Meeting, MeetingAction, MeetingStatus, MeetingType, TeamMember } from '@gggs/shared/models';
 import { humanize } from '@gggs/shared/models';
-import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
+import { clockTime, EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
 
 /** Project meetings (spec §54): agenda before, minutes and actions after - actions tracked to done. */
 @Component({
@@ -25,7 +25,7 @@ import { EmptyState, FormDialog, StatusBadge } from '@gggs/shared/ui';
         <article class="meetings__item">
           <div class="meetings__row">
             <strong>{{ meeting.title }}</strong>
-            <span class="muted">{{ humanize(meeting.type) }} · {{ meeting.date | date: 'EEE d MMM y' }}{{ meeting.startTime ? ' ' + meeting.startTime.slice(0, 5) : '' }}{{ meeting.location ? ' · ' + meeting.location : '' }}</span>
+            <span class="muted">{{ humanize(meeting.type) }} · {{ meeting.date | date: 'EEE d MMM y' }}{{ meeting.startTime ? ', ' + clockTime(meeting.startTime) : '' }}{{ meeting.location ? ' · ' + meeting.location : '' }}</span>
             <gggs-status-badge [status]="meeting.status" />
             @if (canManage()) {
               <button type="button" class="btn btn--link btn--sm" (click)="edit(meeting)">Edit</button>
@@ -213,6 +213,7 @@ export class MeetingsTab {
   readonly me = input<string | undefined>(undefined);
 
   protected readonly humanize = humanize;
+  protected readonly clockTime = clockTime;
   protected readonly types: readonly MeetingType[] = ['Kickoff', 'StatusReview', 'SprintPlanning', 'SprintReview', 'Retrospective', 'Steering', 'Client', 'Other'];
   protected readonly meetings = signal<readonly Meeting[]>([]);
   protected readonly team = signal<readonly TeamMember[]>([]);

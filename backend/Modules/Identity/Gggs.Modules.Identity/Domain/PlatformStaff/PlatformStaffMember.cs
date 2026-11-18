@@ -41,10 +41,10 @@ public enum PlatformStaffStatus
 public sealed class PlatformStaffMember : AggregateRoot, IPlatformOwned, IAuditable, IConcurrencyAware
 {
     /// <summary>
-    /// Fourteen, not the tenant default of twelve. The extra margin is cheap and this account is a
-    /// higher-value target than any single tenant's.
+    /// Six, the same as the organisations' default password policy (set by GGGS on 2026-11-17).
+    /// The account lockout after repeated wrong attempts still applies.
     /// </summary>
-    private const int MinimumPasswordLength = 14;
+    public const int MinimumPasswordLength = 6;
 
     private const int PasswordHistoryCount = 10;
 

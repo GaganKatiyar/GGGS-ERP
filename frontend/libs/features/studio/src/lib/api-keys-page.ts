@@ -60,7 +60,7 @@ import { EXPIRY_CHOICES } from './studio-model';
                   <span class="keys__meta"><code>…{{ key.prefix }}</code> · {{ key.createdBy ? 'by ' + key.createdBy + ', ' : '' }}{{ key.createdDate | date: 'd MMM y' }}</span>
                 </td>
                 <td>{{ roleNames(key) }}</td>
-                <td>{{ key.lastUsedAt ? (key.lastUsedAt | date: 'd MMM, HH:mm') : 'Never' }}</td>
+                <td>{{ key.lastUsedAt ? (key.lastUsedAt | date: 'd MMM, h:mm a') : 'Never' }}</td>
                 <td>{{ key.expiresOn ? (key.expiresOn | date: 'd MMM y') : 'Never' }}</td>
                 <td><span class="keys__status" [attr.data-status]="key.status">{{ key.status }}</span></td>
                 <td>

@@ -1,6 +1,9 @@
 using Gggs.BuildingBlocks.Application;
+using Gggs.BuildingBlocks.Messaging;
+using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Security;
 using Gggs.Modules.Identity.Application.Authentication;
+using Gggs.Modules.Identity.Contracts;
 using Gggs.Modules.Identity.Application.Users;
 using Gggs.Modules.Identity.Domain.Roles;
 using Gggs.Modules.Identity.Domain.Users;
@@ -28,6 +31,9 @@ public sealed record TenantSeedingResult(int RolesCreated, int RolesAlreadyPrese
 public sealed class TenantSeedingService(
     IRoleRepository roles,
     IUserRepository users,
+    IInvitationTokenGenerator tokenGenerator,
+    IIntegrationEventPublisher publisher,
+    ITenantContext tenantContext,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
     ILogger<TenantSeedingService> logger)
@@ -91,13 +97,13 @@ public sealed class TenantSeedingService(
     }
 
     /// <summary>
-    /// Creates the first administrator, in <see cref="UserStatus.Invited"/> and with no credential.
+    /// Creates the first administrator, in <see cref="UserStatus.Invited"/>, and emails them their
+    /// invitation.
     /// <para>
-    /// Deliberately without an invitation token. A token is a one-time credential that only exists
-    /// in the transaction that makes it, and nothing here can deliver one - the Notification service
-    /// does not exist yet. Minting one now would leave a live credential in the database that its
-    /// owner never received and nobody could use. The account is created instead, and the
-    /// invitation is issued on demand through the platform bootstrap endpoint.
+    /// The token is minted in the same transaction as the account and leaves only on the
+    /// <see cref="UserInvitedIntegrationEvent"/>, which the Notification module turns into the
+    /// invitation email - so the owner receives it without anyone at the platform handling it. If it
+    /// expires or goes astray, platform staff re-send it from the console.
     /// </para>
     /// </summary>
     private async Task<Guid?> EnsureAdministratorAsync(
@@ -146,10 +152,18 @@ public sealed class TenantSeedingService(
             employeeId: null,
             now);
 
+        (string token, string tokenHash) = tokenGenerator.Generate();
+        DateTime expires = now.Add(TenantBootstrapService.InvitationLifetime);
+        administrator.SetInvitationToken(tokenHash, expires);
+
         users.Add(administrator);
         roles.AddGrant(UserRole.Grant(administrator.Id, adminRole.Id, DateOnly.FromDateTime(now)));
 
-        logger.LogInformation("Administrator {UserId} created, awaiting their invitation.", administrator.Id);
+        publisher.Publish(new UserInvitedIntegrationEvent(
+            administrator.Id, administrator.Email, administrator.DisplayName, token, expires,
+            tenantContext.Tenant?.Code ?? string.Empty));
+
+        logger.LogInformation("Administrator {UserId} created and their invitation sent.", administrator.Id);
 
         return administrator.Id;
     }
@@ -158,9 +172,5 @@ public sealed class TenantSeedingService(
     /// A first display name taken from the address rather than invented. The person changes it on
     /// first sign-in, and a placeholder we made up would be worse than the address they gave us.
     /// </summary>
-    private static string DisplayNameFor(string email)
-    {
-        int at = email.IndexOf('@', StringComparison.Ordinal);
-        return at > 0 ? email[..at] : email;
-    }
+    private static string DisplayNameFor(string email) => TenantBootstrapService.DisplayNameFor(email);
 }

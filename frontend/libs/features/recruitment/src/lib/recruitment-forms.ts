@@ -1,12 +1,12 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, model, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, model, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiError } from '@gggs/core/http';
 import { EmployeeSelect } from '@gggs/shared/employee-reference';
 import { RecruitmentApi } from '@gggs/shared/hiring';
 import { LookupSelect } from '@gggs/shared/master-data';
-import type { AgencyItem, CandidateDetailsInput, CandidateProfile, CandidateSource, CandidateView, RequisitionInput, RequisitionItem } from '@gggs/shared/models';
+import type { AgencyItem, CandidateDetailsInput, CandidateProfile, CandidateSource, CandidateView, OrgUnit, RequisitionInput, RequisitionItem } from '@gggs/shared/models';
 import { CANDIDATE_SOURCES, LOOKUP_LISTS, humanize } from '@gggs/shared/models';
-import { OrgSelect } from '@gggs/shared/org-reference';
+import { OrgSelect, OrgStructureApi, rolesFor } from '@gggs/shared/org-reference';
 import { FormDialog } from '@gggs/shared/ui';
 
 export const errorText = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
@@ -22,8 +22,7 @@ const num = (value: string): number | null => (value === '' ? null : +value);
 const blankRequisition = (): RequisitionInput => ({
   title: '',
   departmentId: '',
-  positionId: null,
-  jobId: null,
+  roleId: null,
   locationId: null,
   openings: 1,
   employmentTypeCode: 'FULL_TIME',
@@ -43,8 +42,7 @@ const blankRequisition = (): RequisitionInput => ({
 const requisitionInput = (item: RequisitionItem): RequisitionInput => ({
   title: item.title,
   departmentId: item.departmentId,
-  positionId: item.positionId ?? null,
-  jobId: item.jobId ?? null,
+  roleId: item.roleId ?? null,
   locationId: item.locationId ?? null,
   openings: item.openings,
   employmentTypeCode: item.employmentTypeCode,
@@ -95,7 +93,11 @@ const candidateInput = (candidate: CandidateProfile): CandidateDetailsInput => (
   notes: candidate.notes ?? null,
 });
 
-/** Opening or editing a requisition. */
+/**
+ * Opening or editing a requirement (a requisition). Only what the app keeps for one, in four
+ * steps: what the job is, where and when, who fits, and who runs the hiring. Picking a role
+ * fills an empty title with its name; skills are typed as tags and drive the match score.
+ */
 @Component({
   selector: 'gggs-requisition-form',
   imports: [FormsModule, FormDialog, OrgSelect, LookupSelect, EmployeeSelect],
@@ -103,93 +105,126 @@ const candidateInput = (candidate: CandidateProfile): CandidateDetailsInput => (
   template: `
     <gggs-form-dialog
       [(visible)]="visible"
-      [title]="requisition() ? 'Edit ' + requisition()?.number : 'Open a requisition'"
-      [saveLabel]="requisition() ? 'Save' : 'Open'"
+      [title]="requisition() ? 'Edit ' + requisition()?.number : 'New requirement'"
+      [description]="requisition() ? '' : 'Approved manpower requests become requirements on their own. Open one here when hiring starts without a request.'"
+      [saveLabel]="requisition() ? 'Save changes' : 'Create requirement'"
       [busy]="busy()"
       [error]="error()"
-      [saveDisabled]="!form().title.trim() || !form().departmentId"
+      [saveDisabled]="!form().title.trim() || !form().departmentId || form().openings < 1"
       (save)="save()"
       size="lg"
     >
-      <div class="rec__grid">
-        <label class="field rec__wide">
-          <span class="field__label">Title</span>
-          <input type="text" maxlength="200" [value]="form().title" (input)="patch({ title: $any($event.target).value })" />
-        </label>
-        <label class="field">
-          <span class="field__label">Department</span>
-          <gggs-org-select kind="departments" placeholder="Choose" ariaLabel="Department" [ngModel]="form().departmentId || null" (ngModelChange)="patch({ departmentId: $event ?? '' })" />
-        </label>
-        <label class="field">
-          <span class="field__label">Job</span>
-          <gggs-org-select kind="jobs" placeholder="Any" ariaLabel="Job" [ngModel]="form().jobId" (ngModelChange)="patch({ jobId: $event })" />
-        </label>
-        <label class="field">
-          <span class="field__label">Position</span>
-          <gggs-org-select kind="positions" placeholder="None" ariaLabel="Position" [ngModel]="form().positionId" (ngModelChange)="patch({ positionId: $event })" />
-        </label>
-        <label class="field">
-          <span class="field__label">Location</span>
-          <gggs-org-select kind="locations" placeholder="Any" ariaLabel="Location" [ngModel]="form().locationId" (ngModelChange)="patch({ locationId: $event })" />
-        </label>
-        <label class="field">
-          <span class="field__label">Openings</span>
-          <input type="number" min="1" max="500" [value]="form().openings" (input)="patch({ openings: +$any($event.target).value })" />
-        </label>
-        <label class="field">
-          <span class="field__label">Target date</span>
-          <input type="date" [value]="form().targetDate ?? ''" (change)="patch({ targetDate: $any($event.target).value || null })" />
-        </label>
-        <label class="field">
-          <span class="field__label">Employment type</span>
-          <gggs-lookup-select [list]="lists.employmentType" ariaLabel="Employment type" [ngModel]="form().employmentTypeCode" (ngModelChange)="patch({ employmentTypeCode: $event ?? '' })" />
-        </label>
-        <label class="field">
-          <span class="field__label">Work mode</span>
-          <gggs-lookup-select [list]="lists.workMode" ariaLabel="Work mode" [ngModel]="form().workModeCode" (ngModelChange)="patch({ workModeCode: $event ?? '' })" />
-        </label>
-        <label class="field">
-          <span class="field__label">Experience from (years)</span>
-          <input type="number" min="0" step="0.5" [value]="form().minExperienceYears ?? ''" (input)="patch({ minExperienceYears: num($any($event.target).value) })" />
-        </label>
-        <label class="field">
-          <span class="field__label">to (years)</span>
-          <input type="number" min="0" step="0.5" [value]="form().maxExperienceYears ?? ''" (input)="patch({ maxExperienceYears: num($any($event.target).value) })" />
-        </label>
-        <label class="field">
-          <span class="field__label">CTC from</span>
-          <input type="number" min="0" [value]="form().salaryMin ?? ''" (input)="patch({ salaryMin: num($any($event.target).value) })" />
-        </label>
-        <label class="field">
-          <span class="field__label">CTC to</span>
-          <input type="number" min="0" [value]="form().salaryMax ?? ''" (input)="patch({ salaryMax: num($any($event.target).value) })" />
-        </label>
-        <label class="field">
-          <span class="field__label">Hiring manager</span>
-          <gggs-employee-select ariaLabel="Hiring manager" [ngModel]="form().hiringManagerEmployeeId" (ngModelChange)="patch({ hiringManagerEmployeeId: $event })" />
-        </label>
-        <label class="field">
-          <span class="field__label">Recruiter</span>
-          <gggs-employee-select ariaLabel="Recruiter" [ngModel]="form().recruiterEmployeeId" (ngModelChange)="patch({ recruiterEmployeeId: $event })" />
-        </label>
-        <label class="field">
-          <span class="field__label">Priority</span>
-          <select [value]="form().priority ?? ''" (change)="patch({ priority: $any($event.target).value || null })">
-            <option value="Low">Low</option>
-            <option value="Medium">Medium</option>
-            <option value="High">High</option>
-            <option value="Critical">Critical</option>
-          </select>
-        </label>
-        <label class="field rec__wide">
-          <span class="field__label">Skills (comma-separated; used for matching)</span>
-          <input type="text" [value]="form().skills.join(', ')" (change)="patch({ skills: split($any($event.target).value) })" />
-        </label>
-        <label class="field rec__wide">
-          <span class="field__label">Description</span>
-          <textarea rows="4" maxlength="8000" [value]="form().description ?? ''" (input)="patch({ description: $any($event.target).value || null })"></textarea>
-        </label>
-      </div>
+      <section class="rqf__section">
+        <header class="rqf__head"><span class="rqf__step">1</span><div><h3>The job</h3><p>What you are hiring for, and how many.</p></div></header>
+        <div class="rqf__grid">
+          <label class="field">
+            <span class="field__label">Department or function *</span>
+            <gggs-org-select kind="departments" placeholder="Choose where the hire will sit" ariaLabel="Department" [ngModel]="form().departmentId || null" (ngModelChange)="chooseDepartment($event)" />
+          </label>
+          <label class="field">
+            <span class="field__label">Role</span>
+            <gggs-org-select kind="roles" placeholder="Choose a role of the department" ariaLabel="Role" [where]="roleFilter()" [ngModel]="form().roleId" (ngModelChange)="chooseRole($event)" />
+          </label>
+          <label class="field rqf__wide">
+            <span class="field__label">Title *</span>
+            <input type="text" maxlength="200" placeholder="e.g. Senior .NET Engineer" [value]="form().title" (input)="patch({ title: $any($event.target).value })" />
+            <span class="field__hint">Shown on the job posting. Picking a role fills it in if it is empty.</span>
+          </label>
+          <label class="field">
+            <span class="field__label">Openings *</span>
+            <input type="number" min="1" max="500" [value]="form().openings" (input)="patch({ openings: +$any($event.target).value })" />
+          </label>
+          <div class="field">
+            <span class="field__label" id="rqf-priority">Priority</span>
+            <div class="rqf__choice" role="radiogroup" aria-labelledby="rqf-priority">
+              @for (option of priorities; track option) {
+                <button type="button" role="radio" [attr.aria-checked]="form().priority === option" [class]="'rqf__opt rqf__opt--' + option.toLowerCase()" (click)="patch({ priority: option })">{{ option }}</button>
+              }
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="rqf__section">
+        <header class="rqf__head"><span class="rqf__step">2</span><div><h3>Where and when</h3><p>Where they will work and when you need them.</p></div></header>
+        <div class="rqf__grid">
+          <label class="field">
+            <span class="field__label">Location</span>
+            <gggs-org-select kind="locations" placeholder="Any office" ariaLabel="Location" [ngModel]="form().locationId" (ngModelChange)="patch({ locationId: $event })" />
+          </label>
+          <label class="field">
+            <span class="field__label">Needed by</span>
+            <input type="date" [value]="form().targetDate ?? ''" (change)="patch({ targetDate: $any($event.target).value || null })" />
+          </label>
+          <label class="field">
+            <span class="field__label">Work mode</span>
+            <gggs-lookup-select [list]="lists.workMode" ariaLabel="Work mode" [ngModel]="form().workModeCode" (ngModelChange)="patch({ workModeCode: $event ?? '' })" />
+          </label>
+          <label class="field">
+            <span class="field__label">Employment type</span>
+            <gggs-lookup-select [list]="lists.employmentType" ariaLabel="Employment type" [ngModel]="form().employmentTypeCode" (ngModelChange)="patch({ employmentTypeCode: $event ?? '' })" />
+          </label>
+        </div>
+      </section>
+
+      <section class="rqf__section">
+        <header class="rqf__head"><span class="rqf__step">3</span><div><h3>Who fits</h3><p>Used to score each candidate's match.</p></div></header>
+        <div class="rqf__grid">
+          <div class="field">
+            <span class="field__label">Experience (years)</span>
+            <div class="rqf__range">
+              <input type="number" min="0" step="0.5" placeholder="From" aria-label="Experience from" [value]="form().minExperienceYears ?? ''" (input)="patch({ minExperienceYears: num($any($event.target).value) })" />
+              <span aria-hidden="true">to</span>
+              <input type="number" min="0" step="0.5" placeholder="To" aria-label="Experience to" [value]="form().maxExperienceYears ?? ''" (input)="patch({ maxExperienceYears: num($any($event.target).value) })" />
+            </div>
+          </div>
+          <div class="field">
+            <span class="field__label">Salary budget (₹ a year)</span>
+            <div class="rqf__range">
+              <input type="number" min="0" step="50000" placeholder="From" aria-label="Salary from" [value]="form().salaryMin ?? ''" (input)="patch({ salaryMin: num($any($event.target).value) })" />
+              <span aria-hidden="true">to</span>
+              <input type="number" min="0" step="50000" placeholder="To" aria-label="Salary to" [value]="form().salaryMax ?? ''" (input)="patch({ salaryMax: num($any($event.target).value) })" />
+            </div>
+            @if (budgetHint(); as hint) {
+              <span class="field__hint">{{ hint }}</span>
+            }
+          </div>
+          <div class="field rqf__wide">
+            <span class="field__label" id="rqf-skills">Skills</span>
+            <div class="rqf__tags">
+              @for (skill of form().skills; track skill) {
+                <span class="rqf__tag">{{ skill }}<button type="button" [attr.aria-label]="'Remove ' + skill" (click)="removeSkill(skill)">×</button></span>
+              }
+              <input
+                #skillInput
+                type="text"
+                aria-labelledby="rqf-skills"
+                [placeholder]="form().skills.length ? 'Add another' : 'Type a skill and press Enter'"
+                (keydown)="skillKey($event, skillInput)"
+                (blur)="addSkill(skillInput)"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="rqf__section">
+        <header class="rqf__head"><span class="rqf__step">4</span><div><h3>Who runs it</h3><p>They are told about new candidates and decisions.</p></div></header>
+        <div class="rqf__grid">
+          <label class="field">
+            <span class="field__label">Hiring manager</span>
+            <gggs-employee-select ariaLabel="Hiring manager" [ngModel]="form().hiringManagerEmployeeId" (ngModelChange)="patch({ hiringManagerEmployeeId: $event })" />
+          </label>
+          <label class="field">
+            <span class="field__label">Recruiter</span>
+            <gggs-employee-select ariaLabel="Recruiter" [ngModel]="form().recruiterEmployeeId" (ngModelChange)="patch({ recruiterEmployeeId: $event })" />
+          </label>
+          <label class="field rqf__wide">
+            <span class="field__label">About the job</span>
+            <textarea rows="4" maxlength="8000" placeholder="What the person will do and what good looks like. Used for the job posting." [value]="form().description ?? ''" (input)="patch({ description: $any($event.target).value || null })"></textarea>
+          </label>
+        </div>
+      </section>
     </gggs-form-dialog>
   `,
   styleUrl: './recruitment.css',
@@ -208,14 +243,80 @@ export class RequisitionForm {
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
 
+  private readonly org = inject(OrgStructureApi);
+  private readonly departments = signal<readonly OrgUnit[]>([]);
+  private roles: readonly OrgUnit[] = [];
+  /** The chosen department's roles (a function shares its department's). */
+  protected readonly roleFilter = computed(() => rolesFor(this.form().departmentId, this.departments()));
+
   constructor() {
     effect(() => {
       if (this.visible()) {
         const requisition = this.requisition();
         this.form.set(requisition ? requisitionInput(requisition) : blankRequisition());
         this.error.set(null);
+        void this.loadReferences();
       }
     });
+  }
+
+  private async loadReferences(): Promise<void> {
+    if (this.departments().length) {
+      return;
+    }
+    const [departments, roles] = await Promise.all([this.org.active('departments'), this.org.active('roles')]);
+    this.roles = roles;
+    this.departments.set(departments);
+  }
+
+  /** A role that is not one of the new department's is cleared. */
+  protected chooseDepartment(departmentId: string | null): void {
+    const fits = rolesFor(departmentId, this.departments());
+    const role = this.roles.find((row) => row.id === this.form().roleId);
+    this.patch({ departmentId: departmentId ?? '', ...(role && fits && !fits(role) ? { roleId: null } : {}) });
+  }
+
+  /** A role fills an empty title with its own name. */
+  protected chooseRole(roleId: string | null): void {
+    const role = this.roles.find((row) => row.id === roleId);
+    this.patch({ roleId, ...(role && !this.form().title.trim() ? { title: role.name } : {}) });
+  }
+
+  protected readonly priorities = ['Low', 'Medium', 'High', 'Critical'];
+
+  /** "₹18 L to ₹28 L a year", so a missing zero is easy to spot. */
+  protected readonly budgetHint = computed(() => {
+    const { salaryMin, salaryMax } = this.form();
+    const lakh = (n: number) => `₹${(n / 100_000).toLocaleString('en-IN', { maximumFractionDigits: 1 })} L`;
+    if (salaryMin == null && salaryMax == null) {
+      return null;
+    }
+    return `${salaryMin != null ? lakh(salaryMin) : '…'} to ${salaryMax != null ? lakh(salaryMax) : '…'} a year`;
+  });
+
+  protected skillKey(event: KeyboardEvent, input: HTMLInputElement): void {
+    if (event.key === 'Enter' || event.key === ',') {
+      event.preventDefault();
+      this.addSkill(input);
+    } else if (event.key === 'Backspace' && !input.value) {
+      const skills = this.form().skills;
+      const last = skills[skills.length - 1];
+      if (last) {
+        this.removeSkill(last);
+      }
+    }
+  }
+
+  protected addSkill(input: HTMLInputElement): void {
+    const added = splitList(input.value).filter((skill) => !this.form().skills.some((s) => s.toLowerCase() === skill.toLowerCase()));
+    input.value = '';
+    if (added.length) {
+      this.patch({ skills: [...this.form().skills, ...added] });
+    }
+  }
+
+  protected removeSkill(skill: string): void {
+    this.patch({ skills: this.form().skills.filter((s) => s !== skill) });
   }
 
   protected patch(change: Partial<RequisitionInput>): void {
@@ -230,7 +331,7 @@ export class RequisitionForm {
       this.visible.set(false);
       this.saved.emit(saved);
     } catch (error) {
-      this.error.set(errorText(error, 'The requisition could not be saved.'));
+      this.error.set(errorText(error, 'The requirement could not be saved.'));
     } finally {
       this.busy.set(false);
     }

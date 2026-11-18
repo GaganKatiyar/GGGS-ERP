@@ -49,12 +49,13 @@ const today = () => localIsoDate();
 
       <dl class="definition-list">
         <dt>Current since</dt><dd>{{ p.assignment.effectiveFrom | date: 'mediumDate' }}</dd>
+        <dt>Department</dt><dd>{{ (p.assignment.parentDepartment ?? p.assignment.department)?.name ?? '—' }}</dd>
+        <dt>Function</dt><dd>{{ p.assignment.parentDepartment ? p.assignment.department?.name : '—' }}</dd>
+        <dt>Role</dt><dd>{{ p.assignment.role?.name ?? '—' }}</dd>
         <dt>Designation</dt><dd>{{ p.assignment.designation ?? '—' }}</dd>
-        <dt>Department</dt><dd>{{ p.assignment.department?.name ?? '—' }}</dd>
-        <dt>Position</dt><dd>{{ p.assignment.position?.name ?? '—' }}</dd>
-        <dt>Job</dt><dd>{{ p.assignment.job?.name ?? '—' }}</dd>
-        <dt>Grade</dt><dd>{{ p.assignment.grade?.name ?? '—' }}</dd>
+        <dt>Level</dt><dd>{{ p.assignment.level?.name ?? '—' }}</dd>
         <dt>Location</dt><dd>{{ p.assignment.location?.name ?? '—' }}</dd>
+        <dt>Cost center</dt><dd>{{ p.assignment.costCenter?.name ?? '—' }}</dd>
         <dt>Manager</dt><dd>{{ p.assignment.manager?.name ?? '—' }}</dd>
         <dt>Employment type</dt><dd>{{ p.assignment.employmentType.label }}</dd>
         <dt>Work mode</dt><dd>{{ p.assignment.workMode.label }}</dd>

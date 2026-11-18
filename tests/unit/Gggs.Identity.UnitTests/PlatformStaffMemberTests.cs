@@ -75,11 +75,10 @@ public sealed class PlatformStaffMemberTests
     [Fact]
     public void APasswordShorterThanTheFixedMinimum_IsRejected()
     {
-        // Fourteen, not the tenant default of twelve - a compromised platform account reaches every
-        // tenant's commercial data, not one customer's.
-        IReadOnlyList<string> failures = PlatformStaffMember.Validate("short-pass1", null, null);
-
-        failures.ShouldNotBeEmpty();
+        // Six, the same as the organisations' default policy.
+        PlatformStaffMember.MinimumPasswordLength.ShouldBe(6);
+        PlatformStaffMember.Validate("Ab@12", null, null).ShouldNotBeEmpty();
+        PlatformStaffMember.Validate("Root@123", null, null).ShouldBeEmpty();
     }
 
     [Fact]

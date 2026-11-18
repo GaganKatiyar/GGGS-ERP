@@ -104,6 +104,18 @@ public sealed class EmployeePhotoService(
         => await OpenAsync(dbContext.Employees.AsNoTracking().Where(employee => employee.Id == employeeId), employeeId, cancellationToken);
 
     /// <summary>Another employee's photo, within the caller's employee-view scope; null when out of scope or none.</summary>
+    /// <summary>HR replacing someone's photo (at hire, say): only for an employee the caller's edit grant reaches.</summary>
+    public async Task<PhotoInfo> ReplaceForAsync(Guid employeeId, IncomingPhoto photo, CancellationToken cancellationToken = default)
+    {
+        IQueryable<EmployeeEntity> editable = await scope.ApplyAsync(dbContext.Employees.AsNoTracking(), Permissions.Employee.Edit, cancellationToken);
+        if (!await editable.AnyAsync(employee => employee.Id == employeeId, cancellationToken))
+        {
+            throw new NotFoundException("Employee", employeeId);
+        }
+
+        return await ReplaceAsync(employeeId, photo, cancellationToken);
+    }
+
     public async Task<PhotoContent?> OpenAsync(Guid employeeId, CancellationToken cancellationToken = default)
     {
         IQueryable<EmployeeEntity> visible = await scope.ApplyAsync(dbContext.Employees.AsNoTracking(), Permissions.Employee.View, cancellationToken);

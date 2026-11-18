@@ -3,6 +3,7 @@ using Gggs.BuildingBlocks.Messaging;
 using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.Modules.Employee.Contracts;
 using Gggs.Modules.Leave.Contracts;
+using Gggs.Modules.Shift.Contracts;
 using Gggs.Modules.Workflow.Contracts;
 using Hangfire;
 
@@ -75,6 +76,30 @@ internal sealed class RecloseOnLeaveApproved(AttendanceService attendance) : IIn
     {
         ArgumentNullException.ThrowIfNull(integrationEvent);
         return attendance.PersistAsync([integrationEvent.EmployeeId], integrationEvent.StartDate, integrationEvent.EndDate, cancellationToken);
+    }
+}
+
+/// <summary>
+/// A shift's rules changed: the closed days of the current month (the month yesterday falls in, so
+/// the month just ended is still covered on the 1st) are judged again for everyone who worked it.
+/// Earlier months are left as recorded - their payroll has normally been run.
+/// </summary>
+internal sealed class RecloseOnShiftChanged(AttendanceService attendance, IEmployeeDirectory employees, IShiftSchedule schedule, ITenantClock clock)
+    : IIntegrationEventConsumer<ShiftChangedIntegrationEvent>
+{
+    public async Task HandleAsync(ShiftChangedIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(integrationEvent);
+        DateOnly yesterday = (await clock.TodayAsync(cancellationToken)).AddDays(-1);
+        DateOnly from = new(yesterday.Year, yesterday.Month, 1);
+
+        IReadOnlyList<Guid> people = await employees.ListActiveIdsAsync(null, null, cancellationToken);
+        IReadOnlyList<ScheduledDay> days = await schedule.GetAsync(people, from, yesterday, cancellationToken);
+        List<Guid> onShift = [.. days.Where(day => day.ShiftId == integrationEvent.ShiftId).Select(day => day.EmployeeId).Distinct()];
+        if (onShift.Count > 0)
+        {
+            await attendance.PersistAsync(onShift, from, yesterday, cancellationToken);
+        }
     }
 }
 

@@ -48,7 +48,7 @@ describe('menuPages', () => {
   it('opens the pages a permission set reaches, each with the permission that opens it', () => {
     const pages = menuPages(codeSet(['self.profile.view', 'self.leave.view']), always, true);
     const profile = pages.find((entry) => entry.page.route === '/me/profile');
-    expect(profile?.group.label).toBe('My Space');
+    expect(profile?.group.label).toBe('My Profile & Documents');
     expect(profile?.unlockedBy).toBe('self.profile.view');
     expect(pages.some((entry) => entry.page.route === '/dashboard')).toBe(true);
     expect(pages.some((entry) => entry.page.route === '/admin/users')).toBe(false);

@@ -28,7 +28,7 @@ public sealed record OfferItem(
     string Currency,
     DateOnly JoiningDate,
     string Designation,
-    Guid? GradeId,
+    Guid? LevelId,
     DateOnly? ExpiresOn,
     string? Notes,
     OfferStatus Status,
@@ -43,8 +43,40 @@ public sealed record OfferBody(Guid ApplicationId, OfferTerms Terms, bool Submit
 
 public sealed record RespondBody(bool Accepted, string? Reason);
 
-/// <summary>Who the new joiner reports to and what they are hired as. Unset values come from the requisition.</summary>
-public sealed record HireBody(Guid? ManagerEmployeeId, Guid? PositionId, Guid? LocationId, string? EmploymentTypeCode, string? WorkModeCode);
+/// <summary>
+/// Who the new joiner reports to and what they are hired as. Unset values come from the requisition;
+/// <see cref="Details"/> carries the rest of the record (addresses, IDs, bank) when HR hires from the
+/// employee directory's hire form.
+/// </summary>
+public sealed record HireBody(Guid? ManagerEmployeeId, Guid? LocationId, string? EmploymentTypeCode, string? WorkModeCode, HireDetails? Details = null);
+
+/// <summary>
+/// An accepted offer whose candidate has not joined yet, with what the hire form fills in from it:
+/// the person, the offer's terms and where the requisition places them.
+/// </summary>
+public sealed record HireableOffer(
+    Guid OfferId,
+    string OfferNumber,
+    Guid CandidateId,
+    string CandidateNumber,
+    string FirstName,
+    string? LastName,
+    string Email,
+    string? Mobile,
+    decimal? ExperienceYears,
+    string? CurrentCompany,
+    string RequisitionTitle,
+    DateOnly JoiningDate,
+    decimal AnnualCtc,
+    string Currency,
+    string Designation,
+    Guid? LevelId,
+    Guid? DepartmentId,
+    Guid? RoleId,
+    Guid? LocationId,
+    Guid? ManagerEmployeeId,
+    string? EmploymentTypeCode,
+    string? WorkModeCode);
 
 public sealed record HireResult(Guid EmployeeId, string EmployeeCode, bool RequisitionFilled);
 
@@ -95,6 +127,31 @@ internal sealed class OfferService(
         }
 
         return await ItemsAsync(await rows.OrderByDescending(row => row.CreatedDate).Take(500).ToListAsync(cancellationToken), cancellationToken);
+    }
+
+    /// <summary>Accepted offers whose candidate is not an employee yet: the people the hire form can hire.</summary>
+    public async Task<IReadOnlyList<HireableOffer>> HireableAsync(CancellationToken cancellationToken)
+    {
+        List<Guid>? visible = await access.RequisitionIdsAsync(Permissions.Recruitment.OfferManage, cancellationToken);
+        IQueryable<Offer> offers = dbContext.Offers.AsNoTracking().Where(row => row.Status == OfferStatus.Accepted);
+        if (visible is not null)
+        {
+            offers = offers.Where(row => visible.Contains(row.RequisitionId));
+        }
+
+        return await (
+            from offer in offers
+            join candidate in dbContext.Candidates.AsNoTracking() on offer.CandidateId equals candidate.Id
+            join requisition in dbContext.Requisitions.AsNoTracking() on offer.RequisitionId equals requisition.Id
+            where candidate.EmployeeId == null
+            orderby offer.JoiningDate, candidate.FirstName
+            select new HireableOffer(
+                offer.Id, offer.Number, candidate.Id, candidate.Number, candidate.FirstName, candidate.LastName, candidate.Email, candidate.Mobile,
+                candidate.ExperienceYears, candidate.CurrentCompany, requisition.Title, offer.JoiningDate, offer.AnnualCtc, offer.Currency, offer.Designation,
+                offer.LevelId, requisition.DepartmentId, requisition.RoleId, requisition.LocationId, requisition.HiringManagerEmployeeId,
+                requisition.EmploymentTypeCode, requisition.WorkModeCode))
+            .Take(200)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<OfferItem> OfferAsync(Guid id, CancellationToken cancellationToken)
@@ -244,9 +301,10 @@ internal sealed class OfferService(
         (Guid employeeId, string employeeCode) = await hiring.HireAsync(
             new NewHire(
                 candidate.FirstName, null, candidate.LastName ?? candidate.FirstName, candidate.Email, candidate.Mobile, offer.JoiningDate, requisition.DepartmentId,
-                body.PositionId ?? requisition.PositionId, requisition.JobId, offer.GradeId, body.LocationId ?? requisition.LocationId,
+                requisition.RoleId, offer.LevelId, body.LocationId ?? requisition.LocationId,
                 body.ManagerEmployeeId ?? requisition.HiringManagerEmployeeId, body.EmploymentTypeCode ?? requisition.EmploymentTypeCode,
-                body.WorkModeCode ?? requisition.WorkModeCode, offer.Designation),
+                body.WorkModeCode ?? requisition.WorkModeCode, offer.Designation,
+                Details: (body.Details ?? new HireDetails()) with { PreviousExperienceYears = body.Details?.PreviousExperienceYears ?? candidate.ExperienceYears }),
             cancellationToken);
         await salaries.ReviseAsync(new SalaryRevisionRequest(employeeId, offer.AnnualCtc, offer.JoiningDate, null, "Hire", SubjectType, offer.Id), cancellationToken);
 
@@ -325,7 +383,7 @@ internal sealed class OfferService(
 
     internal static OfferItem Item(Offer offer, string candidateName, Requisition requisition) => new(
         offer.Id, offer.Number, offer.ApplicationId, offer.CandidateId, candidateName, requisition.Id, requisition.Number, requisition.Title, offer.AnnualCtc, offer.Currency,
-        offer.JoiningDate, offer.Designation, offer.GradeId, offer.ExpiresOn, offer.Notes, offer.Status, offer.WorkflowInstanceId, offer.SentDate, offer.RespondedDate,
+        offer.JoiningDate, offer.Designation, offer.LevelId, offer.ExpiresOn, offer.Notes, offer.Status, offer.WorkflowInstanceId, offer.SentDate, offer.RespondedDate,
         offer.DeclineReason, offer.CreatedDate, requisition.SalaryMax is not { } max || offer.AnnualCtc <= max);
 
     private static DateOnly Min(DateOnly first, DateOnly second) => first < second ? first : second;

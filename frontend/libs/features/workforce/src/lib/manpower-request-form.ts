@@ -1,19 +1,18 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, model, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, model, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiError } from '@gggs/core/http';
 import { EmployeeSelect } from '@gggs/shared/employee-reference';
 import { WorkforceApi } from '@gggs/shared/hiring';
 import { LookupSelect } from '@gggs/shared/master-data';
-import type { ManpowerRequestInput, ManpowerRequestItem } from '@gggs/shared/models';
+import type { ManpowerRequestInput, ManpowerRequestItem, OrgUnit } from '@gggs/shared/models';
 import { LOOKUP_LISTS, MANPOWER_PRIORITIES, MANPOWER_REASONS, humanize } from '@gggs/shared/models';
-import { OrgSelect } from '@gggs/shared/org-reference';
+import { OrgSelect, OrgStructureApi, rolesFor } from '@gggs/shared/org-reference';
 import { FormDialog } from '@gggs/shared/ui';
 
 const blank = (): ManpowerRequestInput => ({
   title: '',
   departmentId: '',
-  positionId: null,
-  jobId: null,
+  roleId: null,
   locationId: null,
   positions: 1,
   skills: [],
@@ -34,8 +33,7 @@ const blank = (): ManpowerRequestInput => ({
 const fromItem = (request: ManpowerRequestItem): ManpowerRequestInput => ({
   title: request.title,
   departmentId: request.departmentId,
-  positionId: request.positionId ?? null,
-  jobId: request.jobId ?? null,
+  roleId: request.roleId ?? null,
   locationId: request.locationId ?? null,
   positions: request.positions,
   skills: request.skills,
@@ -76,11 +74,11 @@ const fromItem = (request: ManpowerRequestItem): ManpowerRequestInput => ({
         </label>
         <label class="field">
           <span class="field__label">Department</span>
-          <gggs-org-select kind="departments" placeholder="Choose" ariaLabel="Department" [ngModel]="form().departmentId || null" (ngModelChange)="patch({ departmentId: $event ?? '' })" />
+          <gggs-org-select kind="departments" placeholder="Choose" ariaLabel="Department" [ngModel]="form().departmentId || null" (ngModelChange)="chooseDepartment($event)" />
         </label>
         <label class="field">
-          <span class="field__label">Job</span>
-          <gggs-org-select kind="jobs" placeholder="Any" ariaLabel="Job" [ngModel]="form().jobId" (ngModelChange)="patch({ jobId: $event })" />
+          <span class="field__label">Role</span>
+          <gggs-org-select kind="roles" placeholder="Any" ariaLabel="Role" [where]="roleFilter()" [ngModel]="form().roleId" (ngModelChange)="patch({ roleId: $event })" />
         </label>
         <label class="field">
           <span class="field__label">Location</span>
@@ -179,14 +177,37 @@ export class ManpowerRequestForm {
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
 
+  private readonly org = inject(OrgStructureApi);
+  private readonly departments = signal<readonly OrgUnit[]>([]);
+  private roles: readonly OrgUnit[] = [];
+  /** The chosen department's roles (a function shares its department's). */
+  protected readonly roleFilter = computed(() => rolesFor(this.form().departmentId, this.departments()));
+
   constructor() {
     effect(() => {
       if (this.visible()) {
         const request = this.request();
         this.form.set(request ? fromItem(request) : blank());
         this.error.set(null);
+        void this.loadReferences();
       }
     });
+  }
+
+  private async loadReferences(): Promise<void> {
+    if (this.departments().length) {
+      return;
+    }
+    const [departments, roles] = await Promise.all([this.org.active('departments'), this.org.active('roles')]);
+    this.roles = roles;
+    this.departments.set(departments);
+  }
+
+  /** A role that is not one of the new department's is cleared. */
+  protected chooseDepartment(departmentId: string | null): void {
+    const fits = rolesFor(departmentId, this.departments());
+    const role = this.roles.find((row) => row.id === this.form().roleId);
+    this.patch({ departmentId: departmentId ?? '', ...(role && fits && !fits(role) ? { roleId: null } : {}) });
   }
 
   protected num(value: string): number | null {

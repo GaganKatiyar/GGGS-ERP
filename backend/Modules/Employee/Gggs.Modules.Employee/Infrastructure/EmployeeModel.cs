@@ -51,6 +51,8 @@ internal sealed class EmployeeModel : IModuleModel
             ConfigureProtected(entity, employee => employee.Uan, "Uan");
             ConfigureProtected(entity, employee => employee.EsicNumber, "Esic");
             ConfigureProtected(entity, employee => employee.NationalId, "NationalId");
+            ConfigureProtected(entity, employee => employee.PassportNumber, "Passport");
+            entity.Property(employee => employee.PreviousExperienceYears).HasPrecision(4, 1);
             ConfigureProtected(entity, employee => employee.BankAccountNumber, "BankAccount");
 
             entity.HasMany(employee => employee.EmploymentRecords).WithOne().HasForeignKey(record => record.EmployeeId).OnDelete(DeleteBehavior.Restrict);
@@ -70,10 +72,9 @@ internal sealed class EmployeeModel : IModuleModel
                 .IsUnique()
                 .HasFilter("[OfficialEmail] IS NOT NULL AND [IsDeleted] = 0");
 
-            // The directory's filters: by department, by manager, by position (occupancy), by status.
+            // The directory's filters: by department, by manager, by status.
             entity.HasIndex(employee => new { employee.TenantId, employee.DepartmentId, employee.Status }).HasDatabaseName("IX_Employee_TenantId_DepartmentId");
             entity.HasIndex(employee => new { employee.TenantId, employee.ManagerEmployeeId }).HasDatabaseName("IX_Employee_TenantId_ManagerEmployeeId");
-            entity.HasIndex(employee => new { employee.TenantId, employee.PositionId }).HasDatabaseName("IX_Employee_TenantId_PositionId");
             entity.HasIndex(employee => new { employee.TenantId, employee.DisplayName }).HasDatabaseName("IX_Employee_TenantId_DisplayName");
 
             entity.Ignore(employee => employee.CurrentRecord);
@@ -144,6 +145,17 @@ internal sealed class EmployeeModel : IModuleModel
             entity.HasIndex(experience => new { experience.TenantId, experience.EmployeeId }).HasDatabaseName("IX_EmployeeWorkExperience_TenantId_EmployeeId");
             entity.Ignore(experience => experience.DomainEvents);
         });
+
+        modelBuilder.Entity<HireDraft>(entity =>
+        {
+            entity.ToTable("HireDraft", Schema);
+            entity.Property(draft => draft.DisplayName).HasMaxLength(200).IsRequired();
+            entity.Property(draft => draft.PayloadCiphertext).IsRequired();
+            entity.Property(draft => draft.FilesJson).HasMaxLength(4000).IsRequired();
+            entity.HasIndex(draft => new { draft.TenantId, draft.ModifiedDate }).HasDatabaseName("IX_HireDraft_TenantId_Modified");
+            entity.Ignore(draft => draft.Files);
+            entity.Ignore(draft => draft.DomainEvents);
+        });
     }
 
     private static void ConfigureAddress(OwnedNavigationBuilder<EmployeeEntity, HomeAddress> address, string prefix)
@@ -183,5 +195,7 @@ internal static class EmployeeData
         public DbSet<EmployeeEducation> EmployeeEducation => db.Set<EmployeeEducation>();
 
         public DbSet<EmployeeWorkExperience> EmployeeWorkExperience => db.Set<EmployeeWorkExperience>();
+
+        public DbSet<HireDraft> HireDrafts => db.Set<HireDraft>();
     }
 }

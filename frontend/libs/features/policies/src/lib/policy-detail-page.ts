@@ -111,7 +111,7 @@ const today = () => localIsoDate();
                       <td>v{{ version.number }}</td>
                       <td><gggs-status-badge [status]="version.status" /></td>
                       <td>{{ version.effectiveFrom | date: 'mediumDate' }}</td>
-                      <td>{{ (version.publishedDate | date: 'medium') ?? '—' }}</td>
+                      <td>{{ (version.publishedDate | date: 'd MMM y, h:mm a') ?? '—' }}</td>
                       <td>{{ version.changeSummary ?? '—' }}</td>
                     </tr>
                   }
@@ -144,7 +144,7 @@ const today = () => localIsoDate();
                           <td>{{ row.employeeCode ?? '—' }}</td>
                           <td>
                             @if (row.acknowledgedDate) {
-                              {{ row.acknowledgedDate | date: 'medium' }}
+                              {{ row.acknowledgedDate | date: 'd MMM y, h:mm a' }}
                             } @else {
                               <gggs-status-badge status="Pending" />
                             }

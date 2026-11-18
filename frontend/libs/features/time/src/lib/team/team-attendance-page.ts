@@ -4,10 +4,10 @@ import { Router } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import { DataTable, DataTableCell, type DataTableColumn } from '@gggs/shared/data-table';
 import type { AttendanceRow, AttendanceSummary, PagedResult } from '@gggs/shared/models';
-import { formatMinutes, shortTime, toAttendanceRows } from '@gggs/shared/models';
+import { formatMinutes, toAttendanceRows } from '@gggs/shared/models';
 import { OrgSelect } from '@gggs/shared/org-reference';
 import { AttendanceApi, todayIso } from '@gggs/shared/time';
-import { EmptyState, KpiCard, PageHeader, StatusBadge } from '@gggs/shared/ui';
+import { clockTime, EmptyState, KpiCard, PageHeader, StatusBadge, timeRange } from '@gggs/shared/ui';
 
 /**
  * A day across my team (or, with wider access, a department): who is in, who is late, who is off.
@@ -51,8 +51,8 @@ import { EmptyState, KpiCard, PageHeader, StatusBadge } from '@gggs/shared/ui';
         emptyDescription="Choose another day or department."
         (rowClick)="open($event)"
       >
-        <ng-template gggsCell="firstIn" let-row>{{ shortTime(row.firstIn) || '—' }}</ng-template>
-        <ng-template gggsCell="lastOut" let-row>{{ shortTime(row.lastOut) || '—' }}</ng-template>
+        <ng-template gggsCell="firstIn" let-row>{{ clockTime(row.firstIn) || '—' }}</ng-template>
+        <ng-template gggsCell="lastOut" let-row>{{ clockTime(row.lastOut) || '—' }}</ng-template>
         <ng-template gggsCell="workedMinutes" let-row>{{ formatMinutes(row.workedMinutes) || '—' }}</ng-template>
         <ng-template gggsCell="lateMinutes" let-row>{{ formatMinutes(row.lateMinutes) }}</ng-template>
         <ng-template gggsCell="status" let-row>
@@ -90,7 +90,8 @@ export class TeamAttendancePage {
 
   protected readonly today = todayIso();
   protected readonly formatMinutes = formatMinutes;
-  protected readonly shortTime = shortTime;
+  protected readonly clockTime = clockTime;
+  protected readonly timeRange = timeRange;
 
   protected readonly columns: readonly DataTableColumn<AttendanceRow>[] = [
     { field: 'employeeName', header: 'Employee' },

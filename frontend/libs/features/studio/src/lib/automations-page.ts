@@ -60,7 +60,7 @@ const STATUS_VARIANTS: Readonly<Record<string, BadgeVariant>> = { succeeded: 'su
                     <a [routerLink]="['../deliveries']" [queryParams]="{ automation: automation.id }" [attr.aria-label]="'Deliveries of ' + automation.name">
                       <gggs-status-badge [status]="last" [variants]="variants" />
                     </a>
-                    <span class="automations__meta">{{ automation.lastDeliveredAt | date: 'd MMM, HH:mm' }}</span>
+                    <span class="automations__meta">{{ automation.lastDeliveredAt | date: 'd MMM, h:mm a' }}</span>
                   } @else {
                     Not yet
                   }

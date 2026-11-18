@@ -131,7 +131,7 @@ export class JobBoardPage {
     <section class="panel stack">
       @for (interview of interviews(); track interview.id) {
         <a class="rec__row rec__row--link" [routerLink]="['/me/interviews', interview.id]">
-          <span><strong>{{ interview.scheduledAt | date: 'EEE d MMM, HH:mm' }}</strong> <span class="muted">{{ interview.durationMinutes }} min</span></span>
+          <span><strong>{{ interview.scheduledAt | date: 'EEE d MMM, h:mm a' }}</strong> <span class="muted">{{ interview.durationMinutes }} min</span></span>
           <span>{{ interview.candidateName }} · {{ interview.round }}</span>
           <span class="muted">{{ interview.requisitionTitle }}</span>
           <span>{{ interview.myScorecardSubmitted ? 'Feedback given' : 'Feedback due' }}</span>
@@ -168,7 +168,7 @@ export class MyInterviewsPage {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (view(); as v) {
-      <gggs-page-header [title]="v.candidate.fullName + ' · ' + v.interview.round" [subtitle]="v.interview.requisitionTitle + ' · ' + (v.interview.scheduledAt | date: 'EEE d MMM y, HH:mm')">
+      <gggs-page-header [title]="v.candidate.fullName + ' · ' + v.interview.round" [subtitle]="v.interview.requisitionTitle + ' · ' + (v.interview.scheduledAt | date: 'EEE d MMM y, h:mm a')">
         <gggs-status-badge [status]="v.interview.status" />
       </gggs-page-header>
       <p><a routerLink="/me/interviews">← My interviews</a></p>
@@ -206,7 +206,7 @@ export class MyInterviewsPage {
               {{ v.myScorecard ? 'Update feedback' : 'Submit feedback' }}
             </button>
             @if (v.myScorecard) {
-              <span class="muted">Submitted {{ v.myScorecard.submittedDate | date: 'd MMM, HH:mm' }}</span>
+              <span class="muted">Submitted {{ v.myScorecard.submittedDate | date: 'd MMM, h:mm a' }}</span>
             }
           </div>
           @if (notice()) {

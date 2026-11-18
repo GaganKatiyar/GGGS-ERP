@@ -15,15 +15,21 @@ namespace Gggs.Modules.Identity.Domain.Users;
 /// </summary>
 public sealed class PasswordPolicy : TenantAggregateRoot
 {
+    public const int DefaultMinimumLength = 6;
+
+    /// <summary>The lowest minimum a tenant may set.</summary>
+    public const int LowestMinimumLength = 6;
+
     private PasswordPolicy()
     {
     }
 
     /// <summary>
-    /// Twelve, not eight. Length is the property that actually resists offline cracking, and it is
-    /// the one users can satisfy with a passphrase instead of a symbol they will forget.
+    /// Six by default, as the organisation asked; each tenant can raise it under Studio > Password
+    /// policy. Length is the property that actually resists offline cracking, so a longer minimum
+    /// (twelve, a passphrase) is the stronger choice wherever people will accept it.
     /// </summary>
-    public int MinimumLength { get; private set; } = 12;
+    public int MinimumLength { get; private set; } = DefaultMinimumLength;
 
     public int MaximumLength { get; private set; } = 256;
 
@@ -72,9 +78,14 @@ public sealed class PasswordPolicy : TenantAggregateRoot
         // A floor rather than a free choice: a customer must not be able to configure their way
         // into passwords this platform would be embarrassed to be holding.
         Guard.Against(
-            minimumLength is < 8 or > 128,
+            minimumLength is < LowestMinimumLength or > 128,
             "PASSWORD_POLICY_LENGTH_INVALID",
-            "Minimum password length must be between 8 and 128 characters.");
+            $"Minimum password length must be between {LowestMinimumLength} and 128 characters.");
+
+        Guard.Against(
+            maximumAgeDays is < 0 or > 3650,
+            "PASSWORD_POLICY_AGE_INVALID",
+            "Password expiry must be between 0 (never) and 3650 days.");
 
         Guard.Against(
             historyCount is < 0 or > 24,

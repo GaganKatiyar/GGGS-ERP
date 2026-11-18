@@ -17,13 +17,18 @@ import { SignInShowcase } from './sign-in-showcase';
       <main class="signed-out__main">
         <div class="signed-out__content"><ng-content /></div>
         <footer class="signed-out__maker">
-          <span>Powered by</span>
-          <img class="signed-out__company" src="gggs-technologies.png" alt="GGGS Technologies" width="173" height="32" />
-          <span>© {{ year }} {{ company }}</span>
-          <span class="signed-out__links">
-            <a routerLink="/privacy">Privacy Policy</a>
-            <a routerLink="/terms">Terms of Use</a>
-          </span>
+          <div class="signed-out__maker-row">
+            <span class="signed-out__powered">
+              Powered by
+              <img class="signed-out__company" src="gggs-technologies.png" alt="GGGS Technologies" width="97" height="18" />
+            </span>
+            <nav class="signed-out__links" aria-label="Legal">
+              <a routerLink="/privacy">Privacy Policy</a>
+              <span aria-hidden="true">·</span>
+              <a routerLink="/terms">Terms of Use</a>
+            </nav>
+          </div>
+          <small class="signed-out__copyright">© {{ year }} {{ company }}. All rights reserved.</small>
         </footer>
       </main>
     </div>
@@ -44,18 +49,20 @@ import { SignInShowcase } from './sign-in-showcase';
     .signed-out__main {
       display: flex;
       flex-direction: column;
-      justify-content: center;
       gap: var(--gggs-space-6);
       min-width: 0;
-      padding: var(--gggs-space-6);
+      padding: var(--gggs-space-6) var(--gggs-space-8) 0;
 
       @media (max-width: 60rem) {
-        justify-content: flex-start;
+        padding-inline: var(--gggs-space-6);
       }
     }
 
+    /* The form takes the free height and centres in it, so the footer sits at the bottom. */
     .signed-out__content {
       display: flex;
+      flex: 1 0 auto;
+      align-items: center;
       justify-content: center;
       min-width: 0;
     }
@@ -63,30 +70,64 @@ import { SignInShowcase } from './sign-in-showcase';
     .signed-out__maker {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      gap: var(--gggs-space-1);
+      gap: var(--gggs-space-2);
+      padding-block: var(--gggs-space-4) var(--gggs-space-5);
+      border-block-start: 1px solid var(--gggs-color-border);
       color: var(--gggs-color-text-muted);
       font-size: var(--gggs-font-size-xs);
-      text-align: center;
+    }
+
+    .signed-out__maker-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--gggs-space-2) var(--gggs-space-4);
+    }
+
+    .signed-out__powered {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--gggs-space-2);
     }
 
     /* The picture has a white background, so in dark mode it sits on a small white plate. */
     .signed-out__company {
       box-sizing: content-box;
       display: block;
-      max-width: 100%;
-      height: auto;
-      padding: 0.2rem 0.4rem;
+      width: auto;
+      height: 1.125rem;
+      padding: 0.125rem 0.25rem;
       border-radius: var(--gggs-radius-sm);
       background: #fff;
     }
 
+    /* Muted, not the brand red: red is kept for actions such as "Forgot password?" and Sign in. */
     .signed-out__links {
       display: flex;
       flex-wrap: wrap;
-      justify-content: center;
-      gap: var(--gggs-space-1) var(--gggs-space-4);
-      margin-block-start: var(--gggs-space-1);
+      align-items: center;
+      gap: var(--gggs-space-2);
+
+      a {
+        padding-block: var(--gggs-space-1);
+        color: inherit;
+        text-decoration: none;
+
+        &:hover,
+        &:focus-visible {
+          color: var(--gggs-color-text);
+          text-decoration: underline;
+        }
+      }
+
+      span {
+        color: var(--gggs-color-text-subtle);
+      }
+    }
+
+    .signed-out__copyright {
+      font-size: inherit;
     }
   `,
 })

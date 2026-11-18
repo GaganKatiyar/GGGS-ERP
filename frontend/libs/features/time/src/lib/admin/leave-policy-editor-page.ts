@@ -21,7 +21,7 @@ type Draft = { -readonly [K in keyof LeavePlanItemInput]: LeavePlanItemInput[K] 
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (saved(); as plan) {
-      <gggs-page-header [title]="plan.name" [subtitle]="'Leave year ' + plan.leaveYear + ' · ' + (plan.assignedTo.length ? 'assigned to ' + plan.assignedTo.length + ' engagement type(s)' : 'not assigned yet')">
+      <gggs-page-header [title]="plan.name" [subtitle]="'Leave year ' + plan.leaveYear + ' · ' + assignedText(plan)">
         <div class="toolbar">
           <gggs-status-badge [status]="plan.isActive ? 'Active' : 'Inactive'" />
           <a class="btn" routerLink="/leave/policy-assignment">Assign</a>
@@ -351,6 +351,18 @@ export class LeavePolicyEditorPage {
   protected remove(leaveTypeId: string): void {
     this.items.update((items) => items.filter((item) => item.leaveTypeId !== leaveTypeId));
     this.selectedId.set(this.items()[0]?.leaveTypeId ?? null);
+  }
+
+  protected assignedText(plan: LeavePlanDetail): string {
+    const parts: string[] = [];
+    const centers = plan.assignedCostCenters?.length ?? 0;
+    if (centers) {
+      parts.push(`${centers} cost center(s)`);
+    }
+    if (plan.assignedTo.length) {
+      parts.push(`${plan.assignedTo.length} engagement type(s)`);
+    }
+    return parts.length ? `assigned to ${parts.join(' and ')}` : 'not assigned yet';
   }
 
   protected reset(plan: LeavePlanDetail): void {

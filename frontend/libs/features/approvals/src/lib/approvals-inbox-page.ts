@@ -56,11 +56,11 @@ import { RequestView } from './request-view';
                     @if (task.isOverdue) {
                       <gggs-status-badge status="Overdue" />
                     } @else if (task.dueDate) {
-                      <span class="muted">due {{ task.dueDate | date: 'short' }}</span>
+                      <span class="muted">due {{ task.dueDate | date: 'd MMM y, h:mm a' }}</span>
                     }
                   } @else {
                     <gggs-status-badge [status]="task.status" />
-                    <span class="muted">{{ task.actedDate | date: 'short' }}</span>
+                    <span class="muted">{{ task.actedDate | date: 'd MMM y, h:mm a' }}</span>
                   }
                 </span>
               </button>

@@ -51,7 +51,7 @@ export class HistoryTab {
     (this.history() ?? []).map((entry) => ({
       date: entry.effectiveFrom,
       title: `${CHANGE_LABELS[entry.changeType] ?? entry.changeType}${entry.effectiveTo ? '' : ' · Current'}`,
-      description: [entry.effectiveTo ? `Until ${formatDate(entry.effectiveTo, 'mediumDate', this.locale)}` : null, entry.designation, entry.departmentName, entry.positionName, entry.gradeName, entry.locationName, entry.managerName ? `reports to ${entry.managerName}` : null, entry.reason]
+      description: [entry.effectiveTo ? `Until ${formatDate(entry.effectiveTo, 'mediumDate', this.locale)}` : null, entry.designation, entry.departmentName, entry.roleName, entry.levelName, entry.locationName, entry.costCenterName, entry.managerName ? `reports to ${entry.managerName}` : null, entry.reason]
         .filter((part, index, parts): part is string => !!part && parts.indexOf(part) === index)
         .join(' · '),
       tone: entry.changeType === 'Promotion' ? 'success' : entry.effectiveTo ? 'neutral' : 'primary',

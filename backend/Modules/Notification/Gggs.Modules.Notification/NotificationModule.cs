@@ -24,9 +24,13 @@ public sealed class NotificationModule : IModule
         ArgumentNullException.ThrowIfNull(context);
 
         services.AddOptions<NotificationOptions>().Bind(context.Configuration.GetSection(NotificationOptions.SectionName));
+        services.AddScoped<Gggs.Modules.Platform.Contracts.ITenantUsageProbe, Application.NotificationUsageProbe>();
         services.AddScoped<INotifier, Notifier>();
         services.AddScoped<NotificationPreferences>();
         services.AddScoped<NotificationTemplateSeeder>();
+        services.AddScoped<EmailSenderResolver>();
+        services.AddScoped<EmailSenderService>();
+        services.AddScoped<EmailUpkeep>();
     }
 
     public void AddBackgroundServices(IServiceCollection services, ModuleContext context)
@@ -51,6 +55,11 @@ public sealed class NotificationModule : IModule
         services.AddScoped<NotificationTemplateSweep>();
         services.AddScoped<NotificationTemplateJob>();
         services.AddHostedService<NotificationTemplateJobRegistration>();
+        services.AddScoped<EmailLogCleanupSweep>();
+        services.AddScoped<EmailLogCleanupJob>();
+        services.AddScoped<EmailRetrySweep>();
+        services.AddScoped<EmailRetryJob>();
+        services.AddHostedService<EmailUpkeepJobRegistration>();
         services.AddGggsEventConsumer<TenantProvisionedIntegrationEvent, SeedTemplatesOnTenantProvisioned>();
         services.AddGggsEventConsumer<EmailQueuedIntegrationEvent, DeliverQueuedEmail>();
         services.AddGggsEventConsumer<SmsQueuedIntegrationEvent, DeliverQueuedSms>();

@@ -9,6 +9,31 @@ namespace Gggs.Identity.UnitTests;
 public sealed class PlatformRoleTests
 {
     [Fact]
+    public void TheSeededRoles_OnlyTheStaffAdministratorManagesStaffOrRoles_AndBillingCannotCreateOrganisations()
+    {
+        // Whoever can change what a platform role means, or who holds one, should be a short list.
+        foreach (Gggs.Modules.Identity.Application.PlatformStaff.PlatformRoleTemplate template in
+                 Gggs.Modules.Identity.Application.PlatformStaff.PlatformRoleTemplates.Definitions)
+        {
+            bool isAdministrator = template.Code == Gggs.Modules.Identity.Application.PlatformStaff.PlatformRoleTemplates.StaffAdministratorCode;
+            template.Permissions.Contains(Permissions.Platform.StaffManage).ShouldBe(isAdministrator, template.Code);
+            template.Permissions.Contains(Permissions.Platform.RoleManage).ShouldBe(isAdministrator, template.Code);
+
+            // Every template must be grantable: platform-only permissions, all known.
+            PlatformRole role = PlatformRole.Create(template.Name, template.Description);
+            foreach (string permission in template.Permissions)
+            {
+                role.Grant(permission);
+            }
+        }
+
+        var billing = Gggs.Modules.Identity.Application.PlatformStaff.PlatformRoleTemplates.Definitions
+            .Single(template => template.Code == Gggs.Modules.Identity.Application.PlatformStaff.PlatformRoleTemplates.BillingCode);
+        billing.Permissions.ShouldContain(Permissions.Platform.SubscriptionManage);
+        billing.Permissions.ShouldNotContain(Permissions.Platform.TenantManage);
+    }
+
+    [Fact]
     public void APlatformRoleCanOnlyGrantPermissionsThePlatformDefines()
     {
         PlatformRole role = PlatformRole.Create("Support", "Looks at tenant health");

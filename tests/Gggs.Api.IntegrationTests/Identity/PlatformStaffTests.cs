@@ -57,9 +57,12 @@ public sealed class PlatformStaffTests(PeopleOsApiFactory factory)
         using HttpClient client = factory.CreateWebClient();
         JsonElement token = await RequestPlatformTokenAsync(client, email);
 
+        // A token from the HR API's token endpoint, used on the platform console's server: same
+        // issuer and keys, so the console accepts it and applies its own platform permissions.
+        using HttpClient console = factory.PlatformConsole.CreateAnonymousClient();
         HttpResponseMessage response = await GetWithBearerAsync(
-            client,
-            "/api/v1/platform-staff",
+            console,
+            "/api/v1/platform/staff",
             token.GetProperty("access_token").GetString()!);
 
         // platform.staff.view, held through the seeded administrator role.
@@ -74,9 +77,12 @@ public sealed class PlatformStaffTests(PeopleOsApiFactory factory)
         using HttpClient client = factory.CreateWebClient();
         JsonElement token = await RequestPlatformTokenAsync(client, email);
 
+        // A token from the HR API's token endpoint, used on the platform console's server: same
+        // issuer and keys, so the console accepts it and applies its own platform permissions.
+        using HttpClient console = factory.PlatformConsole.CreateAnonymousClient();
         HttpResponseMessage response = await GetWithBearerAsync(
-            client,
-            "/api/v1/platform-staff",
+            console,
+            "/api/v1/platform/staff",
             token.GetProperty("access_token").GetString()!);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
@@ -162,7 +168,7 @@ public sealed class PlatformStaffTests(PeopleOsApiFactory factory)
     }
 
     [Fact]
-    public async Task TheRoleSeeder_CreatesTheTwoSystemRolesWithTheirCodeDefinedPermissions()
+    public async Task TheRoleSeeder_CreatesTheSystemRolesWithTheirCodeDefinedPermissions()
     {
         using IServiceScope scope = factory.Services.CreateScope();
         AppDbContext database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -177,6 +183,27 @@ public sealed class PlatformStaffTests(PeopleOsApiFactory factory)
 
         PlatformRole administrator = roles.Single(role => role.TemplateCode == PlatformRoleTemplates.StaffAdministratorCode);
         administrator.PermissionCodes.ShouldContain(Permissions.Platform.StaffManage);
+    }
+
+    [Fact]
+    public async Task TheRoleSeeder_GivesAnExistingRoleAPermissionAddedToItsTemplate()
+    {
+        // As after a release that adds a permission to a template: the stored role lacks it.
+        using (IServiceScope scope = factory.Services.CreateScope())
+        {
+            AppDbContext database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            PlatformRole administrator = await database.Set<PlatformRole>().SingleAsync(
+                role => role.TemplateCode == PlatformRoleTemplates.StaffAdministratorCode, TestContext.Current.CancellationToken);
+            administrator.Revoke(Permissions.Platform.DatabaseManage);
+            await database.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        await ActivatorUtilities.CreateInstance<PlatformRoleSeeder>(factory.Services).StartAsync(TestContext.Current.CancellationToken);
+
+        using IServiceScope check = factory.Services.CreateScope();
+        PlatformRole reseeded = await check.ServiceProvider.GetRequiredService<AppDbContext>().Set<PlatformRole>().AsNoTracking().SingleAsync(
+            role => role.TemplateCode == PlatformRoleTemplates.StaffAdministratorCode, TestContext.Current.CancellationToken);
+        reseeded.PermissionCodes.ShouldContain(Permissions.Platform.DatabaseManage);
     }
 
     /// <summary>

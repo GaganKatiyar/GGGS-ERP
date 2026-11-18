@@ -71,7 +71,13 @@ public sealed record ApplicationItem(
     string? RejectionReason,
     decimal? AverageRating,
     int Interviews,
-    OfferStatus? OfferStatus);
+    OfferStatus? OfferStatus,
+    string? CurrentCompany = null,
+    int? NoticePeriodDays = null,
+    decimal? ExpectedCtc = null,
+    string? ReferrerName = null,
+    string? NextStep = null,
+    DateOnly? NextStepDue = null);
 
 public sealed record InterviewItem(
     Guid Id,
@@ -676,7 +682,8 @@ internal sealed class PipelineService(
                     ["candidateName"] = candidate.FullName,
                     ["jobTitle"] = requisition.Title,
                     ["round"] = interview.Round,
-                    ["when"] = interview.ScheduledAt.ToString("ddd d MMM yyyy, HH:mm 'UTC'", CultureInfo.InvariantCulture),
+                    // The organisation's own time, 12-hour, with its weekday: "Tue 18 Nov 2026, 11:00 AM IST".
+                    ["when"] = $"{(await clock.ToLocalAsync(interview.ScheduledAt, cancellationToken)).ToString("ddd", CultureInfo.InvariantCulture)} {await clock.FormatAsync(interview.ScheduledAt, cancellationToken: cancellationToken)}",
                 },
                 $"/me/interviews/{interview.Id}"),
             cancellationToken);
@@ -745,19 +752,28 @@ internal sealed class PipelineService(
         Dictionary<Guid, Requisition> requisitions = await dbContext.Requisitions.AsNoTracking().Where(row => requisitionIds.Contains(row.Id)).ToDictionaryAsync(row => row.Id, cancellationToken);
         var ratings = await dbContext.Scorecards.AsNoTracking().Where(row => ids.Contains(row.ApplicationId))
             .GroupBy(row => row.ApplicationId).Select(group => new { group.Key, Average = group.Average(row => row.OverallRating) }).ToDictionaryAsync(row => row.Key, row => row.Average, cancellationToken);
-        var interviews = await dbContext.Interviews.AsNoTracking().Where(row => ids.Contains(row.ApplicationId) && row.Status != InterviewStatus.Cancelled)
-            .GroupBy(row => row.ApplicationId).Select(group => new { group.Key, Count = group.Count() }).ToDictionaryAsync(row => row.Key, row => row.Count, cancellationToken);
-        var offers = (await dbContext.Offers.AsNoTracking().Where(row => ids.Contains(row.ApplicationId)).Select(row => new { row.ApplicationId, row.Status, row.CreatedDate }).ToListAsync(cancellationToken))
-            .GroupBy(row => row.ApplicationId).ToDictionary(group => group.Key, group => group.OrderByDescending(row => row.CreatedDate).First().Status);
+        Dictionary<Guid, List<InterviewFact>> interviews = (await dbContext.Interviews.AsNoTracking().Where(row => ids.Contains(row.ApplicationId) && row.Status != InterviewStatus.Cancelled)
+                .Select(row => new { row.ApplicationId, row.Round, row.ScheduledAt, row.Status }).ToListAsync(cancellationToken))
+            .GroupBy(row => row.ApplicationId).ToDictionary(group => group.Key, group => group.Select(row => new InterviewFact(row.Round, row.ScheduledAt, row.Status)).ToList());
+        Dictionary<Guid, OfferFact> offers = (await dbContext.Offers.AsNoTracking().Where(row => ids.Contains(row.ApplicationId))
+                .Select(row => new { row.ApplicationId, row.Status, row.CreatedDate, row.SentDate, row.ExpiresOn, row.JoiningDate }).ToListAsync(cancellationToken))
+            .GroupBy(row => row.ApplicationId).ToDictionary(group => group.Key, group => group.OrderByDescending(row => row.CreatedDate).Select(row => new OfferFact(row.Status, row.CreatedDate, row.SentDate, row.ExpiresOn, row.JoiningDate)).First());
+        Dictionary<Guid, string> referrers = await NamesAsync(candidates.Values.Where(row => row.ReferrerEmployeeId != null).Select(row => row.ReferrerEmployeeId!.Value), cancellationToken);
         return [.. applications.Select(row =>
         {
             Candidate candidate = candidates[row.CandidateId];
             Requisition requisition = requisitions[row.RequisitionId];
+            List<InterviewFact> rounds = interviews.GetValueOrDefault(row.Id) ?? [];
+            OfferFact? offer = offers.GetValueOrDefault(row.Id);
+            NextStep? next = NextSteps.For(row.Stage, row.AppliedDate, row.StageChangedDate, rounds, offer);
             return new ApplicationItem(
                 row.Id, candidate.Id, candidate.Number, candidate.FullName, candidate.Email, candidate.CurrentTitle, candidate.ExperienceYears, candidate.Source,
                 requisition.Id, requisition.Number, requisition.Title, row.Stage, row.MatchScore, row.AppliedDate, row.StageChangedDate, row.RejectionReason,
-                ratings.TryGetValue(row.Id, out decimal average) ? Math.Round(average, 2) : null, interviews.GetValueOrDefault(row.Id),
-                offers.TryGetValue(row.Id, out OfferStatus status) ? status : null);
+                ratings.TryGetValue(row.Id, out decimal average) ? Math.Round(average, 2) : null, rounds.Count,
+                offer?.Status,
+                candidate.CurrentCompany, candidate.NoticePeriodDays, candidate.ExpectedCtc,
+                candidate.ReferrerEmployeeId is { } referrer ? referrers.GetValueOrDefault(referrer) : null,
+                next?.Text, next?.Due);
         })];
     }
 

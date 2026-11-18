@@ -36,8 +36,14 @@ import { FormDialog } from '@gggs/shared/ui';
           <dt>PAN</dt><dd class="statutory__value">{{ statutory()?.pan ?? s.panHint ?? '—' }}</dd>
           <dt>UAN</dt><dd class="statutory__value">{{ statutory()?.uan ?? s.uanHint ?? '—' }}</dd>
           <dt>ESIC number</dt><dd class="statutory__value">{{ statutory()?.esicNumber ?? s.esicHint ?? '—' }}</dd>
-          <dt>National ID</dt><dd class="statutory__value">{{ statutory()?.nationalId ?? s.nationalIdHint ?? '—' }}</dd>
+          <dt>Aadhaar / national ID</dt><dd class="statutory__value">{{ statutory()?.nationalId ?? s.nationalIdHint ?? '—' }}</dd>
+          <dt>Passport</dt>
+          <dd class="statutory__value">
+            {{ statutory()?.passportNumber ?? s.passportHint ?? '—' }}
+            @if (s.passportExpiry) { <span class="muted">· expires {{ s.passportExpiry }}</span> }
+          </dd>
           <dt>Professional tax state</dt><dd>{{ s.professionalTaxStateCode ?? '—' }}</dd>
+          <dt>Experience before joining</dt><dd>{{ s.previousExperienceYears !== undefined ? s.previousExperienceYears + ' years' : '—' }}</dd>
         </dl>
       </section>
 
@@ -80,8 +86,16 @@ import { FormDialog } from '@gggs/shared/ui';
           <input type="text" formControlName="esicNumber" maxlength="17" autocomplete="off" inputmode="numeric" />
         </label>
         <label class="field">
-          <span class="field__label">National ID</span>
+          <span class="field__label">Aadhaar / national ID</span>
           <input type="text" formControlName="nationalId" maxlength="32" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span class="field__label">Passport number</span>
+          <input type="text" formControlName="passportNumber" maxlength="9" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span class="field__label">Passport expiry</span>
+          <input type="date" formControlName="passportExpiry" />
         </label>
         <label class="field">
           <span class="field__label">Professional tax state</span>
@@ -145,6 +159,8 @@ export class StatutoryTab {
     esicNumber: new FormControl<string | null>(null),
     nationalId: new FormControl<string | null>(null),
     professionalTaxStateCode: new FormControl<string | null>(null),
+    passportNumber: new FormControl<string | null>(null),
+    passportExpiry: new FormControl<string | null>(null),
   });
 
   protected readonly bankForm = new FormGroup({
@@ -172,7 +188,7 @@ export class StatutoryTab {
   }
 
   protected openStatutory(): void {
-    this.statutoryForm.reset({ professionalTaxStateCode: this.profile().sensitive.professionalTaxStateCode ?? null });
+    this.statutoryForm.reset({ professionalTaxStateCode: this.profile().sensitive.professionalTaxStateCode ?? null, passportExpiry: this.profile().sensitive.passportExpiry ?? null });
     this.error.set(null);
     this.statutoryOpen.set(true);
   }
@@ -193,6 +209,8 @@ export class StatutoryTab {
           esicNumber: StatutoryTab.keepOrSet(value.esicNumber),
           nationalId: StatutoryTab.keepOrSet(value.nationalId),
           professionalTaxStateCode: value.professionalTaxStateCode ?? '',
+          passportNumber: StatutoryTab.keepOrSet(value.passportNumber)?.toUpperCase() ?? null,
+          passportExpiry: value.passportExpiry || null,
         }),
       () => this.statutoryOpen.set(false),
     );

@@ -20,9 +20,8 @@ public sealed record RequisitionItem(
     string Title,
     Guid DepartmentId,
     string? DepartmentName,
-    Guid? PositionId,
-    Guid? JobId,
-    string? JobName,
+    Guid? RoleId,
+    string? RoleName,
     Guid? LocationId,
     string? LocationName,
     int Openings,
@@ -201,7 +200,7 @@ internal sealed class RecruitmentService(
         }
 
         var details = new RequisitionDetails(
-            approved.Title, approved.DepartmentId, approved.PositionId, approved.JobId, approved.LocationId, approved.Positions, approved.EmploymentTypeCode, approved.WorkModeCode,
+            approved.Title, approved.DepartmentId, approved.RoleId, approved.LocationId, approved.Positions, approved.EmploymentTypeCode, approved.WorkModeCode,
             approved.MinExperienceYears, approved.MaxExperienceYears, approved.SalaryMin, approved.SalaryMax, approved.Skills,
             string.IsNullOrWhiteSpace(approved.Justification) ? null : approved.Justification, approved.RequesterEmployeeId, null, approved.Priority, approved.RequiredBy);
         dbContext.Requisitions.Add(Requisition.Open(await NextRequisitionNumberAsync(cancellationToken), approved.RequestId, details, await clock.TodayAsync(cancellationToken)));
@@ -422,19 +421,14 @@ internal sealed class RecruitmentService(
     {
         ArgumentNullException.ThrowIfNull(details);
         List<OrgReference> references = [new(OrgUnitKind.Department, details.DepartmentId)];
-        if (details.JobId is { } job)
+        if (details.RoleId is { } role)
         {
-            references.Add(new OrgReference(OrgUnitKind.Job, job));
+            references.Add(new OrgReference(OrgUnitKind.Role, role));
         }
 
         if (details.LocationId is { } location)
         {
             references.Add(new OrgReference(OrgUnitKind.Location, location));
-        }
-
-        if (details.PositionId is { } position)
-        {
-            references.Add(new OrgReference(OrgUnitKind.Position, position));
         }
 
         IReadOnlyList<OrgReference> invalid = await organization.FindInvalidAsync(references, cancellationToken);
@@ -458,15 +452,15 @@ internal sealed class RecruitmentService(
             .Select(group => new { group.Key.RequisitionId, group.Key.Stage, Count = group.Count() })
             .ToListAsync(cancellationToken);
         IReadOnlyDictionary<Guid, string> departments = await organization.GetNamesAsync(OrgUnitKind.Department, rows.Select(row => row.DepartmentId).Distinct(), cancellationToken);
-        IReadOnlyDictionary<Guid, string> jobs = await organization.GetNamesAsync(OrgUnitKind.Job, rows.Where(row => row.JobId != null).Select(row => row.JobId!.Value).Distinct(), cancellationToken);
+        IReadOnlyDictionary<Guid, string> roles = await organization.GetNamesAsync(OrgUnitKind.Role, rows.Where(row => row.RoleId != null).Select(row => row.RoleId!.Value).Distinct(), cancellationToken);
         IReadOnlyDictionary<Guid, string> locations = await organization.GetNamesAsync(OrgUnitKind.Location, rows.Where(row => row.LocationId != null).Select(row => row.LocationId!.Value).Distinct(), cancellationToken);
         Dictionary<Guid, string> people = (await employees.GetManyAsync(
                 rows.SelectMany(row => new[] { row.HiringManagerEmployeeId, row.RecruiterEmployeeId }).OfType<Guid>().Distinct(), cancellationToken))
             .ToDictionary(person => person.Id, person => person.DisplayName);
 
         return [.. rows.Select(row => new RequisitionItem(
-            row.Id, row.Number, row.ManpowerRequestId, row.Title, row.DepartmentId, departments.GetValueOrDefault(row.DepartmentId), row.PositionId,
-            row.JobId, row.JobId is { } job ? jobs.GetValueOrDefault(job) : null, row.LocationId, row.LocationId is { } location ? locations.GetValueOrDefault(location) : null,
+            row.Id, row.Number, row.ManpowerRequestId, row.Title, row.DepartmentId, departments.GetValueOrDefault(row.DepartmentId),
+            row.RoleId, row.RoleId is { } role ? roles.GetValueOrDefault(role) : null, row.LocationId, row.LocationId is { } location ? locations.GetValueOrDefault(location) : null,
             row.Openings, row.Hired, row.Remaining, row.EmploymentTypeCode, row.WorkModeCode, row.MinExperienceYears, row.MaxExperienceYears, row.SalaryMin, row.SalaryMax,
             row.Skills, row.Description, row.HiringManagerEmployeeId, row.HiringManagerEmployeeId is { } manager ? people.GetValueOrDefault(manager) : null,
             row.RecruiterEmployeeId, row.RecruiterEmployeeId is { } recruiter ? people.GetValueOrDefault(recruiter) : null, row.Priority, row.TargetDate, row.Status,

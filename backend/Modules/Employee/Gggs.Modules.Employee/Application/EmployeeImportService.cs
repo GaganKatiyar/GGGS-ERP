@@ -21,9 +21,10 @@ public sealed record EmployeeImportRow(
     string? MobilePhone,
     string? JoiningDate,
     string? DepartmentCode,
-    string? PositionCode,
-    string? JobCode,
-    string? GradeCode,
+    string? RoleCode,
+    string? LevelCode,
+    string? DesignationCode,
+    string? CostCenterCode,
     string? LocationCode,
     string? ManagerEmployeeCode,
     string? EmploymentTypeCode,
@@ -116,9 +117,10 @@ public sealed class EmployeeImportService(AppDbContext dbContext, EmployeeServic
         }
 
         Guid? department = Lookup(codes.Departments, row.DepartmentCode, "department", errors);
-        Guid? position = Lookup(codes.Positions, row.PositionCode, "position", errors);
-        Guid? job = Lookup(codes.Jobs, row.JobCode, "job", errors);
-        Guid? grade = Lookup(codes.Grades, row.GradeCode, "grade", errors);
+        Guid? role = Lookup(codes.Roles, row.RoleCode, "role", errors);
+        Guid? level = Lookup(codes.Levels, row.LevelCode, "level", errors);
+        Guid? designationId = Lookup(codes.Designations, row.DesignationCode, "designation", errors);
+        Guid? costCenter = Lookup(codes.CostCenters, row.CostCenterCode, "cost center", errors);
         Guid? location = Lookup(codes.Locations, row.LocationCode, "location", errors);
 
         Guid? manager = null;
@@ -133,9 +135,9 @@ public sealed class EmployeeImportService(AppDbContext dbContext, EmployeeServic
             }
         }
 
-        if (department is null && position is null && string.IsNullOrWhiteSpace(row.DepartmentCode) && string.IsNullOrWhiteSpace(row.PositionCode))
+        if (string.IsNullOrWhiteSpace(row.DepartmentCode))
         {
-            errors.Add("A department code (or a position code) is required.");
+            errors.Add("A department code is required.");
         }
 
         if (errors.Count > 0)
@@ -149,7 +151,7 @@ public sealed class EmployeeImportService(AppDbContext dbContext, EmployeeServic
                 row.EmployeeCode, row.FirstName!, row.MiddleName, row.LastName, null, null, null, null, row.OfficialEmail, row.MobilePhone,
                 joiningDate, null,
                 new AssignmentInput(
-                    department, position, job, grade, location, null, null, null, manager, null,
+                    department, role, level, designationId, costCenter, location, null, null, manager, null,
                     row.EmploymentTypeCode ?? string.Empty, row.WorkModeCode ?? string.Empty, row.Designation)),
                 cancellationToken);
 
@@ -182,15 +184,17 @@ public sealed class EmployeeImportService(AppDbContext dbContext, EmployeeServic
 
     private async Task<CodeMaps> ResolveCodesAsync(IReadOnlyList<EmployeeImportRow> rows, CancellationToken cancellationToken) => new(
         await orgStructure.ResolveCodesAsync(OrgUnitKind.Department, rows.Select(row => row.DepartmentCode!), cancellationToken),
-        await orgStructure.ResolveCodesAsync(OrgUnitKind.Position, rows.Select(row => row.PositionCode!), cancellationToken),
-        await orgStructure.ResolveCodesAsync(OrgUnitKind.Job, rows.Select(row => row.JobCode!), cancellationToken),
-        await orgStructure.ResolveCodesAsync(OrgUnitKind.Grade, rows.Select(row => row.GradeCode!), cancellationToken),
+        await orgStructure.ResolveCodesAsync(OrgUnitKind.Role, rows.Select(row => row.RoleCode!), cancellationToken),
+        await orgStructure.ResolveCodesAsync(OrgUnitKind.Level, rows.Select(row => row.LevelCode!), cancellationToken),
+        await orgStructure.ResolveCodesAsync(OrgUnitKind.Designation, rows.Select(row => row.DesignationCode!), cancellationToken),
+        await orgStructure.ResolveCodesAsync(OrgUnitKind.CostCenter, rows.Select(row => row.CostCenterCode!), cancellationToken),
         await orgStructure.ResolveCodesAsync(OrgUnitKind.Location, rows.Select(row => row.LocationCode!), cancellationToken));
 
     private sealed record CodeMaps(
         IReadOnlyDictionary<string, Guid> Departments,
-        IReadOnlyDictionary<string, Guid> Positions,
-        IReadOnlyDictionary<string, Guid> Jobs,
-        IReadOnlyDictionary<string, Guid> Grades,
+        IReadOnlyDictionary<string, Guid> Roles,
+        IReadOnlyDictionary<string, Guid> Levels,
+        IReadOnlyDictionary<string, Guid> Designations,
+        IReadOnlyDictionary<string, Guid> CostCenters,
         IReadOnlyDictionary<string, Guid> Locations);
 }

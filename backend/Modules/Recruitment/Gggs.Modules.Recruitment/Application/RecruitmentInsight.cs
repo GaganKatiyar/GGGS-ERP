@@ -1,4 +1,5 @@
 using Gggs.BuildingBlocks.Application;
+using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Security;
 using Gggs.Data;
 using Gggs.Modules.Insight.Contracts;
@@ -73,7 +74,7 @@ internal sealed class CandidateSearch(AppDbContext dbContext, IPermissionProvide
 }
 
 /// <summary>Interviews on the HR calendar: those one sits on, or every interview for recruiters.</summary>
-internal sealed class InterviewCalendar(AppDbContext dbContext, IPermissionProvider permissions, ICurrentUser currentUser) : ICalendarSource
+internal sealed class InterviewCalendar(AppDbContext dbContext, IPermissionProvider permissions, ICurrentUser currentUser, ITenantClock clock) : ICalendarSource
 {
     public async Task<IReadOnlyList<CalendarEntry>> EntriesAsync(DateOnly firstDay, DateOnly lastDay, CalendarContext context, CancellationToken cancellationToken = default)
     {
@@ -90,9 +91,16 @@ internal sealed class InterviewCalendar(AppDbContext dbContext, IPermissionProvi
             .Take(500).ToListAsync(cancellationToken);
         Guid? me = currentUser.EmployeeId;
         string mine = me?.ToString() ?? "-";
+
+        // The organisation's own day and time, 12-hour: an interview at 23:00 UTC is the next morning in India.
+        TimeZoneInfo zone = await clock.GetTimeZoneAsync(cancellationToken);
         return [.. rows
             .Where(row => (context.OnlyMine || !recruiter) ? row.PanelJson.Contains(mine, StringComparison.OrdinalIgnoreCase) : true)
-            .Select(row => new CalendarEntry(CalendarKinds.Interview, $"Interview: {row.FirstName} {row.LastName} ({row.Round})", DateOnly.FromDateTime(row.ScheduledAt), DateOnly.FromDateTime(row.ScheduledAt), null,
-                row.PanelJson.Contains(mine, StringComparison.OrdinalIgnoreCase) ? "/me/interviews" : "/recruitment/interviews", row.ScheduledAt.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture) + " UTC"))];
+            .Select(row =>
+            {
+                DateOnly day = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(row.ScheduledAt, DateTimeKind.Utc), zone));
+                return new CalendarEntry(CalendarKinds.Interview, $"Interview: {row.FirstName} {row.LastName} ({row.Round})", day, day, null,
+                    row.PanelJson.Contains(mine, StringComparison.OrdinalIgnoreCase) ? "/me/interviews" : "/recruitment/interviews", TenantClock.Format(row.ScheduledAt, zone, withDate: false));
+            })];
     }
 }

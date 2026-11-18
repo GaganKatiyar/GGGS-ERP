@@ -35,13 +35,13 @@ public sealed record HomeAddress(string? Line1, string? Line2, string? City, str
 /// Organization ids point into the Organization module; codes are MasterData lookups.
 /// </summary>
 public sealed record Assignment(
-    Guid? LegalEntityId,
+    Guid? CompanyId,
     Guid? BusinessUnitId,
-    Guid? DivisionId,
     Guid DepartmentId,
-    Guid? JobId,
-    Guid? PositionId,
-    Guid? GradeId,
+    Guid? RoleId,
+    Guid? LevelId,
+    Guid? DesignationId,
+    Guid? CostCenterId,
     Guid? LocationId,
     Guid? ManagerEmployeeId,
     Guid? HrbpEmployeeId,
@@ -70,19 +70,19 @@ public sealed class EmploymentRecord : TenantAggregateRoot
 
     public DateOnly? EffectiveTo { get; private set; }
 
-    public Guid? LegalEntityId { get; private set; }
+    public Guid? CompanyId { get; private set; }
 
     public Guid? BusinessUnitId { get; private set; }
 
-    public Guid? DivisionId { get; private set; }
-
     public Guid DepartmentId { get; private set; }
 
-    public Guid? JobId { get; private set; }
+    public Guid? RoleId { get; private set; }
 
-    public Guid? PositionId { get; private set; }
+    public Guid? LevelId { get; private set; }
 
-    public Guid? GradeId { get; private set; }
+    public Guid? DesignationId { get; private set; }
+
+    public Guid? CostCenterId { get; private set; }
 
     public Guid? LocationId { get; private set; }
 
@@ -103,13 +103,13 @@ public sealed class EmploymentRecord : TenantAggregateRoot
         EmployeeId = employeeId,
         ChangeType = changeType,
         EffectiveFrom = effectiveFrom,
-        LegalEntityId = assignment.LegalEntityId,
+        CompanyId = assignment.CompanyId,
         BusinessUnitId = assignment.BusinessUnitId,
-        DivisionId = assignment.DivisionId,
         DepartmentId = Guard.NotEmpty(assignment.DepartmentId),
-        JobId = assignment.JobId,
-        PositionId = assignment.PositionId,
-        GradeId = assignment.GradeId,
+        RoleId = assignment.RoleId,
+        LevelId = assignment.LevelId,
+        DesignationId = assignment.DesignationId,
+        CostCenterId = assignment.CostCenterId,
         LocationId = assignment.LocationId,
         ManagerEmployeeId = assignment.ManagerEmployeeId,
         HrbpEmployeeId = assignment.HrbpEmployeeId,
@@ -122,7 +122,7 @@ public sealed class EmploymentRecord : TenantAggregateRoot
     internal void CloseOn(DateOnly lastDay) => EffectiveTo = lastDay;
 
     public Assignment ToAssignment() => new(
-        LegalEntityId, BusinessUnitId, DivisionId, DepartmentId, JobId, PositionId, GradeId, LocationId,
+        CompanyId, BusinessUnitId, DepartmentId, RoleId, LevelId, DesignationId, CostCenterId, LocationId,
         ManagerEmployeeId, HrbpEmployeeId, EmploymentTypeCode, WorkModeCode, Designation);
 }
 
@@ -288,19 +288,23 @@ public sealed class Employee : TenantAggregateRoot
     public Guid? UserId { get; private set; }
 
     // Current assignment, copied from the open employment record.
-    public Guid? LegalEntityId { get; private set; }
+    public Guid? CompanyId { get; private set; }
 
     public Guid? BusinessUnitId { get; private set; }
 
-    public Guid? DivisionId { get; private set; }
-
     public Guid? DepartmentId { get; private set; }
 
-    public Guid? JobId { get; private set; }
+    /// <summary>Their role: the work they do.</summary>
+    public Guid? RoleId { get; private set; }
 
-    public Guid? PositionId { get; private set; }
+    /// <summary>How senior they are.</summary>
+    public Guid? LevelId { get; private set; }
 
-    public Guid? GradeId { get; private set; }
+    /// <summary>The title they hold; <see cref="Designation"/> keeps its name as printed.</summary>
+    public Guid? DesignationId { get; private set; }
+
+    /// <summary>The company name they work under.</summary>
+    public Guid? CostCenterId { get; private set; }
 
     public Guid? LocationId { get; private set; }
 
@@ -323,6 +327,13 @@ public sealed class Employee : TenantAggregateRoot
     public ProtectedValue? EsicNumber { get; private set; }
 
     public ProtectedValue? NationalId { get; private set; }
+
+    public ProtectedValue? PassportNumber { get; private set; }
+
+    public DateOnly? PassportExpiry { get; private set; }
+
+    /// <summary>Years of work before joining, as given at hire.</summary>
+    public decimal? PreviousExperienceYears { get; private set; }
 
     /// <summary>The state whose professional tax applies (a <c>state</c> lookup code).</summary>
     public string? ProfessionalTaxStateCode { get; private set; }
@@ -425,6 +436,19 @@ public sealed class Employee : TenantAggregateRoot
         EsicNumber = esicNumber;
         NationalId = nationalId;
         ProfessionalTaxStateCode = Code(professionalTaxStateCode);
+    }
+
+    public void SetPassport(ProtectedValue? passportNumber, DateOnly? passportExpiry)
+    {
+        PassportNumber = passportNumber;
+        PassportExpiry = passportNumber is null ? null : passportExpiry;
+    }
+
+    /// <summary>Years of work before joining, as given at hire (one decimal place, 0 to 60).</summary>
+    public void SetPreviousExperience(decimal? years)
+    {
+        Guard.Against(years is < 0 or > 60, "EMPLOYEE_EXPERIENCE_RANGE", "Previous experience must be between 0 and 60 years.");
+        PreviousExperienceYears = years is { } value ? Math.Round(value, 1) : null;
     }
 
     public void SetBank(string? bankName, string? ifsc, string? accountHolder, ProtectedValue? accountNumber)
@@ -548,13 +572,13 @@ public sealed class Employee : TenantAggregateRoot
         EmploymentRecord record = EmploymentRecord.Open(Id, changeType, effectiveFrom, assignment, reason);
         _employmentRecords.Add(record);
 
-        LegalEntityId = record.LegalEntityId;
+        CompanyId = record.CompanyId;
         BusinessUnitId = record.BusinessUnitId;
-        DivisionId = record.DivisionId;
         DepartmentId = record.DepartmentId;
-        JobId = record.JobId;
-        PositionId = record.PositionId;
-        GradeId = record.GradeId;
+        RoleId = record.RoleId;
+        LevelId = record.LevelId;
+        DesignationId = record.DesignationId;
+        CostCenterId = record.CostCenterId;
         LocationId = record.LocationId;
         ManagerEmployeeId = record.ManagerEmployeeId;
         HrbpEmployeeId = record.HrbpEmployeeId;

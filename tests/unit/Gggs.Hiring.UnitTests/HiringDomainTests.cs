@@ -62,7 +62,7 @@ public sealed class RecruitmentDomainTests
     private static readonly DateTime Now = new(2026, 10, 16, 9, 0, 0, DateTimeKind.Utc);
 
     private static RequisitionDetails Details(int openings = 2) => new(
-        "Engineer", Guid.NewGuid(), null, null, null, openings, "full_time", "hybrid", 2, 6, 800_000, 1_200_000, ["C#", " c# ", "SQL"], null, null, null, "High", null);
+        "Engineer", Guid.NewGuid(), null, null, openings, "full_time", "hybrid", 2, 6, 800_000, 1_200_000, ["C#", " c# ", "SQL"], null, null, null, "High", null);
 
     private static CandidateDetails Person(string email = "Asha@Example.com", string? mobile = "+91 98450-12345") => new(
         "Asha", "Rao", email, mobile, null, null, 4, 900_000, 1_100_000, 30, "Pune", ["C#"], null, null);
@@ -224,7 +224,7 @@ public sealed class WorkforceDomainTests
     private static readonly DateTime Now = new(2026, 10, 16, 9, 0, 0, DateTimeKind.Utc);
 
     private static RequestDetails Request(int positions = 2, RequestReason reason = RequestReason.Expansion, Guid? replacing = null) => new(
-        "Analyst", Guid.NewGuid(), null, null, null, positions, ["Excel", "excel", " SQL "], 1, 3, "full_time", "office", null, null, null, RequestPriority.Medium, null, reason, replacing, null);
+        "Analyst", Guid.NewGuid(), null, null, positions, ["Excel", "excel", " SQL "], 1, 3, "full_time", "office", null, null, null, RequestPriority.Medium, null, reason, replacing, null);
 
     [Fact]
     public void A_plan_is_editable_until_submitted_and_a_send_back_returns_it_to_draft()

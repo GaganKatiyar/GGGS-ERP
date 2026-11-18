@@ -11,9 +11,12 @@ using Gggs.Modules.Identity.Domain.Users;
 using Gggs.Modules.Leave.Application;
 using Gggs.Modules.MasterData.Infrastructure;
 using Gggs.Modules.Notification.Application;
+using Gggs.Modules.Organization.Application.StructureImport;
 using Gggs.Modules.Organization.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using OrgRole = Gggs.Modules.Organization.Domain.Role;
+using Role = Gggs.Modules.Identity.Domain.Roles.Role;
 
 namespace Gggs.DevSeed;
 
@@ -102,12 +105,12 @@ internal static class DemoData
         Console.WriteLine($"Administrator role: {role.Permissions.Count - before} permission(s) added.");
     }
 
-    /// <summary>A small IT services company: one entity, three locations, a department tree, jobs, positions and people.</summary>
+    /// <summary>A small IT services company: one company, three offices, departments and functions, roles, designations, levels and people.</summary>
     public static async Task SeedDemoCompanyAsync(IServiceProvider scope)
     {
         AppDbContext db = scope.GetRequiredService<AppDbContext>();
 
-        if (await db.Set<LegalEntity>().AnyAsync())
+        if (await db.Set<Company>().AnyAsync())
         {
             Console.WriteLine("Demo company already present.");
             return;
@@ -115,7 +118,7 @@ internal static class DemoData
 
         DateOnly opened = new(2020, 4, 1);
 
-        LegalEntity company = LegalEntity.Create("ACME-IN", "Acme Technologies India", "IN", "INR");
+        Company company = Company.Create("ACME-IN", "Acme Technologies India", "IN", "INR");
         company.UpdateDetails("Acme Technologies India", "Acme Technologies India Private Limited", "IN", "INR",
             new PostalAddress("Outer Ring Road", "Marathahalli", "Bengaluru", "IN-KA", "IN", "560037"));
         company.UpdateRegistration("29ABCDE1234F1Z5", "ABCDE1234F", "U72200KA2020PTC000001", "BLRA00001A");
@@ -125,86 +128,76 @@ internal static class DemoData
         BusinessUnit corporate = BusinessUnit.Create("CORP", "Corporate functions", company.Id, null);
         db.AddRange(delivery, corporate);
 
+        // Cost centers are the company names offices work under: the company's own by default, and
+        // the Pune office's sister company there.
+        CostCenter acmeCost = CostCenter.DefaultFor(company);
+        CostCenter puneCost = CostCenter.Create("ACME-PNQ", "Acme Infotech", company.Id, null);
+        puneCost.UpdateRegistration("27ABCDE1234F1Z9", null, new PostalAddress("Hinjewadi Phase 1", null, "Pune", "IN-MH", "IN", "411057"));
+        db.AddRange(acmeCost, puneCost);
+
         Location blr = Location.Create("BLR", "Bengaluru HQ", company.Id, new PostalAddress("Outer Ring Road", null, "Bengaluru", "IN-KA", "IN", "560037"), "Asia/Kolkata");
-        Location pune = Location.Create("PNQ", "Pune", company.Id, new PostalAddress("Hinjewadi Phase 1", null, "Pune", "IN-MH", "IN", "411057"), "Asia/Kolkata");
+        Location pune = Location.Create("PNQ", "Pune", company.Id, new PostalAddress("Hinjewadi Phase 1", null, "Pune", "IN-MH", "IN", "411057"), "Asia/Kolkata", puneCost.Id);
         Location remote = Location.Create("REMOTE", "Remote (India)", company.Id, null, "Asia/Kolkata");
         db.AddRange(blr, pune, remote);
 
-        CostCenter engCost = CostCenter.Create("CC-ENG", "Engineering", null);
-        CostCenter hrCost = CostCenter.Create("CC-HR", "Human resources", null);
-        db.AddRange(engCost, hrCost);
+        // Three levels; every role is held at L1, L2 or L3.
+        db.AddRange(Level.Create("L1", "Associate", 1), Level.Create("L2", "Senior associate", 2), Level.Create("L3", "Lead", 3));
+        await db.SaveChangesAsync();
 
-        string[] gradeNames = ["Associate", "Senior associate", "Lead", "Manager", "Senior manager", "Director"];
-        Grade[] grades = [.. gradeNames.Select((name, index) => Grade.Create($"G{index + 1}", name, index + 1))];
-        db.AddRange(grades);
-
-        JobLevel[] levels = [.. Enumerable.Range(1, 6).Select(level => JobLevel.Create($"L{level}", $"Level {level}", level))];
-        db.AddRange(levels);
-
-        Department engineering = Department.Create("ENG", "Engineering", opened);
-        Department platform = Department.Create("ENG-PLAT", "Platform engineering", opened);
-        Department quality = Department.Create("ENG-QA", "Quality engineering", opened);
-        Department people = Department.Create("HR", "People team", opened);
-        Department finance = Department.Create("FIN", "Finance", opened);
-        engineering.Place(null, null, null, engCost.Id, null, blr.Id);
-        platform.Place(engineering.Id, null, null, engCost.Id, null, blr.Id);
-        quality.Place(engineering.Id, null, null, engCost.Id, null, pune.Id);
-        people.Place(null, null, null, hrCost.Id, null, blr.Id);
-        finance.Place(null, null, null, null, null, blr.Id);
-        db.AddRange(engineering, platform, quality, people, finance);
-
-        Job CreateJob(string code, string title, string family, int level, Department department, params string[] skills)
+        // The company's departments, functions and roles come from the same file the import screen
+        // takes (tools/DevSeed/org-structure.csv); each role gets a designation per level.
+        string file = Path.Combine(AppContext.BaseDirectory, "org-structure.csv");
+        StructureParseResult parsed = StructureImportParser.Parse(await File.ReadAllTextAsync(file));
+        StructurePlan plan = StructureImportPlanner.Plan(parsed.Rows, await StructureImporter.SnapshotAsync(db, CancellationToken.None));
+        if (parsed.Errors.Count > 0 || !plan.CanApply)
         {
-            Job job = Job.Create(code, title);
-            job.Define(family, levels[level - 1].Id, department.Id, level - 1, level + 2, null, skills);
-            db.Add(job);
-            return job;
+            throw new InvalidOperationException($"org-structure.csv has problems: {string.Join("; ", parsed.Errors.Concat(plan.Errors).Select(issue => $"line {issue.Line}: {issue.Message}"))}");
         }
 
-        Job cto = CreateJob("CTO", "Chief technology officer", "LEADERSHIP", 6, engineering, "Architecture", "Leadership");
-        Job engManager = CreateJob("ENG-MGR", "Engineering manager", "ENGINEERING", 4, platform, ".NET", "Azure", "People management");
-        Job seniorDev = CreateJob("SR-DEV", "Senior software engineer", "ENGINEERING", 3, platform, ".NET", "Angular", "SQL Server");
-        Job dev = CreateJob("DEV", "Software engineer", "ENGINEERING", 2, platform, ".NET", "Angular");
-        Job qa = CreateJob("QA", "QA engineer", "QUALITY", 2, quality, "Test automation", "Playwright");
-        Job hrbp = CreateJob("HRBP", "HR business partner", "HR", 4, people, "Employee relations");
+        await StructureImporter.ApplyAsync(db, plan, opened, CancellationToken.None);
+        await db.SaveChangesAsync();
 
-        Position CreateSeat(string code, string title, Job job, Department department, Location location, Grade grade, Position? reportsTo)
+        // Delivery departments sit in the Delivery business unit, the rest in Corporate; functions follow.
+        string[] deliveryCodes = ["D-TS", "D-ITES", "D-QUAL", "D-DOP", "D-MS", "D-WFS"];
+        List<Department> departments = await db.Set<Department>().ToListAsync();
+        foreach (Department department in departments.Where(row => row.ParentDepartmentId is null))
         {
-            Position position = Position.Create(code, title, job.Id, department.Id, opened);
-            position.Configure(job.Id, department.Id, location.Id, grade.Id, reportsTo?.Id, isBudgeted: true, headcount: 1);
-            db.Add(position);
-            return position;
+            Guid unit = deliveryCodes.Contains(department.Code) ? delivery.Id : corporate.Id;
+            department.Place(null, unit, null, null, blr.Id);
+            foreach (Department function in departments.Where(row => row.ParentDepartmentId == department.Id))
+            {
+                function.Place(department.Id, unit, null, null, blr.Id);
+            }
         }
-
-        Position ctoSeat = CreateSeat("P-CTO", "CTO", cto, engineering, blr, grades[5], null);
-        Position mgrSeat = CreateSeat("P-PLAT-MGR", "Platform engineering manager", engManager, platform, blr, grades[3], ctoSeat);
-        Position srSeat = CreateSeat("P-PLAT-SR1", "Senior engineer, platform", seniorDev, platform, blr, grades[2], mgrSeat);
-        Position devSeat1 = CreateSeat("P-PLAT-DEV1", "Engineer, platform", dev, platform, remote, grades[1], mgrSeat);
-        Position devSeat2 = CreateSeat("P-PLAT-DEV2", "Engineer, platform", dev, platform, blr, grades[1], mgrSeat);
-        CreateSeat("P-PLAT-DEV3", "Engineer, platform (open)", dev, platform, pune, grades[1], mgrSeat);
-        Position qaSeat = CreateSeat("P-QA1", "QA engineer", qa, quality, pune, grades[1], mgrSeat);
-        Position hrSeat = CreateSeat("P-HRBP", "HR business partner", hrbp, people, blr, grades[3], null);
 
         await db.SaveChangesAsync();
 
+        Dictionary<string, Department> byCode = departments.ToDictionary(row => row.Code);
+        Dictionary<string, OrgRole> roles = await db.Set<OrgRole>().ToDictionaryAsync(row => row.Code);
+        Dictionary<string, Designation> titles = await db.Set<Designation>().ToDictionaryAsync(row => row.Code);
+
         EmployeeService employees = scope.GetRequiredService<EmployeeService>();
 
-        async Task<Guid> Hire(string code, string first, string last, string email, DateOnly joined, Position seat, Guid? manager, string mode = "OFFICE")
+        // Each person: the function they sit in, their role and level - the designation is the pair.
+        // The cost center follows the office: Pune people work under Acme Infotech.
+        async Task<Guid> Hire(string code, string first, string last, string email, DateOnly joined, string function, string role, string level, Location office, Guid? manager, string mode = "OFFICE")
         {
+            Department department = byCode[function];
+            Designation title = titles[$"{role}-{level}"];
             var hired = await employees.HireAsync(new HireEmployeeRequest(
                 code, first, null, last, null, null, null, null, email, null, joined, joined.AddMonths(6),
-                new AssignmentInput(null, seat.Id, null, null, null, company.Id, delivery.Id, null, manager, null, "FULL_TIME", mode, seat.Name)));
+                new AssignmentInput(department.Id, roles[role].Id, title.LevelId, title.Id, null, office.Id, company.Id, department.BusinessUnitId, manager, null, "FULL_TIME", mode, null)));
             return hired.Id;
         }
 
-        Guid anita = await Hire("EMP00001", "Anita", "Rao", "anita.rao@acme.example", new DateOnly(2020, 4, 1), ctoSeat, null);
-        Guid vikram = await Hire("EMP00002", "Vikram", "Shah", "vikram.shah@acme.example", new DateOnly(2021, 1, 11), mgrSeat, anita);
-        await Hire("EMP00003", "Meera", "Iyer", "meera.iyer@acme.example", new DateOnly(2021, 6, 7), srSeat, vikram);
-        await Hire("EMP00004", "Arjun", "Nair", "arjun.nair@acme.example", new DateOnly(2023, 2, 1), devSeat1, vikram, "REMOTE");
-        await Hire("EMP00005", "Sara", "Khan", "sara.khan@acme.example", new DateOnly(2024, 7, 15), devSeat2, vikram, "HYBRID");
-        await Hire("EMP00006", "Rohan", "Das", "rohan.das@acme.example", new DateOnly(2022, 9, 5), qaSeat, vikram);
-        await Hire("EMP00007", "Priya", "Menon", "priya.menon@acme.example", new DateOnly(2021, 3, 1), hrSeat, anita);
+        Guid anita = await Hire("EMP00001", "Anita", "Rao", "anita.rao@acme.example", new DateOnly(2020, 4, 1), "MGMT", "MGMT-EVP", "L3", blr, null);
+        Guid vikram = await Hire("EMP00002", "Vikram", "Shah", "vikram.shah@acme.example", new DateOnly(2021, 1, 11), "CNI", "TS-CIH", "L3", blr, anita);
+        await Hire("EMP00003", "Meera", "Iyer", "meera.iyer@acme.example", new DateOnly(2021, 6, 7), "ENG", "TS-AIE", "L2", blr, vikram);
+        await Hire("EMP00004", "Arjun", "Nair", "arjun.nair@acme.example", new DateOnly(2023, 2, 1), "ENG", "TS-AIE", "L1", remote, vikram, "REMOTE");
+        await Hire("EMP00005", "Sara", "Khan", "sara.khan@acme.example", new DateOnly(2024, 7, 15), "ENG", "TS-AIE", "L1", blr, vikram, "HYBRID");
+        await Hire("EMP00006", "Rohan", "Das", "rohan.das@acme.example", new DateOnly(2022, 9, 5), "QA", "TS-QAE", "L2", pune, vikram);
+        await Hire("EMP00007", "Priya", "Menon", "priya.menon@acme.example", new DateOnly(2021, 3, 1), "GH", "HR-PP", "L3", blr, anita);
 
-        Console.WriteLine("Demo company created: 1 company, 5 departments, 8 positions, 7 employees.");
+        Console.WriteLine($"Demo company created: 1 company, {plan.Departments.Count} departments, {plan.Functions.Count} functions, {plan.Roles.Count} roles, 7 employees.");
     }
 }

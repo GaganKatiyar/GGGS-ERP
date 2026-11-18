@@ -16,16 +16,20 @@ namespace Gggs.Modules.Employee.Application;
 
 public sealed record AddressInput(string? Line1, string? Line2, string? City, string? StateCode, string? CountryCode, string? PostalCode);
 
-/// <summary>An assignment as a caller describes it. A position, when given, fills in its job, department, grade and location.</summary>
+/// <summary>
+/// An assignment as a caller describes it: the department (or function) they sit in, their role,
+/// level and designation, and where they work. A cost center left empty comes from the location, or
+/// the company default.
+/// </summary>
 public sealed record AssignmentInput(
     Guid? DepartmentId,
-    Guid? PositionId,
-    Guid? JobId,
-    Guid? GradeId,
+    Guid? RoleId,
+    Guid? LevelId,
+    Guid? DesignationId,
+    Guid? CostCenterId,
     Guid? LocationId,
-    Guid? LegalEntityId,
+    Guid? CompanyId,
     Guid? BusinessUnitId,
-    Guid? DivisionId,
     Guid? ManagerEmployeeId,
     Guid? HrbpEmployeeId,
     string EmploymentTypeCode,
@@ -45,7 +49,8 @@ public sealed record HireEmployeeRequest(
     string? MobilePhone,
     DateOnly JoiningDate,
     DateOnly? ProbationEndDate,
-    AssignmentInput Assignment);
+    AssignmentInput Assignment,
+    HireDetails? Details = null);
 
 public sealed record UpdatePersonalRequest(
     string FirstName,
@@ -67,7 +72,14 @@ public sealed record UpdateContactRequest(
     AddressInput? PermanentAddress);
 
 /// <summary>Statutory identifiers in the clear, on the way in only. Null leaves a value as it is; an empty string clears it.</summary>
-public sealed record UpdateStatutoryRequest(string? Pan, string? Uan, string? EsicNumber, string? NationalId, string? ProfessionalTaxStateCode);
+public sealed record UpdateStatutoryRequest(
+    string? Pan,
+    string? Uan,
+    string? EsicNumber,
+    string? NationalId,
+    string? ProfessionalTaxStateCode,
+    string? PassportNumber = null,
+    DateOnly? PassportExpiry = null);
 
 public sealed record UpdateBankRequest(string? BankName, string? Ifsc, string? AccountHolder, string? AccountNumber);
 
@@ -115,21 +127,34 @@ public sealed class EmployeeService(
         }
 
         Assignment assignment = await ResolveAssignmentAsync(request.Assignment, employeeId: null, cancellationToken);
+        HireDetails details = request.Details ?? new HireDetails();
 
         EmployeeEntity employee = EmployeeEntity.Hire(
-            code, request.FirstName, request.MiddleName, request.LastName, request.JoiningDate, request.ProbationEndDate, assignment);
+            code, request.FirstName, request.MiddleName, request.LastName, request.JoiningDate, request.ProbationEndDate ?? details.ProbationEndDate, assignment);
 
-        await EnsureLookupAsync(LookupLists.Gender, request.GenderCode, "gender", cancellationToken);
+        string? gender = request.GenderCode ?? details.GenderCode;
+        await EnsureLookupAsync(LookupLists.Gender, gender, "gender", cancellationToken);
+        await EnsureLookupAsync(LookupLists.MaritalStatus, details.MaritalStatusCode, "marital status", cancellationToken);
+        await EnsureLookupAsync(LookupLists.Country, details.NationalityCode, "nationality", cancellationToken);
+        await EnsureLookupAsync(LookupLists.BloodGroup, details.BloodGroupCode, "blood group", cancellationToken);
         employee.UpdatePersonal(
-            request.FirstName, request.MiddleName, request.LastName, request.PreferredName, request.GenderCode, request.DateOfBirth,
-            maritalStatusCode: null, nationalityCode: null, bloodGroupCode: null, Today);
+            request.FirstName, request.MiddleName, request.LastName, request.PreferredName ?? details.PreferredName, gender, request.DateOfBirth ?? details.DateOfBirth,
+            details.MaritalStatusCode, details.NationalityCode, details.BloodGroupCode, Today);
 
-        await EnsureEmailFreeAsync(request.OfficialEmail, employeeId: null, cancellationToken);
-        employee.UpdateContact(request.PersonalEmail, request.OfficialEmail, request.MobilePhone, null, null, null);
+        string? officialEmail = request.OfficialEmail ?? details.OfficialEmail;
+        AddressInput? present = ToInput(details.PresentAddress);
+        AddressInput? permanent = ToInput(details.PermanentAddress);
+        await EnsureEmailFreeAsync(officialEmail, employeeId: null, cancellationToken);
+        await EnsureAddressAsync(present, cancellationToken);
+        await EnsureAddressAsync(permanent, cancellationToken);
+        employee.UpdateContact(request.PersonalEmail, officialEmail, request.MobilePhone, null, ToAddress(present), ToAddress(permanent));
+
+        ApplyIdentifiers(employee, details);
+        employee.SetPreviousExperience(details.PreviousExperienceYears);
 
         dbContext.Employees.Add(employee);
         publisher.Publish(new EmployeeHiredIntegrationEvent(
-            employee.Id, employee.EmployeeCode, employee.JoiningDate, employee.DepartmentId, employee.PositionId, employee.ManagerEmployeeId));
+            employee.Id, employee.EmployeeCode, employee.JoiningDate, employee.DepartmentId, employee.ManagerEmployeeId));
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return employee;
@@ -179,8 +204,12 @@ public sealed class EmployeeService(
             Protect(SensitiveDataPurposes.Pan, request.Pan, employee.Pan, StatutoryFormats.Pan, "PAN"),
             Protect(SensitiveDataPurposes.Uan, request.Uan, employee.Uan, StatutoryFormats.Uan, "UAN"),
             Protect(SensitiveDataPurposes.Esic, request.EsicNumber, employee.EsicNumber, StatutoryFormats.Esic, "ESIC number"),
+            // Not checked as an Aadhaar here: a foreign national's ID lives in the same field. The hire form checks Aadhaar.
             Protect(SensitiveDataPurposes.NationalId, request.NationalId, employee.NationalId, validate: null, "national ID"),
             request.ProfessionalTaxStateCode ?? employee.ProfessionalTaxStateCode);
+        employee.SetPassport(
+            Protect(SensitiveDataPurposes.Passport, request.PassportNumber, employee.PassportNumber, StatutoryFormats.Passport, "passport number"),
+            request.PassportNumber is { Length: 0 } ? null : request.PassportExpiry ?? employee.PassportExpiry);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }
@@ -217,7 +246,7 @@ public sealed class EmployeeService(
         dbContext.EmploymentRecords.Add(record);
 
         publisher.Publish(new EmployeeAssignmentChangedIntegrationEvent(
-            employee.Id, request.ChangeType.ToString(), record.EffectiveFrom, record.DepartmentId, record.PositionId, record.JobId, record.GradeId, record.ManagerEmployeeId));
+            employee.Id, request.ChangeType.ToString(), record.EffectiveFrom, record.DepartmentId, record.RoleId, record.LevelId, record.ManagerEmployeeId));
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return record;
@@ -320,56 +349,31 @@ public sealed class EmployeeService(
     }
 
     /// <summary>
-    /// Validates an assignment and turns it into the domain's form. A position, when given, decides
-    /// the job and department (and supplies grade and location unless the caller set them), must
-    /// have a free seat, and must agree with anything the caller set explicitly.
+    /// Validates an assignment and turns it into the domain's form. A designation picked from the
+    /// list gives the printed title its name; a cost center left empty comes from the location, or
+    /// the company default.
     /// </summary>
     internal async Task<Assignment> ResolveAssignmentAsync(AssignmentInput input, Guid? employeeId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(input);
 
         Guid? departmentId = input.DepartmentId;
-        Guid? jobId = input.JobId;
-        Guid? gradeId = input.GradeId;
+        Guid? roleId = input.RoleId;
         Guid? locationId = input.LocationId;
-
-        if (input.PositionId is { } positionId)
-        {
-            PositionPlacement position = await orgStructure.GetPositionAsync(positionId, cancellationToken)
-                ?? throw Invalid("position", "The selected position does not exist or is closed.");
-
-            if ((departmentId is not null && departmentId != position.DepartmentId) || (jobId is not null && jobId != position.JobId))
-            {
-                throw new DomainRuleException("EMPLOYEE_POSITION_MISMATCH", "The department and job must match the selected position's.");
-            }
-
-            departmentId = position.DepartmentId;
-            jobId = position.JobId;
-            gradeId ??= position.GradeId;
-            locationId ??= position.LocationId;
-
-            int occupied = await dbContext.Employees.CountAsync(
-                employee => employee.PositionId == positionId && employee.Status != EmployeeStatus.Exited && employee.Id != employeeId,
-                cancellationToken);
-
-            if (occupied >= position.Headcount)
-            {
-                throw new DomainRuleException("EMPLOYEE_POSITION_FULL", "The selected position has no free seat.");
-            }
-        }
 
         if (departmentId is null)
         {
-            throw Invalid("department", "A department (or a position) is required.");
+            throw Invalid("department", "A department is required.");
         }
 
         List<OrgReference> references = [new(OrgUnitKind.Department, departmentId.Value)];
-        Add(references, OrgUnitKind.Job, jobId);
-        Add(references, OrgUnitKind.Grade, gradeId);
+        Add(references, OrgUnitKind.Role, roleId);
+        Add(references, OrgUnitKind.Level, input.LevelId);
+        Add(references, OrgUnitKind.Designation, input.DesignationId);
+        Add(references, OrgUnitKind.CostCenter, input.CostCenterId);
         Add(references, OrgUnitKind.Location, locationId);
-        Add(references, OrgUnitKind.LegalEntity, input.LegalEntityId);
+        Add(references, OrgUnitKind.Company, input.CompanyId);
         Add(references, OrgUnitKind.BusinessUnit, input.BusinessUnitId);
-        Add(references, OrgUnitKind.Division, input.DivisionId);
 
         IReadOnlyList<OrgReference> invalid = await orgStructure.FindInvalidAsync(references, cancellationToken);
         if (invalid.Count > 0)
@@ -378,21 +382,38 @@ public sealed class EmployeeService(
             throw Invalid(field, $"The selected {field} does not exist or is inactive.");
         }
 
+        // The role must be one of the department's (or the function's department's); a designation
+        // that is a role at a level fills in the role and level when they are left empty.
+        RolePlacement placement = await orgStructure.PlaceRoleAsync(departmentId, roleId, input.LevelId, input.DesignationId, cancellationToken);
+        if (!placement.Fits)
+        {
+            throw new DomainRuleException(placement.ErrorCode!, placement.ErrorMessage!) { Context = new Dictionary<string, object?> { ["field"] = placement.Field } };
+        }
+
+        roleId = placement.RoleId;
+        Guid? levelId = placement.LevelId;
+
         await EnsureLookupAsync(LookupLists.EmploymentType, input.EmploymentTypeCode, "employment type", cancellationToken, required: true);
         await EnsureLookupAsync(LookupLists.WorkMode, input.WorkModeCode, "work mode", cancellationToken, required: true);
         await EnsureManagerAsync(input.ManagerEmployeeId, employeeId, "manager", cancellationToken);
         await EnsureManagerAsync(input.HrbpEmployeeId, employeeId, "HR business partner", cancellationToken, checkCycle: false);
 
-        // A title left blank is the job's name, so the directory reads the same words as the job
-        // catalogue; one typed in is kept as it is.
+        // The printed title: the designation picked from the list, else one typed in, else the
+        // role's name, so the directory never shows a blank.
         string? designation = string.IsNullOrWhiteSpace(input.Designation) ? null : input.Designation.Trim();
-        if (designation is null && jobId is { } job)
+        if (input.DesignationId is { } designationId)
         {
-            designation = (await orgStructure.GetNamesAsync(OrgUnitKind.Job, [job], cancellationToken)).GetValueOrDefault(job);
+            designation = (await orgStructure.GetNamesAsync(OrgUnitKind.Designation, [designationId], cancellationToken)).GetValueOrDefault(designationId) ?? designation;
+        }
+        else if (designation is null && roleId is { } role)
+        {
+            designation = (await orgStructure.GetNamesAsync(OrgUnitKind.Role, [role], cancellationToken)).GetValueOrDefault(role);
         }
 
+        Guid? costCenterId = input.CostCenterId ?? await orgStructure.CostCenterForAsync(locationId, input.CompanyId, cancellationToken);
+
         return new Assignment(
-            input.LegalEntityId, input.BusinessUnitId, input.DivisionId, departmentId.Value, jobId, input.PositionId, gradeId, locationId,
+            input.CompanyId, input.BusinessUnitId, departmentId.Value, roleId, levelId, input.DesignationId, costCenterId, locationId,
             input.ManagerEmployeeId, input.HrbpEmployeeId, input.EmploymentTypeCode, input.WorkModeCode, designation);
 
         static void Add(List<OrgReference> list, OrgUnitKind kind, Guid? id)
@@ -542,6 +563,48 @@ public sealed class EmployeeService(
         return protector.Protect(purpose, normalized);
     }
 
+    /// <summary>Aadhaar, PAN, passport and bank details given at hire: validated and encrypted like any later edit.</summary>
+    private void ApplyIdentifiers(EmployeeEntity employee, HireDetails details)
+    {
+        if (!string.IsNullOrWhiteSpace(details.Aadhaar) || !string.IsNullOrWhiteSpace(details.Pan))
+        {
+            employee.SetStatutory(
+                Protect(SensitiveDataPurposes.Pan, Blank(details.Pan), employee.Pan, StatutoryFormats.Pan, "PAN"),
+                employee.Uan,
+                employee.EsicNumber,
+                Protect(SensitiveDataPurposes.NationalId, Blank(details.Aadhaar), employee.NationalId, StatutoryFormats.Aadhaar, "Aadhaar number"),
+                employee.ProfessionalTaxStateCode);
+        }
+
+        if (!string.IsNullOrWhiteSpace(details.PassportNumber))
+        {
+            employee.SetPassport(
+                Protect(SensitiveDataPurposes.Passport, details.PassportNumber, null, StatutoryFormats.Passport, "passport number"),
+                details.PassportExpiry);
+        }
+
+        bool anyBank = new[] { details.BankName, details.BankIfsc, details.BankAccountHolder, details.BankAccountNumber }.Any(value => !string.IsNullOrWhiteSpace(value));
+        if (anyBank)
+        {
+            if (!string.IsNullOrWhiteSpace(details.BankIfsc) && !StatutoryFormats.Ifsc(details.BankIfsc.Trim().ToUpperInvariant()))
+            {
+                throw new DomainRuleException("EMPLOYEE_IFSC_INVALID", "That is not a valid IFSC code (four letters, a zero, then six letters or digits).");
+            }
+
+            employee.SetBank(
+                details.BankName,
+                details.BankIfsc,
+                details.BankAccountHolder,
+                Protect(SensitiveDataPurposes.BankAccount, Blank(details.BankAccountNumber), null, StatutoryFormats.BankAccount, "account number"));
+        }
+    }
+
+    /// <summary>At hire a blank value means "not given", never "clear".</summary>
+    private static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
+
+    private static AddressInput? ToInput(HireAddress? address)
+        => address is null ? null : new AddressInput(address.Line1, address.Line2, address.City, address.StateCode, address.CountryCode, address.PostalCode);
+
     private static HomeAddress? ToAddress(AddressInput? input)
         => input is null || (input.Line1, input.Line2, input.City, input.StateCode, input.CountryCode, input.PostalCode) is (null, null, null, null, null, null)
             ? null
@@ -570,4 +633,42 @@ internal static class StatutoryFormats
 
     /// <summary>Bank account numbers: nine to eighteen digits.</summary>
     public static bool BankAccount(string value) => System.Text.RegularExpressions.Regex.IsMatch(value, "^[0-9]{9,18}$");
+
+    /// <summary>Aadhaar: twelve digits, not starting with 0 or 1, ending in a valid Verhoeff check digit.</summary>
+    public static bool Aadhaar(string value)
+        => System.Text.RegularExpressions.Regex.IsMatch(value, "^[2-9][0-9]{11}$") && Verhoeff.IsValid(value);
+
+    /// <summary>Passport: six to nine letters or digits (an Indian passport is one letter and seven digits).</summary>
+    public static bool Passport(string value) => System.Text.RegularExpressions.Regex.IsMatch(value, "^[A-Z0-9]{6,9}$");
+
+    /// <summary>The Verhoeff checksum UIDAI uses for Aadhaar's last digit.</summary>
+    private static class Verhoeff
+    {
+        private static readonly int[,] Multiply =
+        {
+            { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }, { 1, 2, 3, 4, 0, 6, 7, 8, 9, 5 }, { 2, 3, 4, 0, 1, 7, 8, 9, 5, 6 },
+            { 3, 4, 0, 1, 2, 8, 9, 5, 6, 7 }, { 4, 0, 1, 2, 3, 9, 5, 6, 7, 8 }, { 5, 9, 8, 7, 6, 0, 4, 3, 2, 1 },
+            { 6, 5, 9, 8, 7, 1, 0, 4, 3, 2 }, { 7, 6, 5, 9, 8, 2, 1, 0, 4, 3 }, { 8, 7, 6, 5, 9, 3, 2, 1, 0, 4 },
+            { 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 },
+        };
+
+        private static readonly int[,] Permute =
+        {
+            { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }, { 1, 5, 7, 6, 2, 8, 3, 0, 9, 4 }, { 5, 8, 0, 3, 7, 9, 6, 1, 4, 2 },
+            { 8, 9, 1, 6, 0, 4, 3, 5, 2, 7 }, { 9, 4, 5, 3, 1, 2, 6, 8, 7, 0 }, { 4, 2, 8, 6, 5, 7, 3, 9, 0, 1 },
+            { 2, 7, 9, 3, 8, 0, 6, 4, 1, 5 }, { 7, 0, 4, 6, 9, 1, 3, 2, 5, 8 },
+        };
+
+        public static bool IsValid(string digits)
+        {
+            int check = 0;
+            for (int i = 0; i < digits.Length; i++)
+            {
+                int digit = digits[digits.Length - 1 - i] - '0';
+                check = Multiply[check, Permute[i % 8, digit]];
+            }
+
+            return check == 0;
+        }
+    }
 }

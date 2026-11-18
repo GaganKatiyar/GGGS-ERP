@@ -82,6 +82,203 @@
   margin: var(--gggs-space-1) 0 0;
 }
 
+/* ----- Manpower requests list ------------------------------------------------------------- */
+
+/* Status cards: a count per status that also filters the table. */
+.mpr__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: var(--gggs-space-2);
+  margin-block: var(--gggs-space-3);
+}
+
+.mpr__stat {
+  display: grid;
+  gap: 2px;
+  padding: var(--gggs-space-2) var(--gggs-space-3);
+  border: 1px solid var(--gggs-color-border);
+  border-radius: var(--gggs-radius-md);
+  background: var(--gggs-color-surface-raised);
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.mpr__stat:hover {
+  border-color: var(--gggs-color-border-strong);
+}
+
+.mpr__stat[aria-pressed='true'] {
+  border-color: var(--gggs-color-primary);
+  box-shadow: inset 0 0 0 1px var(--gggs-color-primary);
+}
+
+.mpr__stat:focus-visible {
+  outline: var(--gggs-focus-outline);
+}
+
+.mpr__stat-n {
+  font-size: var(--gggs-font-size-xl, 1.375rem);
+  font-weight: var(--gggs-font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.mpr__stat-l {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--gggs-color-text-muted);
+  font-size: var(--gggs-font-size-sm);
+}
+
+.mpr__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gggs-color-text-muted);
+}
+
+.mpr__dot--PendingApproval { background: var(--gggs-color-warning); }
+.mpr__dot--Approved { background: var(--gggs-color-success); }
+.mpr__dot--Fulfilled { background: var(--gggs-color-info); }
+.mpr__dot--Rejected { background: var(--gggs-color-danger); }
+
+/* Toolbar above the table. */
+.mpr__panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.mpr__bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gggs-space-2);
+  align-items: center;
+  padding: var(--gggs-space-3);
+  border-block-end: 1px solid var(--gggs-color-border);
+}
+
+.mpr__search {
+  display: flex;
+  flex: 1 1 16rem;
+  gap: var(--gggs-space-2);
+  align-items: center;
+  padding-inline: var(--gggs-space-2);
+  border: 1px solid var(--gggs-color-border);
+  border-radius: var(--gggs-radius-md);
+  color: var(--gggs-color-text-muted);
+}
+
+.mpr__search input {
+  width: 100%;
+  padding-block: var(--gggs-space-2);
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--gggs-color-text);
+  font: inherit;
+}
+
+.mpr__search:focus-within {
+  border-color: var(--gggs-color-primary);
+}
+
+.mpr__count {
+  margin-inline-start: auto;
+  color: var(--gggs-color-text-muted);
+  font-size: var(--gggs-font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The table. */
+.mpr__panel .table-wrap {
+  border: 0;
+  border-radius: 0;
+}
+
+.mpr__table tbody {
+  counter-reset: mpr-sr;
+}
+
+/* "#" counts the rows in the order they show, so it stays 1, 2, 3… after a column is sorted. */
+.mpr__row {
+  counter-increment: mpr-sr;
+  cursor: pointer;
+}
+
+td.mpr__sr::before {
+  content: counter(mpr-sr);
+}
+
+.mpr__abbr {
+  text-decoration: none;
+}
+
+.mpr__sr {
+  width: 3rem;
+  color: var(--gggs-color-text-muted);
+}
+
+.mpr__row:focus-visible {
+  outline: var(--gggs-focus-outline);
+  outline-offset: -2px;
+}
+
+.mpr__title {
+  display: block;
+  font-weight: var(--gggs-font-weight-semibold);
+}
+
+.mpr__sub {
+  display: block;
+  color: var(--gggs-color-text-muted);
+  font-size: var(--gggs-font-size-xs);
+}
+
+.mpr__late {
+  color: var(--gggs-color-danger);
+  font-weight: var(--gggs-font-weight-semibold);
+}
+
+.mpr__soon {
+  color: var(--gggs-color-warning);
+  font-weight: var(--gggs-font-weight-semibold);
+}
+
+.mpr__reason {
+  padding: 2px 8px;
+  border: 1px solid var(--gggs-color-border);
+  border-radius: var(--gggs-radius-sm, 6px);
+  font-size: var(--gggs-font-size-xs);
+  white-space: nowrap;
+}
+
+/* Priority: four bars, as many lit as the priority is high. */
+.mpr__pri {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.mpr__pri b {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.mpr__pri b i {
+  width: 4px;
+  height: 12px;
+  border-radius: 1px;
+  background: var(--gggs-color-border);
+}
+
+.mpr__pri--Low b i:nth-child(-n + 1) { background: var(--gggs-color-text-muted); }
+.mpr__pri--Medium b i:nth-child(-n + 2) { background: var(--gggs-color-info); }
+.mpr__pri--High b i:nth-child(-n + 3) { background: var(--gggs-color-warning); }
+.mpr__pri--Critical b i { background: var(--gggs-color-danger); }
+
 @media (max-width: 48rem) {
   .wfp__row,
   .wfp__edit {

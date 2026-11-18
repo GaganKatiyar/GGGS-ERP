@@ -133,6 +133,24 @@ public sealed class PasswordSignInService(
         };
     }
 
+    /// <summary>
+    /// The platform console's sign-in: platform staff only. A tenant user's address and password get
+    /// the same answer as a wrong password, and no tenant is ever looked at.
+    /// </summary>
+    public Task<PasswordSignInOutcome> SignInStaffAsync(
+        string email,
+        string password,
+        string authenticationScheme,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        {
+            return Task.FromResult(PasswordSignInOutcome.Failed(SignInErrorCodes.InvalidCredentials));
+        }
+
+        return SignInPlatformStaffAsync(email, password, authenticationScheme, cancellationToken);
+    }
+
     private async Task<PasswordSignInOutcome> SignInPlatformStaffAsync(
         string email,
         string password,

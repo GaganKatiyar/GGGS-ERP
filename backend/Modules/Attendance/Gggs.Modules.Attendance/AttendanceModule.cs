@@ -5,6 +5,7 @@ using Gggs.Modules.Attendance.Contracts;
 using Gggs.Modules.Attendance.Endpoints;
 using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.Leave.Contracts;
+using Gggs.Modules.Shift.Contracts;
 using Gggs.Modules.Workflow.Contracts;
 
 namespace Gggs.Modules.Attendance;
@@ -32,6 +33,7 @@ public sealed class AttendanceModule : IModule
         services.AddGggsEventConsumer<WorkflowRejectedIntegrationEvent, RejectRegularizationOnRejection>();
         services.AddGggsEventConsumer<LeaveApprovedIntegrationEvent, RecloseOnLeaveApproved>();
         services.AddGggsEventConsumer<LeaveCancelledIntegrationEvent, RecloseOnLeaveCancelled>();
+        services.AddGggsEventConsumer<ShiftChangedIntegrationEvent, RecloseOnShiftChanged>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints) => endpoints.MapAttendanceEndpoints();

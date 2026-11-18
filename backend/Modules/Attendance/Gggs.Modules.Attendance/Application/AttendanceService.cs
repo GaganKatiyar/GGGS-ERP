@@ -81,6 +81,9 @@ internal sealed class AttendanceService(
 {
     public const string RegularizationSubjectType = "attendance.regularization";
 
+    /// <summary>The note on today when someone has punched in and not yet out.</summary>
+    public const string InProgressNote = "Punched in, day in progress";
+
     public static WorkflowSubject RegularizationSubject { get; } = new(RegularizationSubjectType, "Attendance regularization", "attendance", []);
 
     /// <summary>Punches this long before a shift starts, or after it ends, still belong to it.</summary>
@@ -146,8 +149,9 @@ internal sealed class AttendanceService(
                 }
                 else if (day.Date == today && evaluation.Status == AttendanceStatus.MissingPunch)
                 {
-                    // The day is still open: one punch is someone at work, not a missing punch yet.
-                    evaluation = evaluation with { Note = "Punched in, day in progress" };
+                    // The day is still open: one punch is someone at work, not a missing punch yet. Today is
+                    // never stored, so once the day closes without a punch out it is judged a missing punch.
+                    evaluation = evaluation with { Status = AttendanceStatus.Present, Note = InProgressNote };
                 }
                 else if (day.Date == today && evaluation.Note == AttendanceEvaluator.NoPunchOutNeeded)
                 {
@@ -266,12 +270,47 @@ internal sealed class AttendanceService(
         return visible is null ? candidates : [.. candidates.Where(visible.Contains)];
     }
 
+    // ----- Attendance modes ---------------------------------------------------------------------
+
+    /// <summary>How the employee may record attendance; the default when HR never set it.</summary>
+    public async Task<AttendanceModes> ModesAsync(Guid employeeId, CancellationToken cancellationToken)
+        => await dbContext.AttendanceProfiles.AsNoTracking()
+            .Where(profile => profile.EmployeeId == employeeId)
+            .Select(profile => (AttendanceModes?)profile.Modes)
+            .FirstOrDefaultAsync(cancellationToken) ?? AttendanceProfile.Default;
+
+    public async Task<AttendanceModes> SetModesAsync(Guid employeeId, AttendanceModes modes, CancellationToken cancellationToken)
+    {
+        if (!await employees.IsInScopeAsync(employeeId, Permissions.Attendance.Manage, cancellationToken))
+        {
+            throw new NotFoundException("Employee", employeeId);
+        }
+
+        AttendanceProfile? profile = await dbContext.AttendanceProfiles.FirstOrDefaultAsync(row => row.EmployeeId == employeeId, cancellationToken);
+        if (profile is null)
+        {
+            dbContext.AttendanceProfiles.Add(AttendanceProfile.For(employeeId, modes));
+        }
+        else
+        {
+            profile.Set(modes);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return modes;
+    }
+
     // ----- Self-service ------------------------------------------------------------------------
 
     public async Task<TodayView> PunchAsync(CancellationToken cancellationToken)
     {
         Guid me = RequireEmployee();
         DateTime now = UtcNow;
+
+        if (!(await ModesAsync(me, cancellationToken)).HasFlag(AttendanceModes.Web))
+        {
+            throw new DomainRuleException("ATTENDANCE_WEB_PUNCH_OFF", "Web punch is not one of your attendance modes. Use the office device or the mobile app, or ask HR.");
+        }
 
         bool justPunched = await dbContext.AttendancePunches.AnyAsync(punch => punch.EmployeeId == me && punch.PunchedAt > now.AddMinutes(-1), cancellationToken);
         if (justPunched)

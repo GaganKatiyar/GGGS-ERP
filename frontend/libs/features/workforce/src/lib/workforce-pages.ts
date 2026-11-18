@@ -1,12 +1,13 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import { PermissionStore } from '@gggs/core/permissions';
 import { EmployeeSelect } from '@gggs/shared/employee-reference';
 import { WorkforceApi } from '@gggs/shared/hiring';
 import type {
+  ManpowerPriority,
   ManpowerRequestItem,
   ManpowerRequestStatus,
   WorkforceDashboard,
@@ -14,7 +15,7 @@ import type {
   WorkforcePlanLineInput,
   WorkforcePlanView,
 } from '@gggs/shared/models';
-import { humanize } from '@gggs/shared/models';
+import { humanize, MANPOWER_PRIORITIES } from '@gggs/shared/models';
 import { MoneyPipe } from '@gggs/shared/money';
 import { OrgSelect } from '@gggs/shared/org-reference';
 import { ManpowerRequestForm } from './manpower-request-form';
@@ -203,7 +204,7 @@ export class WorkforcePlansPage {
 interface LineDraft {
   departmentId: string | null;
   locationId: string | null;
-  jobId: string | null;
+  roleId: string | null;
   plannedHeadcount: number;
   salaryBudget: number;
   hiringBudget: number;
@@ -242,14 +243,14 @@ interface LineDraft {
             <div class="wfp__edit">
               <gggs-org-select kind="departments" placeholder="Department" ariaLabel="Department" [ngModel]="line.departmentId" (ngModelChange)="patch(i, { departmentId: $event })" />
               <gggs-org-select kind="locations" placeholder="Any location" ariaLabel="Location" [ngModel]="line.locationId" (ngModelChange)="patch(i, { locationId: $event })" />
-              <gggs-org-select kind="jobs" placeholder="Any job" ariaLabel="Job" [ngModel]="line.jobId" (ngModelChange)="patch(i, { jobId: $event })" />
+              <gggs-org-select kind="roles" placeholder="Any role" ariaLabel="Role" [ngModel]="line.roleId" (ngModelChange)="patch(i, { roleId: $event })" />
               <input type="number" min="0" aria-label="Planned headcount" [value]="line.plannedHeadcount" (input)="patch(i, { plannedHeadcount: +$any($event.target).value })" />
               <input type="number" min="0" aria-label="Salary budget" [value]="line.salaryBudget" (input)="patch(i, { salaryBudget: +$any($event.target).value })" />
               <input type="number" min="0" aria-label="Hiring budget" [value]="line.hiringBudget" (input)="patch(i, { hiringBudget: +$any($event.target).value })" />
               <button type="button" class="btn btn--link btn--sm" (click)="remove(i)" aria-label="Remove line"><i class="pi pi-trash" aria-hidden="true"></i></button>
             </div>
           }
-          <p class="muted">Columns: department, location, job, planned headcount, annual salary budget, hiring budget.</p>
+          <p class="muted">Columns: department, location, role, planned headcount, annual salary budget, hiring budget.</p>
           <div class="toolbar">
             <button type="button" class="btn btn--sm" (click)="add()"><i class="pi pi-plus" aria-hidden="true"></i> Add line</button>
             <span class="wfp__spacer"></span>
@@ -260,11 +261,11 @@ interface LineDraft {
       } @else {
         <section class="panel stack">
           <div class="wfp__row wfp__row--head">
-            <span>Department · location · job</span><span>At planning → planned</span><span>Today</span><span>Gap</span><span>Open positions</span><span>Budgets</span>
+            <span>Department · location · role</span><span>At planning → planned</span><span>Today</span><span>Gap</span><span>Open positions</span><span>Budgets</span>
           </div>
           @for (line of v.lines; track line.id) {
             <div class="wfp__row">
-              <span><strong>{{ line.departmentName ?? '—' }}</strong> <span class="muted">{{ line.locationName ?? '' }} {{ line.jobName ?? '' }}</span></span>
+              <span><strong>{{ line.departmentName ?? '—' }}</strong> <span class="muted">{{ line.locationName ?? '' }} {{ line.roleName ?? '' }}</span></span>
               <span>{{ line.currentHeadcount }} → {{ line.plannedHeadcount }}</span>
               <span>{{ line.liveHeadcount }}</span>
               <span [class.wfp__short]="line.plannedHeadcount - line.liveHeadcount > 0">{{ line.plannedHeadcount - line.liveHeadcount }}</span>
@@ -312,7 +313,7 @@ export class WorkforcePlanPage {
       view.lines.map((line) => ({
         departmentId: line.departmentId,
         locationId: line.locationId ?? null,
-        jobId: line.jobId ?? null,
+        roleId: line.roleId ?? null,
         plannedHeadcount: line.plannedHeadcount,
         salaryBudget: line.salaryBudget,
         hiringBudget: line.hiringBudget,
@@ -323,7 +324,7 @@ export class WorkforcePlanPage {
   }
 
   protected add(): void {
-    this.drafts.update((lines) => [...lines, { departmentId: null, locationId: null, jobId: null, plannedHeadcount: 0, salaryBudget: 0, hiringBudget: 0, notes: '' }]);
+    this.drafts.update((lines) => [...lines, { departmentId: null, locationId: null, roleId: null, plannedHeadcount: 0, salaryBudget: 0, hiringBudget: 0, notes: '' }]);
   }
 
   protected remove(index: number): void {
@@ -373,7 +374,7 @@ export class WorkforcePlanPage {
 /** Manpower requests (spec §11): raised by managers, checked against the plan, approved into recruitment. */
 @Component({
   selector: 'gggs-manpower-requests-page',
-  imports: [DatePipe, RouterLink, PageHeader, StatusBadge, EmptyState, ManpowerRequestForm],
+  imports: [DatePipe, PageHeader, StatusBadge, EmptyState, ManpowerRequestForm],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <gggs-page-header title="Manpower requests" subtitle="Who is asking for which people, how many, and where each request stands.">
@@ -381,33 +382,98 @@ export class WorkforcePlanPage {
         <button type="button" class="btn btn--primary" (click)="formOpen.set(true)"><i class="pi pi-plus" aria-hidden="true"></i> Raise a request</button>
       }
     </gggs-page-header>
-    <section class="panel toolbar wfp__filters">
-      <label class="field">
-        <span class="field__label">Status</span>
-        <select [value]="status()" (change)="status.set($any($event.target).value); load()">
-          <option value="">Any</option>
-          @for (option of statuses; track option) {
-            <option [value]="option">{{ humanize(option) }}</option>
+    <div class="mpr__stats" role="group" aria-label="Filter by status">
+      <button type="button" class="mpr__stat" [attr.aria-pressed]="status() === ''" (click)="status.set('')">
+        <span class="mpr__stat-n">{{ requests().length }}</span>
+        <span class="mpr__stat-l">All requests</span>
+      </button>
+      @for (option of statuses; track option) {
+        <button type="button" class="mpr__stat" [attr.aria-pressed]="status() === option" (click)="status.set(option)">
+          <span class="mpr__stat-n">{{ counts()[option] ?? 0 }}</span>
+          <span class="mpr__stat-l"><i class="mpr__dot mpr__dot--{{ option }}" aria-hidden="true"></i>{{ humanize(option) }}</span>
+        </button>
+      }
+    </div>
+    <section class="panel mpr__panel">
+      <div class="mpr__bar">
+        <label class="mpr__search">
+          <i class="pi pi-search" aria-hidden="true"></i>
+          <input type="search" placeholder="Search title, number or requester" aria-label="Search requests" [value]="query()" (input)="query.set($any($event.target).value)" />
+        </label>
+        <select aria-label="Department" [value]="department()" (change)="department.set($any($event.target).value)">
+          <option value="">All departments</option>
+          @for (name of departments(); track name) {
+            <option [value]="name">{{ name }}</option>
           }
         </select>
-      </label>
-      <label class="wfp__flag">
-        <input type="checkbox" [checked]="mine()" (change)="mine.set($any($event.target).checked); load()" />
-        <span>Only mine</span>
-      </label>
-    </section>
-    <section class="panel stack">
-      @for (request of requests(); track request.id) {
-        <a class="wfp__row wfp__row--link" [routerLink]="['/workforce/requests', request.id]">
-          <span><strong>{{ request.title }}</strong> <span class="muted">{{ request.number }}</span></span>
-          <span>{{ request.positions }} × · {{ request.departmentName ?? '—' }}</span>
-          <span class="muted">{{ request.requesterName ?? '' }} · {{ request.createdDate | date: 'd MMM y' }}</span>
-          <span>{{ humanize(request.priority) }} · {{ humanize(request.reason) }}</span>
-          <span><gggs-status-badge [status]="request.status" /></span>
-          <span class="muted">{{ request.requiredBy ? 'by ' + (request.requiredBy | date: 'd MMM y') : '' }}</span>
-        </a>
-      } @empty {
-        <gggs-empty-state icon="pi pi-user-plus" title="No requests here" />
+        <select aria-label="Priority" [value]="priority()" (change)="priority.set($any($event.target).value)">
+          <option value="">Any priority</option>
+          @for (option of priorities; track option) {
+            <option [value]="option">{{ option }}</option>
+          }
+        </select>
+        <label class="wfp__flag">
+          <input type="checkbox" [checked]="mine()" (change)="mine.set($any($event.target).checked); load()" />
+          <span>Only mine</span>
+        </label>
+        <span class="mpr__count">{{ shown().length }} of {{ requests().length }}</span>
+      </div>
+      @if (shown().length) {
+        <div class="table-wrap">
+          <table class="table mpr__table">
+            <thead>
+              <tr>
+                <th scope="col" class="num mpr__sr" data-nosort><abbr title="Row number" class="mpr__abbr">#</abbr></th>
+                <th scope="col">Request</th>
+                <th scope="col">Department</th>
+                <th scope="col" class="num">Openings</th>
+                <th scope="col">Priority</th>
+                <th scope="col">Reason</th>
+                <th scope="col">Requested by</th>
+                <th scope="col">Raised on</th>
+                <th scope="col">Needed by</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (request of shown(); track request.id) {
+                <tr class="mpr__row" tabindex="0" (click)="open(request)" (keydown.enter)="open(request)">
+                  <td class="num mpr__sr"></td>
+                  <td>
+                    <span class="mpr__title">{{ request.title }}</span>
+                    <span class="mpr__sub">{{ request.number }}</span>
+                  </td>
+                  <td>
+                    {{ request.departmentName ?? '—' }}
+                    @if (request.locationName) {
+                      <span class="mpr__sub">{{ request.locationName }}</span>
+                    }
+                  </td>
+                  <td class="num"><strong>{{ request.positions }}</strong></td>
+                  <td>
+                    <span class="mpr__pri mpr__pri--{{ request.priority }}"><b aria-hidden="true"><i></i><i></i><i></i><i></i></b>{{ request.priority }}</span>
+                  </td>
+                  <td><span class="mpr__reason">{{ humanize(request.reason) }}</span></td>
+                  <td>{{ request.requesterName ?? '—' }}</td>
+                  <td class="date">{{ request.createdDate | date: 'd MMM y' }}</td>
+                  <td class="date">
+                    @if (request.requiredBy) {
+                      {{ request.requiredBy | date: 'd MMM y' }}
+                      @if (dueHint(request); as hint) {
+                        <span class="mpr__sub" [class.mpr__late]="hint.late" [class.mpr__soon]="!hint.late">{{ hint.text }}</span>
+                      }
+                    } @else {
+                      <span class="muted">—</span>
+                    }
+                  </td>
+                  <td><gggs-status-badge [status]="request.status" /></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <gggs-empty-state icon="pi pi-user-plus" [title]="requests().length ? 'No requests match these filters' : 'No requests here'" />
       }
       @if (error()) {
         <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
@@ -419,15 +485,47 @@ export class WorkforcePlanPage {
 })
 export class ManpowerRequestsPage {
   private readonly api = inject(WorkforceApi);
+  private readonly router = inject(Router);
 
   protected readonly canRaise = inject(PermissionStore).has('workforce.request.manage');
   protected readonly humanize = humanize;
-  protected readonly statuses: readonly ManpowerRequestStatus[] = ['Draft', 'PendingApproval', 'Approved', 'Rejected', 'Fulfilled', 'Cancelled'];
+  protected readonly statuses: readonly ManpowerRequestStatus[] = ['PendingApproval', 'Approved', 'Draft', 'Fulfilled', 'Rejected', 'Cancelled'];
+  protected readonly priorities = MANPOWER_PRIORITIES;
+  /** Every request in view (all of them, or only mine); the status cards and filters narrow it on screen. */
   protected readonly requests = signal<readonly ManpowerRequestItem[]>([]);
   protected readonly status = signal<ManpowerRequestStatus | ''>('');
+  protected readonly query = signal('');
+  protected readonly department = signal('');
+  protected readonly priority = signal<ManpowerPriority | ''>('');
   protected readonly mine = signal(false);
   protected readonly formOpen = signal(false);
   protected readonly error = signal<string | null>(null);
+
+  protected readonly counts = computed(() => {
+    const counts: Partial<Record<ManpowerRequestStatus, number>> = {};
+    for (const request of this.requests()) {
+      counts[request.status] = (counts[request.status] ?? 0) + 1;
+    }
+    return counts;
+  });
+
+  protected readonly departments = computed(() =>
+    [...new Set(this.requests().map((request) => request.departmentName).filter((name): name is string => !!name))].sort(),
+  );
+
+  protected readonly shown = computed(() => {
+    const term = this.query().trim().toLowerCase();
+    const status = this.status();
+    const department = this.department();
+    const priority = this.priority();
+    return this.requests().filter(
+      (request) =>
+        (!status || request.status === status) &&
+        (!department || request.departmentName === department) &&
+        (!priority || request.priority === priority) &&
+        (!term || [request.title, request.number, request.requesterName].some((text) => text?.toLowerCase().includes(term))),
+    );
+  });
 
   constructor() {
     void this.load();
@@ -436,10 +534,31 @@ export class ManpowerRequestsPage {
   protected async load(): Promise<void> {
     this.error.set(null);
     try {
-      this.requests.set(await this.api.requests({ status: this.status() || null, mine: this.mine() || null }));
+      this.requests.set(await this.api.requests({ status: null, mine: this.mine() || null }));
     } catch (error) {
       this.error.set(message(error, 'Requests could not be loaded.'));
     }
+  }
+
+  protected open(request: ManpowerRequestItem): void {
+    void this.router.navigate(['/workforce/requests', request.id]);
+  }
+
+  /** "5 days overdue" or "In 9 days" for a request still being worked on; nothing otherwise. */
+  protected dueHint(request: ManpowerRequestItem): { text: string; late: boolean } | null {
+    if (!request.requiredBy || !['Draft', 'PendingApproval', 'Approved'].includes(request.status)) {
+      return null;
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const days = Math.round((new Date(request.requiredBy).setHours(0, 0, 0, 0) - today.getTime()) / 86_400_000);
+    if (days < 0) {
+      return { text: `${-days} ${-days === 1 ? 'day' : 'days'} overdue`, late: true };
+    }
+    if (days <= 14) {
+      return { text: days === 0 ? 'Due today' : `In ${days} ${days === 1 ? 'day' : 'days'}`, late: false };
+    }
+    return null;
   }
 }
 
@@ -474,7 +593,7 @@ export class ManpowerRequestsPage {
       }
       <section class="panel wfp__facts">
         <div><span class="field__label">Department</span><p>{{ r.departmentName ?? '—' }}</p></div>
-        <div><span class="field__label">Job · location</span><p>{{ r.jobName ?? 'Any job' }} · {{ r.locationName ?? 'Any location' }}</p></div>
+        <div><span class="field__label">Role · location</span><p>{{ r.roleName ?? 'Any role' }} · {{ r.locationName ?? 'Any location' }}</p></div>
         <div><span class="field__label">Positions</span><p>{{ r.positions }}</p></div>
         <div><span class="field__label">Employment</span><p>{{ humanize(r.employmentTypeCode) }} · {{ humanize(r.workModeCode) }}</p></div>
         <div><span class="field__label">Experience</span><p>{{ r.minExperienceYears ?? 0 }}–{{ r.maxExperienceYears ?? 'any' }} years</p></div>

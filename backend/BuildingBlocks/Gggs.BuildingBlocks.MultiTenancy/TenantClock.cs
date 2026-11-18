@@ -17,6 +17,12 @@ public interface ITenantClock
 
     /// <summary>The UTC instant a tenant-local date and time stands for.</summary>
     Task<DateTime> ToUtcAsync(DateOnly localDate, TimeOnly localTime, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// A UTC instant as people read it in emails and messages: the tenant's local time, 12-hour, with the
+    /// zone - "20 Nov 2026, 8:46 AM IST", or "8:46 AM IST" without the date.
+    /// </summary>
+    Task<string> FormatAsync(DateTime utc, bool withDate = true, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -60,5 +66,34 @@ public sealed class TenantClock(ITenantContext tenantContext, ITenantRegistry re
         }
 
         return TimeZoneInfo.ConvertTimeToUtc(local, zone);
+    }
+
+    public async Task<string> FormatAsync(DateTime utc, bool withDate = true, CancellationToken cancellationToken = default)
+        => Format(utc, await GetTimeZoneAsync(cancellationToken), withDate);
+
+    /// <summary>The text <see cref="FormatAsync"/> gives, for a known zone. Invariant culture, so a server's own locale never shows.</summary>
+    public static string Format(DateTime utc, TimeZoneInfo zone, bool withDate = true)
+    {
+        ArgumentNullException.ThrowIfNull(zone);
+        DateTime local = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), zone);
+        string time = local.ToString(withDate ? "d MMM yyyy, h:mm tt" : "h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
+        return $"{time} {ZoneLabel(zone, local)}";
+    }
+
+    /// <summary>"IST" for India, "UTC" for UTC, otherwise the offset ("UTC+04:00"): Windows has no short names for zones.</summary>
+    private static string ZoneLabel(TimeZoneInfo zone, DateTime local)
+    {
+        if (zone.Id is "Asia/Kolkata" or "Asia/Calcutta" or "India Standard Time")
+        {
+            return "IST";
+        }
+
+        TimeSpan offset = zone.GetUtcOffset(local);
+        if (offset == TimeSpan.Zero)
+        {
+            return "UTC";
+        }
+
+        return $"UTC{(offset < TimeSpan.Zero ? "-" : "+")}{offset.Duration():hh\\:mm}";
     }
 }

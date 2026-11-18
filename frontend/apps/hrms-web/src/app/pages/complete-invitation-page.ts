@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
-import { AdminApi } from '@gggs/shared/identity';
+import { AdminApi, DEFAULT_PASSWORD_RULES, passwordHint, type PasswordRules } from '@gggs/shared/identity';
 import { Button, FormField } from '@gggs/shared/ui';
 import { SignedOutLayout } from './signed-out-layout';
 
@@ -31,17 +31,17 @@ import { SignedOutLayout } from './signed-out-layout';
           </p>
         } @else {
           <div class="auth__password">
-            <gggs-form-field label="New password" hint="At least 12 characters." required>
+            <gggs-form-field label="New password" [hint]="hint()" required>
               <input
                 [type]="showPassword() ? 'text' : 'password'"
                 formControlName="newPassword"
                 autocomplete="new-password"
-                minlength="12"
+                [attr.minlength]="rules().minimumLength"
                 required
               />
             </gggs-form-field>
-            <button type="button" class="auth__eye auth__eye--hinted" [attr.aria-pressed]="showPassword()" aria-label="Show password" (click)="showPassword.set(!showPassword())">
-              {{ showPassword() ? 'Hide' : 'Show' }}
+            <button type="button" class="auth__eye auth__eye--hinted" [attr.aria-pressed]="showPassword()" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'" [attr.title]="showPassword() ? 'Hide password' : 'Show password'" (click)="showPassword.set(!showPassword())">
+              <i class="pi" [class.pi-eye]="!showPassword()" [class.pi-eye-slash]="showPassword()" aria-hidden="true"></i>
             </button>
           </div>
 
@@ -82,9 +82,26 @@ export class CompleteInvitationPage {
   protected readonly succeeded = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
 
+  /** The organisation's own rules (Studio > Password policy), fetched once the link's tenant is known. */
+  protected readonly rules = signal<PasswordRules>(DEFAULT_PASSWORD_RULES);
+  protected readonly hint = computed(() => passwordHint(this.rules()));
+
   protected readonly form = this.formBuilder.nonNullable.group({
-    newPassword: ['', [Validators.required, Validators.minLength(12)]],
+    newPassword: ['', [Validators.required, Validators.minLength(DEFAULT_PASSWORD_RULES.minimumLength)]],
   });
+
+  constructor() {
+    effect(() => {
+      const tenantCode = this.tenantCode();
+      if (tenantCode) {
+        void this.api.passwordRules(tenantCode).then((rules) => {
+          this.rules.set(rules);
+          this.form.controls.newPassword.setValidators([Validators.required, Validators.minLength(rules.minimumLength)]);
+          this.form.controls.newPassword.updateValueAndValidity();
+        });
+      }
+    });
+  }
 
   protected async submit(): Promise<void> {
     const tenantCode = this.tenantCode();

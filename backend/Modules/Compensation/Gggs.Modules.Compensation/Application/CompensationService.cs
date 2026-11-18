@@ -18,8 +18,8 @@ namespace Gggs.Modules.Compensation.Application;
 
 public sealed record BandItem(
     Guid Id,
-    Guid GradeId,
-    string? GradeName,
+    Guid LevelId,
+    string? LevelName,
     string Currency,
     decimal Minimum,
     decimal Midpoint,
@@ -32,7 +32,7 @@ public sealed record BandItem(
     int BelowRange,
     int AboveRange);
 
-public sealed record BandBody(Guid GradeId, string? Currency, decimal Minimum, decimal Midpoint, decimal Maximum, DateOnly EffectiveFrom, string? Notes);
+public sealed record BandBody(Guid LevelId, string? Currency, decimal Minimum, decimal Midpoint, decimal Maximum, DateOnly EffectiveFrom, string? Notes);
 
 public sealed record CycleItem(
     Guid Id,
@@ -62,8 +62,8 @@ public sealed record RevisionItem(
     decimal IncreasePercent,
     string Currency,
     DateOnly EffectiveDate,
-    Guid? NewGradeId,
-    string? NewGradeName,
+    Guid? NewLevelId,
+    string? NewLevelName,
     string? NewDesignation,
     string Justification,
     string? PerformanceRating,
@@ -131,7 +131,7 @@ public sealed record GrantBody(Guid EmployeeId, GrantDetails Details);
 
 public sealed record ExerciseBody(decimal Units);
 
-public sealed record BandPosition(string? GradeName, decimal Minimum, decimal Midpoint, decimal Maximum, decimal CompaRatio, decimal Penetration, string Position);
+public sealed record BandPosition(string? LevelName, decimal Minimum, decimal Midpoint, decimal Maximum, decimal CompaRatio, decimal Penetration, string Position);
 
 /// <summary>Everything someone earns (spec §23): salary, variable pay, benefits and equity, with their band position.</summary>
 public sealed record TotalRewards(
@@ -198,9 +198,9 @@ internal sealed class CompensationService(
     public async Task<IReadOnlyList<BandItem>> BandsAsync(CancellationToken cancellationToken)
     {
         DateOnly today = await clock.TodayAsync(cancellationToken);
-        List<SalaryBand> bands = await dbContext.SalaryBands.AsNoTracking().OrderBy(band => band.GradeId).ThenByDescending(band => band.EffectiveFrom).ToListAsync(cancellationToken);
-        IReadOnlyDictionary<Guid, string> grades = await organization.GetNamesAsync(OrgUnitKind.Grade, bands.Select(band => band.GradeId), cancellationToken);
-        HashSet<Guid> current = [.. bands.Where(band => band.EffectiveFrom <= today).GroupBy(band => (band.GradeId, band.Currency)).Select(group => group.MaxBy(band => band.EffectiveFrom)!.Id)];
+        List<SalaryBand> bands = await dbContext.SalaryBands.AsNoTracking().OrderBy(band => band.LevelId).ThenByDescending(band => band.EffectiveFrom).ToListAsync(cancellationToken);
+        IReadOnlyDictionary<Guid, string> levels = await organization.GetNamesAsync(OrgUnitKind.Level, bands.Select(band => band.LevelId), cancellationToken);
+        HashSet<Guid> current = [.. bands.Where(band => band.EffectiveFrom <= today).GroupBy(band => (band.LevelId, band.Currency)).Select(group => group.MaxBy(band => band.EffectiveFrom)!.Id)];
 
         // Who sits in each current band, and where.
         List<EmployeeSummary> people = [.. await employees.GetManyAsync(await employees.ListActiveIdsAsync(null, null, cancellationToken), cancellationToken)];
@@ -209,23 +209,23 @@ internal sealed class CompensationService(
             .Select(band =>
             {
                 List<decimal> ctcs = !current.Contains(band.Id) ? [] : [.. people
-                    .Where(person => person.GradeId == band.GradeId && pay.TryGetValue(person.Id, out SalaryInfo? info) && info.Currency == band.Currency)
+                    .Where(person => person.LevelId == band.LevelId && pay.TryGetValue(person.Id, out SalaryInfo? info) && info.Currency == band.Currency)
                     .Select(person => pay[person.Id].AnnualCtc)];
                 return new BandItem(
-                    band.Id, band.GradeId, grades.GetValueOrDefault(band.GradeId), band.Currency, band.Minimum, band.Midpoint, band.Maximum, band.EffectiveFrom, band.Notes,
+                    band.Id, band.LevelId, levels.GetValueOrDefault(band.LevelId), band.Currency, band.Minimum, band.Midpoint, band.Maximum, band.EffectiveFrom, band.Notes,
                     current.Contains(band.Id), ctcs.Count, ctcs.Count == 0 ? null : Math.Round(ctcs.Average(band.CompaRatio), 2),
                     ctcs.Count(ctc => ctc < band.Minimum), ctcs.Count(ctc => ctc > band.Maximum));
             })
-            .OrderBy(item => item.GradeName, StringComparer.CurrentCulture)
+            .OrderBy(item => item.LevelName, StringComparer.CurrentCulture)
             .ThenByDescending(item => item.EffectiveFrom)];
     }
 
     public async Task<BandItem> SaveBandAsync(Guid? id, BandBody body, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(body);
-        if ((await organization.FindInvalidAsync([new OrgReference(OrgUnitKind.Grade, body.GradeId)], cancellationToken)).Count > 0)
+        if ((await organization.FindInvalidAsync([new OrgReference(OrgUnitKind.Level, body.LevelId)], cancellationToken)).Count > 0)
         {
-            throw new DomainRuleException("BAND_GRADE", "Choose an active grade.");
+            throw new DomainRuleException("BAND_LEVEL", "Choose an active level.");
         }
 
         string currency = string.IsNullOrWhiteSpace(body.Currency) ? "INR" : body.Currency;
@@ -237,13 +237,13 @@ internal sealed class CompensationService(
         }
         else
         {
-            band = SalaryBand.Create(body.GradeId, currency, body.Minimum, body.Midpoint, body.Maximum, body.EffectiveFrom, body.Notes);
+            band = SalaryBand.Create(body.LevelId, currency, body.Minimum, body.Midpoint, body.Maximum, body.EffectiveFrom, body.Notes);
             dbContext.SalaryBands.Add(band);
         }
 
-        if (await dbContext.SalaryBands.AnyAsync(row => row.Id != band.Id && row.GradeId == band.GradeId && row.Currency == band.Currency && row.EffectiveFrom == band.EffectiveFrom, cancellationToken))
+        if (await dbContext.SalaryBands.AnyAsync(row => row.Id != band.Id && row.LevelId == band.LevelId && row.Currency == band.Currency && row.EffectiveFrom == band.EffectiveFrom, cancellationToken))
         {
-            throw new DomainRuleException("BAND_DATE", "This grade already has a band from that date.");
+            throw new DomainRuleException("BAND_DATE", "This level already has a band from that date.");
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -605,16 +605,16 @@ internal sealed class CompensationService(
         string currency = salary?.Currency ?? "INR";
 
         BandPosition? band = null;
-        if (person?.GradeId is { } grade && salary is not null)
+        if (person?.LevelId is { } level && salary is not null)
         {
             SalaryBand? current = await dbContext.SalaryBands.AsNoTracking()
-                .Where(row => row.GradeId == grade && row.Currency == currency && row.EffectiveFrom <= today)
+                .Where(row => row.LevelId == level && row.Currency == currency && row.EffectiveFrom <= today)
                 .OrderByDescending(row => row.EffectiveFrom)
                 .FirstOrDefaultAsync(cancellationToken);
             if (current is not null)
             {
-                string? gradeName = (await organization.GetNamesAsync(OrgUnitKind.Grade, [grade], cancellationToken)).GetValueOrDefault(grade);
-                band = new BandPosition(gradeName, current.Minimum, current.Midpoint, current.Maximum, current.CompaRatio(salary.AnnualCtc), current.Penetration(salary.AnnualCtc), current.Position(salary.AnnualCtc));
+                string? levelName = (await organization.GetNamesAsync(OrgUnitKind.Level, [level], cancellationToken)).GetValueOrDefault(level);
+                band = new BandPosition(levelName, current.Minimum, current.Midpoint, current.Maximum, current.CompaRatio(salary.AnnualCtc), current.Penetration(salary.AnnualCtc), current.Position(salary.AnnualCtc));
             }
         }
 
@@ -741,22 +741,22 @@ internal sealed class CompensationService(
         Dictionary<Guid, EmployeeSummary> names = (await employees.GetManyAsync(people, cancellationToken)).ToDictionary(person => person.Id);
         List<Guid> cycleIds = [.. revisions.Select(row => row.CycleId).OfType<Guid>().Distinct()];
         Dictionary<Guid, string> cycles = await dbContext.CompensationCycles.AsNoTracking().Where(cycle => cycleIds.Contains(cycle.Id)).ToDictionaryAsync(cycle => cycle.Id, cycle => cycle.Name, cancellationToken);
-        IReadOnlyDictionary<Guid, string> grades = await organization.GetNamesAsync(OrgUnitKind.Grade, revisions.Select(row => row.NewGradeId).OfType<Guid>(), cancellationToken);
+        IReadOnlyDictionary<Guid, string> levels = await organization.GetNamesAsync(OrgUnitKind.Level, revisions.Select(row => row.NewLevelId).OfType<Guid>(), cancellationToken);
 
-        // Compa-ratio before and after, against the band of the grade they are (or will be) in.
+        // Compa-ratio before and after, against the band of the level they are (or will be) in.
         List<SalaryBand> bands = await dbContext.SalaryBands.AsNoTracking().ToListAsync(cancellationToken);
-        SalaryBand? BandFor(Guid? grade, string currency, DateOnly day) => grade is null ? null
-            : bands.Where(band => band.GradeId == grade && band.Currency == currency && band.EffectiveFrom <= day).MaxBy(band => band.EffectiveFrom);
+        SalaryBand? BandFor(Guid? level, string currency, DateOnly day) => level is null ? null
+            : bands.Where(band => band.LevelId == level && band.Currency == currency && band.EffectiveFrom <= day).MaxBy(band => band.EffectiveFrom);
 
         return [.. revisions.Select(row =>
         {
             EmployeeSummary? person = names.GetValueOrDefault(row.EmployeeId);
-            SalaryBand? before = BandFor(person?.GradeId, row.Currency, row.EffectiveDate);
-            SalaryBand? after = BandFor(row.NewGradeId ?? person?.GradeId, row.Currency, row.EffectiveDate);
+            SalaryBand? before = BandFor(person?.LevelId, row.Currency, row.EffectiveDate);
+            SalaryBand? after = BandFor(row.NewLevelId ?? person?.LevelId, row.Currency, row.EffectiveDate);
             return new RevisionItem(
                 row.Id, row.EmployeeId, person?.DisplayName, person?.EmployeeCode, row.CycleId, row.CycleId is { } cycle ? cycles.GetValueOrDefault(cycle) : null, row.Type,
-                row.CurrentCtc, row.ProposedCtc, row.IncreasePercent, row.Currency, row.EffectiveDate, row.NewGradeId,
-                row.NewGradeId is { } grade ? grades.GetValueOrDefault(grade) : null, row.NewDesignation, row.Justification, row.PerformanceRating, row.Status,
+                row.CurrentCtc, row.ProposedCtc, row.IncreasePercent, row.Currency, row.EffectiveDate, row.NewLevelId,
+                row.NewLevelId is { } level ? levels.GetValueOrDefault(level) : null, row.NewDesignation, row.Justification, row.PerformanceRating, row.Status,
                 row.ProposedByEmployeeId is { } proposer ? names.GetValueOrDefault(proposer)?.DisplayName : null, row.DecidedDate, row.AppliedDate, row.ApplyError,
                 before?.CompaRatio(row.CurrentCtc), after?.CompaRatio(row.ProposedCtc));
         })];

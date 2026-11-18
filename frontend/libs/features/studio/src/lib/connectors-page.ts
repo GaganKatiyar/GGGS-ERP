@@ -31,7 +31,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
             <span class="studio__tile" aria-hidden="true"><i [class]="iconOf(connection)"></i></span>
             <span class="studio__main">
               <strong>{{ connection.name }}</strong>
-              <span class="muted">{{ connection.adapterName }} · {{ connection.lastTestedAt ? 'tested ' + (connection.lastTestedAt | date: 'd MMM, HH:mm') : 'not tested yet' }}{{ connection.lastMessage ? ' · ' + connection.lastMessage : '' }}</span>
+              <span class="muted">{{ connection.adapterName }} · {{ connection.lastTestedAt ? 'tested ' + (connection.lastTestedAt | date: 'd MMM, h:mm a') : 'not tested yet' }}{{ connection.lastMessage ? ' · ' + connection.lastMessage : '' }}</span>
             </span>
             <span class="studio__health" [attr.data-health]="health(connection)">{{ health(connection) }}</span>
             @if (canManage) {
@@ -88,7 +88,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
             <strong>{{ nameOf(run.connectionId) }}</strong>
             <span class="muted">{{ run.operation }}</span>
             <span>{{ run.message }}</span>
-            <span class="muted">{{ run.createdDate | date: 'd MMM y, HH:mm' }}{{ run.fileName ? ' · ' + run.fileName : '' }}</span>
+            <span class="muted">{{ run.createdDate | date: 'd MMM y, h:mm a' }}{{ run.fileName ? ' · ' + run.fileName : '' }}</span>
             <span class="studio__health" [attr.data-health]="run.succeeded ? 'Healthy' : 'Failing'">{{ run.succeeded ? 'Done' : 'Failed' }}</span>
           </div>
         } @empty {

@@ -58,7 +58,7 @@ internal sealed class FinalSettlementPayroll(
         DateOnly today = await clock.TodayAsync(cancellationToken);
         PayrollSettings settings = await catalog.SettingsAsync(cancellationToken);
         PayrollRun settlementRun = PayrollRun.OpenFinalSettlement(
-            period, today < period ? period : today, person.LegalEntityId, settings.DefaultCurrency, request.EmployeeId, request.SettlementId, request.LastWorkingDay, salaryPaid,
+            period, today < period ? period : today, person.CompanyId, settings.DefaultCurrency, request.EmployeeId, request.SettlementId, request.LastWorkingDay, salaryPaid,
             $"Full and final settlement: {person.DisplayName}, last working day {request.LastWorkingDay:d MMMM yyyy}.");
         dbContext.PayrollRuns.Add(settlementRun);
 

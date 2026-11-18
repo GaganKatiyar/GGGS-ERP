@@ -239,7 +239,7 @@ export class EmployeePayroll {
 
         @if (r.band; as band) {
           <section class="stack">
-            <h3 class="money-heading">Band position{{ band.gradeName ? ' · ' + band.gradeName : '' }}</h3>
+            <h3 class="money-heading">Band position{{ band.levelName ? ' · ' + band.levelName : '' }}</h3>
             <div class="band" [attr.aria-label]="'Compa-ratio ' + band.compaRatio">
               <div class="band__track">
                 <span class="band__marker" [style.left.%]="clamp(band.penetration)"></span>

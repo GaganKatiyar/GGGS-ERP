@@ -10,7 +10,9 @@ import type {
   CandidateProfile,
   CandidateSource,
   CandidateView,
+  HireDetails,
   HireResult,
+  HireableOffer,
   InterviewInput,
   InterviewItem,
   JobApplicationItem,
@@ -235,8 +237,16 @@ export class RecruitmentApi {
     return firstValueFrom(this.http.post<OfferItem>(`${this.base}/offers/${id}/respond`, { accepted, reason }));
   }
 
-  hire(id: string, body: { managerEmployeeId?: string | null; positionId?: string | null; locationId?: string | null } = {}): Promise<HireResult> {
+  hire(
+    id: string,
+    body: { managerEmployeeId?: string | null; locationId?: string | null; employmentTypeCode?: string | null; workModeCode?: string | null; details?: HireDetails | null } = {},
+  ): Promise<HireResult> {
     return firstValueFrom(this.http.post<HireResult>(`${this.base}/offers/${id}/hire`, body));
+  }
+
+  /** Accepted offers whose candidate has not joined yet: who the hire form can hire from Recruitment. */
+  hireable(): Promise<readonly HireableOffer[]> {
+    return firstValueFrom(this.http.get<readonly HireableOffer[]>(`${this.base}/offers/hireable`));
   }
 
   // Agencies, rules and analytics

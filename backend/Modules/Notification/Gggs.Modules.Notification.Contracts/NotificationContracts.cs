@@ -30,6 +30,29 @@ public interface INotifier
 public sealed record ChannelSendResult(bool Succeeded, string Message);
 
 /// <summary>
+/// An email on its way out through one of the organisation's connections. The sender fields come
+/// from the module's sender on the Email senders page; a null one leaves the connection's own.
+/// </summary>
+public sealed record OutgoingEmail(
+    string To,
+    string Subject,
+    string Body,
+    string? HtmlBody = null,
+    string? FromName = null,
+    string? FromAddress = null,
+    string? ReplyTo = null,
+    string? Bcc = null);
+
+/// <summary>A connection that can send email, as the Email senders page offers it.</summary>
+public sealed record EmailConnectionOption(Guid Id, string Name, string AdapterName, bool IsActive);
+
+/// <summary>The organisation's email connections, and the one Studio's channel route points at, if any.</summary>
+public sealed record EmailConnections(Guid? RouteConnectionId, IReadOnlyList<EmailConnectionOption> Options);
+
+/// <summary>What happened to an email sent through a connection, and which connection carried it.</summary>
+public sealed record EmailSendResult(bool Succeeded, string Message, string ConnectionName);
+
+/// <summary>
 /// The organisation's own way of sending, if it has set one up in Studio. A null result means none
 /// is set: email then goes through the system's sender, and text messages do not go at all.
 /// </summary>
@@ -38,6 +61,14 @@ public interface ITenantMessageSender
     Task<bool> SendsSmsAsync(CancellationToken cancellationToken = default);
 
     Task<ChannelSendResult?> SendEmailAsync(string recipient, string subject, string body, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends through <paramref name="connectionId"/> when it is a switched-on email connection, else through
+    /// the channel route's; null when neither is usable.
+    /// </summary>
+    Task<EmailSendResult?> SendEmailAsync(OutgoingEmail email, Guid? connectionId, CancellationToken cancellationToken = default);
+
+    Task<EmailConnections> EmailConnectionsAsync(CancellationToken cancellationToken = default);
 
     Task<ChannelSendResult?> SendSmsAsync(string recipient, string text, CancellationToken cancellationToken = default);
 }
@@ -99,6 +130,10 @@ public static class NotificationTemplates
     public const string RedemptionUpdate = "reward.redemption-update";
     public const string PointsExpiring = "reward.points-expiring";
     public const string SurveyOpened = "engagement.survey-opened";
+    public const string BirthdayWish = "engagement.birthday-wish";
+    public const string BirthdayManagerNotice = "engagement.birthday-manager";
+    public const string AnniversaryWish = "engagement.anniversary-wish";
+    public const string AnniversaryManagerNotice = "engagement.anniversary-manager";
     public const string TicketUpdate = "helpdesk.ticket-update";
     public const string TicketAssigned = "helpdesk.ticket-assigned";
     public const string TicketSlaBreached = "helpdesk.sla-breached";

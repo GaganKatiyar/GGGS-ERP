@@ -26,15 +26,22 @@ internal static class CoreHrApi
     public static Task<Guid> DepartmentAsync(HttpClient client, Guid? parentId = null, string? code = null)
         => CreateAsync(client, "/api/v1/organizations/departments", new { Code = code ?? Unique("DEPT"), Name = "Department " + Unique("N"), ParentDepartmentId = parentId });
 
-    public static Task<Guid> JobAsync(HttpClient client)
-        => CreateAsync(client, "/api/v1/organizations/jobs", new { Code = Unique("JOB"), Name = "Engineer", JobFamilyCode = "ENGINEERING", RequiredSkills = new[] { ".NET" } });
+    public static Task<Guid> AnyRoleAsync(HttpClient client)
+        => CreateAsync(client, "/api/v1/organizations/roles", new { Code = Unique("ROLE"), Name = "Engineer", JobFamilyCode = "ENGINEERING", RequiredSkills = new[] { ".NET" } });
 
-    public static Task<Guid> PositionAsync(HttpClient client, Guid jobId, Guid departmentId, int headcount = 1)
-        => CreateAsync(client, "/api/v1/organizations/positions", new { Code = Unique("POS"), Name = "Seat", JobId = jobId, DepartmentId = departmentId, IsBudgeted = true, Headcount = headcount });
+    /// <summary>A role of one department; it gets a designation for every active level.</summary>
+    public static Task<Guid> RoleAsync(HttpClient client, Guid departmentId, string name = "Business Analyst")
+        => CreateAsync(client, "/api/v1/organizations/roles", new { Code = Unique("R"), Name = name, DepartmentId = departmentId });
 
-    public static async Task<Guid> HireAsync(HttpClient client, Guid departmentId, Guid? managerId = null, Guid? positionId = null, string? email = null)
+    public static Task<Guid> LevelAsync(HttpClient client, int rank = 3)
+        => CreateAsync(client, "/api/v1/organizations/levels", new { Code = Unique("L"), Name = "Level " + rank, Rank = rank });
+
+    public static Task<Guid> DesignationAsync(HttpClient client, string name, Guid? levelId = null)
+        => CreateAsync(client, "/api/v1/organizations/designations", new { Code = Unique("DES"), Name = name, LevelId = levelId });
+
+    public static async Task<Guid> HireAsync(HttpClient client, Guid departmentId, Guid? managerId = null, string? email = null)
     {
-        HttpResponseMessage response = await HireRawAsync(client, departmentId, managerId, positionId, email);
+        HttpResponseMessage response = await HireRawAsync(client, departmentId, managerId, email);
         string text = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         response.StatusCode.ShouldBe(HttpStatusCode.Created, $"hire failed: {text}");
 
@@ -42,7 +49,7 @@ internal static class CoreHrApi
         return document.RootElement.GetProperty("id").GetGuid();
     }
 
-    public static Task<HttpResponseMessage> HireRawAsync(HttpClient client, Guid? departmentId, Guid? managerId = null, Guid? positionId = null, string? email = null)
+    public static Task<HttpResponseMessage> HireRawAsync(HttpClient client, Guid? departmentId, Guid? managerId = null, string? email = null)
         => client.PostAsJsonAsync("/api/v1/employees", new
         {
             FirstName = "Test",
@@ -52,7 +59,6 @@ internal static class CoreHrApi
             Assignment = new
             {
                 DepartmentId = departmentId,
-                PositionId = positionId,
                 ManagerEmployeeId = managerId,
                 EmploymentTypeCode = "FULL_TIME",
                 WorkModeCode = "HYBRID",

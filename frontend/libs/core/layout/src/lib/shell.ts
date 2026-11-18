@@ -222,7 +222,7 @@ export class Shell {
         this.isPaletteMenuOpen.set(false);
         this.closeFlyout();
         this.closeMenu();
-        // In a long tab bar (My Space has two dozen pages) bring the current page's tab into view.
+        // In a long tab bar (HR Portal and Settings have many pages) bring the current page's tab into view.
         setTimeout(() => document.querySelector('.module-tabs__tab--active')?.scrollIntoView({ block: 'nearest', inline: 'center' }));
       });
     this.pageTitle.set(deepestTitle(this.router.routerState.snapshot.root));

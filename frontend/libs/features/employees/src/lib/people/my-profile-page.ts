@@ -5,7 +5,7 @@ import { MyPhotoStore, myPhotoUrl } from '@gggs/core/auth';
 import { ApiError } from '@gggs/core/http';
 import { PermissionStore } from '@gggs/core/permissions';
 import { EmployeeDirectoryApi } from '@gggs/shared/employee-reference';
-import type { Address, EmployeeProfile } from '@gggs/shared/models';
+import type { Address, EmployeeAssignment, EmployeeProfile } from '@gggs/shared/models';
 import { EmptyState, Skeleton, StatusBadge, Tabs, type TabItem } from '@gggs/shared/ui';
 import { PhotoCropDialog } from './photo-crop-dialog';
 import { PHOTO_ACCEPT, cropPhoto, decodePhoto, type SquareCrop } from './profile-photo';
@@ -24,6 +24,10 @@ interface Field {
 
 /** How many missing details the side card lists before "and N more". */
 const GAPS_SHOWN = 5;
+
+/** Where someone sits: "Engineering › Platform engineering" for a function, else the department's name. */
+const placement = (assignment: EmployeeAssignment): string | undefined =>
+  assignment.parentDepartment && assignment.department ? `${assignment.parentDepartment.name} › ${assignment.department.name}` : assignment.department?.name;
 
 /** The ring's circumference at r = 32, for the completeness meter's dash. */
 const RING = 2 * Math.PI * 32;
@@ -216,7 +220,7 @@ const RING = 2 * Math.PI * 32;
                   {{ initials() }}
                 }
               </span>
-              <span><strong>You</strong><span class="profile-line__meta">{{ p.assignment.designation ?? p.assignment.job?.name ?? p.displayName }}</span></span>
+              <span><strong>You</strong><span class="profile-line__meta">{{ p.assignment.designation ?? p.assignment.role?.name ?? p.displayName }}</span></span>
             </div>
             @if (!p.assignment.manager) {
               <p class="profile-line__meta">No manager is on record.</p>
@@ -722,7 +726,7 @@ export class MyProfilePage {
     const done = this.completeness();
     return [
       { label: 'Length of service', value: this.tenure(), hint: `Since ${this.date(p.joiningDate)}` },
-      { label: 'Reports to', value: p.assignment.manager?.name ?? 'No manager', hint: p.assignment.department?.name },
+      { label: 'Reports to', value: p.assignment.manager?.name ?? 'No manager', hint: placement(p.assignment) },
       {
         label: 'Next anniversary',
         value: formatDate(anniversary.date, 'mediumDate', this.locale),
@@ -737,7 +741,7 @@ export class MyProfilePage {
 
   protected readonly roleLine = computed(() => {
     const assignment = this.profile()!.assignment;
-    return [assignment.designation ?? assignment.job?.name, assignment.department?.name].filter(Boolean).join(' · ') || 'No role on record';
+    return [assignment.designation ?? assignment.role?.name, placement(assignment)].filter(Boolean).join(' · ') || 'No role on record';
   });
 
   protected readonly sectionLabel = computed(() => this.sections.find((tab) => tab.key === this.section())?.label ?? '');
@@ -774,10 +778,13 @@ export class MyProfilePage {
         ];
       default:
         return [
-          { label: 'Designation', value: a.designation ?? a.job?.name },
-          { label: 'Department', value: a.department?.name },
+          { label: 'Designation', value: a.designation ?? a.role?.name },
+          { label: 'Department', value: placement(a) },
+          { label: 'Role', value: a.role?.name },
+          { label: 'Level', value: a.level?.name },
           { label: 'Manager', value: a.manager?.name },
           { label: 'Location', value: a.location?.name },
+          { label: 'Company', value: a.costCenter?.name ?? a.company?.name },
           { label: 'Joined', value: this.date(p.joiningDate) },
           { label: 'Employment type', value: a.employmentType.label },
           { label: 'Work mode', value: a.workMode.label },

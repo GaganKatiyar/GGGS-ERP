@@ -412,10 +412,10 @@ export const TALENT_LEVELS: readonly TalentLevel[] = ['Low', 'Medium', 'High'];
 export interface CareerStepItem {
   readonly index: number;
   readonly title: string;
-  readonly jobId?: string;
-  readonly jobName?: string;
-  readonly gradeId?: string;
-  readonly gradeName?: string;
+  readonly roleId?: string;
+  readonly roleName?: string;
+  readonly levelId?: string;
+  readonly levelName?: string;
   readonly minMonthsInRole: number;
   readonly skills: readonly string[];
   readonly description?: string;
@@ -434,8 +434,8 @@ export interface CareerPathItem {
 
 export interface CareerStepInput {
   readonly title: string;
-  readonly jobId?: string | null;
-  readonly gradeId?: string | null;
+  readonly roleId?: string | null;
+  readonly levelId?: string | null;
   readonly minMonthsInRole: number;
   readonly skills: readonly string[];
   readonly description?: string | null;
@@ -470,11 +470,11 @@ export interface PromotionItem {
   readonly currentDesignation?: string;
   readonly currentAnnualCtc?: number;
   readonly proposedDesignation: string;
-  readonly proposedJobId?: string;
-  readonly proposedJobName?: string;
-  readonly proposedGradeId?: string;
-  readonly proposedGradeName?: string;
-  readonly proposedPositionId?: string;
+  readonly proposedRoleId?: string;
+  readonly proposedRoleName?: string;
+  readonly proposedLevelId?: string;
+  readonly proposedLevelName?: string;
+  readonly proposedDesignationId?: string;
   readonly proposedAnnualCtc?: number;
   readonly increasePercent?: number;
   readonly effectiveDate: string;
@@ -490,9 +490,9 @@ export interface PromotionItem {
 
 export interface PromotionDetailsInput {
   readonly proposedDesignation: string;
-  readonly proposedJobId?: string | null;
-  readonly proposedGradeId?: string | null;
-  readonly proposedPositionId?: string | null;
+  readonly proposedRoleId?: string | null;
+  readonly proposedLevelId?: string | null;
+  readonly proposedDesignationId?: string | null;
   readonly proposedAnnualCtc?: number | null;
   readonly effectiveDate: string;
   readonly justification: string;
@@ -500,8 +500,8 @@ export interface PromotionDetailsInput {
 
 export interface MyCareer {
   readonly designation?: string;
-  readonly jobName?: string;
-  readonly gradeName?: string;
+  readonly roleName?: string;
+  readonly levelName?: string;
   readonly joiningDate?: string;
   readonly latestRating?: RatingInfo;
   readonly paths: readonly CareerPosition[];
@@ -521,7 +521,6 @@ export interface SuccessorItem {
 export interface SuccessionItem {
   readonly id: string;
   readonly roleTitle: string;
-  readonly positionId?: string;
   readonly departmentId?: string;
   readonly departmentName?: string;
   readonly incumbentEmployeeId?: string;
@@ -536,7 +535,6 @@ export interface SuccessionItem {
 
 export interface SuccessionInput {
   readonly roleTitle: string;
-  readonly positionId?: string | null;
   readonly departmentId?: string | null;
   readonly incumbentEmployeeId?: string | null;
   readonly criticality: Criticality;

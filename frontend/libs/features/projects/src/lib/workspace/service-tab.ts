@@ -64,7 +64,7 @@ interface TargetDraft {
                   <tr>
                     <th scope="row">
                       <a [routerLink]="['/projects', projectId()]" [queryParams]="{ tab: 'tasks', task: ticket.taskId }"><strong>{{ ticket.code }}</strong> {{ ticket.title }}</a>
-                      <div class="muted sla__small">{{ humanize(ticket.type) }} · opened {{ ticket.openedAt | date: 'd MMM HH:mm' }}</div>
+                      <div class="muted sla__small">{{ humanize(ticket.type) }} · opened {{ ticket.openedAt | date: 'd MMM h:mm a' }}</div>
                       @if (ticket.excludedReason) {
                         <div class="muted sla__small">Excluded: {{ ticket.excludedReason }}</div>
                       }

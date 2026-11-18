@@ -454,6 +454,45 @@ export interface EnpsPoint {
   readonly enps?: number;
 }
 
+/** What the greetings screens celebrate. */
+export type CelebrationKind = 'Birthday' | 'WorkAnniversary';
+
+/** A birthday or work anniversary on the greetings screen, and whether HR has wished them. */
+export interface CelebrationRow {
+  readonly employeeId: string;
+  readonly employeeCode: string;
+  readonly employeeName: string;
+  readonly departmentName?: string;
+  readonly managerName?: string;
+  /** The day itself (ISO date). */
+  readonly date: string;
+  /** Years of service for an anniversary; 0 for a birthday. */
+  readonly years: number;
+  /** On the day or up to a week late, and not wished yet. */
+  readonly canSend: boolean;
+  /** When HR wished them; absent until then (the API leaves nulls out). */
+  readonly wishedAt?: string;
+  readonly wishedBy?: string;
+  readonly note?: string;
+}
+
+export interface CelebrationList {
+  /** Today where the company is (ISO date). */
+  readonly today: string;
+  readonly rows: readonly CelebrationRow[];
+}
+
+export interface SendWishesInput {
+  readonly kind: CelebrationKind;
+  readonly items: readonly { readonly employeeId: string; readonly date: string }[];
+  readonly note: string | null;
+}
+
+export interface SendWishesResult {
+  readonly sent: number;
+  readonly skipped: readonly { readonly employeeId: string; readonly date: string; readonly reason: string }[];
+}
+
 export interface EngagementDashboard {
   readonly openSurveys: number;
   readonly latestEnps?: number;
@@ -759,7 +798,7 @@ export interface RetrenchmentResult {
 
 export interface NoticeRule {
   readonly id: string;
-  readonly gradeId?: string;
+  readonly levelId?: string;
   readonly employmentTypeCode?: string;
   readonly onProbation?: boolean;
   readonly noticeDays: number;

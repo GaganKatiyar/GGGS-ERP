@@ -136,5 +136,8 @@ public interface IPlatformStaffRepository
 
     Task<bool> EmailExistsAsync(string normalizedEmail, CancellationToken cancellationToken = default);
 
+    /// <summary>Whether any platform staff account exists at all, in any status.</summary>
+    Task<bool> AnyAsync(CancellationToken cancellationToken = default);
+
     void Add(PlatformStaffMember member);
 }

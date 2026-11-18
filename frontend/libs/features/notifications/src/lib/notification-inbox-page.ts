@@ -33,7 +33,7 @@ import { EmptyState, PageHeader, Skeleton } from '@gggs/shared/ui';
                 <strong>{{ item.title }}</strong>
                 <span class="muted">{{ item.body }}</span>
               </span>
-              <span class="muted inbox__date">{{ item.createdDate | date: 'short' }}</span>
+              <span class="muted inbox__date">{{ item.createdDate | date: 'd MMM y, h:mm a' }}</span>
               @if (!item.isRead) {
                 <span class="inbox__hidden">Unread</span>
               }

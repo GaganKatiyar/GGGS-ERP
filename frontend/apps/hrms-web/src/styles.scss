@@ -3,20 +3,7 @@
 @use '@fontsource-variable/plus-jakarta-sans/index.css' as plus-jakarta-sans;
 
 /*
- * The Nuts and Bolts design system. Tokens first, then element defaults (in a cascade layer, so any
- * component or PrimeNG rule overrides them), then the shared building blocks every screen uses.
- * Components may add local styles for what is genuinely theirs - never colours or spacing
- * written out literally.
+ * The Nuts and Bolts design system lives in libs/shared/theme, so the platform console looks the
+ * same. See that file for the order and the rules.
  */
-@use './styles/tokens';
-@use './styles/base';
-@use './styles/buttons';
-@use './styles/forms';
-@use './styles/table';
-@use './styles/layout';
-@use './styles/feedback';
-@use './styles/xp';
-@use './styles/depth';
-@use './styles/shell';
-@use './styles/overlays';
-@use './styles/utilities';
+@use '../../../libs/shared/theme/src/gggs';

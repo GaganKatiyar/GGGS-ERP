@@ -44,7 +44,7 @@ const offsetLabel = (days: number): string => (days === 0 ? 'On the last day' : 
             <div>
               <span class="muted">Sign-in</span><br />
               @if (o.accessDisabledAt) {
-                Switched off {{ o.accessDisabledAt | date: 'd MMM y, HH:mm' }}
+                Switched off {{ o.accessDisabledAt | date: 'd MMM y, h:mm a' }}
               } @else {
                 {{ o.accountStatus ?? 'No account' }}{{ o.accountStatus ? ' · switched off automatically after the last day' : '' }}
               }

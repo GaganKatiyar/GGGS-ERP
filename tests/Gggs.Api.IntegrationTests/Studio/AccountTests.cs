@@ -71,9 +71,8 @@ public sealed class AccountTests(PeopleOsApiFactory factory)
                 AppDbContext database = provider.GetRequiredService<AppDbContext>();
                 EmailMessage record = await database.Set<EmailMessage>().AsNoTracking().SingleAsync(row => row.ToAddress == personal, Ct);
                 record.Status.ShouldBe(EmailStatus.Sent);
-                record.Body.ShouldNotContain(made.Password);
-                record.Body.ShouldContain("••••");
-                record.Body.ShouldContain(login);
+                record.IsMasked.ShouldBeTrue();
+                record.Body.ShouldBeEmpty("a sent email keeps who and when, not the message");
                 (await database.Set<IntegrationRun>().AsNoTracking().Where(row => row.ConnectionId == connection).ToListAsync(Ct)).ShouldAllBe(row => !row.Message.Contains(made.Password, StringComparison.Ordinal));
             });
             account.GetRawText().ShouldNotContain(made.Password);

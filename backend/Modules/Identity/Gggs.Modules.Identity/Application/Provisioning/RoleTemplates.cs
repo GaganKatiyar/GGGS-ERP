@@ -24,7 +24,7 @@ namespace Gggs.Modules.Identity.Application.Provisioning;
 /// <para>
 /// Expense and travel permissions are absent because those modules do not exist yet. Payroll's
 /// sensitive permissions (salaries, runs, declarations, reports) go to the Payroll Administrator,
-/// scoped to their legal entity, and reading runs and reports to Finance.
+/// scoped to their company, and reading runs and reports to Finance.
 /// </para>
 /// </summary>
 public static class RoleTemplates
@@ -149,7 +149,7 @@ public static class RoleTemplates
 
                 new(Permissions.Organization.View, DataScope.Tenant),
                 new(Permissions.Organization.Manage, DataScope.Tenant),
-                new(Permissions.Organization.LegalEntityManage, DataScope.Tenant),
+                new(Permissions.Organization.CompanyManage, DataScope.Tenant),
                 new(Permissions.Organization.DepartmentManage, DataScope.Tenant),
                 new(Permissions.MasterData.Manage, DataScope.Tenant),
 
@@ -341,7 +341,7 @@ public static class RoleTemplates
                 .. SelfService(),
             ],
 
-            // Legal entity, not tenant: the legal entity is the payroll boundary, so a payroll
+            // Company, not tenant: the company is the payroll boundary, so a payroll
             // administrator for one registered company has no reach into another.
             ["PAYROLL_ADMIN"] =
             [
@@ -349,33 +349,33 @@ public static class RoleTemplates
                 new(Permissions.DataHub.IntegrationView, DataScope.Tenant),
                 new(Permissions.DataHub.IntegrationManage, DataScope.Tenant),
                 new(Permissions.Organization.View, DataScope.Tenant),
-                new(Permissions.Employee.View, DataScope.LegalEntity),
-                new(Permissions.Employee.HistoryView, DataScope.LegalEntity),
-                new(Permissions.Leave.BalanceView, DataScope.LegalEntity),
-                new(Permissions.Attendance.View, DataScope.LegalEntity),
+                new(Permissions.Employee.View, DataScope.Company),
+                new(Permissions.Employee.HistoryView, DataScope.Company),
+                new(Permissions.Leave.BalanceView, DataScope.Company),
+                new(Permissions.Attendance.View, DataScope.Company),
                 new(Permissions.Workflow.TaskView, DataScope.Own),
                 new(Permissions.Workflow.TaskAct, DataScope.Own),
-                new(Permissions.Report.View, DataScope.LegalEntity),
+                new(Permissions.Report.View, DataScope.Company),
 
                 .. PayrollSetup(),
-                new(Permissions.Payroll.EmployeeSalaryView, DataScope.LegalEntity),
-                new(Permissions.Payroll.EmployeeSalaryManage, DataScope.LegalEntity),
-                new(Permissions.Payroll.InputManage, DataScope.LegalEntity),
-                new(Permissions.Payroll.TaxDeclarationView, DataScope.LegalEntity),
-                new(Permissions.Payroll.TaxDeclarationVerify, DataScope.LegalEntity),
-                new(Permissions.Payroll.RunView, DataScope.LegalEntity),
-                new(Permissions.Payroll.RunProcess, DataScope.LegalEntity),
-                new(Permissions.Payroll.RunFinalize, DataScope.LegalEntity),
-                new(Permissions.Payroll.ReportView, DataScope.LegalEntity),
+                new(Permissions.Payroll.EmployeeSalaryView, DataScope.Company),
+                new(Permissions.Payroll.EmployeeSalaryManage, DataScope.Company),
+                new(Permissions.Payroll.InputManage, DataScope.Company),
+                new(Permissions.Payroll.TaxDeclarationView, DataScope.Company),
+                new(Permissions.Payroll.TaxDeclarationVerify, DataScope.Company),
+                new(Permissions.Payroll.RunView, DataScope.Company),
+                new(Permissions.Payroll.RunProcess, DataScope.Company),
+                new(Permissions.Payroll.RunFinalize, DataScope.Company),
+                new(Permissions.Payroll.ReportView, DataScope.Company),
                 new(Permissions.Compliance.RuleView, DataScope.Tenant),
                 new(Permissions.Compliance.FilingView, DataScope.Tenant),
                 new(Permissions.Compliance.FilingManage, DataScope.Tenant),
                 new(Permissions.Benefit.PlanView, DataScope.Tenant),
-                new(Permissions.Benefit.EnrollmentView, DataScope.LegalEntity),
+                new(Permissions.Benefit.EnrollmentView, DataScope.Company),
                 new(Permissions.Compensation.BandView, DataScope.Tenant),
-                new(Permissions.Compensation.RevisionView, DataScope.LegalEntity),
-                new(Permissions.Compensation.RevisionManage, DataScope.LegalEntity),
-                new(Permissions.Compensation.VariablePayView, DataScope.LegalEntity),
+                new(Permissions.Compensation.RevisionView, DataScope.Company),
+                new(Permissions.Compensation.RevisionManage, DataScope.Company),
+                new(Permissions.Compensation.VariablePayView, DataScope.Company),
                 .. LoanManagement(),
 
                 .. SelfService(),
@@ -394,7 +394,7 @@ public static class RoleTemplates
                 new(Permissions.Separation.ClearanceManage, DataScope.Tenant),
                 new(Permissions.Separation.SettlementManage, DataScope.Tenant),
                 new(Permissions.Organization.View, DataScope.Tenant),
-                new(Permissions.Employee.View, DataScope.LegalEntity),
+                new(Permissions.Employee.View, DataScope.Company),
                 new(Permissions.Client.View, DataScope.Tenant),
                 new(Permissions.Contract.View, DataScope.Tenant),
                 new(Permissions.Project.View, DataScope.Tenant),
@@ -403,12 +403,12 @@ public static class RoleTemplates
                 new(Permissions.Timesheet.View, DataScope.Tenant),
                 new(Permissions.Workflow.TaskView, DataScope.Own),
                 new(Permissions.Workflow.TaskAct, DataScope.Own),
-                new(Permissions.Report.View, DataScope.LegalEntity),
+                new(Permissions.Report.View, DataScope.Company),
 
                 new(Permissions.Project.FinancialsView, DataScope.Tenant),
                 new(Permissions.Project.FinancialsManage, DataScope.Tenant),
-                new(Permissions.Payroll.RunView, DataScope.LegalEntity),
-                new(Permissions.Payroll.ReportView, DataScope.LegalEntity),
+                new(Permissions.Payroll.RunView, DataScope.Company),
+                new(Permissions.Payroll.ReportView, DataScope.Company),
                 new(Permissions.Compliance.RuleView, DataScope.Tenant),
                 new(Permissions.Compliance.FilingView, DataScope.Tenant),
                 new(Permissions.Benefit.PlanView, DataScope.Tenant),
@@ -518,25 +518,25 @@ public static class RoleTemplates
                 .. SelfService(),
             ],
 
-            // An HR business partner looks after a legal entity's people without administering HR.
+            // An HR business partner looks after a company's people without administering HR.
             ["HRBP"] =
             [
                 new(Permissions.Organization.View, DataScope.Tenant),
-                new(Permissions.Employee.View, DataScope.LegalEntity),
-                new(Permissions.Employee.HistoryView, DataScope.LegalEntity),
-                new(Permissions.Leave.BalanceView, DataScope.LegalEntity),
-                new(Permissions.Leave.RequestView, DataScope.LegalEntity),
-                new(Permissions.Attendance.View, DataScope.LegalEntity),
-                new(Permissions.Performance.CycleView, DataScope.LegalEntity),
-                new(Permissions.Performance.ReviewView, DataScope.LegalEntity),
-                new(Permissions.Performance.PipView, DataScope.LegalEntity),
-                new(Permissions.Learning.EnrollmentView, DataScope.LegalEntity),
+                new(Permissions.Employee.View, DataScope.Company),
+                new(Permissions.Employee.HistoryView, DataScope.Company),
+                new(Permissions.Leave.BalanceView, DataScope.Company),
+                new(Permissions.Leave.RequestView, DataScope.Company),
+                new(Permissions.Attendance.View, DataScope.Company),
+                new(Permissions.Performance.CycleView, DataScope.Company),
+                new(Permissions.Performance.ReviewView, DataScope.Company),
+                new(Permissions.Performance.PipView, DataScope.Company),
+                new(Permissions.Learning.EnrollmentView, DataScope.Company),
                 new(Permissions.Career.PathView, DataScope.Tenant),
-                new(Permissions.Career.PromotionView, DataScope.LegalEntity),
-                new(Permissions.Career.SuccessionView, DataScope.LegalEntity),
+                new(Permissions.Career.PromotionView, DataScope.Company),
+                new(Permissions.Career.SuccessionView, DataScope.Company),
                 new(Permissions.Workflow.TaskView, DataScope.Own),
                 new(Permissions.Workflow.TaskAct, DataScope.Own),
-                new(Permissions.Report.View, DataScope.LegalEntity),
+                new(Permissions.Report.View, DataScope.Company),
 
                 .. SelfService(),
             ],
@@ -788,7 +788,7 @@ public static class RoleTemplates
         new("HR_ADMIN", "HR Administrator", "Manages employees, organization structure and HR policies."),
         new("HR_MANAGER", "HR Manager", "Manages employees and approvals within their branch."),
         new("HR_EXECUTIVE", "HR Executive", "Maintains employee records and day-to-day HR operations for a branch."),
-        new("HRBP", "HR Business Partner", "Partners with a legal entity's leadership on its people."),
+        new("HRBP", "HR Business Partner", "Partners with a company's leadership on its people."),
         new("PAYROLL_ADMIN", "Payroll Administrator", "Runs payroll and manages salary structures."),
         new("FINANCE_USER", "Finance", "Approves expenses and reviews payroll and project cost reports."),
         new("RECRUITER", "Recruiter", "Runs job postings, candidates, interviews and offers."),

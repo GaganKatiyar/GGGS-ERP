@@ -2,6 +2,7 @@ using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Security;
 using Gggs.Data;
 using Gggs.Modules.Employee.Application;
+using Gggs.Modules.Employee.Contracts;
 using Gggs.Modules.Employee.Domain;
 using Gggs.Modules.Insight.Contracts;
 using Gggs.Modules.MasterData.Contracts;
@@ -157,6 +158,7 @@ internal sealed class EmployeeCalendar(AppDbContext dbContext) : ICalendarSource
     }
 
     /// <summary>The yearly recurrences of a date within a range (29 February falls on 28 February in other years).</summary>
+    /// <remarks>Also used by <see cref="EmployeeCelebrations"/>, so the calendar and the greetings agree on the day.</remarks>
     public static IEnumerable<DateOnly> Occurrences(DateOnly date, DateOnly firstDay, DateOnly lastDay)
     {
         for (int year = firstDay.Year; year <= lastDay.Year; year++)
@@ -168,5 +170,43 @@ internal sealed class EmployeeCalendar(AppDbContext dbContext) : ICalendarSource
                 yield return occurrence;
             }
         }
+    }
+}
+
+/// <summary>Birthdays and work anniversaries of current employees, by the same rules as the HR calendar.</summary>
+internal sealed class EmployeeCelebrations(AppDbContext dbContext) : IEmployeeCelebrations
+{
+    public async Task<IReadOnlyList<Celebration>> BirthdaysAsync(DateOnly firstDay, DateOnly lastDay, IReadOnlyCollection<Guid>? scope, CancellationToken cancellationToken = default)
+    {
+        var people = await Current(scope)
+            .Where(row => row.DateOfBirth != null)
+            .Select(row => new { row.Id, row.EmployeeCode, row.DisplayName, row.DepartmentId, row.ManagerEmployeeId, row.DateOfBirth })
+            .ToListAsync(cancellationToken);
+
+        return [.. people
+            .SelectMany(person => EmployeeCalendar.Occurrences(person.DateOfBirth!.Value, firstDay, lastDay)
+                .Select(day => new Celebration(person.Id, person.EmployeeCode, person.DisplayName, person.DepartmentId, person.ManagerEmployeeId, day, 0)))
+            .OrderBy(row => row.Date)
+            .ThenBy(row => row.DisplayName, StringComparer.CurrentCultureIgnoreCase)];
+    }
+
+    public async Task<IReadOnlyList<Celebration>> AnniversariesAsync(DateOnly firstDay, DateOnly lastDay, IReadOnlyCollection<Guid>? scope, CancellationToken cancellationToken = default)
+    {
+        var people = await Current(scope)
+            .Select(row => new { row.Id, row.EmployeeCode, row.DisplayName, row.DepartmentId, row.ManagerEmployeeId, row.JoiningDate })
+            .ToListAsync(cancellationToken);
+
+        return [.. people
+            .SelectMany(person => EmployeeCalendar.Occurrences(person.JoiningDate, firstDay, lastDay)
+                .Where(day => day.Year > person.JoiningDate.Year)
+                .Select(day => new Celebration(person.Id, person.EmployeeCode, person.DisplayName, person.DepartmentId, person.ManagerEmployeeId, day, day.Year - person.JoiningDate.Year)))
+            .OrderBy(row => row.Date)
+            .ThenBy(row => row.DisplayName, StringComparer.CurrentCultureIgnoreCase)];
+    }
+
+    private IQueryable<EmployeeEntity> Current(IReadOnlyCollection<Guid>? scope)
+    {
+        IQueryable<EmployeeEntity> query = dbContext.Employees.AsNoTracking().Where(row => row.Status != EmployeeStatus.Exited);
+        return scope is null ? query : query.Where(row => scope.Contains(row.Id));
     }
 }

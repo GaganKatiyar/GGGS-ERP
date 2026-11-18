@@ -11,7 +11,7 @@ import {
   signal,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { EmptyState, StatusBadge } from '@gggs/shared/ui';
+import { EmptyState, StatusBadge, dateTime } from '@gggs/shared/ui';
 import type { PagedResult } from '@gggs/shared/models';
 import { TableModule, type TableLazyLoadEvent } from 'primeng/table';
 
@@ -363,10 +363,9 @@ export class DataTable<T extends { id: string }> {
     }
   }
 
-  /** Server timestamps are UTC; one without an offset is read as UTC and shown in local time. */
+  /** Server timestamps are UTC; one without an offset is read as UTC and shown in local time, 12-hour. */
   private static dateTime(value: string): string {
-    const utc = /[zZ]|[+-]\d{2}:\d{2}$/.test(value) ? value : `${value}Z`;
-    return new Date(utc).toLocaleString(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return dateTime(value);
   }
 
   /** PrimeNG's field plus direction becomes the API's `-field` convention. */

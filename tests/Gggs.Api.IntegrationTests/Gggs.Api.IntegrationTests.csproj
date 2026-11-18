@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\backend\Host\Gggs.Api\Gggs.Api.csproj" />
+    <ProjectReference Include="..\..\backend\Host\Gggs.PlatformApi\Gggs.PlatformApi.csproj" />
   </ItemGroup>
 
   <ItemGroup>

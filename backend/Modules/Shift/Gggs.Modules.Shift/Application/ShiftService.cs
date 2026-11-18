@@ -73,6 +73,7 @@ internal sealed class ShiftService(
     AppDbContext dbContext,
     IEmployeeDirectory employees,
     IWorkflowStarter workflow,
+    IIntegrationEventPublisher publisher,
     ICurrentUser currentUser,
     ITenantClock clock) : IShiftSchedule
 {
@@ -211,6 +212,7 @@ internal sealed class ShiftService(
         ArgumentNullException.ThrowIfNull(request);
         WorkShift shift = await FindAsync(id, cancellationToken);
         shift.Update(request.Name, request.StartTime, request.EndTime, request.BreakMinutes, request.GraceMinutes, request.HalfDayMinutes, request.FullDayMinutes, request.WeeklyOff, request.RequiresPunchOut);
+        publisher.Publish(new ShiftChangedIntegrationEvent(shift.Id));
         await dbContext.SaveChangesAsync(cancellationToken);
         return ToItem(shift);
     }
@@ -231,6 +233,7 @@ internal sealed class ShiftService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
         shift.MakeDefault();
+        publisher.Publish(new ShiftChangedIntegrationEvent(shift.Id));
         await dbContext.SaveChangesAsync(cancellationToken);
         return ToItem(shift);
     }

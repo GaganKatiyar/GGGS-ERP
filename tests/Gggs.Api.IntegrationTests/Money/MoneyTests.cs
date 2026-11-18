@@ -20,7 +20,7 @@ public sealed class MoneyTests(PeopleOsApiFactory factory)
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     /// <summary>Hires someone paid through payroll: statutory IDs, a Karnataka PT state and a bank account.</summary>
-    private static async Task<Guid> PayeeAsync(HttpClient admin, Guid? gradeId = null)
+    private static async Task<Guid> PayeeAsync(HttpClient admin, Guid? levelId = null)
     {
         Guid department = await CoreHrApi.DepartmentAsync(admin);
         JsonElement hired = await OkAsync(await admin.PostAsJsonAsync("/api/v1/employees", new
@@ -35,7 +35,7 @@ public sealed class MoneyTests(PeopleOsApiFactory factory)
                 EmploymentTypeCode = "FULL_TIME",
                 WorkModeCode = "HYBRID",
                 Designation = "Engineer",
-                GradeId = gradeId,
+                LevelId = levelId,
             },
         }, Ct), HttpStatusCode.Created);
         Guid id = hired.GetProperty("id").GetGuid();
@@ -348,13 +348,13 @@ public sealed class MoneyTests(PeopleOsApiFactory factory)
     public async Task Compensation_RevisionAppliesToPayroll_VariablePayIsPaidThroughPayroll_AndEquityVests()
     {
         using HttpClient admin = await factory.CreateAdminClientAsync();
-        Guid grade = (await OkAsync(await admin.PostAsJsonAsync("/api/v1/organizations/grades", new { Code = CoreHrApi.Unique("G"), Name = "Senior engineer", Rank = 5 }, Ct), HttpStatusCode.Created)).GetProperty("id").GetGuid();
-        Guid employee = await PayeeAsync(admin, grade);
+        Guid level = (await OkAsync(await admin.PostAsJsonAsync("/api/v1/organizations/levels", new { Code = CoreHrApi.Unique("L"), Name = "Senior engineer", Rank = 5 }, Ct), HttpStatusCode.Created)).GetProperty("id").GetGuid();
+        Guid employee = await PayeeAsync(admin, level);
         await AssignSalaryAsync(admin, employee, 1_000_000m);
 
         JsonElement band = await OkAsync(await admin.PostAsJsonAsync("/api/v1/compensation/bands", new
         {
-            GradeId = grade,
+            LevelId = level,
             Minimum = 900_000m,
             Midpoint = 1_200_000m,
             Maximum = 1_500_000m,

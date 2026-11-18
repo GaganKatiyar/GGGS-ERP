@@ -310,13 +310,13 @@ public sealed class CareerTests
     {
         Guid incumbent = Guid.NewGuid();
         Guid successor = Guid.NewGuid();
-        var plan = SuccessionPlan.Create("Head of delivery", null, null, incumbent, Criticality.Critical, Criticality.High, null,
+        var plan = SuccessionPlan.Create("Head of delivery", null, incumbent, Criticality.Critical, Criticality.High, null,
             [new SuccessorEntry(successor, Readiness.OneToTwoYears, null), new SuccessorEntry(successor, Readiness.ReadyNow, "dup")]);
         plan.Successors.Count.ShouldBe(1);
         plan.Covered.ShouldBeFalse();
-        plan.Update("Head of delivery", null, null, incumbent, Criticality.Critical, Criticality.High, null, [new SuccessorEntry(successor, Readiness.ReadyNow, null)]);
+        plan.Update("Head of delivery", null, incumbent, Criticality.Critical, Criticality.High, null, [new SuccessorEntry(successor, Readiness.ReadyNow, null)]);
         plan.Covered.ShouldBeTrue();
-        Should.Throw<DomainRuleException>(() => plan.Update("X", null, null, incumbent, Criticality.Low, Criticality.Low, null, [new SuccessorEntry(incumbent, Readiness.ReadyNow, null)]));
+        Should.Throw<DomainRuleException>(() => plan.Update("X", null, incumbent, Criticality.Low, Criticality.Low, null, [new SuccessorEntry(incumbent, Readiness.ReadyNow, null)]));
     }
 
     [Theory]

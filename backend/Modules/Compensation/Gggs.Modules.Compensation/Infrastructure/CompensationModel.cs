@@ -21,8 +21,8 @@ internal sealed class CompensationModel : IModuleModel
             entity.Property(band => band.Midpoint).HasPrecision(18, 2);
             entity.Property(band => band.Maximum).HasPrecision(18, 2);
             entity.Property(band => band.Notes).HasMaxLength(500);
-            entity.HasIndex(band => new { band.TenantId, band.GradeId, band.Currency, band.EffectiveFrom })
-                .HasDatabaseName("UX_SalaryBand_TenantId_Grade_Currency_From")
+            entity.HasIndex(band => new { band.TenantId, band.LevelId, band.Currency, band.EffectiveFrom })
+                .HasDatabaseName("UX_SalaryBand_TenantId_Level_Currency_From")
                 .IsUnique()
                 .HasFilter("[IsDeleted] = 0");
             entity.Ignore(band => band.DomainEvents);

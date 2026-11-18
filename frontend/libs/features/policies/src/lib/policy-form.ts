@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angu
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import type { OrgUnit, PolicyCategory, PolicyInput, PolicyItem } from '@gggs/shared/models';
 import { POLICY_CATEGORY_LABELS } from '@gggs/shared/models';
-import { OrgStructureApi } from '@gggs/shared/org-reference';
+import { departmentOptions, OrgStructureApi, type DepartmentOption } from '@gggs/shared/org-reference';
 
 export type PolicyForm = FormGroup<{
   code: FormControl<string>;
@@ -83,7 +83,7 @@ export function toPolicyInput(form: PolicyForm, content?: { content: string; eff
             @for (department of departments(); track department.id) {
               <label class="audience__option">
                 <input type="checkbox" [checked]="isChosen('departmentIds', department.id)" (change)="toggle('departmentIds', department.id)" />
-                {{ department.name }}
+                {{ department.label }}
               </label>
             }
           </div>
@@ -135,11 +135,11 @@ export class PolicyFields {
 
   protected readonly categories = POLICY_CATEGORY_LABELS;
   protected readonly categoryKeys = Object.keys(POLICY_CATEGORY_LABELS) as PolicyCategory[];
-  protected readonly departments = signal<readonly OrgUnit[]>([]);
+  protected readonly departments = signal<readonly DepartmentOption[]>([]);
   protected readonly locations = signal<readonly OrgUnit[]>([]);
 
   constructor() {
-    void this.org.active('departments').then((rows) => this.departments.set(rows));
+    void this.org.active('departments').then((rows) => this.departments.set(departmentOptions(rows)));
     void this.org.active('locations').then((rows) => this.locations.set(rows));
   }
 

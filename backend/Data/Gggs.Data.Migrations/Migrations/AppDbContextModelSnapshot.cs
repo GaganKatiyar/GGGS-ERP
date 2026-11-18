@@ -975,6 +975,70 @@ namespace Gggs.Data.Migrations.Migrations
                     b.HasAnnotation("Gggs:TenantOwned", true);
                 });
 
+            modelBuilder.Entity("Gggs.Modules.Attendance.Domain.AttendanceProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<byte>("Modes")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("TenantId", "EmployeeId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_AttendanceProfile_TenantId_Employee")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_AttendanceProfile_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.ToTable("AttendanceProfile", "att");
+
+                    b.HasAnnotation("Gggs:TenantOwned", true);
+                });
+
             modelBuilder.Entity("Gggs.Modules.Attendance.Domain.AttendancePunch", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1499,13 +1563,13 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<Guid?>("ProposedGradeId")
+                    b.Property<Guid?>("ProposedDesignationId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("ProposedJobId")
+                    b.Property<Guid?>("ProposedLevelId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("ProposedPositionId")
+                    b.Property<Guid?>("ProposedRoleId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int?>("Rating")
@@ -1588,9 +1652,6 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<string>("Notes")
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
-
-                    b.Property<Guid?>("PositionId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("RoleTitle")
                         .IsRequired()
@@ -2059,7 +2120,7 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<Guid?>("NewGradeId")
+                    b.Property<Guid?>("NewLevelId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("NewStructureId")
@@ -2255,14 +2316,14 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<DateOnly>("EffectiveFrom")
                         .HasColumnType("date");
 
-                    b.Property<Guid>("GradeId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
+
+                    b.Property<Guid>("LevelId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("Maximum")
                         .HasPrecision(18, 2)
@@ -2304,9 +2365,9 @@ namespace Gggs.Data.Migrations.Migrations
 
                     SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
 
-                    b.HasIndex("TenantId", "GradeId", "Currency", "EffectiveFrom")
+                    b.HasIndex("TenantId", "LevelId", "Currency", "EffectiveFrom")
                         .IsUnique()
-                        .HasDatabaseName("UX_SalaryBand_TenantId_Grade_Currency_From")
+                        .HasDatabaseName("UX_SalaryBand_TenantId_Level_Currency_From")
                         .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("SalaryBand", "comp");
@@ -2630,6 +2691,9 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
 
@@ -2659,9 +2723,6 @@ namespace Gggs.Data.Migrations.Migrations
 
                     b.Property<byte>("Kind")
                         .HasColumnType("tinyint");
-
-                    b.Property<Guid?>("LegalEntityId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("ModifiedBy")
                         .HasColumnType("uniqueidentifier");
@@ -3530,11 +3591,17 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<Guid?>("BusinessUnitId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateOnly?>("ConfirmationDate")
                         .HasColumnType("date");
 
                     b.Property<DateOnly?>("ContractEndDate")
                         .HasColumnType("date");
+
+                    b.Property<Guid?>("CostCenterId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
@@ -3558,13 +3625,13 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<Guid?>("DesignationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
-
-                    b.Property<Guid?>("DivisionId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("EmployeeCode")
                         .IsRequired()
@@ -3592,9 +3659,6 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
-                    b.Property<Guid?>("GradeId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid?>("HrbpEmployeeId")
                         .HasColumnType("uniqueidentifier");
 
@@ -3604,9 +3668,6 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<Guid?>("JobId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateOnly>("JoiningDate")
                         .HasColumnType("date");
 
@@ -3614,7 +3675,7 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<Guid?>("LegalEntityId")
+                    b.Property<Guid?>("LevelId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("LocationId")
@@ -3652,6 +3713,9 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<DateOnly?>("PassportExpiry")
+                        .HasColumnType("date");
+
                     b.Property<string>("PersonalEmail")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
@@ -3659,12 +3723,13 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<Guid?>("PhotoId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("PositionId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("PreferredName")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal?>("PreviousExperienceYears")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateOnly?>("ProbationEndDate")
                         .HasColumnType("date");
@@ -3672,6 +3737,9 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<string>("ProfessionalTaxStateCode")
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
+
+                    b.Property<Guid?>("RoleId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -3717,9 +3785,6 @@ namespace Gggs.Data.Migrations.Migrations
                         .IsUnique()
                         .HasDatabaseName("UX_Employee_TenantId_OfficialEmail")
                         .HasFilter("[OfficialEmail] IS NOT NULL AND [IsDeleted] = 0");
-
-                    b.HasIndex("TenantId", "PositionId")
-                        .HasDatabaseName("IX_Employee_TenantId_PositionId");
 
                     b.HasIndex("TenantId", "DepartmentId", "Status")
                         .HasDatabaseName("IX_Employee_TenantId_DepartmentId");
@@ -3989,6 +4054,12 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<byte>("ChangeType")
                         .HasColumnType("tinyint");
 
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CostCenterId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
 
@@ -4008,7 +4079,7 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<Guid?>("DivisionId")
+                    b.Property<Guid?>("DesignationId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateOnly>("EffectiveFrom")
@@ -4025,9 +4096,6 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
-                    b.Property<Guid?>("GradeId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid?>("HrbpEmployeeId")
                         .HasColumnType("uniqueidentifier");
 
@@ -4037,10 +4105,7 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<Guid?>("JobId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("LegalEntityId")
+                    b.Property<Guid?>("LevelId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("LocationId")
@@ -4055,12 +4120,12 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<DateTime?>("ModifiedDate")
                         .HasColumnType("datetime2(3)");
 
-                    b.Property<Guid?>("PositionId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("Reason")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid?>("RoleId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -4096,6 +4161,170 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasDatabaseName("IX_EmploymentRecord_TenantId_EmployeeId_EffectiveFrom");
 
                     b.ToTable("EmploymentRecord", "emp");
+
+                    b.HasAnnotation("Gggs:TenantOwned", true);
+                });
+
+            modelBuilder.Entity("Gggs.Modules.Employee.Domain.HireDraft", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("FilesJson")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("OfferId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PayloadCiphertext")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Step")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_HireDraft_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "ModifiedDate")
+                        .HasDatabaseName("IX_HireDraft_TenantId_Modified");
+
+                    b.ToTable("HireDraft", "emp");
+
+                    b.HasAnnotation("Gggs:TenantOwned", true);
+                });
+
+            modelBuilder.Entity("Gggs.Modules.Engagement.Domain.CelebrationWish", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<byte>("Kind")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateOnly>("OccurredOn")
+                        .HasColumnType("date");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("SentByName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("SentByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Years")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_CelebrationWish_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "Kind", "OccurredOn")
+                        .HasDatabaseName("IX_CelebrationWish_TenantId_Kind_Day");
+
+                    b.HasIndex("TenantId", "EmployeeId", "Kind", "OccurredOn")
+                        .IsUnique()
+                        .HasDatabaseName("UX_CelebrationWish_TenantId_Employee_Kind_Day")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("CelebrationWish", "eng");
 
                     b.HasAnnotation("Gggs:TenantOwned", true);
                 });
@@ -6865,6 +7094,76 @@ namespace Gggs.Data.Migrations.Migrations
                     b.HasAnnotation("Gggs:TenantOwned", true);
                 });
 
+            modelBuilder.Entity("Gggs.Modules.Leave.Domain.LeaveCostCenterAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CostCenterId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("EmploymentTypeCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid>("PlanId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("PlanId");
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_LeaveCostCenterAssignment_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "CostCenterId", "EmploymentTypeCode")
+                        .IsUnique()
+                        .HasDatabaseName("UX_LeaveCostCenterAssignment_TenantId_CostCenter_Type")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("LeaveCostCenterAssignment", "lv");
+
+                    b.HasAnnotation("Gggs:TenantOwned", true);
+                });
+
             modelBuilder.Entity("Gggs.Modules.Leave.Domain.LeaveLedgerEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -8190,6 +8489,76 @@ namespace Gggs.Data.Migrations.Migrations
                     b.HasAnnotation("Gggs:TenantOwned", true);
                 });
 
+            modelBuilder.Entity("Gggs.Modules.Notification.Domain.EmailLogSetting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("AlertOnFailure")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("AlertedUpTo")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("KeepProblemDays")
+                        .HasColumnType("int");
+
+                    b.Property<int>("KeepSentDays")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_EmailLogSetting_TenantId")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_EmailLogSetting_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.ToTable("EmailLogSetting", "ntf");
+
+                    b.HasAnnotation("Gggs:TenantOwned", true);
+                });
+
             modelBuilder.Entity("Gggs.Modules.Notification.Domain.EmailMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -8227,6 +8596,9 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsMasked")
+                        .HasColumnType("bit");
+
                     b.Property<string>("LastError")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -8237,10 +8609,21 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<DateTime?>("ModifiedDate")
                         .HasColumnType("datetime2(3)");
 
+                    b.Property<string>("ModuleKey")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<DateTime?>("NextAttemptAt")
+                        .HasColumnType("datetime2(3)");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
+
+                    b.Property<string>("SentAs")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
 
                     b.Property<DateTime?>("SentDate")
                         .HasColumnType("datetime2(3)");
@@ -8271,10 +8654,110 @@ namespace Gggs.Data.Migrations.Migrations
 
                     SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
 
+                    b.HasIndex("TenantId", "NextAttemptAt")
+                        .HasDatabaseName("IX_EmailMessage_TenantId_NextAttempt")
+                        .HasFilter("[NextAttemptAt] IS NOT NULL");
+
+                    b.HasIndex("TenantId", "ModuleKey", "CreatedDate")
+                        .HasDatabaseName("IX_EmailMessage_TenantId_Module");
+
                     b.HasIndex("TenantId", "Status", "CreatedDate")
                         .HasDatabaseName("IX_EmailMessage_TenantId_Status");
 
                     b.ToTable("EmailMessage", "ntf");
+
+                    b.HasAnnotation("Gggs:TenantOwned", true);
+                });
+
+            modelBuilder.Entity("Gggs.Modules.Notification.Domain.EmailSender", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Bcc")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("BrandColor")
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
+
+                    b.Property<Guid?>("ConnectionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("FromAddress")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("FromName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsPaused")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("ModuleKey")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("ReplyTo")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Signature")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_EmailSender_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "ModuleKey")
+                        .IsUnique()
+                        .HasDatabaseName("UX_EmailSender_TenantId_Module")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("EmailSender", "ntf");
 
                     b.HasAnnotation("Gggs:TenantOwned", true);
                 });
@@ -8505,6 +8988,10 @@ namespace Gggs.Data.Migrations.Migrations
 
                     b.Property<bool>("SendSms")
                         .HasColumnType("bit");
+
+                    b.Property<string>("SenderKey")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
 
                     b.Property<string>("Subject")
                         .IsRequired()
@@ -8967,6 +9454,9 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
 
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
 
@@ -8987,9 +9477,6 @@ namespace Gggs.Data.Migrations.Migrations
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
-
-                    b.Property<Guid?>("LegalEntityId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("ModifiedBy")
                         .HasColumnType("uniqueidentifier");
@@ -9014,7 +9501,7 @@ namespace Gggs.Data.Migrations.Migrations
 
                     SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
 
-                    b.HasIndex("LegalEntityId");
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("TenantId", "Code")
                         .IsUnique()
@@ -9032,506 +9519,7 @@ namespace Gggs.Data.Migrations.Migrations
                     b.HasAnnotation("Gggs:TenantOwned", true);
                 });
 
-            modelBuilder.Entity("Gggs.Modules.Organization.Domain.CostCenter", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("DeletedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<Guid?>("ModifiedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<Guid?>("OwnerEmployeeId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
-
-                    b.HasIndex("TenantId", "Code")
-                        .IsUnique()
-                        .HasDatabaseName("UX_CostCenter_TenantId_Code")
-                        .HasFilter("[IsDeleted] = 0");
-
-                    b.HasIndex("TenantId", "Id")
-                        .IsUnique()
-                        .HasDatabaseName("UX_CostCenter_TenantId_Id");
-
-                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
-
-                    b.ToTable("CostCenter", "org");
-
-                    b.HasAnnotation("Gggs:TenantOwned", true);
-                });
-
-            modelBuilder.Entity("Gggs.Modules.Organization.Domain.Department", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<Guid?>("CostCenterId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("DeletedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<Guid?>("DivisionId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateOnly>("EffectiveFrom")
-                        .HasColumnType("date");
-
-                    b.Property<DateOnly?>("EffectiveTo")
-                        .HasColumnType("date");
-
-                    b.Property<Guid?>("HeadEmployeeId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<Guid?>("LocationId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("ModifiedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<Guid?>("ParentDepartmentId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("ProfitCenterId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
-
-                    b.HasIndex("CostCenterId");
-
-                    b.HasIndex("DivisionId");
-
-                    b.HasIndex("LocationId");
-
-                    b.HasIndex("ParentDepartmentId");
-
-                    b.HasIndex("ProfitCenterId");
-
-                    b.HasIndex("TenantId", "Code")
-                        .IsUnique()
-                        .HasDatabaseName("UX_Department_TenantId_Code")
-                        .HasFilter("[IsDeleted] = 0");
-
-                    b.HasIndex("TenantId", "Id")
-                        .IsUnique()
-                        .HasDatabaseName("UX_Department_TenantId_Id");
-
-                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
-
-                    b.HasIndex("TenantId", "ParentDepartmentId")
-                        .HasDatabaseName("IX_Department_TenantId_Parent");
-
-                    b.ToTable("Department", "org");
-
-                    b.HasAnnotation("Gggs:TenantOwned", true);
-                });
-
-            modelBuilder.Entity("Gggs.Modules.Organization.Domain.Division", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("BusinessUnitId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("DeletedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<Guid?>("HeadEmployeeId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<Guid?>("ModifiedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
-
-                    b.HasIndex("BusinessUnitId");
-
-                    b.HasIndex("TenantId", "Code")
-                        .IsUnique()
-                        .HasDatabaseName("UX_Division_TenantId_Code")
-                        .HasFilter("[IsDeleted] = 0");
-
-                    b.HasIndex("TenantId", "Id")
-                        .IsUnique()
-                        .HasDatabaseName("UX_Division_TenantId_Id");
-
-                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
-
-                    b.ToTable("Division", "org");
-
-                    b.HasAnnotation("Gggs:TenantOwned", true);
-                });
-
-            modelBuilder.Entity("Gggs.Modules.Organization.Domain.Grade", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("DeletedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<Guid?>("ModifiedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<int>("Rank")
-                        .HasColumnType("int");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
-
-                    b.HasIndex("TenantId", "Code")
-                        .IsUnique()
-                        .HasDatabaseName("UX_Grade_TenantId_Code")
-                        .HasFilter("[IsDeleted] = 0");
-
-                    b.HasIndex("TenantId", "Id")
-                        .IsUnique()
-                        .HasDatabaseName("UX_Grade_TenantId_Id");
-
-                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
-
-                    b.HasIndex("TenantId", "Rank")
-                        .HasDatabaseName("IX_Grade_TenantId_Rank");
-
-                    b.ToTable("Grade", "org");
-
-                    b.HasAnnotation("Gggs:TenantOwned", true);
-                });
-
-            modelBuilder.Entity("Gggs.Modules.Organization.Domain.Job", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("DeletedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<Guid?>("DepartmentId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("JobFamilyCode")
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<Guid?>("JobLevelId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal?>("MaximumExperienceYears")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("MinimumExperienceYears")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<Guid?>("ModifiedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.PrimitiveCollection<string>("RequiredSkills")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("RequiredSkills");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
-
-                    b.HasIndex("DepartmentId");
-
-                    b.HasIndex("JobLevelId");
-
-                    b.HasIndex("TenantId", "Code")
-                        .IsUnique()
-                        .HasDatabaseName("UX_Job_TenantId_Code")
-                        .HasFilter("[IsDeleted] = 0");
-
-                    b.HasIndex("TenantId", "Id")
-                        .IsUnique()
-                        .HasDatabaseName("UX_Job_TenantId_Id");
-
-                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
-
-                    b.ToTable("Job", "org");
-
-                    b.HasAnnotation("Gggs:TenantOwned", true);
-                });
-
-            modelBuilder.Entity("Gggs.Modules.Organization.Domain.JobLevel", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("DeletedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<Guid?>("ModifiedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<int>("Rank")
-                        .HasColumnType("int");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
-
-                    b.HasIndex("TenantId", "Code")
-                        .IsUnique()
-                        .HasDatabaseName("UX_JobLevel_TenantId_Code")
-                        .HasFilter("[IsDeleted] = 0");
-
-                    b.HasIndex("TenantId", "Id")
-                        .IsUnique()
-                        .HasDatabaseName("UX_JobLevel_TenantId_Id");
-
-                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
-
-                    b.HasIndex("TenantId", "Rank")
-                        .HasDatabaseName("IX_JobLevel_TenantId_Rank");
-
-                    b.ToTable("JobLevel", "org");
-
-                    b.HasAnnotation("Gggs:TenantOwned", true);
-                });
-
-            modelBuilder.Entity("Gggs.Modules.Organization.Domain.LegalEntity", b =>
+            modelBuilder.Entity("Gggs.Modules.Organization.Domain.Company", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -9616,21 +9604,208 @@ namespace Gggs.Data.Migrations.Migrations
 
                     b.HasIndex("TenantId", "Code")
                         .IsUnique()
-                        .HasDatabaseName("UX_LegalEntity_TenantId_Code")
+                        .HasDatabaseName("UX_Company_TenantId_Code")
                         .HasFilter("[IsDeleted] = 0");
 
                     b.HasIndex("TenantId", "Id")
                         .IsUnique()
-                        .HasDatabaseName("UX_LegalEntity_TenantId_Id");
+                        .HasDatabaseName("UX_Company_TenantId_Id");
 
                     SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
 
-                    b.ToTable("LegalEntity", "org");
+                    b.ToTable("Company", "org");
 
                     b.HasAnnotation("Gggs:TenantOwned", true);
                 });
 
-            modelBuilder.Entity("Gggs.Modules.Organization.Domain.Location", b =>
+            modelBuilder.Entity("Gggs.Modules.Organization.Domain.CostCenter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Gstin")
+                        .HasMaxLength(15)
+                        .HasColumnType("nvarchar(15)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid?>("OwnerEmployeeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Pan")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("TenantId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("UX_CostCenter_TenantId_Code")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_CostCenter_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.ToTable("CostCenter", "org");
+
+                    b.HasAnnotation("Gggs:TenantOwned", true);
+                });
+
+            modelBuilder.Entity("Gggs.Modules.Organization.Domain.Department", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("BusinessUnitId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<Guid?>("CostCenterId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateOnly>("EffectiveFrom")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("EffectiveTo")
+                        .HasColumnType("date");
+
+                    b.Property<Guid?>("HeadEmployeeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("LocationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid?>("ParentDepartmentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("BusinessUnitId");
+
+                    b.HasIndex("CostCenterId");
+
+                    b.HasIndex("LocationId");
+
+                    b.HasIndex("ParentDepartmentId");
+
+                    b.HasIndex("TenantId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Department_TenantId_Code")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Department_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "ParentDepartmentId")
+                        .HasDatabaseName("IX_Department_TenantId_Parent");
+
+                    b.ToTable("Department", "org");
+
+                    b.HasAnnotation("Gggs:TenantOwned", true);
+                });
+
+            modelBuilder.Entity("Gggs.Modules.Organization.Domain.Designation", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -9659,8 +9834,163 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<Guid?>("LegalEntityId")
+                    b.Property<Guid?>("LevelId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid?>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("LevelId");
+
+                    b.HasIndex("RoleId");
+
+                    b.HasIndex("TenantId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Designation_TenantId_Code")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Designation_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.ToTable("Designation", "org");
+
+                    b.HasAnnotation("Gggs:TenantOwned", true);
+                });
+
+            modelBuilder.Entity("Gggs.Modules.Organization.Domain.Level", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Rank")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
+
+                    b.HasIndex("TenantId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Level_TenantId_Code")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Level_TenantId_Id");
+
+                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
+
+                    b.HasIndex("TenantId", "Rank")
+                        .HasDatabaseName("IX_Level_TenantId_Rank");
+
+                    b.ToTable("Level", "org");
+
+                    b.HasAnnotation("Gggs:TenantOwned", true);
+                });
+
+            modelBuilder.Entity("Gggs.Modules.Organization.Domain.Location", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CostCenterId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
 
                     b.Property<Guid?>("ModifiedBy")
                         .HasColumnType("uniqueidentifier");
@@ -9689,7 +10019,9 @@ namespace Gggs.Data.Migrations.Migrations
 
                     SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
 
-                    b.HasIndex("LegalEntityId");
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("CostCenterId");
 
                     b.HasIndex("TenantId", "Code")
                         .IsUnique()
@@ -9707,7 +10039,7 @@ namespace Gggs.Data.Migrations.Migrations
                     b.HasAnnotation("Gggs:TenantOwned", true);
                 });
 
-            modelBuilder.Entity("Gggs.Modules.Organization.Domain.Position", b =>
+            modelBuilder.Entity("Gggs.Modules.Organization.Domain.Role", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -9730,35 +10062,33 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<DateTime?>("DeletedDate")
                         .HasColumnType("datetime2(3)");
 
-                    b.Property<Guid>("DepartmentId")
+                    b.Property<Guid?>("DepartmentId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateOnly>("EffectiveFrom")
-                        .HasColumnType("date");
-
-                    b.Property<DateOnly?>("EffectiveTo")
-                        .HasColumnType("date");
-
-                    b.Property<Guid?>("GradeId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("Headcount")
-                        .HasColumnType("int");
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsBudgeted")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<Guid>("JobId")
+                    b.Property<string>("JobFamilyCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<Guid?>("LevelId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("LocationId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<decimal?>("MaximumExperienceYears")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("MinimumExperienceYears")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<Guid?>("ModifiedBy")
                         .HasColumnType("uniqueidentifier");
@@ -9771,8 +10101,10 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<Guid?>("ReportsToPositionId")
-                        .HasColumnType("uniqueidentifier");
+                    b.PrimitiveCollection<string>("RequiredSkills")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("RequiredSkills");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -9788,100 +10120,20 @@ namespace Gggs.Data.Migrations.Migrations
 
                     b.HasIndex("DepartmentId");
 
-                    b.HasIndex("GradeId");
-
-                    b.HasIndex("JobId");
-
-                    b.HasIndex("LocationId");
-
-                    b.HasIndex("ReportsToPositionId");
+                    b.HasIndex("LevelId");
 
                     b.HasIndex("TenantId", "Code")
                         .IsUnique()
-                        .HasDatabaseName("UX_Position_TenantId_Code")
-                        .HasFilter("[IsDeleted] = 0");
-
-                    b.HasIndex("TenantId", "DepartmentId")
-                        .HasDatabaseName("IX_Position_TenantId_DepartmentId");
-
-                    b.HasIndex("TenantId", "Id")
-                        .IsUnique()
-                        .HasDatabaseName("UX_Position_TenantId_Id");
-
-                    SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
-
-                    b.ToTable("Position", "org");
-
-                    b.HasAnnotation("Gggs:TenantOwned", true);
-                });
-
-            modelBuilder.Entity("Gggs.Modules.Organization.Domain.ProfitCenter", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("DeletedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<Guid?>("ModifiedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("ModifiedDate")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<Guid?>("OwnerEmployeeId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    SqlServerKeyBuilderExtensions.IsClustered(b.HasKey("Id"), false);
-
-                    b.HasIndex("TenantId", "Code")
-                        .IsUnique()
-                        .HasDatabaseName("UX_ProfitCenter_TenantId_Code")
+                        .HasDatabaseName("UX_Role_TenantId_Code")
                         .HasFilter("[IsDeleted] = 0");
 
                     b.HasIndex("TenantId", "Id")
                         .IsUnique()
-                        .HasDatabaseName("UX_ProfitCenter_TenantId_Id");
+                        .HasDatabaseName("UX_Role_TenantId_Id");
 
                     SqlServerIndexBuilderExtensions.IsClustered(b.HasIndex("TenantId", "Id"));
 
-                    b.ToTable("ProfitCenter", "org");
+                    b.ToTable("Role", "org");
 
                     b.HasAnnotation("Gggs:TenantOwned", true);
                 });
@@ -10095,6 +10347,9 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<DateTime?>("CalculatedDate")
                         .HasColumnType("datetime2(3)");
 
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
 
@@ -10150,9 +10405,6 @@ namespace Gggs.Data.Migrations.Migrations
 
                     b.Property<DateOnly?>("LastWorkingDay")
                         .HasColumnType("date");
-
-                    b.Property<Guid?>("LegalEntityId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("ModifiedBy")
                         .HasColumnType("uniqueidentifier");
@@ -11680,6 +11932,178 @@ namespace Gggs.Data.Migrations.Migrations
                     b.HasAnnotation("Gggs:TenantOwned", true);
                 });
 
+            modelBuilder.Entity("Gggs.Modules.Platform.Domain.Console.DedicatedDatabase", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("Authentication")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("DatabaseName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<byte>("Encryption")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("LastTestResult")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool?>("LastTestSucceeded")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastTestedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("PasswordChangedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("PasswordChangedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("PasswordCiphertext")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Server")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("UpdatedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_DedicatedDatabase_TenantId");
+
+                    b.ToTable("DedicatedDatabase", "platform", t =>
+                        {
+                            t.HasComment("A dedicated database's connection details, kept by the platform console. The password is ciphertext only.");
+                        });
+                });
+
+            modelBuilder.Entity("Gggs.Modules.Platform.Domain.Console.PlatformAuditEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("OccurredDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("StaffId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("StaffName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("TenantCode")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredDate")
+                        .HasDatabaseName("IX_PlatformAuditEntry_OccurredDate");
+
+                    b.HasIndex("TenantId", "OccurredDate")
+                        .HasDatabaseName("IX_PlatformAuditEntry_TenantId_OccurredDate");
+
+                    b.ToTable("PlatformAuditEntry", "platform", t =>
+                        {
+                            t.HasComment("Append-only. What platform staff did in the console; written only by PlatformAuditWriter.");
+                        });
+                });
+
+            modelBuilder.Entity("Gggs.Modules.Platform.Domain.Console.TenantUsage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("EmailChannel")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("EmailsFailedToday")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EmailsLoggedToday")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EmailsSentToday")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Employees")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("LastSignIn")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateTime>("MeasuredDate")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("SignIn")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("SignedInToday")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Users")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_TenantUsage_TenantId");
+
+                    b.ToTable("TenantUsage", "platform");
+                });
+
             modelBuilder.Entity("Gggs.Modules.Platform.Domain.Subscriptions.Plan", b =>
                 {
                     b.Property<Guid>("Id")
@@ -11761,6 +12185,9 @@ namespace Gggs.Data.Migrations.Migrations
 
                     b.Property<Guid>("PlanId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly?>("RenewsOn")
+                        .HasColumnType("date");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -16288,9 +16715,6 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<DateOnly?>("ExpiresOn")
                         .HasColumnType("date");
 
-                    b.Property<Guid?>("GradeId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -16299,6 +16723,9 @@ namespace Gggs.Data.Migrations.Migrations
 
                     b.Property<DateOnly>("JoiningDate")
                         .HasColumnType("date");
+
+                    b.Property<Guid?>("LevelId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("ModifiedBy")
                         .HasColumnType("uniqueidentifier");
@@ -16572,9 +16999,6 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<Guid?>("JobId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid?>("LocationId")
                         .HasColumnType("uniqueidentifier");
 
@@ -16606,14 +17030,14 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<int>("Openings")
                         .HasColumnType("int");
 
-                    b.Property<Guid?>("PositionId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("Priority")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
                     b.Property<Guid?>("RecruiterEmployeeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("RoleId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<byte[]>("RowVersion")
@@ -18630,14 +19054,14 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("nvarchar(40)");
 
-                    b.Property<Guid?>("GradeId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
+
+                    b.Property<Guid?>("LevelId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("ModifiedBy")
                         .HasColumnType("uniqueidentifier");
@@ -21288,9 +21712,6 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<Guid?>("JobId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("Justification")
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
@@ -21317,9 +21738,6 @@ namespace Gggs.Data.Migrations.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
-                    b.Property<Guid?>("PositionId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<int>("Positions")
                         .HasColumnType("int");
 
@@ -21337,6 +21755,9 @@ namespace Gggs.Data.Migrations.Migrations
 
                     b.Property<DateOnly?>("RequiredBy")
                         .HasColumnType("date");
+
+                    b.Property<Guid?>("RoleId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -21514,9 +21935,6 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<Guid?>("JobId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid?>("LocationId")
                         .HasColumnType("uniqueidentifier");
 
@@ -21535,6 +21953,9 @@ namespace Gggs.Data.Migrations.Migrations
 
                     b.Property<int>("PlannedHeadcount")
                         .HasColumnType("int");
+
+                    b.Property<Guid?>("RoleId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -22066,6 +22487,31 @@ namespace Gggs.Data.Migrations.Migrations
                                 .HasForeignKey("EmployeeId");
                         });
 
+                    b.OwnsOne("Gggs.BuildingBlocks.Domain.Primitives.ProtectedValue", "PassportNumber", b1 =>
+                        {
+                            b1.Property<Guid>("EmployeeId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<string>("Ciphertext")
+                                .IsRequired()
+                                .HasMaxLength(1000)
+                                .HasColumnType("nvarchar(1000)")
+                                .HasColumnName("PassportCiphertext");
+
+                            b1.Property<string>("Hint")
+                                .IsRequired()
+                                .HasMaxLength(64)
+                                .HasColumnType("nvarchar(64)")
+                                .HasColumnName("PassportHint");
+
+                            b1.HasKey("EmployeeId");
+
+                            b1.ToTable("Employee", "emp");
+
+                            b1.WithOwner()
+                                .HasForeignKey("EmployeeId");
+                        });
+
                     b.OwnsOne("Gggs.Modules.Employee.Domain.HomeAddress", "PermanentAddress", b1 =>
                         {
                             b1.Property<Guid>("EmployeeId")
@@ -22143,6 +22589,8 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Navigation("NationalId");
 
                     b.Navigation("Pan");
+
+                    b.Navigation("PassportNumber");
 
                     b.Navigation("PermanentAddress");
 
@@ -22407,6 +22855,15 @@ namespace Gggs.Data.Migrations.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Gggs.Modules.Leave.Domain.LeaveCostCenterAssignment", b =>
+                {
+                    b.HasOne("Gggs.Modules.Leave.Domain.LeavePlan", null)
+                        .WithMany()
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Gggs.Modules.Leave.Domain.LeaveLedgerEntry", b =>
                 {
                     b.HasOne("Gggs.Modules.Leave.Domain.LeaveType", null)
@@ -22505,66 +22962,17 @@ namespace Gggs.Data.Migrations.Migrations
 
             modelBuilder.Entity("Gggs.Modules.Organization.Domain.BusinessUnit", b =>
                 {
-                    b.HasOne("Gggs.Modules.Organization.Domain.LegalEntity", null)
+                    b.HasOne("Gggs.Modules.Organization.Domain.Company", null)
                         .WithMany()
-                        .HasForeignKey("LegalEntityId")
+                        .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
-            modelBuilder.Entity("Gggs.Modules.Organization.Domain.Department", b =>
-                {
-                    b.HasOne("Gggs.Modules.Organization.Domain.CostCenter", null)
-                        .WithMany()
-                        .HasForeignKey("CostCenterId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Gggs.Modules.Organization.Domain.Division", null)
-                        .WithMany()
-                        .HasForeignKey("DivisionId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Gggs.Modules.Organization.Domain.Location", null)
-                        .WithMany()
-                        .HasForeignKey("LocationId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Gggs.Modules.Organization.Domain.Department", null)
-                        .WithMany()
-                        .HasForeignKey("ParentDepartmentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Gggs.Modules.Organization.Domain.ProfitCenter", null)
-                        .WithMany()
-                        .HasForeignKey("ProfitCenterId")
-                        .OnDelete(DeleteBehavior.Restrict);
-                });
-
-            modelBuilder.Entity("Gggs.Modules.Organization.Domain.Division", b =>
-                {
-                    b.HasOne("Gggs.Modules.Organization.Domain.BusinessUnit", null)
-                        .WithMany()
-                        .HasForeignKey("BusinessUnitId")
-                        .OnDelete(DeleteBehavior.Restrict);
-                });
-
-            modelBuilder.Entity("Gggs.Modules.Organization.Domain.Job", b =>
-                {
-                    b.HasOne("Gggs.Modules.Organization.Domain.Department", null)
-                        .WithMany()
-                        .HasForeignKey("DepartmentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Gggs.Modules.Organization.Domain.JobLevel", null)
-                        .WithMany()
-                        .HasForeignKey("JobLevelId")
-                        .OnDelete(DeleteBehavior.Restrict);
-                });
-
-            modelBuilder.Entity("Gggs.Modules.Organization.Domain.LegalEntity", b =>
+            modelBuilder.Entity("Gggs.Modules.Organization.Domain.Company", b =>
                 {
                     b.OwnsOne("Gggs.Modules.Organization.Domain.PostalAddress", "Address", b1 =>
                         {
-                            b1.Property<Guid>("LegalEntityId")
+                            b1.Property<Guid>("CompanyId")
                                 .HasColumnType("uniqueidentifier");
 
                             b1.Property<string>("City")
@@ -22597,22 +23005,116 @@ namespace Gggs.Data.Migrations.Migrations
                                 .HasColumnType("nvarchar(64)")
                                 .HasColumnName("StateCode");
 
-                            b1.HasKey("LegalEntityId");
+                            b1.HasKey("CompanyId");
 
-                            b1.ToTable("LegalEntity", "org");
+                            b1.ToTable("Company", "org");
 
                             b1.WithOwner()
-                                .HasForeignKey("LegalEntityId");
+                                .HasForeignKey("CompanyId");
                         });
 
                     b.Navigation("Address");
                 });
 
+            modelBuilder.Entity("Gggs.Modules.Organization.Domain.CostCenter", b =>
+                {
+                    b.HasOne("Gggs.Modules.Organization.Domain.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.OwnsOne("Gggs.Modules.Organization.Domain.PostalAddress", "Address", b1 =>
+                        {
+                            b1.Property<Guid>("CostCenterId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<string>("City")
+                                .HasMaxLength(100)
+                                .HasColumnType("nvarchar(100)")
+                                .HasColumnName("City");
+
+                            b1.Property<string>("CountryCode")
+                                .HasMaxLength(8)
+                                .HasColumnType("nvarchar(8)")
+                                .HasColumnName("AddressCountryCode");
+
+                            b1.Property<string>("Line1")
+                                .HasMaxLength(200)
+                                .HasColumnType("nvarchar(200)")
+                                .HasColumnName("AddressLine1");
+
+                            b1.Property<string>("Line2")
+                                .HasMaxLength(200)
+                                .HasColumnType("nvarchar(200)")
+                                .HasColumnName("AddressLine2");
+
+                            b1.Property<string>("PostalCode")
+                                .HasMaxLength(16)
+                                .HasColumnType("nvarchar(16)")
+                                .HasColumnName("PostalCode");
+
+                            b1.Property<string>("StateCode")
+                                .HasMaxLength(64)
+                                .HasColumnType("nvarchar(64)")
+                                .HasColumnName("StateCode");
+
+                            b1.HasKey("CostCenterId");
+
+                            b1.ToTable("CostCenter", "org");
+
+                            b1.WithOwner()
+                                .HasForeignKey("CostCenterId");
+                        });
+
+                    b.Navigation("Address");
+                });
+
+            modelBuilder.Entity("Gggs.Modules.Organization.Domain.Department", b =>
+                {
+                    b.HasOne("Gggs.Modules.Organization.Domain.BusinessUnit", null)
+                        .WithMany()
+                        .HasForeignKey("BusinessUnitId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Gggs.Modules.Organization.Domain.CostCenter", null)
+                        .WithMany()
+                        .HasForeignKey("CostCenterId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Gggs.Modules.Organization.Domain.Location", null)
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Gggs.Modules.Organization.Domain.Department", null)
+                        .WithMany()
+                        .HasForeignKey("ParentDepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Gggs.Modules.Organization.Domain.Designation", b =>
+                {
+                    b.HasOne("Gggs.Modules.Organization.Domain.Level", null)
+                        .WithMany()
+                        .HasForeignKey("LevelId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Gggs.Modules.Organization.Domain.Role", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("Gggs.Modules.Organization.Domain.Location", b =>
                 {
-                    b.HasOne("Gggs.Modules.Organization.Domain.LegalEntity", null)
+                    b.HasOne("Gggs.Modules.Organization.Domain.Company", null)
                         .WithMany()
-                        .HasForeignKey("LegalEntityId")
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Gggs.Modules.Organization.Domain.CostCenter", null)
+                        .WithMany()
+                        .HasForeignKey("CostCenterId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.OwnsOne("Gggs.Modules.Organization.Domain.PostalAddress", "Address", b1 =>
@@ -22661,33 +23163,16 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Navigation("Address");
                 });
 
-            modelBuilder.Entity("Gggs.Modules.Organization.Domain.Position", b =>
+            modelBuilder.Entity("Gggs.Modules.Organization.Domain.Role", b =>
                 {
                     b.HasOne("Gggs.Modules.Organization.Domain.Department", null)
                         .WithMany()
                         .HasForeignKey("DepartmentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Gggs.Modules.Organization.Domain.Grade", null)
-                        .WithMany()
-                        .HasForeignKey("GradeId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Gggs.Modules.Organization.Domain.Job", null)
+                    b.HasOne("Gggs.Modules.Organization.Domain.Level", null)
                         .WithMany()
-                        .HasForeignKey("JobId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Gggs.Modules.Organization.Domain.Location", null)
-                        .WithMany()
-                        .HasForeignKey("LocationId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Gggs.Modules.Organization.Domain.Position", null)
-                        .WithMany()
-                        .HasForeignKey("ReportsToPositionId")
+                        .HasForeignKey("LevelId")
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
@@ -22768,6 +23253,24 @@ namespace Gggs.Data.Migrations.Migrations
                         .WithMany()
                         .HasForeignKey("CycleId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Gggs.Modules.Platform.Domain.Console.DedicatedDatabase", b =>
+                {
+                    b.HasOne("Gggs.Modules.Platform.Domain.Tenants.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Gggs.Modules.Platform.Domain.Console.TenantUsage", b =>
+                {
+                    b.HasOne("Gggs.Modules.Platform.Domain.Tenants.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

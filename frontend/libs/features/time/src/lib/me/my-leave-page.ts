@@ -43,7 +43,7 @@ import { ruleSummary } from '../admin/leave-policy-model';
           <details class="panel">
             <summary class="leave__policy">
               <span>Your leave policy: <strong>{{ mine.name }}</strong></span>
-              <span class="muted">Leave year {{ mine.leaveYear }} · {{ mine.yearStart | date: 'mediumDate' }} – {{ mine.yearEnd | date: 'mediumDate' }}{{ mine.source === 'Exception' ? ' · given to you by HR' : '' }}</span>
+              <span class="muted">Leave year {{ mine.leaveYear }} · {{ mine.yearStart | date: 'mediumDate' }} – {{ mine.yearEnd | date: 'mediumDate' }}{{ mine.source === 'Exception' ? ' · given to you by HR' : mine.source === 'CostCenter' ? ' · from your cost center' + (mine.costCenterName ? ', ' + mine.costCenterName : '') : '' }}</span>
             </summary>
             <dl class="definition-list">
               @for (item of mine.items; track item.leaveTypeId) {

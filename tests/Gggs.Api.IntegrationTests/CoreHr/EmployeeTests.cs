@@ -12,21 +12,104 @@ public sealed class EmployeeTests(PeopleOsApiFactory factory)
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task HiringIntoAPosition_TakesItsJobAndDepartment_AndAFullSeatRefusesTheNext()
+    public async Task AHire_HasARoleDesignationAndLevel_AndWorksUnderTheOfficesCostCenter()
     {
         using HttpClient admin = await factory.CreateAdminClientAsync();
         Guid department = await CoreHrApi.DepartmentAsync(admin);
-        Guid job = await CoreHrApi.JobAsync(admin);
-        Guid position = await CoreHrApi.PositionAsync(admin, job, department);
+        Guid job = await CoreHrApi.AnyRoleAsync(admin);
+        Guid level = await CoreHrApi.LevelAsync(admin);
+        Guid designation = await CoreHrApi.DesignationAsync(admin, "Senior Software Engineer", level);
+        Guid costCenter = await CoreHrApi.CreateAsync(admin, "/api/v1/organizations/cost-centers", new { Code = CoreHrApi.Unique("CC"), Name = "Acme Infotech" });
+        Guid office = await CoreHrApi.CreateAsync(admin, "/api/v1/organizations/locations", new { Code = CoreHrApi.Unique("LOC"), Name = "Pune", CostCenterId = costCenter });
 
-        Guid hired = await CoreHrApi.HireAsync(admin, departmentId: department, positionId: position);
-        JsonElement detail = (await admin.GetFromJsonAsync<JsonElement>($"/api/v1/employees/{hired}", Ct))!;
-        detail.GetProperty("assignment").GetProperty("job").GetProperty("id").GetGuid().ShouldBe(job);
-        detail.GetProperty("employeeCode").GetString().ShouldStartWith("EMP");
+        HttpResponseMessage response = await admin.PostAsJsonAsync("/api/v1/employees", new
+        {
+            FirstName = "Role",
+            LastName = CoreHrApi.Unique("Test"),
+            JoiningDate = "2024-01-15",
+            Assignment = new
+            {
+                DepartmentId = department,
+                RoleId = job,
+                LevelId = level,
+                DesignationId = designation,
+                LocationId = office,
+                EmploymentTypeCode = "FULL_TIME",
+                WorkModeCode = "OFFICE",
+            },
+        }, Ct);
+        response.StatusCode.ShouldBe(HttpStatusCode.Created, await response.Content.ReadAsStringAsync(Ct));
+        Guid hired = (await response.Content.ReadFromJsonAsync<JsonElement>(Ct)).GetProperty("id").GetGuid();
 
-        HttpResponseMessage second = await CoreHrApi.HireRawAsync(admin, department, positionId: position);
-        second.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
-        (await CoreHrApi.ErrorCodeAsync(second)).ShouldBe("EMPLOYEE_POSITION_FULL");
+        JsonElement assignment = (await admin.GetFromJsonAsync<JsonElement>($"/api/v1/employees/{hired}", Ct)).GetProperty("assignment");
+        assignment.GetProperty("job").GetProperty("id").GetGuid().ShouldBe(job);
+        assignment.GetProperty("level").GetProperty("id").GetGuid().ShouldBe(level);
+        assignment.GetProperty("designation").GetString().ShouldBe("Senior Software Engineer");
+        assignment.GetProperty("costCenter").GetProperty("id").GetGuid().ShouldBe(costCenter);
+    }
+
+    [Fact]
+    public async Task ARole_IsOpenToItsDepartmentsFunctions_AndRefusedElsewhere_AndItsDesignationFillsTheRoleAndLevel()
+    {
+        using HttpClient admin = await factory.CreateAdminClientAsync();
+        Guid level = await CoreHrApi.LevelAsync(admin, rank: 2);
+        Guid department = await CoreHrApi.DepartmentAsync(admin);
+        Guid function = await CoreHrApi.DepartmentAsync(admin, parentId: department);
+        Guid elsewhere = await CoreHrApi.DepartmentAsync(admin);
+        Guid role = await CoreHrApi.RoleAsync(admin, department);
+
+        // The role came with a designation per active level; pick this level's.
+        JsonElement designations = await admin.GetFromJsonAsync<JsonElement>("/api/v1/organizations/designations?active=true&pageSize=200&search=Business", Ct);
+        Guid designation = designations.GetProperty("items").EnumerateArray()
+            .Single(row => row.GetProperty("roleId").GetString() == role.ToString() && row.GetProperty("levelId").GetString() == level.ToString())
+            .GetProperty("id").GetGuid();
+
+        Task<HttpResponseMessage> Hire(Guid where, Guid? roleId, Guid? designationId) => admin.PostAsJsonAsync("/api/v1/employees", new
+        {
+            FirstName = "Fit",
+            LastName = CoreHrApi.Unique("Test"),
+            JoiningDate = "2024-01-15",
+            Assignment = new { DepartmentId = where, RoleId = roleId, DesignationId = designationId, EmploymentTypeCode = "FULL_TIME", WorkModeCode = "OFFICE" },
+        }, Ct);
+
+        HttpResponseMessage refused = await Hire(elsewhere, role, null);
+        refused.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        (await CoreHrApi.ErrorCodeAsync(refused)).ShouldBe("ROLE_NOT_IN_DEPARTMENT");
+
+        // In a function of the role's department, with only the designation: role and level follow from it.
+        HttpResponseMessage hired = await Hire(function, null, designation);
+        hired.StatusCode.ShouldBe(HttpStatusCode.Created, await hired.Content.ReadAsStringAsync(Ct));
+        Guid id = (await hired.Content.ReadFromJsonAsync<JsonElement>(Ct)).GetProperty("id").GetGuid();
+        JsonElement assignment = (await admin.GetFromJsonAsync<JsonElement>($"/api/v1/employees/{id}", Ct)).GetProperty("assignment");
+        assignment.GetProperty("job").GetProperty("id").GetGuid().ShouldBe(role);
+        assignment.GetProperty("level").GetProperty("id").GetGuid().ShouldBe(level);
+    }
+
+    [Fact]
+    public async Task AStructureFile_IsPreviewedWithoutSaving_ThenApplied()
+    {
+        using HttpClient admin = await factory.CreateAdminClientAsync();
+        string department = CoreHrApi.Unique("D");
+        string function = CoreHrApi.Unique("F");
+        string role = CoreHrApi.Unique("R");
+        string content = $"""
+            | DepartmentCode | Department | FunctionName | FunctionCode | RoleName | RoleCode | RoleLevelCode |
+            | --- | --- | --- | --- | --- | --- | --- |
+            | {department} | Imported {department} | Practice | {function} | Analyst | {role} | NULL |
+            | {department} | Imported {department} | Practice | {function} | Analyst | {role} | NULL |
+            | Empty one | Empty one | NULL | NULL | NULL | NULL | NULL |
+            """;
+
+        JsonElement plan = await (await admin.PostAsJsonAsync("/api/v1/organizations/structure-imports/preview", new { Content = content }, Ct)).Content.ReadFromJsonAsync<JsonElement>(Ct);
+        plan.GetProperty("canApply").GetBoolean().ShouldBeTrue(plan.ToString());
+        plan.GetProperty("duplicateRows").GetInt32().ShouldBe(1);
+        plan.GetProperty("departments").GetArrayLength().ShouldBe(1);
+        (await admin.GetFromJsonAsync<JsonElement>($"/api/v1/organizations/departments?search={department}", Ct)).GetProperty("items").GetArrayLength().ShouldBe(0);
+
+        HttpResponseMessage applied = await admin.PostAsJsonAsync("/api/v1/organizations/structure-imports/apply", new { Content = content }, Ct);
+        applied.StatusCode.ShouldBe(HttpStatusCode.OK, await applied.Content.ReadAsStringAsync(Ct));
+        (await admin.GetFromJsonAsync<JsonElement>($"/api/v1/organizations/departments?search={function}", Ct)).GetProperty("items").GetArrayLength().ShouldBe(1);
+        (await admin.GetFromJsonAsync<JsonElement>($"/api/v1/organizations/roles?search={role}", Ct)).GetProperty("items").GetArrayLength().ShouldBe(1);
     }
 
     [Fact]
@@ -34,7 +117,7 @@ public sealed class EmployeeTests(PeopleOsApiFactory factory)
     {
         using HttpClient admin = await factory.CreateAdminClientAsync();
         Guid department = await CoreHrApi.DepartmentAsync(admin);
-        Guid job = await CoreHrApi.CreateAsync(admin, "/api/v1/organizations/jobs", new { Code = CoreHrApi.Unique("JOB"), Name = "Platform Engineer II", JobFamilyCode = "ENGINEERING" });
+        Guid job = await CoreHrApi.CreateAsync(admin, "/api/v1/organizations/roles", new { Code = CoreHrApi.Unique("JOB"), Name = "Platform Engineer II", JobFamilyCode = "ENGINEERING" });
 
         async Task<string?> HireAsync(string? designation)
         {
@@ -43,7 +126,7 @@ public sealed class EmployeeTests(PeopleOsApiFactory factory)
                 FirstName = "Title",
                 LastName = CoreHrApi.Unique("Test"),
                 JoiningDate = "2024-01-15",
-                Assignment = new { DepartmentId = department, JobId = job, EmploymentTypeCode = "FULL_TIME", WorkModeCode = "HYBRID", Designation = designation },
+                Assignment = new { DepartmentId = department, RoleId = job, EmploymentTypeCode = "FULL_TIME", WorkModeCode = "HYBRID", Designation = designation },
             }, Ct);
             response.StatusCode.ShouldBe(HttpStatusCode.Created, await response.Content.ReadAsStringAsync(Ct));
             Guid id = (await response.Content.ReadFromJsonAsync<JsonElement>(Ct)).GetProperty("id").GetGuid();

@@ -1,0 +1,125 @@
+/* Lists, smart lists and the filter drawer, shared by both workspaces. */
+
+.pl__smart {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: var(--gggs-space-2);
+  margin-block-start: var(--gggs-space-3);
+}
+
+.pl__smart button {
+  display: grid;
+  text-align: start;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--gggs-radius-md, 0.5rem);
+  border: 1px solid var(--gggs-color-border);
+  background: var(--gggs-color-surface-raised);
+  color: inherit;
+  cursor: pointer;
+}
+
+.pl__smart strong {
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pl__smart span {
+  font-size: var(--gggs-font-size-sm);
+  color: var(--gggs-color-text-muted);
+}
+
+.pl__smart button[aria-pressed='true'] {
+  border-color: var(--gggs-color-primary);
+  box-shadow: 0 0 0 3px var(--gggs-color-primary-subtle);
+}
+
+.pl__table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--gggs-color-border);
+  border-radius: var(--gggs-radius-lg, 0.75rem);
+  background: var(--gggs-color-surface-raised);
+}
+
+.pl__table {
+  width: 100%;
+  min-width: 56rem;
+  border-collapse: collapse;
+}
+
+.pl__table th {
+  text-align: start;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gggs-color-text-muted);
+  font-weight: 600;
+  padding: 0.6rem 0.85rem;
+  border-block-end: 1px solid var(--gggs-color-border);
+  background: var(--gggs-color-surface-sunken);
+}
+
+.pl__table td {
+  padding: 0.7rem 0.85rem;
+  border-block-end: 1px solid var(--gggs-color-border);
+  vertical-align: top;
+}
+
+.pl__table tr:last-child td {
+  border-block-end: 0;
+}
+
+.pl__table a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.pl__table tbody tr:hover td {
+  background: var(--gggs-color-surface-hover);
+}
+
+.pl__who {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.pl__checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.pl__checks label {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.25rem 0.7rem;
+  border: 1px solid var(--gggs-color-border-strong);
+  border-radius: 999px;
+  font-size: var(--gggs-font-size-sm);
+  cursor: pointer;
+}
+
+.pl__checks input {
+  accent-color: var(--gggs-color-primary);
+}
+
+.pl__drawer {
+  display: grid;
+  gap: var(--gggs-space-3);
+}
+
+.pl__group {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gggs-color-text-muted);
+  font-weight: 600;
+}
+
+.pl__drawer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--gggs-space-2);
+}

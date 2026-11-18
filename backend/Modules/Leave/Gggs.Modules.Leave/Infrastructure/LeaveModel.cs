@@ -93,6 +93,21 @@ internal sealed class LeaveModel : IModuleModel
             entity.Ignore(assignment => assignment.DomainEvents);
         });
 
+        // The cost center lives in the Organization module: referenced by id, not by a foreign key.
+        modelBuilder.Entity<LeaveCostCenterAssignment>(entity =>
+        {
+            entity.ToTable("LeaveCostCenterAssignment", Schema);
+            entity.Property(assignment => assignment.EmploymentTypeCode).HasMaxLength(64);
+            entity.HasOne<LeavePlan>().WithMany().HasForeignKey(assignment => assignment.PlanId).OnDelete(DeleteBehavior.Restrict);
+
+            // One "everyone" row (a null type: SQL Server's unique index counts NULLs as equal) and one row per type.
+            entity.HasIndex(assignment => new { assignment.TenantId, assignment.CostCenterId, assignment.EmploymentTypeCode })
+                .HasDatabaseName("UX_LeaveCostCenterAssignment_TenantId_CostCenter_Type")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.Ignore(assignment => assignment.DomainEvents);
+        });
+
         modelBuilder.Entity<EmployeeLeavePlan>(entity =>
         {
             entity.ToTable("EmployeeLeavePlan", Schema);
@@ -192,6 +207,8 @@ internal static class LeaveData
         public DbSet<LeavePlanItem> LeavePlanItems => db.Set<LeavePlanItem>();
 
         public DbSet<LeavePlanAssignment> LeavePlanAssignments => db.Set<LeavePlanAssignment>();
+
+        public DbSet<LeaveCostCenterAssignment> LeaveCostCenterAssignments => db.Set<LeaveCostCenterAssignment>();
 
         public DbSet<EmployeeLeavePlan> EmployeeLeavePlans => db.Set<EmployeeLeavePlan>();
 

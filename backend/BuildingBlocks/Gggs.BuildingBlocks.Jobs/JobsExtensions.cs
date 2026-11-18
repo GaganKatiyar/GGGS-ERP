@@ -53,6 +53,7 @@ public static class JobsExtensions
         services.AddSingleton<JobActivator, TenantAwareJobActivator>();
         services.AddScoped<ITenantJobScheduler, HangfireTenantJobScheduler>();
         services.AddScoped<ITenantFanOutScheduler, TenantFanOutScheduler>();
+        services.AddSingleton<IJobMonitor>(provider => new HangfireJobMonitor(provider.GetRequiredService<JobStorage>(), provider.GetRequiredService<IBackgroundJobClient>()));
 
         return services;
     }

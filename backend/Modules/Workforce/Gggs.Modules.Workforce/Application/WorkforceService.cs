@@ -36,8 +36,8 @@ public sealed record PlanLineItem(
     string? DepartmentName,
     Guid? LocationId,
     string? LocationName,
-    Guid? JobId,
-    string? JobName,
+    Guid? RoleId,
+    string? RoleName,
     int CurrentHeadcount,
     int LiveHeadcount,
     int PlannedHeadcount,
@@ -62,9 +62,8 @@ public sealed record RequestItem(
     string Title,
     Guid DepartmentId,
     string? DepartmentName,
-    Guid? PositionId,
-    Guid? JobId,
-    string? JobName,
+    Guid? RoleId,
+    string? RoleName,
     Guid? LocationId,
     string? LocationName,
     int Positions,
@@ -116,7 +115,7 @@ public sealed record WorkforceDashboard(
     IReadOnlyDictionary<string, int> RequestsByStatus);
 
 /// <summary>
-/// Workforce planning (spec §11): yearly headcount plans by department, location and job against the
+/// Workforce planning (spec §11): yearly headcount plans by department, location and role against the
 /// live headcount, and manpower requests - checked against the plan - approved through the workflow
 /// on their way to recruitment.
 /// </summary>
@@ -180,16 +179,16 @@ internal sealed class WorkforceService(
         List<WorkforcePlanLine> lines = await dbContext.WorkforcePlanLines.AsNoTracking().Where(line => line.PlanId == id).ToListAsync(cancellationToken);
         IReadOnlyDictionary<Guid, int> live = await employees.CountByDepartmentAsync(lines.Select(line => line.DepartmentId).Distinct(), cancellationToken);
         List<ManpowerRequest> open = await OpenRequestsAsync(lines.Select(line => line.DepartmentId), cancellationToken);
-        Names names = await OrgNamesAsync(lines.Select(line => line.DepartmentId), lines.Select(line => line.LocationId), lines.Select(line => line.JobId), cancellationToken);
+        Names names = await OrgNamesAsync(lines.Select(line => line.DepartmentId), lines.Select(line => line.LocationId), lines.Select(line => line.RoleId), cancellationToken);
         Dictionary<Guid, string> owners = await NamesAsync([plan.OwnerEmployeeId], cancellationToken);
 
         return new PlanView(
             Item(plan, lines, owners),
             [.. lines
                 .Select(line => new PlanLineItem(
-                    line.Id, line.DepartmentId, names.Department(line.DepartmentId), line.LocationId, names.Location(line.LocationId), line.JobId, names.Job(line.JobId),
+                    line.Id, line.DepartmentId, names.Department(line.DepartmentId), line.LocationId, names.Location(line.LocationId), line.RoleId, names.Role(line.RoleId),
                     line.CurrentHeadcount, live.GetValueOrDefault(line.DepartmentId), line.PlannedHeadcount, line.HeadcountGap,
-                    open.Where(request => request.DepartmentId == line.DepartmentId && (line.JobId is null || request.JobId == line.JobId) && request.Status == ManpowerRequestStatus.Approved).Sum(request => request.Positions),
+                    open.Where(request => request.DepartmentId == line.DepartmentId && (line.RoleId is null || request.RoleId == line.RoleId) && request.Status == ManpowerRequestStatus.Approved).Sum(request => request.Positions),
                     line.SalaryBudget, line.HiringBudget, line.Notes))
                 .OrderBy(line => line.DepartmentName, StringComparer.CurrentCulture)],
             await HasAsync(Permissions.Workforce.PlanManage, cancellationToken) && plan.Status is PlanStatus.Draft or PlanStatus.Rejected);
@@ -221,15 +220,15 @@ internal sealed class WorkforceService(
         WorkforcePlan plan = await dbContext.WorkforcePlans.FirstOrDefaultAsync(row => row.Id == id, cancellationToken) ?? throw new NotFoundException(nameof(WorkforcePlan), id);
         plan.EnsureEditable();
         List<PlanLineDetails> lines = [.. body.Lines ?? []];
-        if (lines.GroupBy(line => (line.DepartmentId, line.LocationId, line.JobId)).Any(group => group.Count() > 1))
+        if (lines.GroupBy(line => (line.DepartmentId, line.LocationId, line.RoleId)).Any(group => group.Count() > 1))
         {
-            throw new DomainRuleException("PLAN_LINE", "Each department, location and job appears once in a plan.");
+            throw new DomainRuleException("PLAN_LINE", "Each department, location and role appears once in a plan.");
         }
 
         IReadOnlyList<OrgReference> invalid = await organization.FindInvalidAsync(
             [.. lines.Select(line => new OrgReference(OrgUnitKind.Department, line.DepartmentId)),
              .. lines.Where(line => line.LocationId is not null).Select(line => new OrgReference(OrgUnitKind.Location, line.LocationId!.Value)),
-             .. lines.Where(line => line.JobId is not null).Select(line => new OrgReference(OrgUnitKind.Job, line.JobId!.Value))],
+             .. lines.Where(line => line.RoleId is not null).Select(line => new OrgReference(OrgUnitKind.Role, line.RoleId!.Value))],
             cancellationToken);
         if (invalid.Count > 0)
         {
@@ -483,7 +482,7 @@ internal sealed class WorkforceService(
 
     private void PublishApproved(ManpowerRequest request)
         => publisher.Publish(new ManpowerRequestApprovedIntegrationEvent(
-            request.Id, request.Number, request.Title, request.DepartmentId, request.PositionId, request.JobId, request.LocationId, request.Positions,
+            request.Id, request.Number, request.Title, request.DepartmentId, request.RoleId, request.LocationId, request.Positions,
             request.EmploymentTypeCode, request.WorkModeCode, request.MinExperienceYears, request.MaxExperienceYears, request.SalaryMin, request.SalaryMax,
             request.Skills, request.RequiredBy, request.RequesterEmployeeId, request.Priority.ToString(), request.Justification));
 
@@ -502,7 +501,7 @@ internal sealed class WorkforceService(
         }
 
         List<WorkforcePlanLine> lines = await dbContext.WorkforcePlanLines.AsNoTracking()
-            .Where(line => line.PlanId == plan.Id && line.DepartmentId == request.DepartmentId && (line.JobId == null || line.JobId == request.JobId))
+            .Where(line => line.PlanId == plan.Id && line.DepartmentId == request.DepartmentId && (line.RoleId == null || line.RoleId == request.RoleId))
             .ToListAsync(cancellationToken);
         int planned = lines.Sum(line => line.PlannedHeadcount);
         int current = (await employees.CountByDepartmentAsync([request.DepartmentId], cancellationToken)).GetValueOrDefault(request.DepartmentId);
@@ -517,19 +516,14 @@ internal sealed class WorkforceService(
     {
         ArgumentNullException.ThrowIfNull(details);
         List<OrgReference> references = [new(OrgUnitKind.Department, details.DepartmentId)];
-        if (details.JobId is { } job)
+        if (details.RoleId is { } role)
         {
-            references.Add(new OrgReference(OrgUnitKind.Job, job));
+            references.Add(new OrgReference(OrgUnitKind.Role, role));
         }
 
         if (details.LocationId is { } location)
         {
             references.Add(new OrgReference(OrgUnitKind.Location, location));
-        }
-
-        if (details.PositionId is { } position)
-        {
-            references.Add(new OrgReference(OrgUnitKind.Position, position));
         }
 
         IReadOnlyList<OrgReference> invalid = await organization.FindInvalidAsync(references, cancellationToken);
@@ -585,7 +579,7 @@ internal sealed class WorkforceService(
 
     private async Task<List<RequestItem>> ItemsAsync(IReadOnlyList<ManpowerRequest> requests, bool withFit, CancellationToken cancellationToken)
     {
-        Names names = await OrgNamesAsync(requests.Select(row => row.DepartmentId), requests.Select(row => row.LocationId), requests.Select(row => row.JobId), cancellationToken);
+        Names names = await OrgNamesAsync(requests.Select(row => row.DepartmentId), requests.Select(row => row.LocationId), requests.Select(row => row.RoleId), cancellationToken);
         Dictionary<Guid, string> people = await NamesAsync(requests.Select(row => (Guid?)row.RequesterEmployeeId).Concat(requests.Select(row => row.ReplacementForEmployeeId)), cancellationToken);
         bool canManage = await HasAsync(Permissions.Workforce.RequestManage, cancellationToken);
         var items = new List<RequestItem>();
@@ -593,7 +587,7 @@ internal sealed class WorkforceService(
         {
             PlanFit? fit = withFit ? await FitAsync(row, cancellationToken) : null;
             items.Add(new RequestItem(
-                row.Id, row.Number, row.Title, row.DepartmentId, names.Department(row.DepartmentId), row.PositionId, row.JobId, names.Job(row.JobId), row.LocationId,
+                row.Id, row.Number, row.Title, row.DepartmentId, names.Department(row.DepartmentId), row.RoleId, names.Role(row.RoleId), row.LocationId,
                 names.Location(row.LocationId), row.Positions, row.Skills, row.MinExperienceYears, row.MaxExperienceYears, row.EmploymentTypeCode, row.WorkModeCode,
                 row.SalaryMin, row.SalaryMax, row.Budget, row.Priority, row.RequiredBy, row.Reason, row.ReplacementForEmployeeId,
                 row.ReplacementForEmployeeId is { } replaced ? people.GetValueOrDefault(replaced) : null, row.Justification, row.RequesterEmployeeId,
@@ -609,23 +603,23 @@ internal sealed class WorkforceService(
     private async Task<Dictionary<Guid, string>> NamesAsync(IEnumerable<Guid?> ids, CancellationToken cancellationToken)
         => (await employees.GetManyAsync(ids.OfType<Guid>().Distinct(), cancellationToken)).ToDictionary(person => person.Id, person => person.DisplayName);
 
-    private async Task<Names> OrgNamesAsync(IEnumerable<Guid> departments, IEnumerable<Guid?> locations, IEnumerable<Guid?> jobs, CancellationToken cancellationToken)
+    private async Task<Names> OrgNamesAsync(IEnumerable<Guid> departments, IEnumerable<Guid?> locations, IEnumerable<Guid?> roles, CancellationToken cancellationToken)
         => new(
             await organization.GetNamesAsync(OrgUnitKind.Department, departments.Distinct(), cancellationToken),
             await organization.GetNamesAsync(OrgUnitKind.Location, locations.OfType<Guid>().Distinct(), cancellationToken),
-            await organization.GetNamesAsync(OrgUnitKind.Job, jobs.OfType<Guid>().Distinct(), cancellationToken));
+            await organization.GetNamesAsync(OrgUnitKind.Role, roles.OfType<Guid>().Distinct(), cancellationToken));
 
     private static PlanItem Item(WorkforcePlan plan, List<WorkforcePlanLine> lines, Dictionary<Guid, string> owners) => new(
         plan.Id, plan.Name, plan.Year, plan.Status, plan.EffectiveDate, plan.OwnerEmployeeId, plan.OwnerEmployeeId is { } owner ? owners.GetValueOrDefault(owner) : null,
         plan.Notes, lines.Sum(line => line.CurrentHeadcount), lines.Sum(line => line.PlannedHeadcount), lines.Sum(line => line.SalaryBudget),
         lines.Sum(line => line.HiringBudget), lines.Count);
 
-    private sealed record Names(IReadOnlyDictionary<Guid, string> Departments, IReadOnlyDictionary<Guid, string> Locations, IReadOnlyDictionary<Guid, string> Jobs)
+    private sealed record Names(IReadOnlyDictionary<Guid, string> Departments, IReadOnlyDictionary<Guid, string> Locations, IReadOnlyDictionary<Guid, string> Roles)
     {
         public string? Department(Guid id) => Departments.GetValueOrDefault(id);
 
         public string? Location(Guid? id) => id is { } value ? Locations.GetValueOrDefault(value) : null;
 
-        public string? Job(Guid? id) => id is { } value ? Jobs.GetValueOrDefault(value) : null;
+        public string? Role(Guid? id) => id is { } value ? Roles.GetValueOrDefault(value) : null;
     }
 }

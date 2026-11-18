@@ -26,7 +26,11 @@ import type {
   ClearanceArea,
   ClearanceItem,
   ClearanceStatus,
+  CelebrationKind,
+  CelebrationList,
   EngagementDashboard,
+  SendWishesInput,
+  SendWishesResult,
   ExitInterviewInput,
   ExpenseCategoryInput,
   ExpenseCategoryItem,
@@ -380,6 +384,16 @@ export class EngagementApi {
   respond(id: string, answers: Readonly<Record<string, string>>): Promise<void> {
     return firstValueFrom(this.http.post<void>(`/api/v1/me/surveys/${id}/respond`, { answers }));
   }
+
+  /** Birthdays or work anniversaries from `from` to `to` (ISO dates), with who has been wished. */
+  celebrations(kind: CelebrationKind, from: string, to: string): Promise<CelebrationList> {
+    return firstValueFrom(this.http.get<CelebrationList>(`${this.base}/celebrations`, { params: params({ kind, from, to }) }));
+  }
+
+  /** Wishes the employees (and tells their managers); a person already wished, or not due yet, is skipped. */
+  sendWishes(body: SendWishesInput): Promise<SendWishesResult> {
+    return firstValueFrom(this.http.post<SendWishesResult>(`${this.base}/celebrations/send`, body));
+  }
 }
 
 /** Rewards and recognition (`/api/v1/rewards`) and one's own wallet (`/api/v1/me/rewards`). */
@@ -606,7 +620,7 @@ export class SeparationApi {
     return firstValueFrom(this.http.get<readonly NoticeRule[]>(`${this.base}/policy/notice-rules`));
   }
 
-  addNoticeRule(body: { gradeId: string | null; employmentTypeCode: string | null; onProbation: boolean | null; noticeDays: number }): Promise<NoticeRule> {
+  addNoticeRule(body: { levelId: string | null; employmentTypeCode: string | null; onProbation: boolean | null; noticeDays: number }): Promise<NoticeRule> {
     return firstValueFrom(this.http.post<NoticeRule>(`${this.base}/policy/notice-rules`, body));
   }
 

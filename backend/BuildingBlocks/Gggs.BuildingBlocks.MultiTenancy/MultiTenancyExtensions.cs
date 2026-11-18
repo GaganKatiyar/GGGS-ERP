@@ -17,6 +17,7 @@ public static class MultiTenancyExtensions
         services.TryAddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
         services.TryAddScoped<ITenantContextSetter>(sp => sp.GetRequiredService<TenantContext>());
         services.TryAddScoped<ITenantClock, TenantClock>();
+        services.TryAddScoped<ITenantScopes, TenantScopes>();
         return services;
     }
 

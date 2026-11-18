@@ -15,8 +15,8 @@ public sealed class PasswordPolicyTests
     {
         PasswordPolicy policy = PasswordPolicy.CreateDefault();
 
-        // Length resists offline cracking; character classes mostly produce P@ssw0rd.
-        policy.MinimumLength.ShouldBe(12);
+        // Six, as the organisation chose; each tenant can raise it under Studio > Password policy.
+        policy.MinimumLength.ShouldBe(6);
         policy.RequireComplexity.ShouldBeFalse();
 
         // Forced rotation reliably produces Password1, Password2, Password3.
@@ -34,6 +34,26 @@ public sealed class PasswordPolicyTests
 
         result.IsValid.ShouldBeFalse();
         result.Failures.ShouldNotBeEmpty();
+    }
+
+    [Fact]
+    public void SixCharactersAreEnoughByDefault_FiveAreNot()
+    {
+        PasswordPolicy policy = PasswordPolicy.CreateDefault();
+
+        policy.Validate("Bk7#qz", "Priya Sharma", "priya@acme.com").IsValid.ShouldBeTrue();
+        policy.Validate("Bk7#q", "Priya Sharma", "priya@acme.com").Failures.ShouldContain("Password must be at least 6 characters.");
+    }
+
+    [Fact]
+    public void ATenantCanRaiseTheMinimum_AndExpiryStaysWithinReason()
+    {
+        PasswordPolicy policy = PasswordPolicy.CreateDefault();
+        policy.Update(12, false, true, 5, 90, 5, TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30), TimeSpan.FromHours(12));
+        policy.Validate("Bk7#qz", null, null).IsValid.ShouldBeFalse();
+
+        Should.Throw<DomainRuleException>(() => policy.Update(12, false, true, 5, 99_999, 5, TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30), TimeSpan.FromHours(12)))
+            .ErrorCode.ShouldBe("PASSWORD_POLICY_AGE_INVALID");
     }
 
     [Fact]

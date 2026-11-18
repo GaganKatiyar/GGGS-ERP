@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Mail;
+using Gggs.Modules.Notification.Contracts;
 using Microsoft.Extensions.Options;
 
 namespace Gggs.Modules.Notification.Infrastructure;
@@ -35,8 +36,15 @@ public sealed class SmtpSettings
     public string? Password { get; set; }
 }
 
-/// <summary>A message on its way out. A sensitive one holds a secret, so nothing may write its body anywhere.</summary>
-internal sealed record OutboundMessage(string To, string Subject, string Body, bool Sensitive = false);
+/// <summary>
+/// A message on its way out. A sensitive one holds a secret, so nothing may write its body anywhere. The
+/// sender's name and reply-to apply on the system's sender too; its address stays the system's own.
+/// </summary>
+internal sealed record OutboundMessage(string To, string Subject, string Body, bool Sensitive = false, string? Html = null, string? FromName = null, string? ReplyTo = null, string? Bcc = null)
+{
+    public static OutboundMessage From(OutgoingEmail email, bool sensitive = false)
+        => new(email.To, email.Subject, email.Body, sensitive, email.HtmlBody, email.FromName, email.ReplyTo, email.Bcc);
+}
 
 /// <summary>
 /// One way of reaching people (spec §108). Email ships now; SMS, WhatsApp and push are further
@@ -46,6 +54,9 @@ internal interface INotificationChannel
 {
     string Name { get; }
 
+    /// <summary>False for development's logging sender: what it "sends" is recorded as logged, not sent.</summary>
+    bool Delivers { get; }
+
     Task SendAsync(OutboundMessage message, CancellationToken cancellationToken);
 }
 
@@ -53,6 +64,8 @@ internal interface INotificationChannel
 internal sealed class LoggingEmailChannel(ILogger<LoggingEmailChannel> logger) : INotificationChannel
 {
     public string Name => "email:log";
+
+    public bool Delivers => false;
 
     public Task SendAsync(OutboundMessage message, CancellationToken cancellationToken)
     {
@@ -71,6 +84,8 @@ internal sealed class SmtpEmailChannel(IOptions<NotificationOptions> options) : 
 {
     public string Name => "email:smtp";
 
+    public bool Delivers => true;
+
     public async Task SendAsync(OutboundMessage message, CancellationToken cancellationToken)
     {
         NotificationOptions settings = options.Value;
@@ -88,12 +103,26 @@ internal sealed class SmtpEmailChannel(IOptions<NotificationOptions> options) : 
 
         using var mail = new MailMessage
         {
-            From = new MailAddress(settings.FromAddress, settings.FromName),
+            From = new MailAddress(settings.FromAddress, message.FromName ?? settings.FromName),
             Subject = message.Subject,
             Body = message.Body,
             IsBodyHtml = false,
         };
         mail.To.Add(message.To);
+        if (message.ReplyTo is not null)
+        {
+            mail.ReplyToList.Add(message.ReplyTo);
+        }
+
+        if (message.Bcc is not null)
+        {
+            mail.Bcc.Add(message.Bcc);
+        }
+
+        if (message.Html is not null)
+        {
+            mail.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(message.Html, System.Text.Encoding.UTF8, System.Net.Mime.MediaTypeNames.Text.Html));
+        }
 
         await client.SendMailAsync(mail, cancellationToken);
     }

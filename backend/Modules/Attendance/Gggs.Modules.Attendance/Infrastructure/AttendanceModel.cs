@@ -58,6 +58,17 @@ internal sealed class AttendanceModel : IModuleModel
                 .HasFilter("[IsDeleted] = 0");
             entity.Ignore(device => device.DomainEvents);
         });
+
+        modelBuilder.Entity<AttendanceProfile>(entity =>
+        {
+            entity.ToTable("AttendanceProfile", Schema);
+            entity.Property(profile => profile.Modes).HasConversion<byte>();
+            entity.HasIndex(profile => new { profile.TenantId, profile.EmployeeId })
+                .HasDatabaseName("UX_AttendanceProfile_TenantId_Employee")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.Ignore(profile => profile.DomainEvents);
+        });
     }
 }
 
@@ -72,5 +83,7 @@ internal static class AttendanceData
         public DbSet<RegularizationRequest> Regularizations => db.Set<RegularizationRequest>();
 
         public DbSet<AttendanceDevice> AttendanceDevices => db.Set<AttendanceDevice>();
+
+        public DbSet<AttendanceProfile> AttendanceProfiles => db.Set<AttendanceProfile>();
     }
 }

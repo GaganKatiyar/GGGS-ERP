@@ -10,11 +10,10 @@ public sealed record EmployeeSummary(
     string? OfficialEmail,
     string Status,
     Guid? DepartmentId,
-    Guid? PositionId,
-    Guid? JobId,
+    Guid? RoleId,
     Guid? ManagerEmployeeId,
     Guid? LocationId,
-    Guid? LegalEntityId,
+    Guid? CompanyId,
     Guid? HrbpEmployeeId = null,
     string? Designation = null,
     DateOnly? JoiningDate = null,
@@ -22,10 +21,12 @@ public sealed record EmployeeSummary(
     DateOnly? ProbationEndDate = null,
     DateOnly? ConfirmationDate = null,
     string? WorkModeCode = null,
-    Guid? GradeId = null,
+    Guid? LevelId = null,
     DateOnly? ExitDate = null,
     string? ExitReasonCode = null,
-    string? GenderCode = null);
+    string? GenderCode = null,
+    Guid? DesignationId = null,
+    Guid? CostCenterId = null);
 
 /// <summary>
 /// The employee directory other modules read (ADR-12). It replaces the five replicated employee
@@ -45,9 +46,6 @@ public interface IEmployeeDirectory
     /// follows when it is assigned automatically.
     /// </summary>
     Task<IReadOnlySet<Guid>> PeopleManagersAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>How many active employees currently hold each position - a position's occupancy.</summary>
-    Task<IReadOnlyDictionary<Guid, int>> CountByPositionAsync(IEnumerable<Guid> positionIds, CancellationToken cancellationToken = default);
 
     /// <summary>How many active employees are currently assigned to each department - one query for any number of departments.</summary>
     Task<IReadOnlyDictionary<Guid, int>> CountByDepartmentAsync(IEnumerable<Guid> departmentIds, CancellationToken cancellationToken = default);
@@ -123,14 +121,44 @@ public sealed record NewHire(
     string? MobilePhone,
     DateOnly JoiningDate,
     Guid? DepartmentId,
-    Guid? PositionId,
-    Guid? JobId,
-    Guid? GradeId,
+    Guid? RoleId,
+    Guid? LevelId,
     Guid? LocationId,
     Guid? ManagerEmployeeId,
     string EmploymentTypeCode,
     string WorkModeCode,
-    string? Designation);
+    string? Designation,
+    Guid? DesignationId = null,
+    HireDetails? Details = null);
+
+/// <summary>A home address given at hire.</summary>
+public sealed record HireAddress(string? Line1, string? Line2, string? City, string? StateCode, string? CountryCode, string? PostalCode);
+
+/// <summary>
+/// Everything about a new hire beyond who they are and where they sit, saved with the hire itself so
+/// the record is complete from day one. All optional; identifiers arrive in the clear and are
+/// validated and encrypted before they are stored.
+/// </summary>
+public sealed record HireDetails(
+    string? GenderCode = null,
+    DateOnly? DateOfBirth = null,
+    string? PreferredName = null,
+    string? MaritalStatusCode = null,
+    string? NationalityCode = null,
+    string? BloodGroupCode = null,
+    string? OfficialEmail = null,
+    HireAddress? PresentAddress = null,
+    HireAddress? PermanentAddress = null,
+    string? Aadhaar = null,
+    string? Pan = null,
+    string? PassportNumber = null,
+    DateOnly? PassportExpiry = null,
+    string? BankName = null,
+    string? BankIfsc = null,
+    string? BankAccountHolder = null,
+    string? BankAccountNumber = null,
+    decimal? PreviousExperienceYears = null,
+    DateOnly? ProbationEndDate = null);
 
 /// <summary>Creating an employee from outside Core HR (ADR-12): recruitment hires accepted candidates through it.</summary>
 public interface IEmployeeHiring
@@ -139,8 +167,8 @@ public interface IEmployeeHiring
     Task<(Guid EmployeeId, string EmployeeCode)> HireAsync(NewHire hire, CancellationToken cancellationToken = default);
 }
 
-/// <summary>A promotion decided elsewhere (Career): the new job, grade, position or designation from a day. Unset values stay as they are.</summary>
-public sealed record Promotion(Guid EmployeeId, DateOnly EffectiveFrom, Guid? PositionId, Guid? JobId, Guid? GradeId, string? Designation, string Reason);
+/// <summary>A promotion decided elsewhere (Career): the new role, level or designation from a day. Unset values stay as they are.</summary>
+public sealed record Promotion(Guid EmployeeId, DateOnly EffectiveFrom, Guid? RoleId, Guid? LevelId, Guid? DesignationId, string? Designation, string Reason);
 
 /// <summary>Applying a promotion from outside Core HR (ADR-12), through Core HR's own assignment rules and events.</summary>
 public interface IEmployeePromotions
@@ -198,6 +226,30 @@ public interface IEmployeeSeparations
     Task ChangeManagerAsync(Guid employeeId, Guid newManagerEmployeeId, DateOnly effectiveFrom, string reason, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// A current employee's birthday or work anniversary falling on <see cref="Date"/>. For an anniversary
+/// <see cref="Years"/> is the years of service completed that day; for a birthday it is 0, so nobody's
+/// age travels with it.
+/// </summary>
+public sealed record Celebration(
+    Guid EmployeeId,
+    string EmployeeCode,
+    string DisplayName,
+    Guid? DepartmentId,
+    Guid? ManagerEmployeeId,
+    DateOnly Date,
+    int Years);
+
+/// <summary>Birthdays and work anniversaries of current employees, for greeting them (ADR-12).</summary>
+public interface IEmployeeCelebrations
+{
+    /// <summary>Birthdays from <paramref name="firstDay"/> to <paramref name="lastDay"/>; <paramref name="scope"/> null means everyone.</summary>
+    Task<IReadOnlyList<Celebration>> BirthdaysAsync(DateOnly firstDay, DateOnly lastDay, IReadOnlyCollection<Guid>? scope, CancellationToken cancellationToken = default);
+
+    /// <summary>Work anniversaries (one year or more) from <paramref name="firstDay"/> to <paramref name="lastDay"/>; <paramref name="scope"/> null means everyone.</summary>
+    Task<IReadOnlyList<Celebration>> AnniversariesAsync(DateOnly firstDay, DateOnly lastDay, IReadOnlyCollection<Guid>? scope, CancellationToken cancellationToken = default);
+}
+
 /// <summary>Someone joined. Recruitment, onboarding, payroll and resourcing react to this.</summary>
 [MessageType("gggs.employee.hired")]
 public sealed record EmployeeHiredIntegrationEvent(
@@ -205,7 +257,6 @@ public sealed record EmployeeHiredIntegrationEvent(
     string EmployeeCode,
     DateOnly JoiningDate,
     Guid? DepartmentId,
-    Guid? PositionId,
     Guid? ManagerEmployeeId) : IntegrationEvent;
 
 /// <summary>An employee's assignment changed: transfer, promotion, new manager, confirmation.</summary>
@@ -215,9 +266,8 @@ public sealed record EmployeeAssignmentChangedIntegrationEvent(
     string ChangeType,
     DateOnly EffectiveFrom,
     Guid? DepartmentId,
-    Guid? PositionId,
-    Guid? JobId,
-    Guid? GradeId,
+    Guid? RoleId,
+    Guid? LevelId,
     Guid? ManagerEmployeeId) : IntegrationEvent;
 
 /// <summary>An employee's employment ended.</summary>

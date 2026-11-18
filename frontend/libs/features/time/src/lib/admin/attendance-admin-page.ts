@@ -7,10 +7,10 @@ import { HasPermissionDirective } from '@gggs/core/permissions';
 import { DataTable, DataTableCell, type DataTableColumn } from '@gggs/shared/data-table';
 import { EmployeeSelect } from '@gggs/shared/employee-reference';
 import type { AttendanceRow, AttendanceDevice, PagedResult, Regularization } from '@gggs/shared/models';
-import { formatMinutes, shortTime, toAttendanceRows } from '@gggs/shared/models';
+import { formatMinutes, toAttendanceRows } from '@gggs/shared/models';
 import { OrgSelect } from '@gggs/shared/org-reference';
 import { AttendanceApi, addDays, todayIso } from '@gggs/shared/time';
-import { EmptyState, FormDialog, PageHeader, StatusBadge, Tabs, type TabItem } from '@gggs/shared/ui';
+import { clockTime, EmptyState, FormDialog, PageHeader, StatusBadge, Tabs, timeRange, type TabItem } from '@gggs/shared/ui';
 
 /**
  * Attendance for HR: days over a period for anyone in reach, corrections people asked for, the
@@ -53,8 +53,8 @@ import { EmptyState, FormDialog, PageHeader, StatusBadge, Tabs, type TabItem } f
           </section>
           <gggs-data-table [result]="days()" [columns]="columns" [loading]="loading()" exportName="attendance-days" emptyTitle="No days in this period">
             <ng-template gggsCell="date" let-row>{{ row.date | date: 'EEE d MMM' }}</ng-template>
-            <ng-template gggsCell="firstIn" let-row>{{ shortTime(row.firstIn) || '—' }}</ng-template>
-            <ng-template gggsCell="lastOut" let-row>{{ shortTime(row.lastOut) || '—' }}</ng-template>
+            <ng-template gggsCell="firstIn" let-row>{{ clockTime(row.firstIn) || '—' }}</ng-template>
+            <ng-template gggsCell="lastOut" let-row>{{ clockTime(row.lastOut) || '—' }}</ng-template>
             <ng-template gggsCell="workedMinutes" let-row>{{ formatMinutes(row.workedMinutes) || '—' }}</ng-template>
             <ng-template gggsCell="lateMinutes" let-row>{{ formatMinutes(row.lateMinutes) }}</ng-template>
             <ng-template gggsCell="status" let-row><gggs-status-badge [status]="row.status" /></ng-template>
@@ -81,8 +81,8 @@ import { EmptyState, FormDialog, PageHeader, StatusBadge, Tabs, type TabItem } f
                     <tr>
                       <td>{{ request.employeeName }}</td>
                       <td>{{ request.date | date: 'EEE d MMM' }}</td>
-                      <td>{{ shortTime(request.checkIn) || '—' }}</td>
-                      <td>{{ shortTime(request.checkOut) || '—' }}</td>
+                      <td>{{ clockTime(request.checkIn) || '—' }}</td>
+                      <td>{{ clockTime(request.checkOut) || '—' }}</td>
                       <td>{{ request.reason }}</td>
                       <td>
                         <gggs-status-badge [status]="request.status" />
@@ -121,7 +121,7 @@ import { EmptyState, FormDialog, PageHeader, StatusBadge, Tabs, type TabItem } f
                     <tr>
                       <td><code>{{ device.code }}</code></td>
                       <td>{{ device.name }}</td>
-                      <td>{{ (device.lastSeenDate | date: 'medium') ?? 'Never' }}</td>
+                      <td>{{ (device.lastSeenDate | date: 'd MMM y, h:mm a') ?? 'Never' }}</td>
                       <td><gggs-status-badge [status]="device.isActive ? 'Active' : 'Inactive'" /></td>
                       <td>
                         <button type="button" class="btn btn--link btn--sm" (click)="openDevice(device)">Edit</button>
@@ -196,7 +196,8 @@ export class AttendanceAdminPage implements OnInit {
   private readonly api = inject(AttendanceApi);
 
   protected readonly formatMinutes = formatMinutes;
-  protected readonly shortTime = shortTime;
+  protected readonly clockTime = clockTime;
+  protected readonly timeRange = timeRange;
   protected readonly tabs: readonly TabItem[] = [
     { key: 'days', label: 'Days' },
     { key: 'corrections', label: 'Corrections' },

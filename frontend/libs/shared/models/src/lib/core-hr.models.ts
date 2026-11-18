@@ -42,17 +42,14 @@ export const LOOKUP_LISTS = {
 
 /** The kinds of organization record, as the API names them in its routes. */
 export type OrgKind =
-  | 'legal-entities'
+  | 'companies'
   | 'business-units'
-  | 'divisions'
   | 'departments'
   | 'locations'
   | 'cost-centers'
-  | 'profit-centers'
-  | 'grades'
-  | 'job-levels'
-  | 'jobs'
-  | 'positions';
+  | 'levels'
+  | 'designations'
+  | 'roles';
 
 export interface Address {
   readonly line1?: string;
@@ -72,21 +69,18 @@ export interface OrgUnit {
   readonly [field: string]: unknown;
 }
 
+/** A department in the tree; its `children` are its functions (two levels, nothing below a function). */
 export interface DepartmentNode {
   readonly id: string;
   readonly code: string;
   readonly name: string;
+  readonly businessUnitId?: string;
   readonly headEmployeeId?: string;
+  readonly locationId?: string;
+  readonly costCenterId?: string;
   readonly headcount: number;
   readonly isActive: boolean;
   readonly children: readonly DepartmentNode[];
-}
-
-export interface PositionOccupancy {
-  readonly positionId: string;
-  readonly headcount: number;
-  readonly occupied: number;
-  readonly vacant: number;
 }
 
 // ----- Employees -----------------------------------------------------------------------------
@@ -123,13 +117,19 @@ export interface EmployeeRow {
 
 export interface EmployeeAssignment {
   readonly effectiveFrom: string;
-  readonly legalEntity?: NamedRef;
+  readonly company?: NamedRef;
   readonly businessUnit?: NamedRef;
-  readonly division?: NamedRef;
+  /** Where the employee is placed: a department, or a function inside one. */
   readonly department?: NamedRef;
-  readonly job?: NamedRef;
-  readonly position?: NamedRef;
-  readonly grade?: NamedRef;
+  /** When `department` is a function, the department it belongs to. */
+  readonly parentDepartment?: NamedRef;
+  /** Their role: the work they do. */
+  readonly role?: NamedRef;
+  readonly level?: NamedRef;
+  /** The designation picked from the list; `designation` is its name as printed. */
+  readonly designationRef?: NamedRef;
+  /** The company name they work under. */
+  readonly costCenter?: NamedRef;
   readonly location?: NamedRef;
   readonly manager?: NamedRef;
   readonly hrbp?: NamedRef;
@@ -148,6 +148,10 @@ export interface SensitiveSummary {
   readonly bankName?: string;
   readonly bankIfsc?: string;
   readonly bankAccountHint?: string;
+  readonly passportHint?: string;
+  readonly passportExpiry?: string;
+  /** Years of work before joining, as given at hire. */
+  readonly previousExperienceYears?: number;
 }
 
 export interface EmployeeProfile {
@@ -204,9 +208,9 @@ export interface EmploymentHistoryEntry {
   readonly effectiveFrom: string;
   readonly effectiveTo?: string;
   readonly departmentName?: string;
-  readonly jobName?: string;
-  readonly positionName?: string;
-  readonly gradeName?: string;
+  readonly roleName?: string;
+  readonly levelName?: string;
+  readonly costCenterName?: string;
   readonly locationName?: string;
   readonly managerName?: string;
   readonly designation?: string;
@@ -221,6 +225,7 @@ export interface StatutoryDetails {
   readonly esicNumber?: string;
   readonly nationalId?: string;
   readonly professionalTaxStateCode?: string;
+  readonly passportNumber?: string;
 }
 
 export interface BankDetails {
@@ -284,13 +289,14 @@ export interface OrgChartNode {
 
 export interface EmployeeAssignmentInput {
   readonly departmentId?: string | null;
-  readonly positionId?: string | null;
-  readonly jobId?: string | null;
-  readonly gradeId?: string | null;
+  readonly roleId?: string | null;
+  readonly levelId?: string | null;
+  readonly designationId?: string | null;
+  /** Empty means the location's cost center, or the company default. */
+  readonly costCenterId?: string | null;
   readonly locationId?: string | null;
-  readonly legalEntityId?: string | null;
+  readonly companyId?: string | null;
   readonly businessUnitId?: string | null;
-  readonly divisionId?: string | null;
   readonly managerEmployeeId?: string | null;
   readonly hrbpEmployeeId?: string | null;
   readonly employmentTypeCode: string;
@@ -312,6 +318,76 @@ export interface HireEmployee {
   readonly joiningDate: string;
   readonly probationEndDate?: string | null;
   readonly assignment: EmployeeAssignmentInput;
+  readonly details?: HireDetails | null;
+}
+
+export interface HireAddress {
+  readonly line1?: string | null;
+  readonly line2?: string | null;
+  readonly city?: string | null;
+  readonly stateCode?: string | null;
+  readonly countryCode?: string | null;
+  readonly postalCode?: string | null;
+}
+
+/** A Hire form saved part-way, as the Draft hires list shows it. `files` are the slots that hold a file. */
+export interface HireDraftItem {
+  readonly id: string;
+  readonly displayName: string;
+  readonly step: number;
+  readonly offerId?: string;
+  readonly files: readonly string[];
+  readonly createdDate: string;
+  readonly modifiedDate?: string;
+}
+
+/** A file kept with a draft: the photo (`photo`) or a document, by its type code (`AADHAAR`, `PAN`, `PASSPORT`, `OFFER_LETTER`). */
+export interface HireDraftFile {
+  readonly slot: string;
+  readonly fileId: string;
+  readonly fileName: string;
+  readonly contentType: string;
+  readonly sizeBytes: number;
+}
+
+/** A draft opened to carry on. `payload` is whatever the Hire form saved; only the form reads it. */
+export interface HireDraftDetail {
+  readonly id: string;
+  readonly displayName: string;
+  readonly step: number;
+  readonly offerId?: string;
+  readonly payload: Readonly<Record<string, unknown>>;
+  readonly files: readonly HireDraftFile[];
+}
+
+export interface HireDraftBody {
+  readonly displayName: string | null;
+  readonly step: number;
+  readonly offerId: string | null;
+  readonly payload: Readonly<Record<string, unknown>>;
+}
+
+/** The rest of a new hire's record, saved with the hire itself. Identifiers go in the clear and are encrypted on arrival. */
+export interface HireDetails {
+  readonly genderCode?: string | null;
+  readonly dateOfBirth?: string | null;
+  readonly preferredName?: string | null;
+  readonly maritalStatusCode?: string | null;
+  readonly nationalityCode?: string | null;
+  readonly bloodGroupCode?: string | null;
+  readonly officialEmail?: string | null;
+  readonly presentAddress?: HireAddress | null;
+  readonly permanentAddress?: HireAddress | null;
+  readonly aadhaar?: string | null;
+  readonly pan?: string | null;
+  readonly passportNumber?: string | null;
+  readonly passportExpiry?: string | null;
+  readonly bankName?: string | null;
+  readonly bankIfsc?: string | null;
+  readonly bankAccountHolder?: string | null;
+  readonly bankAccountNumber?: string | null;
+  readonly previousExperienceYears?: number | null;
+  readonly probationEndDate?: string | null;
 }
 
 export interface ImportRow {
@@ -323,9 +399,10 @@ export interface ImportRow {
   readonly mobilePhone?: string;
   readonly joiningDate?: string;
   readonly departmentCode?: string;
-  readonly positionCode?: string;
-  readonly jobCode?: string;
-  readonly gradeCode?: string;
+  readonly roleCode?: string;
+  readonly levelCode?: string;
+  readonly designationCode?: string;
+  readonly costCenterCode?: string;
   readonly locationCode?: string;
   readonly managerEmployeeCode?: string;
   readonly employmentTypeCode?: string;

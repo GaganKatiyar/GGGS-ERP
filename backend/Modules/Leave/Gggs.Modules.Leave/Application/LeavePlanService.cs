@@ -4,6 +4,7 @@ using Gggs.Modules.Employee.Contracts;
 using Gggs.Modules.Leave.Domain;
 using Gggs.Modules.Leave.Infrastructure;
 using Gggs.Modules.MasterData.Contracts;
+using Gggs.Modules.Organization.Contracts;
 using Microsoft.EntityFrameworkCore;
 
 namespace Gggs.Modules.Leave.Application;
@@ -18,7 +19,8 @@ public sealed record LeavePlanSummary(
     bool IsActive,
     int LeaveTypeCount,
     IReadOnlyList<string> AssignedTo,
-    int ExceptionCount);
+    int ExceptionCount,
+    IReadOnlyList<string>? AssignedCostCenters = null);
 
 public sealed record LeavePlanRuleItem(
     Guid LeaveTypeId,
@@ -61,7 +63,8 @@ public sealed record LeavePlanDetail(
     string LeaveYear,
     bool IsActive,
     IReadOnlyList<string> AssignedTo,
-    IReadOnlyList<LeavePlanRuleItem> Items);
+    IReadOnlyList<LeavePlanRuleItem> Items,
+    IReadOnlyList<string>? AssignedCostCenters = null);
 
 public sealed record LeavePlanRequest(string Code, string Name, string? Description, int LeaveYearStartMonth);
 
@@ -103,6 +106,31 @@ public sealed record PlanAssignmentItem(string EmploymentTypeCode, string Label,
 
 public sealed record PlanAssignmentChange(string EmploymentTypeCode, Guid? PlanId);
 
+/// <summary>
+/// A cost center and its own policies: <c>PlanId</c> for everyone on it (null: the organisation default),
+/// and <c>Overrides</c> for single engagement types there.
+/// </summary>
+public sealed record CostCenterAssignmentItem(
+    Guid CostCenterId,
+    string Code,
+    string Name,
+    bool IsActive,
+    string? CompanyName,
+    string? CountryCode,
+    int EmployeeCount,
+    Guid? PlanId,
+    string? PlanName,
+    IReadOnlyList<CostCenterTypeOverride>? Overrides = null);
+
+/// <summary>One engagement type on one cost center with a policy of its own.</summary>
+public sealed record CostCenterTypeOverride(string EmploymentTypeCode, string Label, Guid PlanId, string? PlanName);
+
+/// <summary>
+/// No <c>EmploymentTypeCode</c>: the cost center's policy for everyone. A null <c>PlanId</c> removes the row, so
+/// the engagement type falls back to the cost center's everyone policy, and that to the organisation default.
+/// </summary>
+public sealed record CostCenterAssignmentChange(Guid CostCenterId, Guid? PlanId, string? EmploymentTypeCode = null);
+
 public sealed record EmployeePlanItem(
     Guid Id,
     Guid EmployeeId,
@@ -125,14 +153,18 @@ public sealed record ResolvedLeavePolicy(
     DateOnly YearStart,
     DateOnly YearEnd,
     PlanSource Source,
-    IReadOnlyList<LeavePlanRuleItem> Items);
+    IReadOnlyList<LeavePlanRuleItem> Items,
+    string? CostCenterName = null);
 
 /// <summary>Every policy, assignment and exception a calculation needs, loaded once.</summary>
 public sealed class LeavePlanBook(
     IReadOnlyDictionary<Guid, LeavePlan> plans,
     IReadOnlyDictionary<string, Guid> assignments,
-    ILookup<Guid, EmployeeLeavePlan> exceptions)
+    ILookup<Guid, EmployeeLeavePlan> exceptions,
+    CostCenterPlans? costCenterAssignments = null)
 {
+    private readonly CostCenterPlans _costCenters = costCenterAssignments ?? CostCenterPlans.None;
+
     public bool HasPlans => plans.Count > 0;
 
     public IEnumerable<LeavePlan> Plans => plans.Values;
@@ -141,23 +173,25 @@ public sealed class LeavePlanBook(
     public (LeavePlan Plan, PlanSource Source)? For(EmployeeSummary person, DateOnly day)
     {
         ArgumentNullException.ThrowIfNull(person);
-        PlanChoice? choice = LeavePlanResolver.Resolve(exceptions[person.Id], assignments, person.EmploymentTypeCode, day);
+        PlanChoice? choice = LeavePlanResolver.Resolve(exceptions[person.Id], _costCenters, person.CostCenterId, assignments, person.EmploymentTypeCode, day);
         return choice is not null && plans.TryGetValue(choice.PlanId, out LeavePlan? plan) && plan.IsActive ? (plan, choice.Source) : null;
     }
 }
 
 /// <summary>
-/// Leave policies (spec §20): named sets of leave types and rules, assigned per engagement type,
-/// with per-employee exceptions. Reads build a <see cref="LeavePlanBook"/>; HR edits go through the
-/// methods below, each checking what would leave someone without a policy.
+/// Leave policies (spec §20): named sets of leave types and rules, assigned per cost center and per
+/// engagement type, with per-employee exceptions. Reads build a <see cref="LeavePlanBook"/>; HR edits go
+/// through the methods below, each checking what would leave someone without a policy.
 /// </summary>
-public sealed class LeavePlanService(AppDbContext dbContext, IEmployeeDirectory employees, IMasterDataLookup lookup)
+public sealed class LeavePlanService(AppDbContext dbContext, IEmployeeDirectory employees, IMasterDataLookup lookup, IOrgStructure orgStructure)
 {
     public async Task<LeavePlanBook> BookAsync(IReadOnlyCollection<Guid>? employeeIds, CancellationToken cancellationToken)
     {
         Dictionary<Guid, LeavePlan> plans = await dbContext.LeavePlans.AsNoTracking().Include(plan => plan.Items).ToDictionaryAsync(plan => plan.Id, cancellationToken);
         Dictionary<string, Guid> assignments = await dbContext.LeavePlanAssignments.AsNoTracking()
             .ToDictionaryAsync(assignment => assignment.EmploymentTypeCode, assignment => assignment.PlanId, StringComparer.OrdinalIgnoreCase, cancellationToken);
+        var costCenters = new CostCenterPlans((await dbContext.LeaveCostCenterAssignments.AsNoTracking().ToListAsync(cancellationToken))
+            .Select(row => (row.CostCenterId, row.EmploymentTypeCode, row.PlanId)));
 
         IQueryable<EmployeeLeavePlan> exceptions = dbContext.EmployeeLeavePlans.AsNoTracking().Where(exception => exception.IsActive);
         if (employeeIds is not null)
@@ -166,7 +200,7 @@ public sealed class LeavePlanService(AppDbContext dbContext, IEmployeeDirectory 
             exceptions = exceptions.Where(exception => ids.Contains(exception.EmployeeId));
         }
 
-        return new LeavePlanBook(plans, assignments, (await exceptions.ToListAsync(cancellationToken)).ToLookup(exception => exception.EmployeeId));
+        return new LeavePlanBook(plans, assignments, (await exceptions.ToListAsync(cancellationToken)).ToLookup(exception => exception.EmployeeId), costCenters);
     }
 
     public async Task<ResolvedLeavePolicy?> ResolveAsync(Guid employeeId, DateOnly day, CancellationToken cancellationToken)
@@ -180,7 +214,10 @@ public sealed class LeavePlanService(AppDbContext dbContext, IEmployeeDirectory 
 
         LeaveYear year = LeaveYear.For(resolved.Plan.LeaveYearStartMonth, day);
         IReadOnlyList<LeavePlanRuleItem> items = await RuleItemsAsync(resolved.Plan, cancellationToken);
-        return new ResolvedLeavePolicy(resolved.Plan.Id, resolved.Plan.Code, resolved.Plan.Name, LeaveYear.Label(resolved.Plan.LeaveYearStartMonth), year.Start, year.End, resolved.Source, items);
+        string? costCenterName = resolved.Source == PlanSource.CostCenter && person.CostCenterId is { } center
+            ? (await orgStructure.GetNamesAsync(OrgUnitKind.CostCenter, [center], cancellationToken)).GetValueOrDefault(center)
+            : null;
+        return new ResolvedLeavePolicy(resolved.Plan.Id, resolved.Plan.Code, resolved.Plan.Name, LeaveYear.Label(resolved.Plan.LeaveYearStartMonth), year.Start, year.End, resolved.Source, items, costCenterName);
     }
 
     // ----- Policies ------------------------------------------------------------------------------
@@ -194,10 +231,12 @@ public sealed class LeavePlanService(AppDbContext dbContext, IEmployeeDirectory 
             .Where(exception => exception.IsActive)
             .GroupBy(exception => exception.PlanId)
             .ToDictionaryAsync(group => group.Key, group => group.Count(), cancellationToken);
+        ILookup<Guid, string> centers = await CostCenterNamesByPlanAsync(cancellationToken);
 
         return [.. plans.Select(plan => new LeavePlanSummary(
             plan.Id, plan.Code, plan.Name, plan.Description, plan.LeaveYearStartMonth, LeaveYear.Label(plan.LeaveYearStartMonth), plan.IsActive,
-            plan.Items.Count, [.. assigned[plan.Id].Order(StringComparer.Ordinal)], exceptions.GetValueOrDefault(plan.Id)))];
+            plan.Items.Count, [.. assigned[plan.Id].Order(StringComparer.Ordinal)], exceptions.GetValueOrDefault(plan.Id),
+            [.. centers[plan.Id].Order(StringComparer.Ordinal)]))];
     }
 
     public async Task<LeavePlanDetail> GetAsync(Guid id, CancellationToken cancellationToken)
@@ -212,7 +251,7 @@ public sealed class LeavePlanService(AppDbContext dbContext, IEmployeeDirectory 
 
         return new LeavePlanDetail(
             plan.Id, plan.Code, plan.Name, plan.Description, plan.LeaveYearStartMonth, LeaveYear.Label(plan.LeaveYearStartMonth), plan.IsActive,
-            assignedTo, await RuleItemsAsync(plan, cancellationToken));
+            assignedTo, await RuleItemsAsync(plan, cancellationToken), [.. (await CostCenterNamesByPlanAsync(cancellationToken))[id].Order(StringComparer.Ordinal)]);
     }
 
     public async Task<LeavePlanDetail> CreateAsync(LeavePlanRequest request, CancellationToken cancellationToken)
@@ -298,9 +337,10 @@ public sealed class LeavePlanService(AppDbContext dbContext, IEmployeeDirectory 
     {
         LeavePlan plan = await dbContext.LeavePlans.FirstOrDefaultAsync(row => row.Id == id, cancellationToken) ?? throw new NotFoundException(nameof(LeavePlan), id);
         if (!active && (await dbContext.LeavePlanAssignments.AnyAsync(assignment => assignment.PlanId == id, cancellationToken)
+                || await dbContext.LeaveCostCenterAssignments.AnyAsync(assignment => assignment.PlanId == id, cancellationToken)
                 || await dbContext.EmployeeLeavePlans.AnyAsync(exception => exception.PlanId == id && exception.IsActive, cancellationToken)))
         {
-            throw new DomainRuleException("LEAVE_PLAN_IN_USE", "This policy is assigned to an engagement type or an employee. Assign another policy first.");
+            throw new DomainRuleException("LEAVE_PLAN_IN_USE", "This policy is assigned to a cost center, an engagement type or an employee. Assign another policy first.");
         }
 
         if (active)
@@ -377,6 +417,114 @@ public sealed class LeavePlanService(AppDbContext dbContext, IEmployeeDirectory 
         await dbContext.SaveChangesAsync(cancellationToken);
         return await AssignmentsAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// Every open cost center, and any closed one that still has a policy, with how many people a change
+    /// would move and the policy they follow, if any.
+    /// </summary>
+    public async Task<IReadOnlyList<CostCenterAssignmentItem>> CostCenterAssignmentsAsync(CancellationToken cancellationToken)
+    {
+        IReadOnlyList<CostCenterInfo> centers = await orgStructure.CostCentersAsync(cancellationToken);
+        ILookup<Guid, LeaveCostCenterAssignment> assigned = (await dbContext.LeaveCostCenterAssignments.AsNoTracking().ToListAsync(cancellationToken))
+            .ToLookup(assignment => assignment.CostCenterId);
+        Dictionary<Guid, string> names = await dbContext.LeavePlans.AsNoTracking().ToDictionaryAsync(plan => plan.Id, plan => plan.Name, cancellationToken);
+        Dictionary<string, string> labels = await EngagementLabelsAsync(cancellationToken);
+        IReadOnlyList<Guid> activeIds = await employees.ListActiveIdsAsync(null, null, cancellationToken);
+        Dictionary<Guid, int> people = (await employees.GetManyAsync(activeIds, cancellationToken))
+            .Where(person => person.CostCenterId is not null)
+            .GroupBy(person => person.CostCenterId!.Value)
+            .ToDictionary(group => group.Key, group => group.Count());
+
+        return [.. centers
+            .Where(center => center.IsActive || assigned.Contains(center.Id))
+            .Select(center =>
+            {
+                Guid? planId = assigned[center.Id].FirstOrDefault(row => row.EmploymentTypeCode is null)?.PlanId;
+                List<CostCenterTypeOverride> overrides = [.. assigned[center.Id]
+                    .Where(row => row.EmploymentTypeCode is not null)
+                    .Select(row => new CostCenterTypeOverride(row.EmploymentTypeCode!, labels.GetValueOrDefault(row.EmploymentTypeCode!) ?? row.EmploymentTypeCode!, row.PlanId, names.GetValueOrDefault(row.PlanId)))
+                    .OrderBy(row => row.Label, StringComparer.CurrentCulture)];
+                return new CostCenterAssignmentItem(
+                    center.Id, center.Code, center.Name, center.IsActive, center.CompanyName, center.CountryCode,
+                    people.GetValueOrDefault(center.Id), planId, planId is { } some ? names.GetValueOrDefault(some) : null, overrides);
+            })];
+    }
+
+    public async Task<IReadOnlyList<CostCenterAssignmentItem>> SetCostCenterAssignmentsAsync(IReadOnlyList<CostCenterAssignmentChange> changes, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(changes);
+        Dictionary<(Guid, string), LeaveCostCenterAssignment> current = (await dbContext.LeaveCostCenterAssignments.ToListAsync(cancellationToken))
+            .ToDictionary(assignment => (assignment.CostCenterId, assignment.EmploymentTypeCode ?? string.Empty));
+        HashSet<Guid> activePlans = [.. await dbContext.LeavePlans.Where(plan => plan.IsActive).Select(plan => plan.Id).ToListAsync(cancellationToken)];
+        HashSet<Guid> known = [.. (await orgStructure.CostCentersAsync(cancellationToken)).Select(center => center.Id)];
+
+        foreach (CostCenterAssignmentChange change in changes)
+        {
+            string? type = LeaveCostCenterAssignment.NormalizeType(change.EmploymentTypeCode);
+            (Guid, string) key = (change.CostCenterId, type ?? string.Empty);
+            if (change.PlanId is not { } planId)
+            {
+                if (current.Remove(key, out LeaveCostCenterAssignment? gone))
+                {
+                    dbContext.LeaveCostCenterAssignments.Remove(gone);
+                }
+
+                continue;
+            }
+
+            if (!known.Contains(change.CostCenterId))
+            {
+                throw new DomainRuleException("LEAVE_ASSIGNMENT_COST_CENTER", "Choose one of the organisation's cost centers.");
+            }
+
+            if (type is not null && !await lookup.IsValidAsync(LookupLists.EmploymentType, type, cancellationToken))
+            {
+                throw new DomainRuleException("LEAVE_ASSIGNMENT_TYPE", $"'{type}' is not an engagement type in master data.");
+            }
+
+            if (!activePlans.Contains(planId))
+            {
+                throw new DomainRuleException("LEAVE_PLAN_INACTIVE", "Assign an active leave policy.");
+            }
+
+            if (current.TryGetValue(key, out LeaveCostCenterAssignment? existing))
+            {
+                existing.Reassign(planId);
+            }
+            else
+            {
+                LeaveCostCenterAssignment assignment = LeaveCostCenterAssignment.Create(change.CostCenterId, type, planId);
+                dbContext.LeaveCostCenterAssignments.Add(assignment);
+                current[key] = assignment;
+            }
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await CostCenterAssignmentsAsync(cancellationToken);
+    }
+
+    /// <summary>Where each policy is used on cost centers: "GGGS India", or "GGGS India · Full-time" for one engagement type there.</summary>
+    private async Task<ILookup<Guid, string>> CostCenterNamesByPlanAsync(CancellationToken cancellationToken)
+    {
+        List<LeaveCostCenterAssignment> rows = await dbContext.LeaveCostCenterAssignments.AsNoTracking().ToListAsync(cancellationToken);
+        if (rows.Count == 0)
+        {
+            return Array.Empty<LeaveCostCenterAssignment>().ToLookup(row => row.PlanId, _ => string.Empty);
+        }
+
+        IReadOnlyDictionary<Guid, string> names = await orgStructure.GetNamesAsync(OrgUnitKind.CostCenter, rows.Select(row => row.CostCenterId), cancellationToken);
+        Dictionary<string, string> labels = rows.Any(row => row.EmploymentTypeCode is not null) ? await EngagementLabelsAsync(cancellationToken) : [];
+        return rows.ToLookup(row => row.PlanId, row =>
+        {
+            string center = names.GetValueOrDefault(row.CostCenterId) ?? "Unknown cost center";
+            return row.EmploymentTypeCode is { } type ? $"{center} · {labels.GetValueOrDefault(type) ?? type}" : center;
+        });
+    }
+
+    private async Task<Dictionary<string, string>> EngagementLabelsAsync(CancellationToken cancellationToken)
+        => (await lookup.ValuesAsync(LookupLists.EmploymentType, cancellationToken))
+            .GroupBy(option => option.Code, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First().Label, StringComparer.OrdinalIgnoreCase);
 
     // ----- Exceptions ----------------------------------------------------------------------------
 

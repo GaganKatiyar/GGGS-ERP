@@ -25,6 +25,20 @@ import type {
 } from '@gggs/shared/models';
 import { firstValueFrom } from 'rxjs';
 
+/** What a new password must meet, as Studio > Password policy sets it. */
+export interface PasswordRules {
+  readonly minimumLength: number;
+  readonly requireComplexity: boolean;
+}
+
+/** The built-in rules, used until the organisation's own arrive. */
+export const DEFAULT_PASSWORD_RULES: PasswordRules = { minimumLength: 6, requireComplexity: false };
+
+/** The hint under a new-password box. */
+export function passwordHint(rules: PasswordRules): string {
+  return `At least ${rules.minimumLength} characters${rules.requireComplexity ? ', with upper and lower case, a digit and a symbol' : ''}.`;
+}
+
 /**
  * Users, roles, the permission catalog and tenant settings, over the API's
  * `/api/v1/{users,roles,permissions,settings}` routes - the first three from the Identity module,
@@ -132,6 +146,24 @@ export class AdminApi {
   /** This browser stays signed in; every other sign-in on the account ends. */
   changeOwnPassword(request: { readonly currentPassword: string; readonly newPassword: string }): Promise<void> {
     return firstValueFrom(this.http.post<void>('/api/v1/users/me/password', request));
+  }
+
+  /** The organisation's password rules for a set-password page; an unknown code gets the defaults. */
+  async passwordRules(tenantCode?: string): Promise<PasswordRules> {
+    try {
+      return await firstValueFrom(this.http.get<PasswordRules>('/api/v1/auth/password-rules', { params: tenantCode ? { tenantCode } : {} }));
+    } catch {
+      return DEFAULT_PASSWORD_RULES;
+    }
+  }
+
+  /** The signed-in person's own password rules. */
+  async myPasswordRules(): Promise<PasswordRules> {
+    try {
+      return await firstValueFrom(this.http.get<PasswordRules>('/api/v1/users/me/password-rules'));
+    } catch {
+      return DEFAULT_PASSWORD_RULES;
+    }
   }
 
   resetPassword(request: CompleteInvitationRequest): Promise<void> {

@@ -4,7 +4,7 @@ import { ApiError } from '@gggs/core/http';
 import { FeatureBanner, FeatureBannerApi } from '@gggs/shared/experience';
 import type { BannerKind, BannerLayout, FeatureBannerInput, FeatureBannerItem, MyFeatureBanner, OrgUnit } from '@gggs/shared/models';
 import { BANNER_KINDS } from '@gggs/shared/models';
-import { OrgStructureApi } from '@gggs/shared/org-reference';
+import { departmentOptions, OrgStructureApi, type DepartmentOption } from '@gggs/shared/org-reference';
 import { EmptyState, FormDialog, localIsoDate, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
@@ -211,7 +211,7 @@ const blank = (position: number): FeatureBannerInput => ({
             <p class="muted">Departments</p>
             <div class="xp__grid">
               @for (department of departments(); track department.id) {
-                <label class="xp__flag"><input type="checkbox" [checked]="form().audienceDepartmentIds.includes(department.id)" (change)="toggle('audienceDepartmentIds', department.id, $any($event.target).checked)" /> {{ department.name }}</label>
+                <label class="xp__flag"><input type="checkbox" [checked]="form().audienceDepartmentIds.includes(department.id)" (change)="toggle('audienceDepartmentIds', department.id, $any($event.target).checked)" /> {{ department.label }}</label>
               }
             </div>
             <p class="muted">Locations</p>
@@ -315,7 +315,7 @@ export class BannerSettingsPage {
   protected readonly canSave = computed(() => Boolean(this.form().title.trim()) && (!this.isFull() || Boolean(this.previewImage())));
   protected readonly statusVariants = STATUS_VARIANTS;
   protected readonly slides = signal<readonly FeatureBannerItem[] | null>(null);
-  protected readonly departments = signal<readonly OrgUnit[]>([]);
+  protected readonly departments = signal<readonly DepartmentOption[]>([]);
   protected readonly locations = signal<readonly OrgUnit[]>([]);
   protected readonly formOpen = signal(false);
   protected readonly deleteOpen = signal(false);
@@ -348,7 +348,7 @@ export class BannerSettingsPage {
 
   constructor() {
     const org = inject(OrgStructureApi);
-    org.active('departments').then((rows) => this.departments.set(rows), () => undefined);
+    org.active('departments').then((rows) => this.departments.set(departmentOptions(rows)), () => undefined);
     org.active('locations').then((rows) => this.locations.set(rows), () => undefined);
     void this.load();
   }

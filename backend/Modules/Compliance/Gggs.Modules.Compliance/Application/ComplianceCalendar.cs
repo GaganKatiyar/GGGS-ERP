@@ -76,7 +76,7 @@ public sealed record RegistrationItem(
     string? Number,
     string? Authority,
     string? StateCode,
-    Guid? LegalEntityId,
+    Guid? CompanyId,
     DateOnly? IssuedOn,
     DateOnly? ExpiresOn,
     int RenewalLeadDays,
@@ -430,7 +430,7 @@ internal sealed class ComplianceCalendar(
 
     private static RegistrationItem Registration(ComplianceRegistration row, DateOnly today, Dictionary<Guid, string> names)
         => new(
-            row.Id, row.Kind, row.Name, row.Number, row.Authority, row.StateCode, row.LegalEntityId, row.IssuedOn, row.ExpiresOn, row.RenewalLeadDays,
+            row.Id, row.Kind, row.Name, row.Number, row.Authority, row.StateCode, row.CompanyId, row.IssuedOn, row.ExpiresOn, row.RenewalLeadDays,
             row.OwnerEmployeeId, Name(names, row.OwnerEmployeeId), row.Notes, row.DocumentId, row.Validity(today),
             row.ExpiresOn is { } expires ? expires.DayNumber - today.DayNumber : null);
 

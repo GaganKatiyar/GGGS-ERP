@@ -1,5 +1,6 @@
 using Gggs.BuildingBlocks.Jobs;
 using Gggs.BuildingBlocks.Messaging;
+using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.Data;
 using Gggs.Modules.Identity.Contracts;
 using Gggs.Modules.Notification.Contracts;
@@ -84,16 +85,18 @@ internal sealed class SeedTemplatesOnTenantProvisioned(NotificationTemplateSeede
 }
 
 /// <summary>
-/// Sends one queued email, through the organisation's own connection if it has one and the system's
-/// sender if not. A failure is recorded on the message and not retried here: a bad address or a
-/// rejected relay would fail the same way again, and the record says what happened. Nor does a
-/// failure on the organisation's connection fall back to the system's sender: that would put mail
-/// out under an address the organisation chose not to use.
+/// Sends one queued email as its module's sender (the Email senders page): through that sender's
+/// connection, else the organisation's default one, else the system's sender. A failure is recorded on
+/// the message. Only a temporary one (a busy or unreachable server) is scheduled to be tried again, by
+/// <see cref="EmailUpkeep"/>: a bad address or a rejected sign-in would fail the same way again. Nor does
+/// a failure on the organisation's connection fall back to the system's sender: that would put mail out
+/// under an address the organisation chose not to use.
 /// </summary>
 internal sealed class DeliverQueuedEmail(
     AppDbContext dbContext,
     INotificationChannel channel,
     ITenantMessageSender sender,
+    EmailSenderResolver senders,
     TimeProvider timeProvider,
     ILogger<DeliverQueuedEmail> logger) : IIntegrationEventConsumer<EmailQueuedIntegrationEvent>
 {
@@ -107,30 +110,51 @@ internal sealed class DeliverQueuedEmail(
             return;
         }
 
+        // A template may borrow another module's sender; otherwise its own module's sends it.
+        string? borrowed = await dbContext.NotificationTemplates.AsNoTracking()
+            .Where(template => template.Code == email.EventCode)
+            .Select(template => template.SenderKey)
+            .FirstOrDefaultAsync(cancellationToken);
+        ResolvedSender from = await senders.ResolveAsync(borrowed ?? email.ModuleKey ?? EmailModules.KeyFor(email.EventCode), cancellationToken);
+
+        if (from.IsPaused && !NotificationTemplateCatalog.Mandatory.Contains(email.EventCode))
+        {
+            email.MarkPaused($"Email is paused for {from.ModuleName}; the in-app notice still went.");
+            return;
+        }
+
+        OutgoingEmail outgoing = from.Compose(email.ToAddress, email.Subject, email.Body);
         try
         {
-            if (await sender.SendEmailAsync(email.ToAddress, email.Subject, email.Body, cancellationToken) is { } own)
+            if (await sender.SendEmailAsync(outgoing, from.ConnectionId, cancellationToken) is { } own)
             {
                 if (own.Succeeded)
                 {
-                    email.MarkSent(timeProvider.GetUtcNow().UtcDateTime);
+                    email.MarkSent(timeProvider.GetUtcNow().UtcDateTime, from.Describe(own.ConnectionName));
                 }
                 else
                 {
                     logger.LogWarning("Email {EmailId} via the organisation's connection failed: {Message}", email.Id, own.Message);
-                    email.MarkFailed(own.Message);
+                    email.MarkFailed(own.Message, from.Describe(own.ConnectionName), timeProvider.GetUtcNow().UtcDateTime);
                 }
 
                 return;
             }
 
-            await channel.SendAsync(new OutboundMessage(email.ToAddress, email.Subject, email.Body), cancellationToken);
-            email.MarkSent(timeProvider.GetUtcNow().UtcDateTime);
+            await channel.SendAsync(OutboundMessage.From(outgoing), cancellationToken);
+            if (channel.Delivers)
+            {
+                email.MarkSent(timeProvider.GetUtcNow().UtcDateTime, from.Describe("the system's sender"));
+            }
+            else
+            {
+                email.MarkLogged("No working mail connection is set for this sender, so the email was written to the server log and not sent.", from.Describe("the server log"));
+            }
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             logger.LogWarning(exception, "Email {EmailId} via {Channel} failed.", email.Id, channel.Name);
-            email.MarkFailed(exception.Message);
+            email.MarkFailed(exception.Message, now: timeProvider.GetUtcNow().UtcDateTime);
         }
     }
 }
@@ -300,7 +324,7 @@ internal sealed class SendPasswordChangedNotice(IOneTimeNotices notices)
     }
 }
 
-internal sealed class SendInvitation(INotifier notifier, IOptions<NotificationOptions> options)
+internal sealed class SendInvitation(INotifier notifier, IOptions<NotificationOptions> options, ITenantClock clock)
     : IIntegrationEventConsumer<UserInvitedIntegrationEvent>
 {
     public async Task HandleAsync(UserInvitedIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
@@ -321,7 +345,8 @@ internal sealed class SendInvitation(INotifier notifier, IOptions<NotificationOp
                 {
                     ["recipientName"] = integrationEvent.DisplayName,
                     ["invitationLink"] = link,
-                    ["expires"] = integrationEvent.ExpiresDate.ToString("u", System.Globalization.CultureInfo.InvariantCulture),
+                    // The organisation's own time, 12-hour: "20 Nov 2026, 8:46 AM IST".
+                    ["expires"] = await clock.FormatAsync(integrationEvent.ExpiresDate, cancellationToken: cancellationToken),
                 }),
             cancellationToken);
     }

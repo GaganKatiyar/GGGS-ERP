@@ -50,7 +50,7 @@ public sealed class AuditLog : AggregateRoot, ITenantOwned
     /// <summary>Created, Modified or Deleted.</summary>
     public string Action { get; private set; }
 
-    /// <summary>The entity's CLR type name, e.g. <c>LegalEntity</c>.</summary>
+    /// <summary>The entity's CLR type name, e.g. <c>Company</c>.</summary>
     public string EntityType { get; private set; }
 
     public string EntityId { get; private set; }

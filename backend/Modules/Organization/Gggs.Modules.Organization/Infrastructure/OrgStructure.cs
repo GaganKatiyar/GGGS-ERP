@@ -67,13 +67,104 @@ internal sealed class OrgStructure(AppDbContext dbContext) : IOrgStructure
         return new Dictionary<string, Guid>(found, StringComparer.OrdinalIgnoreCase);
     }
 
-    public async Task<PositionPlacement?> GetPositionAsync(Guid positionId, CancellationToken cancellationToken = default)
-        => await dbContext.Positions
+    public async Task<Guid?> CostCenterForAsync(Guid? locationId, Guid? companyId, CancellationToken cancellationToken = default)
+    {
+        if (locationId is { } location)
+        {
+            var office = await dbContext.Locations
+                .AsNoTracking()
+                .Where(unit => unit.Id == location)
+                .Select(unit => new { unit.CostCenterId, unit.CompanyId })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (office?.CostCenterId is { } own)
+            {
+                return own;
+            }
+
+            companyId ??= office?.CompanyId;
+        }
+
+        List<CostCenter> defaults = await dbContext.CostCenters
             .AsNoTracking()
-            .Where(position => position.Id == positionId && position.IsActive)
-            .Select(position => new PositionPlacement(
-                position.Id, position.JobId, position.DepartmentId, position.LocationId, position.GradeId, position.ReportsToPositionId, position.Headcount))
-            .FirstOrDefaultAsync(cancellationToken);
+            .Where(unit => unit.IsDefault && unit.IsActive)
+            .ToListAsync(cancellationToken);
+
+        return companyId is { } company
+            ? defaults.FirstOrDefault(unit => unit.CompanyId == company)?.Id ?? (defaults.Count == 1 ? defaults[0].Id : null)
+            : defaults.Count == 1 ? defaults[0].Id : null;
+    }
+
+    public async Task<IReadOnlyList<CostCenterInfo>> CostCentersAsync(CancellationToken cancellationToken = default)
+    {
+        List<CostCenter> centers = await dbContext.CostCenters.AsNoTracking().OrderBy(unit => unit.Name).ToListAsync(cancellationToken);
+        Dictionary<Guid, Company> companies = await dbContext.Companies.AsNoTracking().ToDictionaryAsync(unit => unit.Id, cancellationToken);
+
+        return [.. centers.Select(center =>
+        {
+            Company? company = center.CompanyId is { } id ? companies.GetValueOrDefault(id) : null;
+            string? country = string.IsNullOrWhiteSpace(center.Address?.CountryCode) ? company?.CountryCode : center.Address.CountryCode;
+            return new CostCenterInfo(center.Id, center.Code, center.Name, center.IsActive, company?.Name, country);
+        })];
+    }
+
+    public async Task<RolePlacement> PlaceRoleAsync(Guid? departmentId, Guid? roleId, Guid? levelId, Guid? designationId, CancellationToken cancellationToken = default)
+    {
+        if (designationId is { } designationKey)
+        {
+            var designation = await dbContext.Designations
+                .AsNoTracking()
+                .Where(unit => unit.Id == designationKey)
+                .Select(unit => new { unit.Name, unit.RoleId, unit.LevelId })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (designation?.RoleId is { } designationRole)
+            {
+                if (roleId is not null && roleId != designationRole)
+                {
+                    return new(roleId, levelId, "DESIGNATION_ROLE_MISMATCH", $"{designation.Name} is a designation of another role. Pick the matching role, or leave the role empty.", "designation");
+                }
+
+                roleId = designationRole;
+            }
+
+            if (designation?.RoleId is not null && designation.LevelId is { } designationLevel)
+            {
+                if (levelId is not null && levelId != designationLevel)
+                {
+                    return new(roleId, levelId, "DESIGNATION_ROLE_MISMATCH", $"{designation.Name} is for another level. Pick the matching level, or leave the level empty.", "designation");
+                }
+
+                levelId = designationLevel;
+            }
+        }
+
+        if (roleId is { } roleKey && departmentId is { } departmentKey)
+        {
+            var role = await dbContext.Roles
+                .AsNoTracking()
+                .Where(unit => unit.Id == roleKey)
+                .Select(unit => new { unit.Name, unit.DepartmentId })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (role?.DepartmentId is { } roleDepartment && roleDepartment != departmentKey)
+            {
+                var department = await dbContext.Departments
+                    .AsNoTracking()
+                    .Where(unit => unit.Id == departmentKey)
+                    .Select(unit => new { unit.Name, unit.ParentDepartmentId })
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (department?.ParentDepartmentId != roleDepartment)
+                {
+                    string owner = await dbContext.Departments.AsNoTracking().Where(unit => unit.Id == roleDepartment).Select(unit => unit.Name).FirstOrDefaultAsync(cancellationToken) ?? "another department";
+                    return new(roleId, levelId, "ROLE_NOT_IN_DEPARTMENT", $"{role.Name} is a role of {owner}, not of {department?.Name ?? "the chosen department"}.", "role");
+                }
+            }
+        }
+
+        return new(roleId, levelId);
+    }
 
     public async Task<Guid?> GetDepartmentHeadAsync(Guid departmentId, CancellationToken cancellationToken = default)
     {
@@ -131,17 +222,14 @@ internal sealed class OrgStructure(AppDbContext dbContext) : IOrgStructure
 
     private IQueryable<OrgUnit> UnitsOf(OrgUnitKind kind) => kind switch
     {
-        OrgUnitKind.LegalEntity => dbContext.LegalEntities,
+        OrgUnitKind.Company => dbContext.Companies,
         OrgUnitKind.BusinessUnit => dbContext.BusinessUnits,
-        OrgUnitKind.Division => dbContext.Divisions,
         OrgUnitKind.Department => dbContext.Departments,
         OrgUnitKind.Location => dbContext.Locations,
         OrgUnitKind.CostCenter => dbContext.CostCenters,
-        OrgUnitKind.ProfitCenter => dbContext.ProfitCenters,
-        OrgUnitKind.Grade => dbContext.Grades,
-        OrgUnitKind.JobLevel => dbContext.JobLevels,
-        OrgUnitKind.Job => dbContext.Jobs,
-        OrgUnitKind.Position => dbContext.Positions,
+        OrgUnitKind.Level => dbContext.Levels,
+        OrgUnitKind.Role => dbContext.Roles,
+        OrgUnitKind.Designation => dbContext.Designations,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown organization unit kind."),
     };
 }

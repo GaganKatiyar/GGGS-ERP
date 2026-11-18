@@ -1,5 +1,6 @@
 using Gggs.Data;
 using Gggs.Modules.Platform.Domain.Audit;
+using Gggs.Modules.Platform.Domain.Console;
 using Gggs.Modules.Platform.Domain.Subscriptions;
 using Gggs.Modules.Platform.Domain.Tenants;
 using Microsoft.EntityFrameworkCore;
@@ -153,6 +154,49 @@ internal sealed class PlatformModel : IModuleModel
 
             entity.Ignore(log => log.DomainEvents);
         });
+
+        modelBuilder.Entity<PlatformAuditEntry>(entity =>
+        {
+            entity.ToTable("PlatformAuditEntry", Schema, table => table.HasComment(
+                "Append-only. What platform staff did in the console; written only by PlatformAuditWriter."));
+            entity.Property(entry => entry.StaffName).HasMaxLength(200).IsRequired();
+            entity.Property(entry => entry.TenantCode).HasMaxLength(32);
+            entity.Property(entry => entry.Action).HasMaxLength(64).IsRequired();
+            entity.Property(entry => entry.Summary).HasMaxLength(500).IsRequired();
+            entity.Property(entry => entry.Reason).HasMaxLength(500);
+            entity.HasIndex(entry => entry.OccurredDate).HasDatabaseName("IX_PlatformAuditEntry_OccurredDate");
+            entity.HasIndex(entry => new { entry.TenantId, entry.OccurredDate }).HasDatabaseName("IX_PlatformAuditEntry_TenantId_OccurredDate");
+            entity.Ignore(entry => entry.DomainEvents);
+        });
+
+        modelBuilder.Entity<TenantUsage>(entity =>
+        {
+            entity.ToTable("TenantUsage", Schema);
+            entity.Property(usage => usage.EmailChannel).HasMaxLength(200);
+            entity.Property(usage => usage.SignIn).HasMaxLength(200);
+            entity.HasIndex(usage => usage.TenantId).HasDatabaseName("UX_TenantUsage_TenantId").IsUnique();
+            entity.HasOne<Tenant>().WithMany().HasForeignKey(usage => usage.TenantId).OnDelete(DeleteBehavior.Cascade);
+            entity.Ignore(usage => usage.DomainEvents);
+        });
+
+        modelBuilder.Entity<DedicatedDatabase>(entity =>
+        {
+            entity.ToTable("DedicatedDatabase", Schema, table => table.HasComment(
+                "A dedicated database's connection details, kept by the platform console. The password is ciphertext only."));
+            entity.Property(database => database.Server).HasMaxLength(256);
+            entity.Property(database => database.DatabaseName).HasMaxLength(128);
+            entity.Property(database => database.Authentication).HasConversion<byte>();
+            entity.Property(database => database.Encryption).HasConversion<byte>();
+            entity.Property(database => database.UserName).HasMaxLength(128);
+            entity.Property(database => database.PasswordCiphertext).HasMaxLength(2000);
+            entity.Property(database => database.PasswordChangedBy).HasMaxLength(200);
+            entity.Property(database => database.UpdatedBy).HasMaxLength(200);
+            entity.Property(database => database.LastTestResult).HasMaxLength(500);
+            entity.HasIndex(database => database.TenantId).HasDatabaseName("UX_DedicatedDatabase_TenantId").IsUnique();
+            entity.HasOne<Tenant>().WithMany().HasForeignKey(database => database.TenantId).OnDelete(DeleteBehavior.Cascade);
+            entity.Ignore(database => database.HasPassword);
+            entity.Ignore(database => database.DomainEvents);
+        });
     }
 }
 
@@ -172,5 +216,11 @@ internal static class PlatformData
         public DbSet<TenantDatabase> TenantDatabases => db.Set<TenantDatabase>();
 
         public DbSet<AuditLog> AuditLogs => db.Set<AuditLog>();
+
+        public DbSet<PlatformAuditEntry> PlatformAuditEntries => db.Set<PlatformAuditEntry>();
+
+        public DbSet<TenantUsage> TenantUsages => db.Set<TenantUsage>();
+
+        public DbSet<DedicatedDatabase> DedicatedDatabases => db.Set<DedicatedDatabase>();
     }
 }

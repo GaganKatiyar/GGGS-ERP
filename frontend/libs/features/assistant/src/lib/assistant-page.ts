@@ -68,7 +68,7 @@ const SUGGESTIONS: Readonly<Record<string, readonly string[]>> = {
           <div class="ai__recent" [class.ai__recent--on]="item.id === view()?.conversation?.id">
             <button type="button" class="btn--link ai__recent-open" (click)="open(item)">
               <span>{{ item.title }}</span>
-              <span class="muted">{{ titleOf(item.assistantKey) }} · {{ item.lastActivityAt | date: 'd MMM, HH:mm' }}</span>
+              <span class="muted">{{ titleOf(item.assistantKey) }} · {{ item.lastActivityAt | date: 'd MMM, h:mm a' }}</span>
             </button>
             <button type="button" class="btn btn--sm" [attr.aria-label]="'Delete ' + item.title" (click)="remove(item)"><i class="pi pi-trash" aria-hidden="true"></i></button>
           </div>

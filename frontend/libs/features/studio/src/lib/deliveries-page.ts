@@ -52,7 +52,7 @@ const STATUS_VARIANTS: Readonly<Record<string, BadgeVariant>> = { succeeded: 'su
           <tbody>
             @for (delivery of deliveries(); track delivery.id) {
               <tr>
-                <td>{{ delivery.createdDate | date: 'd MMM, HH:mm' }}</td>
+                <td>{{ delivery.createdDate | date: 'd MMM, h:mm a' }}</td>
                 <td>
                   <strong>{{ delivery.automationName }}</strong>
                   <details class="deliveries__sent">
@@ -70,7 +70,7 @@ const STATUS_VARIANTS: Readonly<Record<string, BadgeVariant>> = { succeeded: 'su
                 <td>
                   {{ delivery.lastMessage ?? '—' }}
                   @if (delivery.nextAttemptAt && delivery.status === 'Failed') {
-                    <span class="deliveries__next">Next try {{ delivery.nextAttemptAt | date: 'HH:mm' }}</span>
+                    <span class="deliveries__next">Next try {{ delivery.nextAttemptAt | date: 'h:mm a' }}</span>
                   }
                 </td>
                 <td>

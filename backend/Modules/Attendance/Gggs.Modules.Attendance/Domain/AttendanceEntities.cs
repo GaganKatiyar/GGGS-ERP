@@ -4,6 +4,54 @@ using Gggs.BuildingBlocks.Domain.Primitives;
 
 namespace Gggs.Modules.Attendance.Domain;
 
+/// <summary>How someone may record attendance. Several may be allowed at once.</summary>
+[Flags]
+public enum AttendanceModes
+{
+    None = 0,
+
+    /// <summary>The punch button in the browser.</summary>
+    Web = 1,
+
+    /// <summary>The office's biometric or card device.</summary>
+    Device = 2,
+
+    /// <summary>The mobile app.</summary>
+    Mobile = 4,
+}
+
+/// <summary>
+/// The attendance modes HR set for one employee. Without one, web and device punches are allowed, as
+/// they always were.
+/// </summary>
+public sealed class AttendanceProfile : TenantAggregateRoot
+{
+    public const AttendanceModes Default = AttendanceModes.Web | AttendanceModes.Device;
+
+    private AttendanceProfile()
+    {
+    }
+
+    public Guid EmployeeId { get; private set; }
+
+    public AttendanceModes Modes { get; private set; }
+
+    public static AttendanceProfile For(Guid employeeId, AttendanceModes modes)
+    {
+        var profile = new AttendanceProfile { EmployeeId = Guard.NotEmpty(employeeId) };
+        profile.Set(modes);
+        return profile;
+    }
+
+    public void Set(AttendanceModes modes)
+    {
+        AttendanceModes known = AttendanceModes.Web | AttendanceModes.Device | AttendanceModes.Mobile;
+        Guard.Against((modes & ~known) != 0, "ATTENDANCE_MODES_UNKNOWN", "Choose web punch, biometric device or mobile app.");
+        Guard.Against(modes == AttendanceModes.None, "ATTENDANCE_MODES_NONE", "Choose at least one way to record attendance.");
+        Modes = modes;
+    }
+}
+
 public enum PunchSource
 {
     Web = 1,
@@ -254,13 +302,21 @@ public sealed record LocalPunch(DateTime Local, DateTime Utc, bool IsRegularizat
 /// Judges a day (spec §18 rules). Leave and holidays come first; otherwise the first and last punch
 /// decide: worked time (less the break), lateness against the start plus grace, leaving early
 /// against the end, and present, half-day or absent by the shift's thresholds - halved on a day
-/// with half-day leave. A lone punch is a missing punch, except on a working day of a shift that
-/// does not require punching out: there it is the punch in, and the day counts as worked.
+/// with half-day leave. A lone punch is the punch in, so lateness is judged from it. On a working
+/// day it is a missing punch, unless the shift does not require punching out: then the day counts
+/// as worked. On a weekly off or holiday it never makes a missing punch - the day stays off - and
+/// it counts as work on a day off only when the shift does not require punching out.
 /// </summary>
 public static class AttendanceEvaluator
 {
     /// <summary>The note on a day judged from its punch in alone.</summary>
     public const string NoPunchOutNeeded = "No punch out needed";
+
+    /// <summary>The note on a day off with one punch, on a shift that does not require punching out.</summary>
+    public const string WorkedOnDayOffNote = "Worked on day off";
+
+    /// <summary>The note on a day off with one punch, on a shift that requires punching out.</summary>
+    public const string OnePunchOnDayOff = "One punch on a day off";
 
     public static DayEvaluation Evaluate(
         Guid employeeId,
@@ -278,12 +334,12 @@ public static class AttendanceEvaluator
         bool regularized = ordered.Any(punch => punch.IsRegularization);
         bool dayOff = schedule.IsWeeklyOff || holidayName is not null;
 
-        DayEvaluation Result(AttendanceStatus status, int worked = 0, int late = 0, int early = 0, string? note = null)
+        DayEvaluation Result(AttendanceStatus status, int worked = 0, int late = 0, int early = 0, string? note = null, bool? workedOnDayOff = null)
             => new(
                 employeeId, date, schedule.ShiftName,
                 ordered.Count > 0 ? ordered[0].Utc : null,
                 ordered.Count > 1 ? ordered[^1].Utc : null,
-                worked, late, early, status, ordered.Count, dayOff && ordered.Count > 1, regularized, note);
+                worked, late, early, status, ordered.Count, workedOnDayOff ?? (dayOff && ordered.Count > 1), regularized, note);
 
         if (fullDayLeave)
         {
@@ -302,13 +358,23 @@ public static class AttendanceEvaluator
 
         if (ordered.Count == 1)
         {
-            if (!schedule.RequiresPunchOut && !dayOff)
+            if (dayOff)
             {
-                int lateIn = Math.Max(0, (int)(ordered[0].Local - schedule.ScheduledStart.AddMinutes(schedule.GraceMinutes)).TotalMinutes);
+                bool counts = !schedule.RequiresPunchOut;
+                string what = counts ? WorkedOnDayOffNote : OnePunchOnDayOff;
+                return Result(
+                    holidayName is not null ? AttendanceStatus.Holiday : AttendanceStatus.WeeklyOff,
+                    note: holidayName is not null ? $"{holidayName} · {what}" : what,
+                    workedOnDayOff: counts);
+            }
+
+            int lateIn = Math.Max(0, (int)(ordered[0].Local - schedule.ScheduledStart.AddMinutes(schedule.GraceMinutes)).TotalMinutes);
+            if (!schedule.RequiresPunchOut)
+            {
                 return Result(AttendanceStatus.Present, late: lateIn, note: halfDayLeave ? "Half-day leave" : NoPunchOutNeeded);
             }
 
-            return Result(AttendanceStatus.MissingPunch, note: "Only one punch recorded");
+            return Result(AttendanceStatus.MissingPunch, late: lateIn, note: "Only one punch recorded");
         }
 
         DateTime first = ordered[0].Local;

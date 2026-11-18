@@ -13,7 +13,7 @@ export type DataScope =
   | 'AllReports'
   | 'Department'
   | 'Branch'
-  | 'LegalEntity'
+  | 'Company'
   | 'BusinessUnit'
   | 'Tenant';
 

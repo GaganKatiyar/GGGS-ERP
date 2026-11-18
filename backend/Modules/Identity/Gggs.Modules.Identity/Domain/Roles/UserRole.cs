@@ -10,7 +10,7 @@ public enum RoleScopeType
     /// <summary>The whole tenant.</summary>
     Tenant = 1,
 
-    LegalEntity = 2,
+    Company = 2,
     BusinessUnit = 3,
     Branch = 4,
     Department = 5,
@@ -152,7 +152,7 @@ public sealed class UserRole : TenantAggregateRoot
 
         DataScope anchorCeiling = ScopeType switch
         {
-            RoleScopeType.LegalEntity => DataScope.LegalEntity,
+            RoleScopeType.Company => DataScope.Company,
             RoleScopeType.BusinessUnit => DataScope.BusinessUnit,
             RoleScopeType.Branch => DataScope.Branch,
             RoleScopeType.Department => DataScope.Department,

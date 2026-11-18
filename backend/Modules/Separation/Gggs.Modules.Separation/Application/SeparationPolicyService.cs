@@ -39,9 +39,9 @@ public sealed record PolicyBody(
     int ShowCauseReplyDays = 7,
     int ExitProposalLeadDays = 60);
 
-public sealed record NoticeRuleView(Guid Id, Guid? GradeId, string? EmploymentTypeCode, bool? OnProbation, int NoticeDays);
+public sealed record NoticeRuleView(Guid Id, Guid? LevelId, string? EmploymentTypeCode, bool? OnProbation, int NoticeDays);
 
-public sealed record NoticeRuleBody(Guid? GradeId, string? EmploymentTypeCode, bool? OnProbation, int NoticeDays);
+public sealed record NoticeRuleBody(Guid? LevelId, string? EmploymentTypeCode, bool? OnProbation, int NoticeDays);
 
 public sealed record ReasonView(string Code, string Label, bool Voluntary);
 
@@ -74,7 +74,7 @@ internal sealed class SeparationPolicyService(AppDbContext dbContext, IEmployeeD
     public async Task<NoticeRuleView> AddRuleAsync(NoticeRuleBody body, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(body);
-        var rule = NoticeRule.Create(body.GradeId, body.EmploymentTypeCode, body.OnProbation, body.NoticeDays);
+        var rule = NoticeRule.Create(body.LevelId, body.EmploymentTypeCode, body.OnProbation, body.NoticeDays);
         dbContext.NoticeRules.Add(rule);
         await dbContext.SaveChangesAsync(cancellationToken);
         return Rule(rule);
@@ -95,7 +95,7 @@ internal sealed class SeparationPolicyService(AppDbContext dbContext, IEmployeeD
         DateOnly today = await clock.TodayAsync(cancellationToken);
         bool onProbation = person?.ConfirmationDate is null && person?.ProbationEndDate is { } end && end >= today;
         NoticeRule? rule = (await dbContext.NoticeRules.AsNoTracking().ToListAsync(cancellationToken))
-            .Where(candidate => candidate.Matches(person?.GradeId, person?.EmploymentTypeCode, onProbation))
+            .Where(candidate => candidate.Matches(person?.LevelId, person?.EmploymentTypeCode, onProbation))
             .OrderByDescending(candidate => candidate.Specificity)
             .FirstOrDefault();
         return rule?.NoticeDays ?? (onProbation ? policy.ProbationNoticeDays : policy.DefaultNoticeDays);
@@ -124,7 +124,7 @@ internal sealed class SeparationPolicyService(AppDbContext dbContext, IEmployeeD
         policy.EncashmentCapDays, policy.RetirementAge, policy.AbscondingDays, policy.SettlementDueWorkingDays, policy.GratuityDueDays,
         policy.ShowCauseReplyDays, policy.ExitProposalLeadDays);
 
-    private static NoticeRuleView Rule(NoticeRule rule) => new(rule.Id, rule.GradeId, rule.EmploymentTypeCode, rule.OnProbation, rule.NoticeDays);
+    private static NoticeRuleView Rule(NoticeRule rule) => new(rule.Id, rule.LevelId, rule.EmploymentTypeCode, rule.OnProbation, rule.NoticeDays);
 }
 
 /// <summary>Leave types the policy blocks cannot be applied for while the employee is serving notice.</summary>

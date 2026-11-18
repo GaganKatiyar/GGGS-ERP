@@ -322,6 +322,37 @@ public sealed class LeavePlanAssignment : TenantAggregateRoot
     public void Reassign(Guid planId) => PlanId = Guard.NotEmpty(planId);
 }
 
+/// <summary>
+/// A cost center's own leave policy: for everyone on it (no engagement type), or for one engagement type
+/// on it - a cost center in India on the Indian rules, its part-timers on their own. What a cost center
+/// does not set falls back to its "everyone" policy, then to the organisation's engagement-type default.
+/// </summary>
+public sealed class LeaveCostCenterAssignment : TenantAggregateRoot
+{
+    private LeaveCostCenterAssignment()
+    {
+    }
+
+    public Guid CostCenterId { get; private set; }
+
+    /// <summary>Null: everyone on the cost center. Otherwise only that engagement type there.</summary>
+    public string? EmploymentTypeCode { get; private set; }
+
+    public Guid PlanId { get; private set; }
+
+    public static LeaveCostCenterAssignment Create(Guid costCenterId, string? employmentTypeCode, Guid planId) => new()
+    {
+        CostCenterId = Guard.NotEmpty(costCenterId),
+        EmploymentTypeCode = NormalizeType(employmentTypeCode),
+        PlanId = Guard.NotEmpty(planId),
+    };
+
+    public static string? NormalizeType(string? code)
+        => string.IsNullOrWhiteSpace(code) ? null : Guard.MaxLength(code.Trim().ToUpperInvariant(), 64);
+
+    public void Reassign(Guid planId) => PlanId = Guard.NotEmpty(planId);
+}
+
 /// <summary>A single employee on a policy other than their engagement type's, from a date and perhaps until one.</summary>
 public sealed class EmployeeLeavePlan : TenantAggregateRoot
 {

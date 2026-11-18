@@ -60,17 +60,24 @@ public sealed class PlatformRoleSeeder(
                     .. role.PermissionCodes.Except(template.Permissions, StringComparer.OrdinalIgnoreCase)
                 ];
 
+                List<string> missing =
+                [
+                    .. template.Permissions.Except(role.PermissionCodes, StringComparer.OrdinalIgnoreCase)
+                ];
+
                 foreach (string code in obsolete)
                 {
                     role.Revoke(code);
                 }
 
-                foreach (string code in template.Permissions)
+                // Counted before granting: measured afterwards, a newly added permission made the
+                // counts match again and the change was never saved.
+                foreach (string code in missing)
                 {
                     role.Grant(code);
                 }
 
-                if (obsolete.Count > 0 || role.PermissionCodes.Count != template.Permissions.Count)
+                if (obsolete.Count > 0 || missing.Count > 0)
                 {
                     updated++;
                 }
@@ -110,6 +117,14 @@ public sealed class PlatformBootstrapOptions
     /// with this address, this setting has nothing left to do and can stay or be removed.
     /// </summary>
     public string? AdministratorEmail { get; set; }
+
+    /// <summary>
+    /// Opens the platform console's one-time setup page, where the first platform administrator
+    /// creates their own account. Works only while no platform staff exist at all, and only for
+    /// someone who knows this value - set it per environment from a secret store, never in a file
+    /// that is committed. Empty keeps the page closed.
+    /// </summary>
+    public string? SetupKey { get; set; }
 }
 
 /// <summary>

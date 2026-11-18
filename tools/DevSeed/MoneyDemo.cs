@@ -21,6 +21,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using EmployeeEntity = Gggs.Modules.Employee.Domain.Employee;
 using ProjectEntity = Gggs.Modules.Project.Domain.Project;
+using Role = Gggs.Modules.Identity.Domain.Roles.Role;
 
 namespace Gggs.DevSeed;
 
@@ -189,10 +190,10 @@ internal static class MoneyDemo
             return;
         }
 
-        foreach (Grade grade in await db.Set<Grade>().OrderBy(grade => grade.Rank).ToListAsync())
+        foreach (Level level in await db.Set<Level>().OrderBy(level => level.Rank).ToListAsync())
         {
-            decimal midpoint = 400_000m * grade.Rank + 200_000m;
-            db.Add(SalaryBand.Create(grade.Id, "INR", Math.Round(midpoint * 0.75m / 10000) * 10000, midpoint, Math.Round(midpoint * 1.25m / 10000) * 10000, new DateOnly(2025, 4, 1), null));
+            decimal midpoint = 400_000m * level.Rank + 200_000m;
+            db.Add(SalaryBand.Create(level.Id, "INR", Math.Round(midpoint * 0.75m / 10000) * 10000, midpoint, Math.Round(midpoint * 1.25m / 10000) * 10000, new DateOnly(2025, 4, 1), null));
         }
 
         await db.SaveChangesAsync();

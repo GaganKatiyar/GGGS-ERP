@@ -422,6 +422,12 @@ export const appRoutes: Route[] = [
         loadChildren: () =>
           import('@gggs/features/security').then((m) => m.IDENTITY_PROVIDER_ROUTES),
       },
+      {
+        path: 'admin/password-policy',
+        ...withPermissions(['admin.setting.view']),
+        loadChildren: () =>
+          import('@gggs/features/security').then((m) => m.PASSWORD_POLICY_ROUTES),
+      },
       // Integrations moved into Settings → Studio; old links land on its connectors.
       { path: 'admin/data/integrations', pathMatch: 'full', redirectTo: '/studio/connectors' },
       {

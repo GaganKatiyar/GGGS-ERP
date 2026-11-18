@@ -6,12 +6,12 @@ namespace Gggs.Modules.Identity.Application.PlatformStaff;
 public sealed record PlatformRoleTemplate(string Code, string Name, string Description, IReadOnlyList<string> Permissions);
 
 /// <summary>
-/// The two roles every environment is seeded with.
+/// The roles every environment is seeded with: staff administrator, organisation manager, billing and support.
 /// <para>
 /// Unlike <c>RoleTemplates</c> for tenants, these are kept in sync with the code on every startup
 /// rather than seeded once and then left to drift. A tenant's copy of a role is theirs to edit, and
 /// topping it back up would silently override that decision; there is no tenant here to have made
-/// one - these two roles are the platform's own definition of what its own staff can do, and that
+/// one - these roles are the platform's own definition of what its own staff can do, and that
 /// definition lives in this file, not in something an operator might have narrowed in the database
 /// for a reason nobody now remembers.
 /// </para>
@@ -25,6 +25,9 @@ public sealed record PlatformRoleTemplate(string Code, string Name, string Descr
 public static class PlatformRoleTemplates
 {
     public const string StaffAdministratorCode = "PLATFORM_STAFF_ADMINISTRATOR";
+    public const string OrganisationManagerCode = "PLATFORM_ORGANISATION_MANAGER";
+    public const string BillingCode = "PLATFORM_BILLING";
+    public const string SupportCode = "PLATFORM_SUPPORT";
 
     public static IReadOnlyList<PlatformRoleTemplate> Definitions { get; } =
     [
@@ -44,10 +47,34 @@ public static class PlatformRoleTemplates
                 Permissions.Platform.StaffInvite,
                 Permissions.Platform.StaffManage,
                 Permissions.Platform.RoleManage,
+                Permissions.Platform.DatabaseManage,
             ]),
 
         new(
-            "PLATFORM_SUPPORT",
+            OrganisationManagerCode,
+            "Organisation Manager",
+            "Creates organisations, changes their plans and modules, invites their administrators and offboards them.",
+            [
+                Permissions.Platform.TenantView,
+                Permissions.Platform.TenantManage,
+                Permissions.Platform.SubscriptionManage,
+                Permissions.Platform.FeatureManage,
+                Permissions.Platform.HealthView,
+                Permissions.Platform.StaffView,
+            ]),
+
+        new(
+            BillingCode,
+            "Billing",
+            "Looks after subscriptions and trials, and suspends or reactivates an organisation over payment.",
+            [
+                Permissions.Platform.TenantView,
+                Permissions.Platform.SubscriptionManage,
+                Permissions.Platform.TenantSuspend,
+            ]),
+
+        new(
+            SupportCode,
             "Platform Support",
             "Looks at tenant status and platform health, and can request time-boxed access into a tenant to help.",
             [

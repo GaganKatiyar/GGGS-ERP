@@ -1,0 +1,71 @@
+{
+  "name": "platform-web",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "gggs",
+  "sourceRoot": "apps/platform-web/src",
+  "tags": ["type:app", "scope:platform-app"],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/platform-web",
+        "browser": "apps/platform-web/src/main.ts",
+        "tsConfig": "apps/platform-web/tsconfig.app.json",
+        "inlineStyleLanguage": "scss",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "apps/platform-web/public"
+          }
+        ],
+        "styles": ["apps/platform-web/src/styles.scss"]
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "1mb",
+              "maximumError": "1.25mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "4kb",
+              "maximumError": "8kb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@angular/build:dev-server",
+      "defaultConfiguration": "development",
+      "options": {
+        "proxyConfig": "apps/platform-web/proxy.conf.json",
+        "host": "127.0.0.1",
+        "port": 4300
+      },
+      "configurations": {
+        "production": {
+          "buildTarget": "platform-web:build:production"
+        },
+        "development": {
+          "buildTarget": "platform-web:build:development"
+        }
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

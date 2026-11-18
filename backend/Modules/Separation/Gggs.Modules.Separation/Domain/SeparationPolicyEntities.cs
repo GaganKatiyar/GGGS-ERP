@@ -174,7 +174,7 @@ public sealed class SeparationPolicy : TenantAggregateRoot
 }
 
 /// <summary>
-/// A notice period for a slice of the workforce: a grade, an employment type, or people on
+/// A notice period for a slice of the workforce: a level, an employment type, or people on
 /// probation. The most specific rule that matches an employee wins.
 /// </summary>
 public sealed class NoticeRule : TenantAggregateRoot
@@ -183,7 +183,7 @@ public sealed class NoticeRule : TenantAggregateRoot
     {
     }
 
-    public Guid? GradeId { get; private set; }
+    public Guid? LevelId { get; private set; }
 
     public string? EmploymentTypeCode { get; private set; }
 
@@ -193,13 +193,13 @@ public sealed class NoticeRule : TenantAggregateRoot
     public int NoticeDays { get; private set; }
 
     /// <summary>How many conditions the rule sets - a more specific rule beats a general one.</summary>
-    public int Specificity => (GradeId is null ? 0 : 2) + (EmploymentTypeCode is null ? 0 : 1) + (OnProbation is null ? 0 : 4);
+    public int Specificity => (LevelId is null ? 0 : 2) + (EmploymentTypeCode is null ? 0 : 1) + (OnProbation is null ? 0 : 4);
 
-    public static NoticeRule Create(Guid? gradeId, string? employmentTypeCode, bool? onProbation, int noticeDays)
+    public static NoticeRule Create(Guid? levelId, string? employmentTypeCode, bool? onProbation, int noticeDays)
     {
-        if (gradeId is null && string.IsNullOrWhiteSpace(employmentTypeCode) && onProbation is null)
+        if (levelId is null && string.IsNullOrWhiteSpace(employmentTypeCode) && onProbation is null)
         {
-            throw new DomainRuleException("NOTICE_RULE_EMPTY", "A notice rule needs a grade, an employment type or a probation condition; the default covers everyone else.");
+            throw new DomainRuleException("NOTICE_RULE_EMPTY", "A notice rule needs a level, an employment type or a probation condition; the default covers everyone else.");
         }
 
         if (noticeDays is < 0 or > 180)
@@ -209,15 +209,15 @@ public sealed class NoticeRule : TenantAggregateRoot
 
         return new NoticeRule
         {
-            GradeId = gradeId,
+            LevelId = levelId,
             EmploymentTypeCode = string.IsNullOrWhiteSpace(employmentTypeCode) ? null : Guard.MaxLength(employmentTypeCode.Trim().ToUpperInvariant(), 40),
             OnProbation = onProbation,
             NoticeDays = noticeDays,
         };
     }
 
-    public bool Matches(Guid? gradeId, string? employmentTypeCode, bool onProbation)
-        => (GradeId is null || GradeId == gradeId)
+    public bool Matches(Guid? levelId, string? employmentTypeCode, bool onProbation)
+        => (LevelId is null || LevelId == levelId)
             && (EmploymentTypeCode is null || string.Equals(EmploymentTypeCode, employmentTypeCode, StringComparison.OrdinalIgnoreCase))
             && (OnProbation is null || OnProbation == onProbation);
 }

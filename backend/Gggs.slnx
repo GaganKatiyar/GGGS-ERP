@@ -20,6 +20,7 @@
   <Folder Name="/Host/">
     <Project Path="Host/Gggs.Api/Gggs.Api.csproj" />
     <Project Path="Host/Gggs.Composition/Gggs.Composition.csproj" />
+    <Project Path="Host/Gggs.PlatformApi/Gggs.PlatformApi.csproj" />
     <Project Path="Host/Gggs.Worker/Gggs.Worker.csproj" />
   </Folder>
   <Folder Name="/Modules/" />

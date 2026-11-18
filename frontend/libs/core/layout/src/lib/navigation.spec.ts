@@ -116,16 +116,19 @@ describe('filterNavigation', () => {
 
     const labels = visible.map((item) => item.label);
     expect(labels).toContain('Dashboard');
-    expect(labels).toContain('My Space');
+    expect(labels).toContain('My Profile & Documents');
+    expect(labels).toContain('My Time & Leave');
     // Nothing administrative leaks into an employee's sidebar.
     expect(labels).not.toContain('Settings');
     expect(labels).not.toContain('Finance & Accounts');
   });
 
-  it('shows an account without an employee record no My Space, since every page there needs one', () => {
+  it('shows an account without an employee record no self-service areas, since every page there needs one', () => {
     const visible = filterNavigation(NAVIGATION, (item) => item.needsEmployee !== true);
 
-    expect(visible.find((item) => item.label === 'My Space')).toBeUndefined();
+    for (const label of ['My Profile & Documents', 'My Time & Leave', 'My Pay & Benefits', 'My Appraisal', 'My Growth', 'My Workplace']) {
+      expect(visible.find((item) => item.label === label), label).toBeUndefined();
+    }
   });
 
   it('shows every top-level area to a user who can do everything', () => {
@@ -148,69 +151,65 @@ describe('filterNavigation', () => {
       '/dashboard',
       '/approvals',
       '/me/profile',
+      '/me/documents',
+      '/me/assets',
+      '/me/policies',
+      '/me/preferences',
       '/me/attendance',
       '/me/leave',
       '/me/timesheet',
-      '/me/skills',
       '/me/payslips',
       '/me/tax-declaration',
       '/me/compensation',
       '/me/benefits',
+      '/me/expenses',
+      '/me/loans',
       '/me/goals',
       '/me/reviews',
       '/me/feedback',
-      '/me/learning',
+      '/me/skills',
       '/me/career',
+      '/me/rewards',
+      '/rewards',
       '/me/onboarding',
       '/me/jobs',
       '/me/interviews',
-      '/me/expenses',
-      '/me/loans',
-      '/me/rewards',
       '/me/surveys',
-      '/me/assets',
-      '/me/documents',
-      '/me/policies',
       '/me/tickets',
-      '/me/preferences',
       '/me/separation',
       '/team',
       '/team/attendance',
       '/team/leave',
       '/team/timesheets',
-      '/workforce',
-      '/workforce/plans',
+      '/employees',
+      '/employees/org-chart',
+      '/org/structure',
+      '/onboarding',
       '/attendance',
-      '/attendance/regularizations',
       '/leave/requests',
-      '/benefits',
-      '/benefits/enrollments',
-      '/performance',
-      '/performance/pips',
-      '/goals',
-      '/learning',
-      '/learning/courses',
       '/skills',
       '/career',
+      '/engagement',
+      '/engagement/anniversaries',
+      '/engagement/birthdays',
+      '/policies',
+      '/performance',
+      '/goals',
+      '/performance/pips',
       '/career/promotions',
       '/career/succession',
-      '/career/talent-review',
-      '/rewards',
-      '/engagement',
-      '/policies',
+      '/me/learning',
+      '/learning',
+      '/learning/courses',
+      '/learning/enrollments',
+      '/learning/certificates',
       '/workforce/requests',
-      '/recruitment/requisitions',
-      '/recruitment/postings',
+      '/recruitment/requirements',
       '/recruitment/candidates',
       '/recruitment/interviews',
       '/recruitment/offers',
       '/recruitment/referrals',
-      '/onboarding',
       '/recruitment/analytics',
-      '/employees',
-      '/employees/org-chart',
-      '/org/structure',
-      '/employees/import',
       '/payroll',
       '/payroll/runs',
       '/payroll/salaries',
@@ -263,16 +262,13 @@ describe('filterNavigation', () => {
       '/ai',
       '/settings',
       '/org/companies',
+      '/org/cost-centers',
       '/org/business-units',
-      '/org/divisions',
       '/org/departments',
       '/org/locations',
-      '/org/jobs',
-      '/org/positions',
-      '/org/grades',
-      '/org/job-levels',
-      '/org/cost-centers',
-      '/org/profit-centers',
+      '/org/roles',
+      '/org/designations',
+      '/org/levels',
       '/attendance/shifts',
       '/leave/types',
       '/leave/policies',
@@ -294,21 +290,25 @@ describe('filterNavigation', () => {
       '/admin/users',
       '/admin/roles',
       '/admin/access',
-      '/admin/identity-providers',
       '/admin/audit',
       '/admin/settings',
       '/engagement/banner',
-      '/admin/workflows',
-      '/admin/notifications',
       '/admin/data/imports',
+      '/employees/import',
+      '/admin/about',
       '/studio',
-      '/studio/connectors',
+      '/studio/email-senders',
+      '/admin/notifications',
+      '/studio/email-log',
       '/studio/sending',
+      '/admin/identity-providers',
+      '/admin/password-policy',
+      '/studio/connectors',
       '/studio/accounts',
       '/studio/automations',
       '/studio/deliveries',
+      '/admin/workflows',
       '/studio/api-keys',
-      '/admin/about',
     ]);
   });
 
@@ -373,15 +373,78 @@ describe('department menus', () => {
 
   it('are in the agreed order among the top-level entries', () => {
     expect(nav.map((group) => group.label)).toEqual([
-      'Dashboard', 'Approvals', 'My Space', 'My Team', 'HR Portal', 'Talent Acquisition', 'Finance & Accounts', 'General Administration',
-      'Exits', 'Clients', 'Projects', 'Resources', 'Analytics', 'Calendar', 'AI Assistant', 'Settings',
+      'Dashboard', 'Approvals', 'My Profile & Documents', 'My Time & Leave', 'My Pay & Benefits', 'My Appraisal', 'My Growth', 'Star Reward', 'My Workplace', 'My Team', 'HR Portal', 'Appraisal Admin', 'Learning & Development', 'Recruitment', 'Finance & Accounts', 'General Administration',
+      'Exits', 'Clients', 'Projects', 'Resources', 'Analytics', 'Calendar', 'AI Assistant', 'Settings', 'Studio',
     ]);
   });
 
+  it('gather everything that talks to the outside world into Studio, right below Settings, every page a tab', () => {
+    const studio = nav.find((group) => group.label === 'Studio')!;
+    const settings = nav.find((group) => group.label === 'Settings')!;
+    expect(sectionsOf(studio)).toHaveLength(1);
+    expect(moduleTabs(studio, studio.children![0]).map((page) => page.label)).toEqual([
+      'Overview', 'Email senders', 'Email templates', 'Email log', 'Text messages', 'Single sign-on', 'Password policy', 'Connectors', 'Work accounts', 'Automations', 'Automation log', 'Workflows', 'API keys',
+    ]);
+    expect(entryRoute(studio)).toBe('/studio');
+    expect(locate(nav, '/admin/identity-providers')?.group.label).toBe('Studio');
+    expect(locate(nav, '/studio/email-log')?.group.label).toBe('Studio');
+    expect(settings.children!.map((page) => page.route)).not.toContain('/admin/notifications');
+  });
+
   it('give every page a heading', () => {
-    for (const label of ['HR Portal', 'Talent Acquisition', 'Finance & Accounts', 'General Administration']) {
+    for (const label of ['Finance & Accounts', 'General Administration']) {
       expect(nav.find((group) => group.label === label)!.children!.every((page) => page.heading), label).toBe(true);
     }
+  });
+
+  it('list Recruitment as one flat run, with every page as a tab', () => {
+    const recruitment = nav.find((group) => group.label === 'Recruitment')!;
+    const requests = recruitment.children!.find((page) => page.route === '/workforce/requests')!;
+    expect(recruitment.children!.some((page) => page.heading)).toBe(false);
+    expect(sectionsOf(recruitment)).toHaveLength(1);
+    expect(moduleTabs(recruitment, requests).map((page) => page.label)).toEqual([
+      'Manpower requests', 'Requirements', 'Candidates', 'Interviews', 'Offers', 'Referrals & incentives', 'Recruitment analytics',
+    ]);
+    expect(locate(nav, '/recruitment/candidates/42')?.group.label).toBe('Recruitment');
+  });
+
+  it('gather the appraisal into its own menus: the employee’s side and HR’s side', () => {
+    const routesOf = (label: string): (string | undefined)[] => nav.find((group) => group.label === label)!.children!.map((page) => page.route);
+    expect(routesOf('My Appraisal')).toEqual(['/me/goals', '/me/reviews', '/me/feedback']);
+    expect(routesOf('Appraisal Admin')).toEqual(['/performance', '/goals', '/performance/pips', '/career/promotions', '/career/succession']);
+    expect(routesOf('My Growth')).not.toContain('/me/reviews');
+    expect(routesOf('HR Portal')).not.toContain('/performance');
+    expect(locate(nav, '/performance/cycles/42')?.group.label).toBe('Appraisal Admin');
+  });
+
+  it('gather learning into Learning & Development, where an employee sees only their own courses', () => {
+    const learning = nav.find((group) => group.label === 'Learning & Development')!;
+    expect(learning.children!.map((page) => page.route)).toEqual(['/me/learning', '/learning', '/learning/courses', '/learning/enrollments', '/learning/certificates']);
+    expect(nav.find((group) => group.label === 'My Growth')!.children!.map((page) => page.route)).not.toContain('/me/learning');
+    expect(locate(nav, '/learning/courses')?.group.label).toBe('Learning & Development');
+
+    const employee = filterNavigation(NAVIGATION, (item) => isBuilt(item) && (item.permissions === undefined || item.permissions.includes('self.learning.view')));
+    expect(employee.find((group) => group.label === 'Learning & Development')?.children?.map((page) => page.label)).toEqual(['My learning']);
+  });
+
+  it('gather rewards into Star Reward, where an employee sees only their own page', () => {
+    const star = nav.find((group) => group.label === 'Star Reward')!;
+    expect(star.children!.map((page) => page.route)).toEqual(['/me/rewards', '/rewards']);
+    expect(nav.find((group) => group.label === 'HR Portal')!.children!.map((page) => page.route)).not.toContain('/rewards');
+    expect(nav.find((group) => group.label === 'My Growth')!.children!.map((page) => page.route)).not.toContain('/me/rewards');
+
+    const employee = filterNavigation(NAVIGATION, (item) => isBuilt(item) && (item.permissions === undefined || item.permissions.includes('self.reward.view')));
+    expect(employee.find((group) => group.label === 'Star Reward')?.children?.map((page) => page.label)).toEqual(['My rewards']);
+  });
+
+  it('list HR Portal as one flat run, with every page as a tab', () => {
+    const hr = nav.find((group) => group.label === 'HR Portal')!;
+    const attendance = hr.children!.find((page) => page.route === '/attendance')!;
+    expect(hr.children!.some((page) => page.heading)).toBe(false);
+    expect(sectionsOf(hr)).toHaveLength(1);
+    expect(sectionsOf(hr)[0]!.label).toBeUndefined();
+    expect(moduleTabs(hr, attendance)).toBe(hr.children);
+    expect(attendance.settingsSection).toBe('time');
   });
 
   it('offer the current heading as tabs, none on a heading with one page', () => {
@@ -412,10 +475,10 @@ describe('Settings', () => {
     expect([...keys].every((key) => settings.children!.some((page) => page.section === key))).toBe(true);
   });
 
-  it('lists organization masters for those who can change them, while viewers browse the structure from Finance & Accounts', () => {
+  it('lists organization masters for those who can change them, while viewers browse the structure from HR Portal', () => {
     const viewer = filterNavigation(NAVIGATION, (item) => isBuilt(item) && (item.permissions === undefined || item.permissions.includes('org.structure.view')));
     expect(viewer.find((group) => group.label === 'Settings')).toBeUndefined();
-    expect(viewer.find((group) => group.label === 'Finance & Accounts')?.children?.map((page) => page.route)).toEqual(['/org/structure']);
+    expect(viewer.find((group) => group.label === 'HR Portal')?.children?.map((page) => page.route)).toEqual(['/org/structure']);
   });
 
   it('keeps set-up pages out of the modules, and every route in one place only', () => {
@@ -434,7 +497,7 @@ describe('Settings', () => {
   it('shows the tabs of the current page’s category only, and none on the Settings home', () => {
     const departments = settings.children!.find((page) => page.route === '/org/departments')!;
     expect(moduleTabs(settings, departments).every((page) => page.section === 'organization')).toBe(true);
-    expect(moduleTabs(settings, departments).length).toBe(11);
+    expect(moduleTabs(settings, departments).length).toBe(8);
     expect(moduleTabs(settings, settings)).toEqual([]);
     expect(locate(nav, '/settings?section=time')?.entry).toBe(settings);
     expect(locate(nav, '/admin/roles/42')?.entry.section).toBe('access');
@@ -477,7 +540,7 @@ describe('filterMenu', () => {
     expect(finance?.children).toBe(nav.find((group) => group.label === 'Finance & Accounts')!.children);
 
     const result = filterMenu(nav, 'payslip');
-    expect(result.find((group) => group.label === 'My Space')?.children?.map((page) => page.label)).toEqual(['My payslips']);
+    expect(result.find((group) => group.label === 'My Pay & Benefits')?.children?.map((page) => page.label)).toEqual(['My payslips']);
     expect(result.find((group) => group.label === 'HR Portal')).toBeUndefined();
   });
 
@@ -523,7 +586,7 @@ describe('searchNavigation', () => {
   it('finds pages from two characters, each with its module', () => {
     expect(searchNavigation(visible, 'p').pages).toEqual([]);
     const pages = searchNavigation(visible, 'payslip').pages.map((match) => `${match.group.label} > ${match.page.label}`);
-    expect(pages).toEqual(expect.arrayContaining(['My Space > My payslips', 'Finance & Accounts > Payslips']));
+    expect(pages).toEqual(expect.arrayContaining(['My Pay & Benefits > My payslips', 'Finance & Accounts > Payslips']));
   });
 
   it('caps the pages it lists', () => {

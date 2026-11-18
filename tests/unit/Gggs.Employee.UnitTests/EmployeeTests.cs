@@ -12,7 +12,7 @@ public sealed class EmployeeTests
     private static readonly DateOnly Today = new(2025, 6, 1);
 
     private static Assignment InDepartment(Guid department, Guid? manager = null)
-        => new(null, null, null, department, null, null, null, null, manager, null, "full_time", "hybrid", "Engineer");
+        => new(null, null, department, null, null, null, null, null, manager, null, "full_time", "hybrid", "Engineer");
 
     private static EmployeeEntity Hire() => EmployeeEntity.Hire("emp00001", "Meera", null, "Iyer", Joined, Joined.AddMonths(6), InDepartment(Guid.NewGuid()));
 

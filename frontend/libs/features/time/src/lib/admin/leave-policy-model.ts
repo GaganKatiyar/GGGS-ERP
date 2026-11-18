@@ -1,4 +1,4 @@
-import type { LeavePlanAssignment, LeavePlanItemInput, LeavePlanRuleItem, LeavePlanRules } from '@gggs/shared/models';
+import type { LeaveCostCenterAssignment, LeaveCostCenterChange, LeavePlanAssignment, LeavePlanItemInput, LeavePlanRuleItem, LeavePlanRules } from '@gggs/shared/models';
 
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] as const;
 
@@ -139,4 +139,30 @@ export function assignmentChanges(
   return saved
     .filter((row) => edited.has(row.employmentTypeCode) && (edited.get(row.employmentTypeCode) ?? null) !== (row.planId ?? null))
     .map((row) => ({ employmentTypeCode: row.employmentTypeCode, planId: edited.get(row.employmentTypeCode) ?? null }));
+}
+
+/** The edit key for a cost center's "everyone" policy, or for one engagement type there. */
+export function centerKey(costCenterId: string, employmentTypeCode?: string): string {
+  return employmentTypeCode ? `${costCenterId}|${employmentTypeCode}` : costCenterId;
+}
+
+/** What is saved for a cost center (everyone, or one engagement type), or null when nothing is. */
+export function savedCenterPlan(row: LeaveCostCenterAssignment, employmentTypeCode?: string): string | null {
+  return employmentTypeCode
+    ? (row.overrides?.find((entry) => entry.employmentTypeCode === employmentTypeCode)?.planId ?? null)
+    : (row.planId ?? null);
+}
+
+/** The cost center policies that differ from what is saved, as the save sends them; a null plan removes one. */
+export function costCenterChanges(saved: readonly LeaveCostCenterAssignment[], edited: ReadonlyMap<string, string | null>): LeaveCostCenterChange[] {
+  const changes: LeaveCostCenterChange[] = [];
+  for (const row of saved) {
+    for (const [key, planId] of edited) {
+      const [costCenterId, employmentTypeCode] = key.split('|');
+      if (costCenterId === row.costCenterId && (planId ?? null) !== savedCenterPlan(row, employmentTypeCode)) {
+        changes.push(employmentTypeCode ? { costCenterId, employmentTypeCode, planId: planId ?? null } : { costCenterId, planId: planId ?? null });
+      }
+    }
+  }
+  return changes;
 }

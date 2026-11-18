@@ -743,7 +743,7 @@ public sealed class PayrollRun : TenantAggregateRoot
 
     public DateOnly PayDate { get; private set; }
 
-    public Guid? LegalEntityId { get; private set; }
+    public Guid? CompanyId { get; private set; }
 
     public RunStatus Status { get; private set; }
 
@@ -794,9 +794,9 @@ public sealed class PayrollRun : TenantAggregateRoot
     public DateOnly? LastWorkingDay { get; private set; }
 
     /// <summary>An off-cycle run for one leaver's full and final settlement.</summary>
-    public static PayrollRun OpenFinalSettlement(DateOnly period, DateOnly payDate, Guid? legalEntityId, string currency, Guid employeeId, Guid settlementId, DateOnly lastWorkingDay, bool salaryExcluded, string? notes)
+    public static PayrollRun OpenFinalSettlement(DateOnly period, DateOnly payDate, Guid? companyId, string currency, Guid employeeId, Guid settlementId, DateOnly lastWorkingDay, bool salaryExcluded, string? notes)
     {
-        PayrollRun run = Open(period, payDate, legalEntityId, currency, notes);
+        PayrollRun run = Open(period, payDate, companyId, currency, notes);
         run.LastWorkingDay = lastWorkingDay;
         run.Kind = PayrollRunKind.FullAndFinal;
         run.EmployeeId = Guard.NotEmpty(employeeId);
@@ -805,7 +805,7 @@ public sealed class PayrollRun : TenantAggregateRoot
         return run;
     }
 
-    public static PayrollRun Open(DateOnly period, DateOnly payDate, Guid? legalEntityId, string currency, string? notes)
+    public static PayrollRun Open(DateOnly period, DateOnly payDate, Guid? companyId, string currency, string? notes)
     {
         var start = new DateOnly(period.Year, period.Month, 1);
         DateOnly end = start.AddMonths(1).AddDays(-1);
@@ -819,7 +819,7 @@ public sealed class PayrollRun : TenantAggregateRoot
             Period = start,
             PeriodEnd = end,
             PayDate = payDate,
-            LegalEntityId = legalEntityId,
+            CompanyId = companyId,
             Currency = Guard.MaxLength(Guard.NotNullOrWhiteSpace(currency).Trim().ToUpperInvariant(), 3),
             Status = RunStatus.Draft,
             Notes = string.IsNullOrWhiteSpace(notes) ? null : Guard.MaxLength(notes.Trim(), 1000),

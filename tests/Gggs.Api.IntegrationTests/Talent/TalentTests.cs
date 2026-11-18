@@ -328,13 +328,13 @@ public sealed class TalentTests(PeopleOsApiFactory factory)
         using (self)
         using (colleague)
         {
-            Guid engineer = await CoreHrApi.JobAsync(admin);
-            Guid senior = await CoreHrApi.JobAsync(admin);
+            Guid engineer = await CoreHrApi.AnyRoleAsync(admin);
+            Guid senior = await CoreHrApi.AnyRoleAsync(admin);
             await OkAsync(await admin.PostAsJsonAsync($"/api/v1/employees/{report}/assignment-changes", new
             {
                 ChangeType = "Redesignation",
                 EffectiveFrom = Iso(Today.AddDays(-1)),
-                Assignment = new { DepartmentId = department, JobId = engineer, ManagerEmployeeId = manager, EmploymentTypeCode = "FULL_TIME", WorkModeCode = "HYBRID", Designation = "Engineer" },
+                Assignment = new { DepartmentId = department, RoleId = engineer, ManagerEmployeeId = manager, EmploymentTypeCode = "FULL_TIME", WorkModeCode = "HYBRID", Designation = "Engineer" },
             }, Ct), HttpStatusCode.Created);
 
             await OkAsync(await admin.PostAsJsonAsync("/api/v1/career/paths", new
@@ -343,8 +343,8 @@ public sealed class TalentTests(PeopleOsApiFactory factory)
                 Track = "Individual",
                 Steps = new object[]
                 {
-                    new { Title = "Engineer", JobId = engineer, MinMonthsInRole = 12, Skills = new[] { "C#" } },
-                    new { Title = "Senior engineer", JobId = senior, MinMonthsInRole = 24, Skills = new[] { "System design", "Mentoring" } },
+                    new { Title = "Engineer", RoleId = engineer, MinMonthsInRole = 12, Skills = new[] { "C#" } },
+                    new { Title = "Senior engineer", RoleId = senior, MinMonthsInRole = 24, Skills = new[] { "System design", "Mentoring" } },
                 },
             }, Ct));
             JsonElement career = await self.GetFromJsonAsync<JsonElement>("/api/v1/me/career", Ct);
@@ -354,12 +354,12 @@ public sealed class TalentTests(PeopleOsApiFactory factory)
             position.GetProperty("skillsToBuild").EnumerateArray().Select(skill => skill.GetString()).ShouldBe(["System design", "Mentoring"]);
 
             // The manager nominates; with no approval chain it is approved and, effective today, applied.
-            (await lead.PostAsJsonAsync("/api/v1/career/promotions", new { EmployeeId = report, Details = new { ProposedDesignation = "Senior Engineer", ProposedJobId = senior, ProposedAnnualCtc = 0, EffectiveDate = Iso(Today), Justification = "x" }, Submit = false }, Ct))
+            (await lead.PostAsJsonAsync("/api/v1/career/promotions", new { EmployeeId = report, Details = new { ProposedDesignation = "Senior Engineer", ProposedRoleId = senior, ProposedAnnualCtc = 0, EffectiveDate = Iso(Today), Justification = "x" }, Submit = false }, Ct))
                 .StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
             JsonElement promotion = await OkAsync(await lead.PostAsJsonAsync("/api/v1/career/promotions", new
             {
                 EmployeeId = report,
-                Details = new { ProposedDesignation = "Senior Engineer", ProposedJobId = senior, ProposedAnnualCtc = 2_000_000m, EffectiveDate = Iso(Today), Justification = "Leads the billing platform." },
+                Details = new { ProposedDesignation = "Senior Engineer", ProposedRoleId = senior, ProposedAnnualCtc = 2_000_000m, EffectiveDate = Iso(Today), Justification = "Leads the billing platform." },
                 Submit = true,
             }, Ct));
             promotion.GetProperty("status").GetString().ShouldBe("Applied");

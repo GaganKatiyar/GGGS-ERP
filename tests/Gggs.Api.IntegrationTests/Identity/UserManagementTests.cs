@@ -1,6 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using Gggs.BuildingBlocks.Security;
+using Gggs.Data;
+using Gggs.Modules.Notification.Domain;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
 namespace Gggs.Api.IntegrationTests;
@@ -36,6 +40,23 @@ public sealed class UserManagementTests(PeopleOsApiFactory factory)
 
         (await signIn.Content.ReadFromJsonAsync<SignInBody>(TestContext.Current.CancellationToken))!
             .Succeeded.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task TheInvitationEmail_GivesTheExpiryInTheOrganisationsTime_With_AM_or_PM()
+    {
+        using HttpClient client = await factory.CreateAdminClientAsync();
+        string address = $"{Guid.NewGuid():N}@testco.example";
+        await InviteAsync(client, address, "Clock Reader");
+        await factory.DeliverEventsAsync();
+
+        string body = string.Empty;
+        await factory.RunAsWorkerAsync(PeopleOsApiFactory.SeededTenantId, async provider =>
+            body = (await provider.GetRequiredService<AppDbContext>().Set<EmailMessage>().AsNoTracking().SingleAsync(row => row.ToAddress == address, TestContext.Current.CancellationToken)).Body);
+
+        // "… before 20 Nov 2026, 8:46 AM IST: http://…", never "2026-11-20 03:16:43Z".
+        body.ShouldMatch(@"before \d{1,2} [A-Z][a-z]{2} \d{4}, \d{1,2}:\d{2} (AM|PM) [A-Z]");
+        body.ShouldNotMatch(@"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}Z");
     }
 
     [Fact]

@@ -13,8 +13,9 @@ internal sealed class EmployeeHiring(EmployeeService employees) : IEmployeeHirin
             new HireEmployeeRequest(
                 null, hire.FirstName, hire.MiddleName, hire.LastName, null, null, null, hire.PersonalEmail, null, hire.MobilePhone, hire.JoiningDate, null,
                 new AssignmentInput(
-                    hire.DepartmentId, hire.PositionId, hire.JobId, hire.GradeId, hire.LocationId, null, null, null, hire.ManagerEmployeeId, null,
-                    hire.EmploymentTypeCode, hire.WorkModeCode, hire.Designation)),
+                    hire.DepartmentId, hire.RoleId, hire.LevelId, hire.DesignationId, null, hire.LocationId, null, null, hire.ManagerEmployeeId, null,
+                    hire.EmploymentTypeCode, hire.WorkModeCode, hire.Designation),
+                hire.Details),
             cancellationToken);
         return (employee.Id, employee.EmployeeCode);
     }

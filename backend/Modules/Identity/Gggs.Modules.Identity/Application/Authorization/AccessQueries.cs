@@ -145,7 +145,7 @@ public sealed class AccessQueries(
         {
             OrgUnitKind kind = anchored.Key switch
             {
-                RoleScopeType.LegalEntity => OrgUnitKind.LegalEntity,
+                RoleScopeType.Company => OrgUnitKind.Company,
                 RoleScopeType.BusinessUnit => OrgUnitKind.BusinessUnit,
                 RoleScopeType.Branch => OrgUnitKind.Location,
                 _ => OrgUnitKind.Department,

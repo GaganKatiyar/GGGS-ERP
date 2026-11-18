@@ -20,6 +20,7 @@ public sealed class EngagementModule : IModule
     {
         services.AddScoped<EngagementService>();
         services.AddScoped<FeatureBannerService>();
+        services.AddScoped<CelebrationService>();
         services.AddScoped<IMetricSource, EngagementMetrics>();
         services.AddScoped<ICalendarSource, SurveyCalendar>();
     }
@@ -94,6 +95,14 @@ public sealed class EngagementModule : IModule
             .WithName("RemoveFeatureBannerImage").RequirePermission(Permissions.Engagement.SurveyManage);
         banners.MapGet("/{id:guid}/image", async (Guid id, Guid? v, HttpContext http, FeatureBannerService service, CancellationToken ct) => Image(http, v, await service.OpenImageAsync(id, ct)))
             .WithName("GetFeatureBannerImage").RequirePermission(Permissions.Engagement.SurveyManage);
+
+        // Birthday and work-anniversary greetings, sent by hand. The survey permission again, for the
+        // same reason as the banner: HR talking to staff, and saved roles never gain new permissions.
+        RouteGroupBuilder celebrations = group.MapGroup("/celebrations");
+        celebrations.MapGet("/", async (CelebrationKind kind, DateOnly? from, DateOnly? to, CelebrationService service, CancellationToken ct) => TypedResults.Ok(await service.ListAsync(kind, from, to, ct)))
+            .WithName("ListCelebrations").RequirePermission(Permissions.Engagement.SurveyManage);
+        celebrations.MapPost("/send", async (SendWishesBody body, CelebrationService service, CancellationToken ct) => TypedResults.Ok(await service.SendAsync(body, ct)))
+            .WithName("SendCelebrationWishes").RequirePermission(Permissions.Engagement.SurveyManage);
 
         // Everyone with a home dashboard: the same permission that opens the calendar on it.
         endpoints.MapGet("/api/v1/me/banners", async (FeatureBannerService service, CancellationToken ct) => TypedResults.Ok(await service.MineAsync(ct)))

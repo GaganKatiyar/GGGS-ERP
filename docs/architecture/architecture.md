@@ -35,7 +35,7 @@ Licensing to check in Phase 0: MediatR, AutoMapper and MassTransit v9+ now need 
 **GGGS HRMS** is a hire-to-retire HR platform sold as SaaS to many customer organizations.
 
 - **Tenant** = a customer (subscription + isolation boundary).
-- **Legal Entity** = a company *inside* a tenant. A group with 3 registered companies is **1 tenant with 3 legal entities**. This matters for payroll, statutory registration, payslip branding and bank files. Tenant ≠ company.
+- **Company** (a legal entity; table `org.Company`) = a registered company *inside* a tenant. A group with 3 registered companies is **1 tenant with 3 companies**. This matters for payroll, statutory registration, payslip branding and bank files. Tenant ≠ company. Older sections of this document call it *Legal Entity* / `LegalEntityId`; the app now says Company / `CompanyId` everywhere.
 - **Editions** (feature flags per module): *Core* (Org, Employee, ESS, Attendance, Leave), *Professional* (+Payroll, Expenses, Assets, Performance), *Enterprise* (+Recruitment, Learning, Advanced Workflow, Analytics, AI, dedicated DB, custom SSO, data residency).
 - **Personas**: Platform Super Admin/Support (our staff), Tenant Admin, HR Admin, HR Manager, Payroll Admin, Finance User, Department Manager, Team Lead, Employee, Auditor. Candidates and external interviewers are *non-user* actors reached through tokenized links.
 - **Design principles**: tenant isolation in every layer; everything configurable per tenant (policies, workflows, templates, custom fields, compliance); effective-dated HR data (history is always kept); approvals are generic; APIs return only the data the caller needs.
@@ -44,7 +44,7 @@ Licensing to check in Phase 0: MediatR, AutoMapper and MassTransit v9+ now need 
 
 | Module | Bounded context / service | Phase | Notable design points |
 |---|---|---|---|
-| Organization (legal entity, BU, branch, location, dept, designation, grade, cost center) | Core HR | 1 | Dept tree uses `hierarchyid`; grades carry salary bands; optional position management |
+| Organization (company, BU, department and its functions, location, cost center, role, level, designation) | Organization | 1 | Departments hold functions (two levels); a role belongs to a department; a designation is a role at a level; levels carry salary bands. Grades, positions, divisions and profit centers were dropped |
 | Employee Management | Core HR | 1 | Core record + **effective-dated `EmploymentRecord`** (job history); PII fields encrypted; custom fields |
 | Asset Management | Core HR (module `asset`) | 4 | Split into its own service only if it grows (e.g. into a full ITAM) |
 | Attendance, Shift, Roster, Overtime, Biometric | Time | 2 | Raw punches → processed `AttendanceDay`; on-prem device connector |
@@ -476,17 +476,18 @@ Format: **Table** — key columns · FKs · unique (UX) · indexes (IX). All hav
 - `ScimToken` — for Entra SCIM provisioning, hashed.
 - `SupportAccessGrant` — GrantedByUserId (tenant admin), PlatformUserId, Reason, ValidFrom, ValidTo, Scope (read-only/full) · IX (TenantId, PlatformUserId, ValidTo).
 
-**Organization (`org`, Core HR)** — built, in `Gggs.CoreHr.*` (§Organization module below covers what actually shipped and where it differs from this spec):
-- `LegalEntity` — Code, Name, RegistrationNo, TaxRegistrationJson (country-specific IDs), CountryCode, Currency, AddressJson, LogoDocumentId, CompliancePackCode · UX (TenantId, Code).
-- `BusinessUnit` — Code, Name, HeadEmployeeId · UX (TenantId, Code).
-- `Branch` — LegalEntityId FK, Code, Name, AddressJson, CountryCode, StateCode, TimeZone, GeoLat, GeoLng, GeoFenceMeters · UX (TenantId, Code) · IX (TenantId, LegalEntityId).
-- `Location` — BranchId FK, Code, Name, Type (Office/Site/Remote) · UX (TenantId, Code).
-- `Department` — Code, Name, ParentDepartmentId FK(self), OrgPath HIERARCHYID, HeadEmployeeId, CostCenterId FK, BusinessUnitId FK · UX (TenantId, Code) · IX (TenantId, OrgPath) · IX (TenantId, ParentDepartmentId).
-- `Designation` — Code, Title, JobFamily, JobLevel · UX (TenantId, Code).
-- `Grade` — Code, Name, Rank INT, SalaryBandMin, SalaryBandMax, Currency · UX (TenantId, Code).
-- `CostCenter` — Code, Name, GLCode, OwnerEmployeeId, ParentCostCenterId · UX (TenantId, Code).
-- `Position` (optional) — Code, DesignationId, DepartmentId, BranchId, IsBudgeted, Status (Vacant/Filled/Frozen) · UX (TenantId, Code). **Not built yet.**
-- `Skill` — Name, Category · UX (TenantId, Name). **Not built yet** - waits on Employee.
+**Organization (`org`)** — as built today, in `Gggs.Modules.Organization`. Table and column names follow the screens. Every table has a per-tenant unique `Code`:
+- `Company` — Code, Name, LegalName, CountryCode, CurrencyCode, Address, Gstin, Pan, Cin, Tan.
+- `BusinessUnit` — Code, Name, CompanyId, HeadEmployeeId.
+- `CostCenter` — Code, Name, CompanyId, IsDefault, Gstin, Pan, Address, OwnerEmployeeId. This is the company name an office works under; each company has a default one.
+- `Location` — Code, Name, CompanyId, CostCenterId, Address, TimeZone.
+- `Department` — Code, Name, ParentDepartmentId (set: the row is a *function* of that department; two levels only), BusinessUnitId, HeadEmployeeId, CostCenterId, LocationId, EffectiveFrom/To.
+- `Role` — Code, Name, DepartmentId (top-level department; open to all its functions), JobFamilyCode, experience range, RequiredSkills, Description.
+- `Level` — Code, Name, Rank (L1, L2, L3 …). Salary bands, notice rules and career steps use it.
+- `Designation` — Code, Name, RoleId, LevelId. A role at a level ("Business Analyst L2", code `TS-BA-L2`), kept in step with its role; with no RoleId it is a free-standing title.
+- People reference these as `CompanyId`, `DepartmentId`, `RoleId`, `LevelId`, `DesignationId`, `CostCenterId` and `LocationId` (`emp.Employee`, `emp.EmploymentRecord`).
+- Departments, functions and roles can be loaded from a file (Settings → Organization → Import structure).
+- Dropped from the original spec: Grade (replaced by Level), Position, Division, Profit center, Branch (Location covers it).
 
 #### Organization module: as built, and where it departs from the spec above
 

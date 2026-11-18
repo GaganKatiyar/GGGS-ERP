@@ -21,6 +21,9 @@ import type {
   EmployeeProfile,
   EmployeeRow,
   EmploymentHistoryEntry,
+  HireDraftBody,
+  HireDraftDetail,
+  HireDraftItem,
   HireEmployee,
   ImportResult,
   ImportRow,
@@ -140,6 +143,46 @@ export class EmployeeDirectoryApi {
 
   async hire(body: HireEmployee): Promise<{ id: string; employeeCode: string }> {
     return firstValueFrom(this.http.post<{ id: string; employeeCode: string }>(this.base, body));
+  }
+
+  /** HR setting someone's photo (at hire, say). */
+  async uploadPhoto(id: string, file: Blob, fileName = 'photo.jpg'): Promise<void> {
+    const form = new FormData();
+    form.append('file', file, fileName);
+    await firstValueFrom(this.http.put(`${this.base}/${id}/photo`, form));
+  }
+
+  // ----- Hire drafts: the Hire form saved part-way -----------------------------------------------
+
+  hireDrafts(): Promise<readonly HireDraftItem[]> {
+    return firstValueFrom(this.http.get<readonly HireDraftItem[]>(`${this.base}/hire-drafts`));
+  }
+
+  hireDraft(id: string): Promise<HireDraftDetail> {
+    return firstValueFrom(this.http.get<HireDraftDetail>(`${this.base}/hire-drafts/${id}`));
+  }
+
+  /** Creates the draft when there is no id yet, else saves over it. */
+  saveHireDraft(id: string | null, body: HireDraftBody): Promise<HireDraftDetail> {
+    return firstValueFrom(id ? this.http.put<HireDraftDetail>(`${this.base}/hire-drafts/${id}`, body) : this.http.post<HireDraftDetail>(`${this.base}/hire-drafts`, body));
+  }
+
+  async deleteHireDraft(id: string): Promise<void> {
+    await firstValueFrom(this.http.delete(`${this.base}/hire-drafts/${id}`));
+  }
+
+  async putHireDraftFile(id: string, slot: string, file: File): Promise<void> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    await firstValueFrom(this.http.put(`${this.base}/hire-drafts/${id}/files/${encodeURIComponent(slot)}`, form));
+  }
+
+  hireDraftFile(id: string, slot: string): Promise<Blob> {
+    return firstValueFrom(this.http.get(`${this.base}/hire-drafts/${id}/files/${encodeURIComponent(slot)}`, { responseType: 'blob' }));
+  }
+
+  async removeHireDraftFile(id: string, slot: string): Promise<void> {
+    await firstValueFrom(this.http.delete(`${this.base}/hire-drafts/${id}/files/${encodeURIComponent(slot)}`));
   }
 
   async updatePersonal(id: string, body: object): Promise<void> {

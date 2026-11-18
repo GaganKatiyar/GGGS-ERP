@@ -103,6 +103,106 @@ public sealed class LeavePlanTests(PeopleOsApiFactory factory)
     }
 
     [Fact]
+    public async Task ACostCentersPolicy_ComesBeforeTheEngagementTypes()
+    {
+        using HttpClient admin = await factory.CreateAdminClientAsync();
+        Guid casual = await LeaveTypeAsync(admin, "CL");
+        string engagement = await EngagementTypeAsync(admin, "Cost center staff");
+        Guid byType = await PlanAsync(admin, "By type", leaveYearStartMonth: 1);
+        Guid india = await PlanAsync(admin, "India leave", leaveYearStartMonth: 4);
+        foreach (Guid plan in new[] { byType, india })
+        {
+            await admin.PutAsJsonAsync($"/api/v1/leave/plans/{plan}/items", new[] { Item(casual, entitlement: 12) }, Ct);
+        }
+
+        await AssignAsync(admin, engagement, byType);
+        Guid indiaOffice = await CoreHrApi.CreateAsync(admin, "/api/v1/organizations/cost-centers", new { Code = CoreHrApi.Unique("CC"), Name = CoreHrApi.Unique("India office") });
+        Guid abroad = await CoreHrApi.CreateAsync(admin, "/api/v1/organizations/cost-centers", new { Code = CoreHrApi.Unique("CC"), Name = CoreHrApi.Unique("Dubai office") });
+        Guid inIndia = await HireAsync(admin, engagement, indiaOffice);
+        Guid inDubai = await HireAsync(admin, engagement, abroad);
+
+        HttpResponseMessage saved = await admin.PutAsJsonAsync("/api/v1/leave/plan-assignments/cost-centers", new[] { new { CostCenterId = indiaOffice, PlanId = (Guid?)india } }, Ct);
+        saved.StatusCode.ShouldBe(HttpStatusCode.OK, await saved.Content.ReadAsStringAsync(Ct));
+        JsonElement row = (await saved.Content.ReadFromJsonAsync<JsonElement[]>(Ct))!.Single(center => center.GetProperty("costCenterId").GetGuid() == indiaOffice);
+        row.GetProperty("planName").GetString().ShouldBe("India leave");
+        row.GetProperty("employeeCount").GetInt32().ShouldBe(1);
+
+        JsonElement indian = (await admin.GetFromJsonAsync<JsonElement>($"/api/v1/leave/plans/resolve?employeeId={inIndia}", Ct))!;
+        indian.GetProperty("planId").GetGuid().ShouldBe(india);
+        indian.GetProperty("source").GetString().ShouldBe("CostCenter");
+        indian.GetProperty("costCenterName").GetString()!.ShouldStartWith("India office");
+
+        JsonElement other = (await admin.GetFromJsonAsync<JsonElement>($"/api/v1/leave/plans/resolve?employeeId={inDubai}", Ct))!;
+        other.GetProperty("planId").GetGuid().ShouldBe(byType, "a cost center without a policy leaves it to the engagement type");
+        other.GetProperty("source").GetString().ShouldBe("EngagementType");
+
+        JsonElement listed = (await admin.GetFromJsonAsync<JsonElement[]>("/api/v1/leave/plans", Ct))!.Single(plan => plan.GetProperty("id").GetGuid() == india);
+        listed.GetProperty("assignedCostCenters").EnumerateArray().Select(name => name.GetString()).ShouldHaveSingleItem()!.ShouldStartWith("India office");
+
+        (await CoreHrApi.ErrorCodeAsync(await admin.PostAsync($"/api/v1/leave/plans/{india}/deactivate", null, Ct))).ShouldBe("LEAVE_PLAN_IN_USE");
+        (await CoreHrApi.ErrorCodeAsync(await admin.PutAsJsonAsync("/api/v1/leave/plan-assignments/cost-centers", new[] { new { CostCenterId = Guid.NewGuid(), PlanId = (Guid?)india } }, Ct))).ShouldBe("LEAVE_ASSIGNMENT_COST_CENTER");
+
+        // Back to "By engagement type": the engagement type's policy applies again.
+        (await admin.PutAsJsonAsync("/api/v1/leave/plan-assignments/cost-centers", new[] { new { CostCenterId = indiaOffice, PlanId = (Guid?)null } }, Ct)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await admin.GetFromJsonAsync<JsonElement>($"/api/v1/leave/plans/resolve?employeeId={inIndia}", Ct)).GetProperty("planId").GetGuid().ShouldBe(byType);
+        (await admin.PostAsync($"/api/v1/leave/plans/{india}/deactivate", null, Ct)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task ACostCenter_CanGiveOneEngagementTypeItsOwnPolicy_AndTheRestFallBack()
+    {
+        using HttpClient admin = await factory.CreateAdminClientAsync();
+        Guid casual = await LeaveTypeAsync(admin, "CL");
+        string fullTime = await EngagementTypeAsync(admin, "CC full-time");
+        string partTime = await EngagementTypeAsync(admin, "CC part-time");
+        Guid organisation = await PlanAsync(admin, "Organisation default", leaveYearStartMonth: 1);
+        Guid india = await PlanAsync(admin, "India", leaveYearStartMonth: 4);
+        Guid indiaPartTime = await PlanAsync(admin, "India part-time", leaveYearStartMonth: 4);
+        foreach (Guid plan in new[] { organisation, india, indiaPartTime })
+        {
+            await admin.PutAsJsonAsync($"/api/v1/leave/plans/{plan}/items", new[] { Item(casual, entitlement: 12) }, Ct);
+        }
+
+        await AssignAsync(admin, fullTime, organisation);
+        await AssignAsync(admin, partTime, organisation);
+        Guid centerA = await CoreHrApi.CreateAsync(admin, "/api/v1/organizations/cost-centers", new { Code = CoreHrApi.Unique("CC"), Name = CoreHrApi.Unique("India A") });
+        Guid centerB = await CoreHrApi.CreateAsync(admin, "/api/v1/organizations/cost-centers", new { Code = CoreHrApi.Unique("CC"), Name = CoreHrApi.Unique("Elsewhere B") });
+        Guid fullOnA = await HireAsync(admin, fullTime, centerA);
+        Guid partOnA = await HireAsync(admin, partTime, centerA);
+        Guid partOnB = await HireAsync(admin, partTime, centerB);
+
+        HttpResponseMessage saved = await admin.PutAsJsonAsync("/api/v1/leave/plan-assignments/cost-centers", new object[]
+        {
+            new { CostCenterId = centerA, PlanId = (Guid?)india },
+            new { CostCenterId = centerA, PlanId = (Guid?)indiaPartTime, EmploymentTypeCode = partTime },
+        }, Ct);
+        saved.StatusCode.ShouldBe(HttpStatusCode.OK, await saved.Content.ReadAsStringAsync(Ct));
+        JsonElement row = (await saved.Content.ReadFromJsonAsync<JsonElement[]>(Ct))!.Single(center => center.GetProperty("costCenterId").GetGuid() == centerA);
+        row.GetProperty("planId").GetGuid().ShouldBe(india);
+        JsonElement only = row.GetProperty("overrides").EnumerateArray().ShouldHaveSingleItem();
+        only.GetProperty("employmentTypeCode").GetString().ShouldBe(partTime);
+        only.GetProperty("label").GetString().ShouldBe("CC part-time");
+
+        async Task<Guid> PolicyOf(Guid person) => (await admin.GetFromJsonAsync<JsonElement>($"/api/v1/leave/plans/resolve?employeeId={person}", Ct)).GetProperty("planId").GetGuid();
+        (await PolicyOf(fullOnA)).ShouldBe(india, "a type the cost center did not set takes its everyone policy");
+        (await PolicyOf(partOnA)).ShouldBe(indiaPartTime, "the cost center's own part-time policy");
+        (await PolicyOf(partOnB)).ShouldBe(organisation, "a cost center with nothing set follows the organisation default");
+
+        JsonElement listed = (await admin.GetFromJsonAsync<JsonElement[]>("/api/v1/leave/plans", Ct))!.Single(plan => plan.GetProperty("id").GetGuid() == indiaPartTime);
+        listed.GetProperty("assignedCostCenters").EnumerateArray().Select(name => name.GetString()).ShouldHaveSingleItem()!.ShouldEndWith("· CC part-time");
+
+        (await CoreHrApi.ErrorCodeAsync(await admin.PutAsJsonAsync("/api/v1/leave/plan-assignments/cost-centers", new[] { new { CostCenterId = centerA, PlanId = (Guid?)india, EmploymentTypeCode = "NO_SUCH_TYPE" } }, Ct))).ShouldBe("LEAVE_ASSIGNMENT_TYPE");
+
+        // Removing the part-time policy sends part-timers back to the cost center's everyone policy.
+        (await admin.PutAsJsonAsync("/api/v1/leave/plan-assignments/cost-centers", new[] { new { CostCenterId = centerA, PlanId = (Guid?)null, EmploymentTypeCode = partTime } }, Ct)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await PolicyOf(partOnA)).ShouldBe(india);
+
+        // And clearing the everyone policy sends everyone back to the organisation default.
+        (await admin.PutAsJsonAsync("/api/v1/leave/plan-assignments/cost-centers", new[] { new { CostCenterId = centerA, PlanId = (Guid?)null } }, Ct)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await PolicyOf(fullOnA)).ShouldBe(organisation);
+    }
+
+    [Fact]
     public async Task WhoCanTakeIt_AndRequestLimits_AreChecked_WhenApplying()
     {
         using HttpClient admin = await factory.CreateAdminClientAsync();
@@ -201,7 +301,7 @@ public sealed class LeavePlanTests(PeopleOsApiFactory factory)
         return code;
     }
 
-    private static async Task<Guid> HireAsync(HttpClient admin, string engagementType)
+    private static async Task<Guid> HireAsync(HttpClient admin, string engagementType, Guid? costCenterId = null)
     {
         Guid department = await CoreHrApi.DepartmentAsync(admin);
         HttpResponseMessage response = await admin.PostAsJsonAsync("/api/v1/employees", new
@@ -209,7 +309,7 @@ public sealed class LeavePlanTests(PeopleOsApiFactory factory)
             FirstName = "Test",
             LastName = CoreHrApi.Unique("Person"),
             JoiningDate = "2024-01-15",
-            Assignment = new { DepartmentId = department, EmploymentTypeCode = engagementType, WorkModeCode = "OFFICE", Designation = "Associate" },
+            Assignment = new { DepartmentId = department, EmploymentTypeCode = engagementType, WorkModeCode = "OFFICE", Designation = "Associate", CostCenterId = costCenterId },
         }, Ct);
         response.StatusCode.ShouldBe(HttpStatusCode.Created, await response.Content.ReadAsStringAsync(Ct));
         return (await response.Content.ReadFromJsonAsync<JsonElement>(Ct)).GetProperty("id").GetGuid();

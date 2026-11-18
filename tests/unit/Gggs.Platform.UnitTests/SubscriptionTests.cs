@@ -147,6 +147,36 @@ public sealed class SubscriptionTests
         subscription.ResolveFeatures(plan, Today).ShouldContain("Payroll");
     }
 
+    [Fact]
+    public void ATrialCanBeExtended_ButNotIntoThePast_AndAPaidOneHasNoTrialToMove()
+    {
+        Subscription trial = Subscription.Start(
+            TenantId, Guid.CreateVersion7(), Today, trialEndsOn: Today.AddDays(14), seatLimit: 25, billingReference: null);
+
+        trial.ExtendTrial(Today.AddDays(45), Today);
+        trial.TrialEndsOn.ShouldBe(Today.AddDays(45));
+
+        Should.Throw<DomainRuleException>(() => trial.ExtendTrial(Today.AddDays(-1), Today))
+            .ErrorCode.ShouldBe("TRIAL_END_IN_PAST");
+
+        Should.Throw<DomainRuleException>(() => PaidSubscription().ExtendTrial(Today.AddDays(30), Today))
+            .ErrorCode.ShouldBe("SUBSCRIPTION_NOT_TRIAL");
+    }
+
+    [Fact]
+    public void Terms_SetTheRenewalDateAndBillingReference_AndBlankClearsTheReference()
+    {
+        Subscription subscription = PaidSubscription();
+
+        subscription.SetTerms(Today.AddYears(1), "  PO-4471  ");
+        subscription.RenewsOn.ShouldBe(Today.AddYears(1));
+        subscription.BillingReference.ShouldBe("PO-4471");
+
+        subscription.SetTerms(null, "   ");
+        subscription.RenewsOn.ShouldBeNull();
+        subscription.BillingReference.ShouldBeNull();
+    }
+
     private static Plan ProfessionalPlan() => Plan.Create(
         "PRO", "Professional", PlanEdition.Professional, maxEmployees: 1000, isPubliclyAvailable: true,
         featureCodes: ["CoreHr", "Attendance", "Leave", "Payroll", "Expenses"]);

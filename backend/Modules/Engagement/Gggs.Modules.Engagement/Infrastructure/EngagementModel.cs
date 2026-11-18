@@ -64,6 +64,18 @@ internal sealed class EngagementModel : IModuleModel
             entity.Ignore(row => row.AudienceLocationIds);
             entity.Ignore(row => row.DomainEvents);
         });
+
+        modelBuilder.Entity<CelebrationWish>(entity =>
+        {
+            entity.ToTable("CelebrationWish", Schema);
+            entity.Property(row => row.Kind).HasConversion<byte>();
+            entity.Property(row => row.Note).HasMaxLength(CelebrationWish.NoteMaxLength);
+            entity.Property(row => row.SentByName).HasMaxLength(200);
+            entity.HasIndex(row => new { row.TenantId, row.EmployeeId, row.Kind, row.OccurredOn })
+                .HasDatabaseName("UX_CelebrationWish_TenantId_Employee_Kind_Day").IsUnique().HasFilter("[IsDeleted] = 0");
+            entity.HasIndex(row => new { row.TenantId, row.Kind, row.OccurredOn }).HasDatabaseName("IX_CelebrationWish_TenantId_Kind_Day");
+            entity.Ignore(row => row.DomainEvents);
+        });
     }
 }
 
@@ -78,5 +90,7 @@ internal static class EngagementData
         public DbSet<SurveyResponse> SurveyResponses => db.Set<SurveyResponse>();
 
         public DbSet<FeatureBanner> FeatureBanners => db.Set<FeatureBanner>();
+
+        public DbSet<CelebrationWish> CelebrationWishes => db.Set<CelebrationWish>();
     }
 }

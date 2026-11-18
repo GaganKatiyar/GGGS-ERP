@@ -3,6 +3,8 @@
  * the Nuts and Bolts API returns them. Enums travel as their names.
  */
 
+import type { PagedResult } from './api.models';
+
 // ----- Workflow ------------------------------------------------------------------------------
 
 export type ApproverKind = 'ReportingManager' | 'SkipLevelManager' | 'DepartmentHead' | 'HrBusinessPartner' | 'Employee' | 'SubjectOwner';
@@ -185,6 +187,119 @@ export interface NotificationTemplate {
   readonly sendEmail: boolean;
   readonly sendSms: boolean;
   readonly isActive: boolean;
+  /** The module the template belongs to, which picks its sender (see {@link EmailSenderItem}). */
+  readonly moduleKey: string;
+  /** Another module's sender for this one email; absent means its own module's. */
+  readonly senderKey?: string;
+}
+
+/**
+ * The modules that can each have their own email sender, in the order Studio lists them, as the server's
+ * `EmailModules` names them. A template belongs to one by the start of its code.
+ */
+export const EMAIL_MODULES: readonly { readonly key: string; readonly name: string }[] = [
+  { key: 'identity', name: 'Login & account' },
+  { key: 'onboarding', name: 'Onboarding' },
+  { key: 'recruitment', name: 'Recruitment' },
+  { key: 'appraisal', name: 'Appraisal' },
+  { key: 'reward', name: 'Star Reward' },
+  { key: 'engagement', name: 'Celebrations & engagement' },
+  { key: 'payroll', name: 'Payroll & finance' },
+  { key: 'time', name: 'Leave & timesheets' },
+  { key: 'approvals', name: 'Approvals' },
+  { key: 'exits', name: 'Exits' },
+  { key: 'other', name: 'Everything else' },
+];
+
+/** One row of Studio > Email senders: who a module's emails come from. The `default` row is the organisation's default sender. */
+export interface EmailSenderItem {
+  readonly key: string;
+  readonly name: string;
+  readonly description: string;
+  readonly covers: readonly string[];
+  readonly templates: number;
+  /** False: the module uses the default sender. */
+  readonly hasOwn: boolean;
+  readonly connectionId?: string;
+  readonly fromName?: string;
+  readonly fromAddress?: string;
+  readonly replyTo?: string;
+  readonly bcc?: string;
+  readonly signature?: string;
+  readonly brandColor?: string;
+  readonly isPaused: boolean;
+  readonly moduleColor: string;
+  /** Why its emails are not going the way it says, when they are not. */
+  readonly problem?: string;
+}
+
+export interface EmailConnectionOption {
+  readonly id: string;
+  readonly name: string;
+  readonly adapterName: string;
+  readonly isActive: boolean;
+}
+
+export interface EmailSendersView {
+  readonly senders: readonly EmailSenderItem[];
+  readonly connections: readonly EmailConnectionOption[];
+  /** The connection Studio's older single email route points at, used when the default sender names none. */
+  readonly routeConnectionId?: string;
+  /** True in production, where the system's own mail server sends what no connection carries; false in development. */
+  readonly systemSenderDelivers: boolean;
+}
+
+export interface EmailSenderBody {
+  readonly connectionId: string | null;
+  readonly fromName: string | null;
+  readonly fromAddress: string | null;
+  readonly replyTo: string | null;
+  readonly bcc: string | null;
+  readonly signature: string | null;
+  readonly brandColor: string | null;
+  readonly isPaused: boolean;
+}
+
+export type EmailStatus = 'Queued' | 'Sent' | 'Failed' | 'Logged' | 'Paused';
+
+export interface EmailLogItem {
+  readonly id: string;
+  readonly createdDate: string;
+  readonly to: string;
+  readonly subject: string;
+  readonly eventCode: string;
+  readonly moduleKey: string;
+  readonly moduleName: string;
+  readonly status: EmailStatus;
+  readonly sentAs?: string;
+  /** The error, or why it was logged or paused. */
+  readonly reason?: string;
+  readonly attempts: number;
+  readonly sentDate?: string;
+  readonly canResend: boolean;
+  /** For a failed email: what kind of trouble it was, in plain words, and what to do. */
+  readonly failureKind?: EmailFailureKind;
+  readonly problem?: string;
+  readonly fix?: string;
+  /** A temporary failure is tried again by itself at this time. */
+  readonly nextAttemptAt?: string;
+}
+
+export type EmailFailureKind = 'Other' | 'Temporary' | 'Account' | 'Address';
+
+/** How long the Email log keeps emails; 0 sent days keeps only failed and unsent ones. */
+export interface EmailLogSettings {
+  readonly keepSentDays: number;
+  readonly keepProblemDays: number;
+  readonly alertOnFailure: boolean;
+  readonly sentChoices: readonly number[];
+  readonly problemChoices: readonly number[];
+}
+
+export interface EmailLogResult {
+  readonly page: PagedResult<EmailLogItem>;
+  /** Emails per status under the same module and search, keyed by status name. */
+  readonly counts: Readonly<Partial<Record<EmailStatus, number>>>;
 }
 
 // ----- Documents -----------------------------------------------------------------------------

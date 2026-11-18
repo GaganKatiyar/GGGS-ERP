@@ -15,10 +15,11 @@ const COLUMNS: readonly (keyof ImportRow)[] = [
   'mobilePhone',
   'joiningDate',
   'departmentCode',
-  'positionCode',
-  'jobCode',
-  'gradeCode',
+  'roleCode',
+  'designationCode',
+  'levelCode',
   'locationCode',
+  'costCenterCode',
   'managerEmployeeCode',
   'employmentTypeCode',
   'workModeCode',
@@ -77,7 +78,9 @@ export function parseCsv(text: string): string[][] {
 /** CSV rows to import rows, matching headers case-insensitively (trim also drops a BOM) and ignoring unknown columns. Exported for tests. */
 export function toImportRows(cells: string[][]): { rows: ImportRow[]; unknown: string[] } {
   const [header = [], ...data] = cells;
-  const byName = new Map(COLUMNS.map((column) => [column.toLowerCase(), column]));
+  const byName = new Map<string, keyof ImportRow>(COLUMNS.map((column) => [column.toLowerCase(), column]));
+  // Files made before roles were called roles still name the column jobCode.
+  byName.set('jobcode', 'roleCode');
   const mapped = header.map((name) => byName.get(name.trim().toLowerCase()));
   const unknown = header.filter((_, index) => !mapped[index]).map((name) => name.trim());
 
@@ -115,7 +118,7 @@ export function toImportRows(cells: string[][]): { rows: ImportRow[]; unknown: s
       <section class="panel stack">
         <gggs-file-upload accept=".csv,text/csv" prompt="Drop a CSV file here, or click to choose one" (fileSelected)="read($event)" />
         <p class="muted">
-          Up to {{ maxRows }} rows. Use codes for organization records (department, position, job, grade, location) and master data (employment type, work mode), and
+          Up to {{ maxRows }} rows. Use codes for organization records (department, role, designation, level, location, cost center) and master data (employment type, work mode), and
           the manager's employee code. Dates are YYYY-MM-DD.
         </p>
         @if (fileName()) {

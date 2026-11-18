@@ -21,6 +21,7 @@ import { FilterBar, PageHeader, StatusBadge } from '@gggs/shared/ui';
       <div class="toolbar">
         <a class="btn" routerLink="org-chart"><i class="pi pi-sitemap" aria-hidden="true"></i> Org chart</a>
         <a class="btn" routerLink="import" *gggsHasPermission="'employee.profile.create'"><i class="pi pi-upload" aria-hidden="true"></i> Import</a>
+        <a class="btn" routerLink="drafts" *gggsHasPermission="'employee.profile.create'"><i class="pi pi-save" aria-hidden="true"></i> Draft hires</a>
         <a class="btn btn--primary" routerLink="new" *gggsHasPermission="'employee.profile.create'"><i class="pi pi-user-plus" aria-hidden="true"></i> Hire</a>
       </div>
     </gggs-page-header>

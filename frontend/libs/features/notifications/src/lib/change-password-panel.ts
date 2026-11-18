@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ApiError } from '@gggs/core/http';
-import { AdminApi } from '@gggs/shared/identity';
+import { AdminApi, DEFAULT_PASSWORD_RULES, passwordHint, type PasswordRules } from '@gggs/shared/identity';
 
 /** The words for a refused change: the server's own where it says which rule failed. */
 export function describePasswordError(error: unknown): string {
@@ -32,7 +32,7 @@ export function describePasswordError(error: unknown): string {
       <label class="field">
         <span class="field__label">New password</span>
         <input [type]="show() ? 'text' : 'password'" autocomplete="new-password" aria-describedby="password-hint" [value]="next()" (input)="next.set($any($event.target).value)" />
-        <span id="password-hint" class="field__hint">At least 12 characters.</span>
+        <span id="password-hint" class="field__hint">{{ hint() }}</span>
       </label>
       <label class="password__show">
         <input type="checkbox" [checked]="show()" (change)="show.set($any($event.target).checked)" />
@@ -65,6 +65,13 @@ export class ChangePasswordPanel {
   protected readonly busy = signal(false);
   protected readonly message = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
+  /** The organisation's own rules (Studio > Password policy). */
+  protected readonly rules = signal<PasswordRules>(DEFAULT_PASSWORD_RULES);
+  protected readonly hint = computed(() => passwordHint(this.rules()));
+
+  constructor() {
+    void this.api.myPasswordRules().then((rules) => this.rules.set(rules));
+  }
 
   protected async save(event: Event): Promise<void> {
     event.preventDefault();

@@ -133,7 +133,7 @@ export class MyPoliciesPage {
         @if (p.requiresAcknowledgement) {
           <section class="panel toolbar">
             @if (p.acknowledgedDate) {
-              <span><i class="pi pi-check-circle policy__done" aria-hidden="true"></i> You acknowledged this on {{ p.acknowledgedDate | date: 'medium' }}.</span>
+              <span><i class="pi pi-check-circle policy__done" aria-hidden="true"></i> You acknowledged this on {{ p.acknowledgedDate | date: 'd MMM y, h:mm a' }}.</span>
             } @else {
               <span class="policy__ask">By acknowledging, you confirm you have read and understood this version.</span>
               <button type="button" class="btn btn--primary" [disabled]="busy()" (click)="acknowledge()">I have read and understood it</button>

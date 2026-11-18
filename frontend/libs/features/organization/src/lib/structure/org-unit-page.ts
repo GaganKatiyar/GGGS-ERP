@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ApiError } from '@gggs/core/http';
 import { HasPermissionDirective, PermissionStore } from '@gggs/core/permissions';
@@ -68,6 +68,9 @@ import { ORG_KINDS, type OrgField, type OrgKindConfig } from './org-kinds';
       <ng-template gggsCell="isActive" let-row>
         <gggs-status-badge [status]="row.isActive ? 'Active' : 'Inactive'" />
       </ng-template>
+      <ng-template gggsCell="departmentId" let-row>{{ nameOf(row.departmentId) }}</ng-template>
+      <ng-template gggsCell="roleId" let-row>{{ nameOf(row.roleId) }}</ng-template>
+      <ng-template gggsCell="levelId" let-row>{{ nameOf(row.levelId) }}</ng-template>
     </gggs-data-table>
 
     <gggs-form-dialog
@@ -112,6 +115,7 @@ import { ORG_KINDS, type OrgField, type OrgKindConfig } from './org-kinds';
                   [formControlName]="field.key"
                   [kind]="$any(field.type).orgKind"
                   [excludeId]="$any(field.type).orgKind === cfg.kind ? editing()?.id : null"
+                  [topLevelOnly]="!!$any(field.type).topLevelOnly"
                   [ariaLabel]="field.label"
                 />
               }
@@ -184,6 +188,24 @@ export class OrgUnitPage {
     this.config().fields.filter((field) => !(field.createOnly && this.editing())),
   );
 
+  /** Names of the records reference columns point at (a role's department, a designation's role). */
+  private readonly names = signal<ReadonlyMap<string, string>>(new Map());
+
+  constructor() {
+    // Levels read "L2 · Senior associate"; everything else by name.
+    const label = (row: OrgUnit) => (typeof row['rank'] === 'number' ? `${row.code} · ${row.name}` : row.name);
+
+    effect(async () => {
+      const kinds = [...new Set(Object.values(this.config().references ?? {}))];
+      const lists = await Promise.all(kinds.map((kind) => this.api.active(kind)));
+      this.names.set(new Map(lists.flat().map((row) => [row.id, label(row)])));
+    });
+  }
+
+  protected nameOf(id: unknown): string {
+    return typeof id === 'string' ? (this.names().get(id) ?? '—') : '—';
+  }
+
   protected onQuery(query: DataTableQuery): void {
     this.query = query;
     void this.load();
@@ -225,7 +247,7 @@ export class OrgUnitPage {
       const editing = this.editing();
 
       if (editing) {
-        await this.api.update(this.config().kind, editing.id, { ...body, code: editing.code });
+        await this.api.update(this.config().kind, editing.id, body);
       } else {
         await this.api.create(this.config().kind, body);
       }
@@ -237,7 +259,7 @@ export class OrgUnitPage {
   }
 
   protected async close(unit: OrgUnit): Promise<void> {
-    await this.run(() => this.api.close(this.config().kind as 'departments' | 'positions', unit.id, this.closeDate()));
+    await this.run(() => this.api.close('departments', unit.id, this.closeDate()));
   }
 
   private async run(action: () => Promise<void>): Promise<void> {

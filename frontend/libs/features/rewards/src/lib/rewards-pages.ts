@@ -8,7 +8,6 @@ import { RewardsApi } from '@gggs/shared/experience';
 import type {
   CatalogItem,
   CatalogItemInput,
-  OrgUnit,
   PointLedgerItem,
   RecognitionItem,
   RecognitionTypeInput,
@@ -22,7 +21,7 @@ import type {
   RewardWallet,
 } from '@gggs/shared/models';
 import { RECOGNITION_KINDS, RULE_TRIGGERS, humanize } from '@gggs/shared/models';
-import { OrgStructureApi } from '@gggs/shared/org-reference';
+import { departmentOptions, OrgStructureApi, type DepartmentOption } from '@gggs/shared/org-reference';
 import { EmptyState, FormDialog, KpiCard, PageHeader, Skeleton, StatusBadge, Tabs } from '@gggs/shared/ui';
 import type { TabItem } from '@gggs/shared/ui';
 
@@ -279,7 +278,7 @@ export class RecognitionFeed {
           <select [value]="budgetDepartment()" (change)="budgetDepartment.set($any($event.target).value)">
             <option value="">Company-wide</option>
             @for (department of departments(); track department.id) {
-              <option [value]="department.id">{{ department.name }}</option>
+              <option [value]="department.id">{{ department.label }}</option>
             }
           </select>
         </label>
@@ -324,7 +323,7 @@ export class RewardsPage {
   protected readonly rules = signal<readonly RewardRuleItem[]>([]);
   protected readonly budgets = signal<readonly RewardBudgetItem[]>([]);
   protected readonly settings = signal<RewardSettings | null>(null);
-  protected readonly departments = signal<readonly OrgUnit[]>([]);
+  protected readonly departments = signal<readonly DepartmentOption[]>([]);
   protected readonly itemOpen = signal(false);
   protected readonly itemEditing = signal<CatalogItem | null>(null);
   protected readonly itemForm = signal<CatalogItemInput>({ name: '', description: null, category: 'Vouchers', pointsCost: 500, stock: null, isActive: true });
@@ -367,7 +366,7 @@ export class RewardsPage {
       this.api.settings().then((settings) => this.settings.set(settings), () => undefined);
       inject(OrgStructureApi)
         .active('departments')
-        .then((departments) => this.departments.set(departments), () => undefined);
+        .then((departments) => this.departments.set(departmentOptions(departments)), () => undefined);
     }
   }
 

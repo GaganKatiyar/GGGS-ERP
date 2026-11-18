@@ -1,6 +1,7 @@
 using System.Globalization;
 using Gggs.BuildingBlocks.Application;
 using Gggs.BuildingBlocks.Domain.Exceptions;
+using Gggs.BuildingBlocks.MultiTenancy;
 using Gggs.BuildingBlocks.Persistence;
 using Gggs.BuildingBlocks.Security;
 using Gggs.Data;
@@ -110,7 +111,8 @@ internal sealed class HelpdeskService(
     INotifier notifier,
     IPermissionProvider permissions,
     ICurrentUser currentUser,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ITenantClock clock)
 {
     private DateTime Now => timeProvider.GetUtcNow().UtcDateTime;
 
@@ -373,7 +375,7 @@ internal sealed class HelpdeskService(
                             ["number"] = ticket.Number,
                             ["subject"] = ticket.Subject,
                             ["kind"] = kind,
-                            ["dueAt"] = (kind == "response" ? ticket.ResponseDueAt : ticket.ResolutionDueAt).ToString("d MMM yyyy HH:mm 'UTC'", CultureInfo.InvariantCulture),
+                            ["dueAt"] = await clock.FormatAsync(kind == "response" ? ticket.ResponseDueAt : ticket.ResolutionDueAt, cancellationToken: cancellationToken),
                         },
                         $"/helpdesk/tickets/{ticket.Id}"),
                     cancellationToken);
@@ -562,7 +564,7 @@ internal sealed class HelpdeskService(
                     ["number"] = ticket.Number,
                     ["subject"] = ticket.Subject,
                     ["priority"] = ticket.Priority.ToString(),
-                    ["dueAt"] = ticket.ResponseDueAt.ToString("d MMM yyyy HH:mm 'UTC'", CultureInfo.InvariantCulture),
+                    ["dueAt"] = await clock.FormatAsync(ticket.ResponseDueAt, cancellationToken: cancellationToken),
                 },
                 $"/helpdesk/tickets/{ticket.Id}"),
             cancellationToken);

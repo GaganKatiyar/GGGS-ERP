@@ -6,10 +6,10 @@ import { ApiError } from '@gggs/core/http';
 import { HasPermissionDirective, PermissionStore } from '@gggs/core/permissions';
 import { EmployeeSelect } from '@gggs/shared/employee-reference';
 import type { RosterRow, ScheduledDay, ShiftAssignment, ShiftSwap, Weekday, WorkShift } from '@gggs/shared/models';
-import { WEEKDAYS, shortTime } from '@gggs/shared/models';
+import { WEEKDAYS, inputTime } from '@gggs/shared/models';
 import { OrgSelect } from '@gggs/shared/org-reference';
 import { ShiftsApi, addDays, todayIso } from '@gggs/shared/time';
-import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type TabItem } from '@gggs/shared/ui';
+import { clockTime, EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, timeRange, type TabItem } from '@gggs/shared/ui';
 
 /**
  * Shifts and rosters (spec §19): the working patterns, who works which, a week's roster with
@@ -33,7 +33,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
             <div class="toolbar">
               <p class="muted shifts__hint">
                 @if (defaultShift(); as fallback) {
-                  Everyone without a shift of their own works <strong>{{ fallback.name }}</strong> ({{ shortTime(fallback.startTime) }}–{{ shortTime(fallback.endTime) }}). Give people another shift on the Assignments tab.
+                  Everyone without a shift of their own works <strong>{{ fallback.name }}</strong> ({{ timeRange(fallback.startTime, fallback.endTime) }}). Give people another shift on the Assignments tab.
                 } @else {
                   No shift yet: Nuts and Bolts assumes 09:00–18:00, weekends off. The first shift you add becomes everyone's default.
                 }
@@ -62,7 +62,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
                   @for (shift of shifts(); track shift.id) {
                     <tr>
                       <td><strong>{{ shift.name }}</strong> <span class="muted">{{ shift.code }}</span> @if (shift.isDefault) { <span class="shifts__default">default</span> }</td>
-                      <td>{{ shortTime(shift.startTime) }}–{{ shortTime(shift.endTime) }}</td>
+                      <td>{{ timeRange(shift.startTime, shift.endTime) }}</td>
                       <td>{{ shift.breakMinutes }}m</td>
                       <td>{{ shift.graceMinutes }}m</td>
                       <td>{{ shift.halfDayMinutes / 60 }}h / {{ shift.fullDayMinutes / 60 }}h</td>
@@ -172,7 +172,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
                           <button type="button" class="roster__cell" [class.roster__cell--off]="day.isWeeklyOff" [disabled]="!canRoster" (click)="openOverride(row, day)">
                             {{ day.isWeeklyOff ? 'Off' : day.shiftName }}
                             @if (!day.isWeeklyOff) {
-                              <span class="muted">{{ shortTime(day.start) }}–{{ shortTime(day.end) }}</span>
+                              <span class="muted">{{ timeRange(day.start, day.end) }}</span>
                             }
                           </button>
                         </td>
@@ -268,8 +268,9 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
           </label>
           <p class="field__hint" id="shift-punch-out-hint">
             {{ draft().requiresPunchOut
-              ? 'A day with only a punch in shows as a missing punch until it is corrected.'
-              : 'Punching in counts as a full day, and lateness still counts. A punch out, if made, is still judged. Applies to days judged from now on.' }}
+              ? 'A working day with only a punch in shows as a missing punch until it is corrected.'
+              : 'Punching in counts as a full day, and lateness still counts. A punch out, if made, is still judged. A punch in on a weekly off or holiday counts as work on a day off.' }}
+            Saving re-checks this month's recorded days for everyone on the shift; earlier months stay as recorded.
           </p>
         </div>
       </div>
@@ -281,7 +282,7 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
           <span class="field__label">Shift *</span>
           <select [value]="assignShift()" (change)="assignShift.set($any($event.target).value)">
             @for (shift of activeShifts(); track shift.id) {
-              <option [value]="shift.id">{{ shift.name }} ({{ shortTime(shift.startTime) }}–{{ shortTime(shift.endTime) }})</option>
+              <option [value]="shift.id">{{ shift.name }} ({{ timeRange(shift.startTime, shift.endTime) }})</option>
             }
           </select>
         </label>
@@ -455,7 +456,8 @@ import { EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type T
 export class ShiftsPage {
   private readonly api = inject(ShiftsApi);
 
-  protected readonly shortTime = shortTime;
+  protected readonly clockTime = clockTime;
+  protected readonly timeRange = timeRange;
   protected readonly weekdays = WEEKDAYS;
   protected readonly tabs: readonly TabItem[] = [
     { key: 'shifts', label: 'Shifts' },
@@ -587,8 +589,8 @@ export class ShiftsPage {
         ? {
             code: shift.code,
             name: shift.name,
-            startTime: shortTime(shift.startTime),
-            endTime: shortTime(shift.endTime),
+            startTime: inputTime(shift.startTime),
+            endTime: inputTime(shift.endTime),
             breakMinutes: shift.breakMinutes,
             graceMinutes: shift.graceMinutes,
             halfDayMinutes: shift.halfDayMinutes,

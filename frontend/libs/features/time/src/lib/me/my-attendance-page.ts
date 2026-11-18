@@ -5,9 +5,9 @@ import { ApiError } from '@gggs/core/http';
 import { HasPermissionDirective, PermissionStore } from '@gggs/core/permissions';
 import { EmployeeSelect } from '@gggs/shared/employee-reference';
 import type { AttendanceDay, Regularization, ScheduledDay, ShiftSwap, TodayAttendance } from '@gggs/shared/models';
-import { formatMinutes, shortTime } from '@gggs/shared/models';
+import { formatMinutes, inputTime } from '@gggs/shared/models';
 import { AttendanceApi, ShiftsApi, addDays, todayIso } from '@gggs/shared/time';
-import { Badge, DEFAULT_STATUS_VARIANTS, EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, type BadgeVariant, type TabItem } from '@gggs/shared/ui';
+import { Badge, clockTime, DEFAULT_STATUS_VARIANTS, EmptyState, FormDialog, PageHeader, Skeleton, StatusBadge, Tabs, timeRange, type BadgeVariant, type TabItem } from '@gggs/shared/ui';
 import { AttendanceCalendar } from './attendance-calendar';
 import { addMonths, isFixable, monthRange, statusCounts } from './attendance-month';
 
@@ -42,13 +42,13 @@ function savedView(): DaysView {
               @if (t.punches.length === 0) {
                 Not punched in yet
               } @else if (t.punches.length % 2 === 1) {
-                Punched in at {{ shortTime(t.punches[t.punches.length - 1].localTime) }}
+                Punched in at {{ clockTime(t.punches[t.punches.length - 1].localTime) }}
               } @else {
-                Punched out at {{ shortTime(t.punches[t.punches.length - 1].localTime) }}
+                Punched out at {{ clockTime(t.punches[t.punches.length - 1].localTime) }}
               }
             </strong>
             <span class="muted today__shift">
-              Today · {{ t.day?.shiftName ?? 'No shift' }} {{ t.day ? shortTime(t.day.scheduledStart) + '–' + shortTime(t.day.scheduledEnd) : '' }}
+              Today · {{ t.day?.shiftName ?? 'No shift' }} {{ t.day ? timeRange(t.day.scheduledStart, t.day.scheduledEnd) : '' }}
               @if (t.punches.length > 1 && t.day) {
                 · {{ formatMinutes(t.day.workedMinutes) }} worked so far
               }
@@ -125,8 +125,8 @@ function savedView(): DaysView {
                         <tr [class.grid__row--today]="day.isToday">
                           <td>{{ day.date | date: 'EEE d MMM' }}</td>
                           <td>{{ day.shiftName }}</td>
-                          <td>{{ shortTime(day.firstIn) || '—' }}</td>
-                          <td>{{ shortTime(day.lastOut) || '—' }}</td>
+                          <td>{{ clockTime(day.firstIn) || '—' }}</td>
+                          <td>{{ clockTime(day.lastOut) || '—' }}</td>
                           <td>{{ formatMinutes(day.workedMinutes) || '—' }}</td>
                           <td>{{ day.lateMinutes ? formatMinutes(day.lateMinutes) : '' }}</td>
                           <td>
@@ -172,8 +172,8 @@ function savedView(): DaysView {
                   @for (request of regularizations(); track request.id) {
                     <tr>
                       <td>{{ request.date | date: 'EEE d MMM' }}</td>
-                      <td>{{ shortTime(request.checkIn) || '—' }}</td>
-                      <td>{{ shortTime(request.checkOut) || '—' }}</td>
+                      <td>{{ clockTime(request.checkIn) || '—' }}</td>
+                      <td>{{ clockTime(request.checkOut) || '—' }}</td>
                       <td>{{ request.reason }}</td>
                       <td><gggs-status-badge [status]="request.status" /></td>
                       <td>
@@ -200,7 +200,7 @@ function savedView(): DaysView {
                   <strong>{{ day.date | date: 'EEE d' }}</strong>
                   <span>{{ day.isWeeklyOff ? 'Day off' : day.shiftName }}</span>
                   @if (!day.isWeeklyOff) {
-                    <span class="muted">{{ shortTime(day.start) }}–{{ shortTime(day.end) }}</span>
+                    <span class="muted">{{ timeRange(day.start, day.end) }}</span>
                   }
                 </li>
               }
@@ -495,7 +495,8 @@ export class MyAttendancePage {
   private readonly canRegularize = inject(PermissionStore).has('attendance.regularization.create');
 
   protected readonly formatMinutes = formatMinutes;
-  protected readonly shortTime = shortTime;
+  protected readonly clockTime = clockTime;
+  protected readonly timeRange = timeRange;
   protected readonly todayIso = todayIso();
   protected readonly currentMonth = this.todayIso.slice(0, 7);
   protected readonly fixable = isFixable;
@@ -597,8 +598,8 @@ export class MyAttendancePage {
 
   protected openFix(day: AttendanceDay): void {
     this.fixDay.set(day.date);
-    this.fixIn.set(shortTime(day.firstIn) || shortTime(day.scheduledStart) || '09:00');
-    this.fixOut.set(shortTime(day.lastOut) || shortTime(day.scheduledEnd) || '18:00');
+    this.fixIn.set(inputTime(day.firstIn) || inputTime(day.scheduledStart) || '09:00');
+    this.fixOut.set(inputTime(day.lastOut) || inputTime(day.scheduledEnd) || '18:00');
     this.fixReason.set('');
     this.dialogError.set(null);
     this.fixOpen.set(true);

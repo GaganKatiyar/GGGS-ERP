@@ -1,4 +1,5 @@
 using Gggs.Data;
+using Gggs.Modules.Identity.Application.Users;
 using Gggs.Modules.Identity.Contracts;
 using Gggs.Modules.Identity.Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -10,8 +11,23 @@ namespace Gggs.Modules.Identity.Infrastructure;
 /// Deprovisioning for leavers. Unlike the administrator's disable, there is no last-administrator
 /// guard: an account whose employee has left must stop working whoever else can manage users.
 /// </summary>
-internal sealed class UserAccounts(AppDbContext dbContext, ILogger<UserAccounts> logger) : IUserAccounts
+internal sealed class UserAccounts(AppDbContext dbContext, IRoleRepository roles, ILogger<UserAccounts> logger) : IUserAccounts
 {
+    /// <summary>Enabled accounts only: a disabled one cannot sign in to see the notice.</summary>
+    public async Task<IReadOnlyList<Guid>> UserIdsWithPermissionAsync(string permissionCode, CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<Guid> holders = await roles.GetUserIdsWithPermissionAsync(permissionCode, cancellationToken);
+        if (holders.Count == 0)
+        {
+            return [];
+        }
+
+        return await dbContext.Users.AsNoTracking()
+            .Where(user => holders.Contains(user.Id) && user.Status != UserStatus.Disabled)
+            .Select(user => user.Id)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<UserAccountInfo?> FindByEmployeeAsync(Guid employeeId, CancellationToken cancellationToken = default)
         => await dbContext.Users.AsNoTracking()
             .Where(user => user.EmployeeId == employeeId)

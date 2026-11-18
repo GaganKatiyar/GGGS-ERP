@@ -1,28 +1,30 @@
 import type { Routes } from '@angular/router';
 import { withPermissions } from '@gggs/core/permissions';
 import { ApplicationPage } from './application-page';
+import { CandidatePipelinePage, RequirementsPage } from './pipeline-pages';
 import {
   CandidatePage,
-  CandidatesPage,
   InterviewsPage,
   OfferPage,
   OffersPage,
-  PostingsPage,
   RecruitmentAnalyticsPage,
   RecruitmentSettingsPage,
   ReferralsPage,
   RequisitionPage,
-  RequisitionsPage,
 } from './recruitment-pages';
 import { JobBoardPage, MyInterviewPage, MyInterviewsPage } from './self-pages';
 
 /** Lazily loaded by the shell at `/recruitment/*`. An offer page is also where approvers land from their task. */
 export const RECRUITMENT_ROUTES: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'requisitions' },
-  { path: 'requisitions', component: RequisitionsPage, title: 'Requisitions', ...withPermissions(['recruitment.requisition.view']) },
-  { path: 'requisitions/:id', component: RequisitionPage, title: 'Requisition', ...withPermissions(['recruitment.requisition.view']) },
-  { path: 'postings', component: PostingsPage, title: 'Job postings', ...withPermissions(['recruitment.posting.view']) },
-  { path: 'candidates', component: CandidatesPage, title: 'Candidates', ...withPermissions(['recruitment.application.view']) },
+  { path: '', pathMatch: 'full', redirectTo: 'requirements' },
+  { path: 'requirements', component: RequirementsPage, title: 'Requirements', ...withPermissions(['recruitment.requisition.view']) },
+  { path: 'requirements/:id', component: RequisitionPage, title: 'Requirement', ...withPermissions(['recruitment.requisition.view']) },
+  // Requirements were called requisitions; old links and bookmarks still land.
+  { path: 'requisitions', pathMatch: 'full', redirectTo: 'requirements' },
+  { path: 'requisitions/:id', redirectTo: 'requirements/:id' },
+  // Postings are managed on each requirement; the old list address lands on Requirements.
+  { path: 'postings', pathMatch: 'full', redirectTo: 'requirements' },
+  { path: 'candidates', component: CandidatePipelinePage, title: 'Candidates', ...withPermissions(['recruitment.application.view']) },
   { path: 'candidates/:id', component: CandidatePage, title: 'Candidate', ...withPermissions(['recruitment.application.view']) },
   { path: 'applications/:id', component: ApplicationPage, title: 'Application', ...withPermissions(['recruitment.application.view']) },
   { path: 'interviews', component: InterviewsPage, title: 'Interviews', ...withPermissions(['recruitment.application.view']) },

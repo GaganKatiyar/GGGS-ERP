@@ -7,7 +7,7 @@ import {
   type PasswordSignInResult,
   type SsoOption,
 } from '@gggs/core/auth';
-import { Button, FormField } from '@gggs/shared/ui';
+import { Button, FormField, momentTime } from '@gggs/shared/ui';
 import { rememberTenant, rememberedTenant } from './remembered-tenant';
 import { SignedOutLayout } from './signed-out-layout';
 
@@ -83,8 +83,8 @@ import { SignedOutLayout } from './signed-out-layout';
                 required
               />
             </gggs-form-field>
-            <button type="button" class="auth__eye" [attr.aria-pressed]="showPassword()" aria-label="Show password" (click)="showPassword.set(!showPassword())">
-              {{ showPassword() ? 'Hide' : 'Show' }}
+            <button type="button" class="auth__eye" [attr.aria-pressed]="showPassword()" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'" [attr.title]="showPassword() ? 'Hide password' : 'Show password'" (click)="showPassword.set(!showPassword())">
+              <i class="pi" [class.pi-eye]="!showPassword()" [class.pi-eye-slash]="showPassword()" aria-hidden="true"></i>
             </button>
           </div>
           <a class="auth__forgot" routerLink="/forgot-password">Forgot password?</a>
@@ -250,7 +250,7 @@ function describe(result: PasswordSignInResult): string {
   switch (result.errorCode) {
     case 'ACCOUNT_LOCKED':
       return result.lockoutEndDate
-        ? `Too many attempts. Try again after ${new Date(result.lockoutEndDate).toLocaleTimeString()}.`
+        ? `Too many attempts. Try again after ${momentTime(result.lockoutEndDate)}.`
         : 'Too many attempts. Try again shortly.';
 
     case 'SIGN_IN_UNAVAILABLE':

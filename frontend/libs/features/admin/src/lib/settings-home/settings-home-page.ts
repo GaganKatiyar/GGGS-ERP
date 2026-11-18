@@ -28,7 +28,7 @@ interface SectionCard {
       <label class="settings__search">
         <i class="pi pi-search" aria-hidden="true"></i>
         <span class="sr-only">Search settings</span>
-        <input type="search" placeholder="Search settings, e.g. holidays, grades, roles" autocomplete="off" [value]="query()" (input)="query.set($any($event.target).value)" />
+        <input type="search" placeholder="Search settings, e.g. holidays, levels, roles" autocomplete="off" [value]="query()" (input)="query.set($any($event.target).value)" />
       </label>
 
       @if (shown().length === 0) {

@@ -37,7 +37,7 @@ namespace Gggs.Api.IntegrationTests;
 public sealed class TenantSeedingTests(PeopleOsApiFactory factory)
 {
     [Fact]
-    public async Task Seeding_CreatesEveryTemplateRoleAndAnAdministratorWhoCannotYetSignIn()
+    public async Task Seeding_CreatesEveryTemplateRoleAndAnAdministratorWhoIsInvitedByEmail()
     {
         using IServiceScope scope = CreateTenantScope(Guid.NewGuid());
 
@@ -72,10 +72,15 @@ public sealed class TenantSeedingTests(PeopleOsApiFactory factory)
 
         administrator.Status.ShouldBe(UserStatus.Invited);
 
-        // No credential and no outstanding token. Seeding cannot deliver an invitation, and a token
-        // created here would be a live credential its owner never received.
+        // No password yet, but an invitation: its token is stored only as a hash, and the token
+        // itself leaves on the UserInvited event, which the Notification module emails to them.
         administrator.PasswordHash.ShouldBeNull();
-        administrator.InvitationTokenHash.ShouldBeNull();
+        administrator.InvitationTokenHash.ShouldNotBeNull();
+        administrator.InvitationTokenExpiresDate.ShouldNotBeNull();
+
+        (await database.Set<Gggs.BuildingBlocks.Messaging.OutboxMessage>().AsNoTracking()
+            .AnyAsync(message => message.MessageType == "gggs.identity.user.invited", TestContext.Current.CancellationToken))
+            .ShouldBeTrue();
     }
 
     [Fact]
@@ -241,6 +246,9 @@ public sealed class TenantSeedingTests(PeopleOsApiFactory factory)
     private static TenantSeedingService SeedingService(IServiceScope scope) => new(
         scope.ServiceProvider.GetRequiredService<IRoleRepository>(),
         scope.ServiceProvider.GetRequiredService<IUserRepository>(),
+        scope.ServiceProvider.GetRequiredService<IInvitationTokenGenerator>(),
+        scope.ServiceProvider.GetRequiredService<Gggs.BuildingBlocks.Messaging.IIntegrationEventPublisher>(),
+        scope.ServiceProvider.GetRequiredService<ITenantContext>(),
         scope.ServiceProvider.GetRequiredService<IUnitOfWork>(),
         TimeProvider.System,
         NullLogger<TenantSeedingService>.Instance);

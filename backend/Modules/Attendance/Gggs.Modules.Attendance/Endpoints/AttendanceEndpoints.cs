@@ -11,6 +11,15 @@ public sealed record RecomputeRequest(DateOnly From, DateOnly To, Guid? Employee
 
 public sealed record RecomputeResult(int Days);
 
+/// <summary>An employee's attendance modes as a list: <c>["Web", "Mobile"]</c>.</summary>
+public sealed record AttendanceModesBody(IReadOnlyList<AttendanceModes> Modes)
+{
+    public static AttendanceModesBody From(AttendanceModes modes)
+        => new([.. Enum.GetValues<AttendanceModes>().Where(mode => mode != AttendanceModes.None && modes.HasFlag(mode))]);
+
+    public AttendanceModes ToFlags() => (Modes ?? []).Aggregate(AttendanceModes.None, (all, mode) => all | mode);
+}
+
 /// <summary>Attendance (spec §18), and each employee's own under <c>/api/v1/me/attendance</c>.</summary>
 internal static class AttendanceEndpoints
 {
@@ -60,6 +69,13 @@ internal static class AttendanceEndpoints
                 return TypedResults.NoContent();
             })
             .WithName("DeactivateAttendanceDevice").RequirePermission(Permissions.Attendance.DeviceManage);
+
+        // How each person may record attendance: web punch, the office device, the mobile app.
+        group.MapGet("/employees/{id:guid}/modes", async (Guid id, AttendanceService attendance, CancellationToken ct) => TypedResults.Ok(AttendanceModesBody.From(await attendance.ModesAsync(id, ct))))
+            .WithName("GetAttendanceModes").RequirePermission(Permissions.Attendance.View);
+        group.MapPut("/employees/{id:guid}/modes", async (Guid id, AttendanceModesBody body, AttendanceService attendance, CancellationToken ct) =>
+                TypedResults.Ok(AttendanceModesBody.From(await attendance.SetModesAsync(id, body.ToFlags(), ct))))
+            .WithName("SetAttendanceModes").RequirePermission(Permissions.Attendance.Manage);
 
         // Devices report through an integration account holding attendance.device.manage.
         group.MapPost("/punches/import", async (PunchImport body, AttendanceService attendance, CancellationToken ct) => TypedResults.Ok(await attendance.ImportAsync(body, ct)))

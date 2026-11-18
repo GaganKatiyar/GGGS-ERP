@@ -56,7 +56,7 @@ public sealed class EmployeeScope(AppDbContext dbContext, IPermissionProvider pe
         var anchor = await dbContext.Employees
             .AsNoTracking()
             .Where(employee => employee.Id == me)
-            .Select(employee => new { employee.DepartmentId, employee.LocationId, employee.LegalEntityId, employee.BusinessUnitId })
+            .Select(employee => new { employee.DepartmentId, employee.LocationId, employee.CompanyId, employee.BusinessUnitId })
             .FirstOrDefaultAsync(cancellationToken);
 
         return scope switch
@@ -66,7 +66,7 @@ public sealed class EmployeeScope(AppDbContext dbContext, IPermissionProvider pe
             DataScope.AllReports => await AllReportsAsync(query, me, cancellationToken),
             DataScope.Department => query.Where(employee => employee.Id == me || (anchor != null && employee.DepartmentId == anchor.DepartmentId)),
             DataScope.Branch => query.Where(employee => employee.Id == me || (anchor != null && employee.LocationId == anchor.LocationId)),
-            DataScope.LegalEntity => query.Where(employee => employee.Id == me || (anchor != null && employee.LegalEntityId == anchor.LegalEntityId)),
+            DataScope.Company => query.Where(employee => employee.Id == me || (anchor != null && employee.CompanyId == anchor.CompanyId)),
             DataScope.BusinessUnit => query.Where(employee => employee.Id == me || (anchor != null && employee.BusinessUnitId == anchor.BusinessUnitId)),
             _ => query.Where(_ => false),
         };

@@ -28,7 +28,7 @@ public sealed class AuditEntryConsumerTests
         var consumer = new AuditEntryConsumer(repository, tenantContext, NullLogger<AuditEntryConsumer>.Instance);
 
         var integrationEvent = new AuditEntryIntegrationEvent(
-            "corehr", "Modified", "LegalEntity", "le-1",
+            "corehr", "Modified", "Company", "le-1",
             "{\"Name\":\"Before\"}", "{\"Name\":\"After\"}", "Name",
             ActorUserId, "correlation-1")
         {
@@ -44,7 +44,7 @@ public sealed class AuditEntryConsumerTests
         recorded.UserId.ShouldBe(ActorUserId);
         recorded.Service.ShouldBe("corehr");
         recorded.Action.ShouldBe("Modified");
-        recorded.EntityType.ShouldBe("LegalEntity");
+        recorded.EntityType.ShouldBe("Company");
         recorded.EntityId.ShouldBe("le-1");
         recorded.OldValuesJson.ShouldBe("{\"Name\":\"Before\"}");
         recorded.NewValuesJson.ShouldBe("{\"Name\":\"After\"}");
@@ -61,7 +61,7 @@ public sealed class AuditEntryConsumerTests
         var consumer = new AuditEntryConsumer(repository, tenantContext, NullLogger<AuditEntryConsumer>.Instance);
 
         var integrationEvent = new AuditEntryIntegrationEvent(
-            "corehr", "Created", "LegalEntity", "le-1", null, "{}", null, ActorUserId, null)
+            "corehr", "Created", "Company", "le-1", null, "{}", null, ActorUserId, null)
         {
             OccurredDate = OccurredDate,
         };

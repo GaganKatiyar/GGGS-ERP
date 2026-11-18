@@ -37,7 +37,7 @@ internal sealed class SearchHelpArticlesTool(HelpdeskService helpdesk) : IAiTool
 }
 
 /// <summary>Drafts a helpdesk ticket; it is raised only when the person approves it.</summary>
-internal sealed class RaiseTicketTool(AppDbContext dbContext, HelpdeskService helpdesk) : IAiActionTool
+internal sealed class RaiseTicketTool(AppDbContext dbContext, HelpdeskService helpdesk, Gggs.BuildingBlocks.MultiTenancy.ITenantClock clock) : IAiActionTool
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -78,6 +78,6 @@ internal sealed class RaiseTicketTool(AppDbContext dbContext, HelpdeskService he
     {
         RaiseBody body = JsonSerializer.Deserialize<RaiseBody>(payloadJson, Json) ?? throw new DomainRuleException("AI_PAYLOAD", "The proposal could not be read.");
         TicketView view = await helpdesk.RaiseAsync(body, cancellationToken);
-        return $"Ticket {view.Ticket.Number} raised; respond-by {view.Ticket.ResponseDueAt:d MMM HH:mm} UTC.";
+        return $"Ticket {view.Ticket.Number} raised; respond by {await clock.FormatAsync(view.Ticket.ResponseDueAt, cancellationToken: cancellationToken)}.";
     }
 }

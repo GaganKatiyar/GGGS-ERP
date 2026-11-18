@@ -17,7 +17,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Gggs.Modules.Career.Application;
 
-public sealed record StepItem(int Index, string Title, Guid? JobId, string? JobName, Guid? GradeId, string? GradeName, int MinMonthsInRole, IReadOnlyList<string> Skills, string? Description);
+public sealed record StepItem(int Index, string Title, Guid? RoleId, string? RoleName, Guid? LevelId, string? LevelName, int MinMonthsInRole, IReadOnlyList<string> Skills, string? Description);
 
 public sealed record PathItem(Guid Id, string Name, string? Description, CareerTrack Track, Guid? DepartmentId, string? DepartmentName, IReadOnlyList<StepItem> Steps, bool IsActive);
 
@@ -36,11 +36,11 @@ public sealed record PromotionItem(
     string? CurrentDesignation,
     decimal? CurrentAnnualCtc,
     string ProposedDesignation,
-    Guid? ProposedJobId,
-    string? ProposedJobName,
-    Guid? ProposedGradeId,
-    string? ProposedGradeName,
-    Guid? ProposedPositionId,
+    Guid? ProposedRoleId,
+    string? ProposedRoleName,
+    Guid? ProposedLevelId,
+    string? ProposedLevelName,
+    Guid? ProposedDesignationId,
     decimal? ProposedAnnualCtc,
     decimal? IncreasePercent,
     DateOnly EffectiveDate,
@@ -57,8 +57,8 @@ public sealed record PromotionBody(Guid EmployeeId, PromotionDetails Details, bo
 
 public sealed record MyCareer(
     string? Designation,
-    string? JobName,
-    string? GradeName,
+    string? RoleName,
+    string? LevelName,
     DateOnly? JoiningDate,
     RatingInfo? LatestRating,
     IReadOnlyList<CareerPosition> Paths,
@@ -69,7 +69,6 @@ public sealed record SuccessorItem(Guid EmployeeId, string? Name, string? Design
 public sealed record SuccessionItem(
     Guid Id,
     string RoleTitle,
-    Guid? PositionId,
     Guid? DepartmentId,
     string? DepartmentName,
     Guid? IncumbentEmployeeId,
@@ -81,7 +80,7 @@ public sealed record SuccessionItem(
     bool Covered,
     bool CanManage);
 
-public sealed record SuccessionBody(string RoleTitle, Guid? PositionId, Guid? DepartmentId, Guid? IncumbentEmployeeId, Criticality Criticality, Criticality VacancyRisk, string? Notes, IReadOnlyList<SuccessorEntry> Successors);
+public sealed record SuccessionBody(string RoleTitle, Guid? DepartmentId, Guid? IncumbentEmployeeId, Criticality Criticality, Criticality VacancyRisk, string? Notes, IReadOnlyList<SuccessorEntry> Successors);
 
 public sealed record AssessmentBody(Guid EmployeeId, Level Potential, Level FlightRisk, string? Notes);
 
@@ -101,7 +100,7 @@ public sealed record TalentRow(
 public sealed record NineBoxView(IReadOnlyList<TalentRow> People, IReadOnlyDictionary<int, int> Boxes, int Unassessed, int Unrated);
 
 /// <summary>
-/// Career and succession (spec: career paths, promotion, succession): paths with steps by job or grade,
+/// Career and succession (spec: career paths, promotion, succession): paths with steps by role or level,
 /// each person's position and next step with the skills to build, promotion nominations approved through
 /// the workflow and applied to the employee and payroll on their date, succession plans for key roles,
 /// and the 9-box talent review of performance against potential.
@@ -156,7 +155,7 @@ internal sealed class CareerService(
         return await PathsAsync(cancellationToken);
     }
 
-    /// <summary>The caller's role, rating, where they stand on each path that has their job or grade, the next step and the skills to build for it.</summary>
+    /// <summary>The caller's role, rating, where they stand on each path that has their role or level, the next step and the skills to build for it.</summary>
     public async Task<MyCareer> MineAsync(CancellationToken cancellationToken)
     {
         Guid me = currentUser.EmployeeId ?? throw new DomainRuleException("CAREER_NO_EMPLOYEE", "Your account is not linked to an employee record.");
@@ -169,7 +168,7 @@ internal sealed class CareerService(
         var positions = new List<CareerPosition>();
         foreach (CareerPath path in paths)
         {
-            int step = path.StepOf(person.JobId, person.GradeId);
+            int step = path.StepOf(person.RoleId, person.LevelId);
             if (step < 0)
             {
                 continue;
@@ -182,12 +181,12 @@ internal sealed class CareerService(
         }
 
         IReadOnlyDictionary<Guid, RatingInfo> latest = await ratings.LatestAsync([me], cancellationToken);
-        Names names = await NamesAsync([person.JobId], [person.GradeId], cancellationToken);
+        Names names = await NamesAsync([person.RoleId], [person.LevelId], cancellationToken);
         List<PromotionNomination> mine = await dbContext.Promotions.AsNoTracking()
             .Where(row => row.EmployeeId == me && (row.Status == PromotionStatus.Applied || row.Status == PromotionStatus.Approved))
             .OrderByDescending(row => row.EffectiveDate).ToListAsync(cancellationToken);
         return new MyCareer(
-            person.Designation, names.Job(person.JobId), names.Grade(person.GradeId), person.JoiningDate, latest.GetValueOrDefault(me), positions,
+            person.Designation, names.Role(person.RoleId), names.Level(person.LevelId), person.JoiningDate, latest.GetValueOrDefault(me), positions,
             [.. (await PromotionItemsAsync(mine, cancellationToken)).Select(row => row with { Justification = string.Empty, CurrentAnnualCtc = null, ProposedAnnualCtc = null, IncreasePercent = null })]);
     }
 
@@ -229,7 +228,7 @@ internal sealed class CareerService(
             throw new DomainRuleException("PROMOTION_EXISTS", $"{person.DisplayName} already has a promotion in progress.");
         }
 
-        await ValidateAsync(body.Details, cancellationToken);
+        await ValidateAsync(body.Details, person.DepartmentId, cancellationToken);
         decimal? ctc = (await salaries.CurrentAsync([person.Id], null, cancellationToken)).TryGetValue(person.Id, out SalaryInfo? salary) ? salary.AnnualCtc : null;
         int? rating = (await ratings.LatestAsync([person.Id], cancellationToken)).TryGetValue(person.Id, out RatingInfo? latest) ? latest.Rating : null;
         var nomination = PromotionNomination.Draft(person.Id, currentUser.EmployeeId, person.Designation, ctc, rating, body.Details);
@@ -246,7 +245,7 @@ internal sealed class CareerService(
     public async Task<PromotionItem> UpdatePromotionAsync(Guid id, PromotionDetails details, CancellationToken cancellationToken)
     {
         PromotionNomination nomination = await ManagedPromotionAsync(id, cancellationToken);
-        await ValidateAsync(details, cancellationToken);
+        await ValidateAsync(details, (await employees.GetAsync(nomination.EmployeeId, cancellationToken))?.DepartmentId, cancellationToken);
         nomination.Update(details);
         await dbContext.SaveChangesAsync(cancellationToken);
         return await PromotionAsync(id, cancellationToken);
@@ -338,11 +337,11 @@ internal sealed class CareerService(
         if (id is { } existing)
         {
             SuccessionPlan plan = await dbContext.SuccessionPlans.FirstOrDefaultAsync(row => row.Id == existing, cancellationToken) ?? throw new NotFoundException(nameof(SuccessionPlan), existing);
-            plan.Update(body.RoleTitle, body.PositionId, body.DepartmentId, body.IncumbentEmployeeId, body.Criticality, body.VacancyRisk, body.Notes, body.Successors ?? []);
+            plan.Update(body.RoleTitle, body.DepartmentId, body.IncumbentEmployeeId, body.Criticality, body.VacancyRisk, body.Notes, body.Successors ?? []);
         }
         else
         {
-            dbContext.SuccessionPlans.Add(SuccessionPlan.Create(body.RoleTitle, body.PositionId, body.DepartmentId, body.IncumbentEmployeeId, body.Criticality, body.VacancyRisk, body.Notes, body.Successors ?? []));
+            dbContext.SuccessionPlans.Add(SuccessionPlan.Create(body.RoleTitle, body.DepartmentId, body.IncumbentEmployeeId, body.Criticality, body.VacancyRisk, body.Notes, body.Successors ?? []));
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -437,7 +436,7 @@ internal sealed class CareerService(
         DateOnly today = await clock.TodayAsync(cancellationToken);
         string reason = $"Promotion to {nomination.ProposedDesignation}";
         await promotions.PromoteAsync(
-            new Promotion(nomination.EmployeeId, nomination.EffectiveDate, nomination.ProposedPositionId, nomination.ProposedJobId, nomination.ProposedGradeId, nomination.ProposedDesignation, reason),
+            new Promotion(nomination.EmployeeId, nomination.EffectiveDate, nomination.ProposedRoleId, nomination.ProposedLevelId, nomination.ProposedDesignationId, nomination.ProposedDesignation, reason),
             cancellationToken);
         if (nomination.ProposedAnnualCtc is { } ctc)
         {
@@ -465,29 +464,36 @@ internal sealed class CareerService(
             cancellationToken);
     }
 
-    private async Task ValidateAsync(PromotionDetails details, CancellationToken cancellationToken)
+    private async Task ValidateAsync(PromotionDetails details, Guid? departmentId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(details);
         List<OrgReference> references = [];
-        if (details.ProposedJobId is { } job)
+        if (details.ProposedRoleId is { } role)
         {
-            references.Add(new OrgReference(OrgUnitKind.Job, job));
+            references.Add(new OrgReference(OrgUnitKind.Role, role));
         }
 
-        if (details.ProposedGradeId is { } grade)
+        if (details.ProposedLevelId is { } level)
         {
-            references.Add(new OrgReference(OrgUnitKind.Grade, grade));
+            references.Add(new OrgReference(OrgUnitKind.Level, level));
         }
 
-        if (details.ProposedPositionId is { } position)
+        if (details.ProposedDesignationId is { } designation)
         {
-            references.Add(new OrgReference(OrgUnitKind.Position, position));
+            references.Add(new OrgReference(OrgUnitKind.Designation, designation));
         }
 
         IReadOnlyList<OrgReference> invalid = references.Count == 0 ? [] : await organization.FindInvalidAsync(references, cancellationToken);
         if (invalid.Count > 0)
         {
             throw new DomainRuleException("PROMOTION_ORG", $"The {invalid[0].Kind.ToString().ToLowerInvariant()} chosen is not active.");
+        }
+
+        // The new role must be one of the employee's department's, and a role+level designation must match both.
+        RolePlacement placement = await organization.PlaceRoleAsync(departmentId, details.ProposedRoleId, details.ProposedLevelId, details.ProposedDesignationId, cancellationToken);
+        if (!placement.Fits)
+        {
+            throw new DomainRuleException(placement.ErrorCode!, placement.ErrorMessage!);
         }
     }
 
@@ -523,11 +529,11 @@ internal sealed class CareerService(
     private async Task<List<PathItem>> PathItemsAsync(IReadOnlyList<CareerPath> paths, CancellationToken cancellationToken)
     {
         List<CareerStep> steps = [.. paths.SelectMany(path => path.Steps)];
-        Names names = await NamesAsync(steps.Select(step => step.JobId), steps.Select(step => step.GradeId), cancellationToken);
+        Names names = await NamesAsync(steps.Select(step => step.RoleId), steps.Select(step => step.LevelId), cancellationToken);
         IReadOnlyDictionary<Guid, string> departments = await organization.GetNamesAsync(OrgUnitKind.Department, paths.Where(row => row.DepartmentId != null).Select(row => row.DepartmentId!.Value).Distinct(), cancellationToken);
         return [.. paths.Select(path => new PathItem(
             path.Id, path.Name, path.Description, path.Track, path.DepartmentId, path.DepartmentId is { } department ? departments.GetValueOrDefault(department) : null,
-            [.. path.Steps.Select((step, index) => new StepItem(index, step.Title, step.JobId, names.Job(step.JobId), step.GradeId, names.Grade(step.GradeId), step.MinMonthsInRole, step.Skills, step.Description))],
+            [.. path.Steps.Select((step, index) => new StepItem(index, step.Title, step.RoleId, names.Role(step.RoleId), step.LevelId, names.Level(step.LevelId), step.MinMonthsInRole, step.Skills, step.Description))],
             path.IsActive))];
     }
 
@@ -535,7 +541,7 @@ internal sealed class CareerService(
     {
         Dictionary<Guid, EmployeeSummary> people = (await employees.GetManyAsync(rows.SelectMany(row => new[] { (Guid?)row.EmployeeId, row.NominatedByEmployeeId }).OfType<Guid>().Distinct(), cancellationToken))
             .ToDictionary(person => person.Id);
-        Names names = await NamesAsync(rows.Select(row => row.ProposedJobId), rows.Select(row => row.ProposedGradeId), cancellationToken);
+        Names names = await NamesAsync(rows.Select(row => row.ProposedRoleId), rows.Select(row => row.ProposedLevelId), cancellationToken);
         IReadOnlyDictionary<Guid, string> departments = await organization.GetNamesAsync(OrgUnitKind.Department, people.Values.Where(person => person.DepartmentId != null).Select(person => person.DepartmentId!.Value).Distinct(), cancellationToken);
         IReadOnlyCollection<Guid>? scope = (await permissions.GetCurrentAsync(cancellationToken)).Has(Permissions.Career.PromotionManage) ? await employees.InScopeIdsAsync(Permissions.Career.PromotionManage, cancellationToken) : [];
         return [.. rows.Select(row =>
@@ -544,7 +550,7 @@ internal sealed class CareerService(
             return new PromotionItem(
                 row.Id, row.EmployeeId, person?.DisplayName, person?.EmployeeCode, person?.DepartmentId is { } department ? departments.GetValueOrDefault(department) : null,
                 row.NominatedByEmployeeId, row.NominatedByEmployeeId is { } by ? people.GetValueOrDefault(by)?.DisplayName : null, row.CurrentDesignation, row.CurrentAnnualCtc,
-                row.ProposedDesignation, row.ProposedJobId, names.Job(row.ProposedJobId), row.ProposedGradeId, names.Grade(row.ProposedGradeId), row.ProposedPositionId,
+                row.ProposedDesignation, row.ProposedRoleId, names.Role(row.ProposedRoleId), row.ProposedLevelId, names.Level(row.ProposedLevelId), row.ProposedDesignationId,
                 row.ProposedAnnualCtc, row.IncreasePercent, row.EffectiveDate, row.Justification, row.Rating, row.Status, row.WorkflowInstanceId, row.DecidedDate, row.AppliedOn,
                 row.CreatedDate, row.Status is PromotionStatus.Draft or PromotionStatus.Rejected && row.EmployeeId != currentUser.EmployeeId && (scope is null || scope.Contains(row.EmployeeId)));
         })];
@@ -560,7 +566,7 @@ internal sealed class CareerService(
         IReadOnlyDictionary<Guid, string> departments = await organization.GetNamesAsync(OrgUnitKind.Department, plans.Where(row => row.DepartmentId != null).Select(row => row.DepartmentId!.Value).Distinct(), cancellationToken);
         bool canManage = (await permissions.GetCurrentAsync(cancellationToken)).Has(Permissions.Career.SuccessionManage);
         return [.. plans.Select(plan => new SuccessionItem(
-            plan.Id, plan.RoleTitle, plan.PositionId, plan.DepartmentId, plan.DepartmentId is { } department ? departments.GetValueOrDefault(department) : null,
+            plan.Id, plan.RoleTitle, plan.DepartmentId, plan.DepartmentId is { } department ? departments.GetValueOrDefault(department) : null,
             plan.IncumbentEmployeeId, plan.IncumbentEmployeeId is { } incumbent ? people.GetValueOrDefault(incumbent)?.DisplayName : null, plan.Criticality, plan.VacancyRisk, plan.Notes,
             [.. plan.Successors.Select(entry => new SuccessorItem(
                 entry.EmployeeId, people.GetValueOrDefault(entry.EmployeeId)?.DisplayName, people.GetValueOrDefault(entry.EmployeeId)?.Designation, entry.Readiness, entry.Notes,
@@ -568,14 +574,14 @@ internal sealed class CareerService(
             plan.Covered, canManage))];
     }
 
-    private async Task<Names> NamesAsync(IEnumerable<Guid?> jobs, IEnumerable<Guid?> grades, CancellationToken cancellationToken) => new(
-        await organization.GetNamesAsync(OrgUnitKind.Job, jobs.OfType<Guid>().Distinct(), cancellationToken),
-        await organization.GetNamesAsync(OrgUnitKind.Grade, grades.OfType<Guid>().Distinct(), cancellationToken));
+    private async Task<Names> NamesAsync(IEnumerable<Guid?> roles, IEnumerable<Guid?> levels, CancellationToken cancellationToken) => new(
+        await organization.GetNamesAsync(OrgUnitKind.Role, roles.OfType<Guid>().Distinct(), cancellationToken),
+        await organization.GetNamesAsync(OrgUnitKind.Level, levels.OfType<Guid>().Distinct(), cancellationToken));
 
-    private sealed record Names(IReadOnlyDictionary<Guid, string> Jobs, IReadOnlyDictionary<Guid, string> Grades)
+    private sealed record Names(IReadOnlyDictionary<Guid, string> Roles, IReadOnlyDictionary<Guid, string> Levels)
     {
-        public string? Job(Guid? id) => id is { } value ? Jobs.GetValueOrDefault(value) : null;
+        public string? Role(Guid? id) => id is { } value ? Roles.GetValueOrDefault(value) : null;
 
-        public string? Grade(Guid? id) => id is { } value ? Grades.GetValueOrDefault(value) : null;
+        public string? Level(Guid? id) => id is { } value ? Levels.GetValueOrDefault(value) : null;
     }
 }

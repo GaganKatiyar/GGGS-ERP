@@ -30,7 +30,7 @@ using Microsoft.Extensions.Logging;
 // is exactly what a real tenant gets. The one shortcut: the administrator is given a password
 // directly instead of being sent an invitation, because no mail is configured locally.
 
-string tenantCode = args.Length > 0 ? args[0] : "acme";
+string tenantCode = args.Length > 0 ? args[0] : "gggs";
 string adminEmail = args.Length > 1 ? args[1] : $"admin@{tenantCode}.example";
 string adminPassword = args.Length > 2 ? args[2] : "Passw0rd!2026";
 
@@ -103,7 +103,7 @@ await RunAsync(provider, "tenant", async (scope, tenant) =>
     ProvisionTenantResult result = await scope.GetRequiredService<TenantProvisioningService>().ProvisionAsync(new ProvisionTenantRequest
     {
         Code = tenantCode,
-        Name = "Acme Technologies (dev seed)",
+        Name = "GGGS Technologies",
         CountryCode = "IN",
         DataRegion = "centralindia",
         DefaultTimeZone = "Asia/Kolkata",

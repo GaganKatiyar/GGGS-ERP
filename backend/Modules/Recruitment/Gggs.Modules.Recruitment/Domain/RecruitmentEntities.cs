@@ -18,8 +18,7 @@ public enum RequisitionStatus
 public sealed record RequisitionDetails(
     string Title,
     Guid DepartmentId,
-    Guid? PositionId,
-    Guid? JobId,
+    Guid? RoleId,
     Guid? LocationId,
     int Openings,
     string EmploymentTypeCode,
@@ -58,9 +57,7 @@ public sealed class Requisition : TenantAggregateRoot
 
     public Guid DepartmentId { get; private set; }
 
-    public Guid? PositionId { get; private set; }
-
-    public Guid? JobId { get; private set; }
+    public Guid? RoleId { get; private set; }
 
     public Guid? LocationId { get; private set; }
 
@@ -194,8 +191,7 @@ public sealed class Requisition : TenantAggregateRoot
 
         Title = Guard.MaxLength(Guard.NotNullOrWhiteSpace(details.Title).Trim(), 200);
         DepartmentId = Guard.NotEmpty(details.DepartmentId);
-        PositionId = details.PositionId;
-        JobId = details.JobId;
+        RoleId = details.RoleId;
         LocationId = details.LocationId;
         Openings = details.Openings;
         EmploymentTypeCode = Guard.MaxLength(Guard.NotNullOrWhiteSpace(details.EmploymentTypeCode).Trim().ToUpperInvariant(), 64);
@@ -740,7 +736,7 @@ public enum OfferStatus
     Withdrawn = 8,
 }
 
-public sealed record OfferTerms(decimal AnnualCtc, string Currency, DateOnly JoiningDate, string Designation, Guid? GradeId, DateOnly? ExpiresOn, string? Notes);
+public sealed record OfferTerms(decimal AnnualCtc, string Currency, DateOnly JoiningDate, string Designation, Guid? LevelId, DateOnly? ExpiresOn, string? Notes);
 
 /// <summary>An offer (spec §12): approved through the workflow, sent, then accepted or declined by the candidate.</summary>
 public sealed class Offer : TenantAggregateRoot
@@ -768,7 +764,7 @@ public sealed class Offer : TenantAggregateRoot
 
     public string Designation { get; private set; }
 
-    public Guid? GradeId { get; private set; }
+    public Guid? LevelId { get; private set; }
 
     public DateOnly? ExpiresOn { get; private set; }
 
@@ -820,7 +816,7 @@ public sealed class Offer : TenantAggregateRoot
         Currency = Guard.MaxLength(Guard.NotNullOrWhiteSpace(terms.Currency).Trim().ToUpperInvariant(), 3);
         JoiningDate = terms.JoiningDate;
         Designation = Guard.MaxLength(Guard.NotNullOrWhiteSpace(terms.Designation).Trim(), 200);
-        GradeId = terms.GradeId;
+        LevelId = terms.LevelId;
         ExpiresOn = terms.ExpiresOn;
         Notes = string.IsNullOrWhiteSpace(terms.Notes) ? null : Guard.MaxLength(terms.Notes.Trim(), 2000);
         Status = OfferStatus.Draft;

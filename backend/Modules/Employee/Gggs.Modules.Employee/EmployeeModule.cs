@@ -16,16 +16,19 @@ public sealed class EmployeeModule : IModule
     public void AddServices(IServiceCollection services, ModuleContext context)
     {
         services.AddScoped<IAiTool, GetEmployeeTool>();
+        services.AddScoped<Gggs.Modules.Platform.Contracts.ITenantUsageProbe, Infrastructure.EmployeeUsageProbe>();
         services.AddScoped<IEmployeeDirectory, EmployeeDirectory>();
         services.AddScoped<IEmployeePayrollDetails, EmployeePayrollDetails>();
         services.AddScoped<IEmployeeHiring, EmployeeHiring>();
         services.AddScoped<IEmployeePromotions, EmployeePromotions>();
         services.AddScoped<IEmployeeSeparations, EmployeeSeparations>();
         services.AddScoped<IEmployeeAccounts, EmployeeAccounts>();
+        services.AddScoped<IEmployeeCelebrations, EmployeeCelebrations>();
         services.AddScoped<EmployeeScope>();
         services.AddScoped<EmployeeService>();
         services.AddScoped<EmployeeQueries>();
         services.AddScoped<EmployeePhotoService>();
+        services.AddScoped<HireDraftService>();
         services.AddScoped<EmployeeBackgroundService>();
         services.AddScoped<EmployeeImportService>();
         services.AddScoped<IMetricSource, EmployeeMetrics>();

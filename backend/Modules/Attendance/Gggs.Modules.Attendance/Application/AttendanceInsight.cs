@@ -96,7 +96,8 @@ internal sealed class PunchImportHandler(AttendanceService attendance) : IImport
                 valid.Add((device, new DevicePunch(code, at)));
             }
 
-            results.Add(new ImportRowResult(index + 2, errors, errors.Count == 0 ? $"{code} at {at:yyyy-MM-dd HH:mm}" : null));
+            // The time as the file gave it, in its own offset, 12-hour like everything people read.
+            results.Add(new ImportRowResult(index + 2, errors, errors.Count == 0 ? $"{code} at {at.ToString("d MMM yyyy, h:mm tt", CultureInfo.InvariantCulture)}" : null));
         }
 
         int imported = 0;

@@ -1,6 +1,6 @@
 import type { LeavePlanAssignment, LeavePlanItemInput } from '@gggs/shared/models';
 import { describe, expect, it } from 'vitest';
-import { assignmentChanges, defaultRules, itemsChanged, leaveYearLabel, ruleSummary, toInput } from './leave-policy-model';
+import { assignmentChanges, centerKey, costCenterChanges, defaultRules, itemsChanged, leaveYearLabel, ruleSummary, toInput } from './leave-policy-model';
 
 const item = (leaveTypeId: string, extra: Partial<LeavePlanItemInput> = {}): LeavePlanItemInput => ({ leaveTypeId, ...defaultRules(), ...extra });
 
@@ -48,5 +48,24 @@ describe('leave policies', () => {
     ];
     expect(assignmentChanges(saved, new Map([['FULL_TIME', 'std'], ['INTERN', 'int']]))).toEqual([{ employmentTypeCode: 'INTERN', planId: 'int' }]);
     expect(assignmentChanges(saved, new Map([['FULL_TIME', null]]))).toEqual([{ employmentTypeCode: 'FULL_TIME', planId: null }]);
+  });
+
+  it('sends only the cost centers whose policy changed, with null for "By engagement type"', () => {
+    const centers = [
+      { costCenterId: 'in', code: 'IN', name: 'GGGS India', isActive: true, employeeCount: 10, planId: 'india' },
+      { costCenterId: 'ae', code: 'AE', name: 'GGGS Dubai', isActive: true, employeeCount: 3 },
+    ];
+    expect(costCenterChanges(centers, new Map([['in', 'india'], ['ae', 'gulf']]))).toEqual([{ costCenterId: 'ae', planId: 'gulf' }]);
+    expect(costCenterChanges(centers, new Map([['in', null]]))).toEqual([{ costCenterId: 'in', planId: null }]);
+    expect(costCenterChanges(centers, new Map())).toEqual([]);
+  });
+
+  it('sends a cost center policy for one engagement type with its type, and only when it changed', () => {
+    const centers = [
+      { costCenterId: 'in', code: 'IN', name: 'GGGS India', isActive: true, employeeCount: 10, planId: 'india', overrides: [{ employmentTypeCode: 'PART_TIME', label: 'Part-time', planId: 'india-pt' }] },
+    ];
+    expect(costCenterChanges(centers, new Map([[centerKey('in', 'PART_TIME'), 'india-pt']]))).toEqual([]);
+    expect(costCenterChanges(centers, new Map([[centerKey('in', 'PART_TIME'), null]]))).toEqual([{ costCenterId: 'in', employmentTypeCode: 'PART_TIME', planId: null }]);
+    expect(costCenterChanges(centers, new Map([[centerKey('in', 'INTERN'), 'intern']]))).toEqual([{ costCenterId: 'in', employmentTypeCode: 'INTERN', planId: 'intern' }]);
   });
 });

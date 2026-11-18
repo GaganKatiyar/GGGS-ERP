@@ -46,7 +46,7 @@ const localInput = (date: Date) => new Date(date.getTime() - date.getTimezoneOff
         }
       </gggs-page-header>
       <p>
-        <a [routerLink]="['/recruitment/requisitions', v.application.requisitionId]">← Pipeline</a> ·
+        <a [routerLink]="['/recruitment/requirements', v.application.requisitionId]">← Pipeline</a> ·
         <a [routerLink]="['/recruitment/candidates', v.candidate.id]">Candidate profile</a>
       </p>
 
@@ -67,7 +67,7 @@ const localInput = (date: Date) => new Date(date.getTime() - date.getTimezoneOff
             @for (interview of v.interviews; track interview.id) {
               <div class="rec__interview">
                 <div>
-                  <strong>{{ interview.round }}</strong> · {{ interview.scheduledAt | date: 'EEE d MMM y, HH:mm' }} · {{ interview.durationMinutes }} min · {{ humanize(interview.mode) }}
+                  <strong>{{ interview.round }}</strong> · {{ interview.scheduledAt | date: 'EEE d MMM y, h:mm a' }} · {{ interview.durationMinutes }} min · {{ humanize(interview.mode) }}
                   <div class="muted">{{ interview.panelNames.join(', ') }}{{ interview.location ? ' · ' + interview.location : '' }}</div>
                 </div>
                 <span class="toolbar">
@@ -464,7 +464,7 @@ export class ApplicationPage {
     this.editingOffer.set(offer ?? null);
     this.terms.set(
       offer
-        ? { annualCtc: offer.annualCtc, currency: offer.currency, joiningDate: offer.joiningDate, designation: offer.designation, gradeId: offer.gradeId ?? null, expiresOn: offer.expiresOn ?? null, notes: offer.notes ?? null }
+        ? { annualCtc: offer.annualCtc, currency: offer.currency, joiningDate: offer.joiningDate, designation: offer.designation, levelId: offer.levelId ?? null, expiresOn: offer.expiresOn ?? null, notes: offer.notes ?? null }
         : {
             annualCtc: view?.candidate.expectedCtc ?? 0,
             currency: '',

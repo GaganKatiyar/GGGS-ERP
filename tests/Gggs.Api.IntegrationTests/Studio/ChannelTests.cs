@@ -32,12 +32,12 @@ public sealed class ChannelTests(PeopleOsApiFactory factory)
             sent["body"].ShouldNotBeNullOrWhiteSpace();
             (await EmailAsync(address)).Status.ShouldBe(EmailStatus.Sent);
 
-            // Switched off, the connection is out of the way: mail goes the system's way and is not lost.
+            // Switched off, the connection is out of the way: mail goes the system's way (the logging one in tests) and is on record.
             await OkAsync(await admin.PutAsJsonAsync($"/api/v1/integrations/connections/{connection}", new { AdapterKey = RecordingEmailAdapter.AdapterKey, Name = name, Settings = new Dictionary<string, string>(), IsActive = false }, Ct));
             string second = Address();
             await NotifyByEmailAsync(second);
             factory.Recorder.Sent.ShouldNotContain(message => message.GetValueOrDefault("to") == second);
-            (await EmailAsync(second)).Status.ShouldBe(EmailStatus.Sent);
+            (await EmailAsync(second)).Status.ShouldBe(EmailStatus.Logged);
         }
         finally
         {

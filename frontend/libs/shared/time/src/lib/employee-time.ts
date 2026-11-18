@@ -1,8 +1,8 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import type { AttendanceDay, LeaveBalance, LeaveRequest, ResolvedLeavePolicy } from '@gggs/shared/models';
-import { formatMinutes, shortTime } from '@gggs/shared/models';
-import { EmptyState, KpiCard, StatusBadge } from '@gggs/shared/ui';
+import { formatMinutes } from '@gggs/shared/models';
+import { clockTime, EmptyState, KpiCard, StatusBadge, timeRange } from '@gggs/shared/ui';
 import { AttendanceApi, LeaveApi, addDays, todayIso } from './time-apis';
 
 /** Employee 360 attendance tab: the last thirty days, as the attendance module derived them. */
@@ -22,7 +22,7 @@ import { AttendanceApi, LeaveApi, addDays, todayIso } from './time-apis';
         <div class="e-time__row">
           <strong class="e-time__date">{{ day.date | date: 'EEE d MMM' }}</strong>
           <span class="muted">{{ day.shiftName }}</span>
-          <span>{{ shortTime(day.firstIn) || '—' }} – {{ shortTime(day.lastOut) || '—' }}</span>
+          <span>{{ clockTime(day.firstIn) || '—' }} – {{ clockTime(day.lastOut) || '—' }}</span>
           <span>{{ day.workedMinutes ? formatMinutes(day.workedMinutes) : '' }}</span>
           <gggs-status-badge [status]="day.status" />
         </div>
@@ -63,7 +63,8 @@ export class EmployeeAttendance {
   readonly employeeId = input.required<string>();
 
   protected readonly formatMinutes = formatMinutes;
-  protected readonly shortTime = shortTime;
+  protected readonly clockTime = clockTime;
+  protected readonly timeRange = timeRange;
   protected readonly days = signal<readonly AttendanceDay[]>([]);
   protected readonly error = signal<string | null>(null);
   protected readonly late = computed(() => this.days().filter((day) => day.lateMinutes > 0).length);
@@ -93,7 +94,7 @@ export class EmployeeAttendance {
     <div class="stack">
       <p class="e-leave__policy">
         @if (policy(); as plan) {
-          Leave policy: <strong>{{ plan.name }}</strong> · leave year {{ plan.leaveYear }}{{ plan.source === 'Exception' ? ' · exception for this employee' : '' }}
+          Leave policy: <strong>{{ plan.name }}</strong> · leave year {{ plan.leaveYear }}{{ plan.source === 'Exception' ? ' · exception for this employee' : plan.source === 'CostCenter' ? ' · from cost center ' + (plan.costCenterName ?? '') : '' }}
         } @else if (policyLoaded()) {
           <span class="muted">No leave policy is assigned to this employee's engagement type.</span>
         }

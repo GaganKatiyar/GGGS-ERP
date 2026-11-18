@@ -30,10 +30,11 @@ internal sealed class EmployeeDirectory(AppDbContext dbContext, EmployeeScope sc
             .Where(employee => ids.Contains(employee.Id))
             .Select(employee => new EmployeeSummary(
                 employee.Id, employee.EmployeeCode, employee.DisplayName, employee.OfficialEmail, employee.Status.ToString(),
-                employee.DepartmentId, employee.PositionId, employee.JobId, employee.ManagerEmployeeId, employee.LocationId, employee.LegalEntityId,
+                employee.DepartmentId, employee.RoleId, employee.ManagerEmployeeId, employee.LocationId, employee.CompanyId,
                 employee.HrbpEmployeeId, employee.Designation, employee.JoiningDate,
                 employee.EmploymentTypeCode, employee.ProbationEndDate, employee.ConfirmationDate,
-                employee.WorkModeCode, employee.GradeId, employee.ExitDate, employee.ExitReasonCode, employee.GenderCode))
+                employee.WorkModeCode, employee.LevelId, employee.ExitDate, employee.ExitReasonCode, employee.GenderCode,
+                employee.DesignationId, employee.CostCenterId))
             .ToListAsync(cancellationToken);
     }
 
@@ -63,19 +64,6 @@ internal sealed class EmployeeDirectory(AppDbContext dbContext, EmployeeScope sc
             .ToListAsync(cancellationToken);
 
         return current.ToHashSet();
-    }
-
-    public async Task<IReadOnlyDictionary<Guid, int>> CountByPositionAsync(IEnumerable<Guid> positionIds, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(positionIds);
-        List<Guid?> ids = [.. positionIds.Distinct().Select(id => (Guid?)id)];
-
-        return await dbContext.Employees
-            .AsNoTracking()
-            .Where(employee => ids.Contains(employee.PositionId) && employee.Status != EmployeeStatus.Exited)
-            .GroupBy(employee => employee.PositionId!.Value)
-            .Select(group => new { group.Key, Count = group.Count() })
-            .ToDictionaryAsync(group => group.Key, group => group.Count, cancellationToken);
     }
 
     public async Task<IReadOnlyDictionary<Guid, int>> CountByDepartmentAsync(IEnumerable<Guid> departmentIds, CancellationToken cancellationToken = default)

@@ -5,7 +5,7 @@ import { ApiError } from '@gggs/core/http';
 import { PermissionStore } from '@gggs/core/permissions';
 import { AnalyticsApi, MetricPanel, downloadCsv, formatMetric } from '@gggs/shared/insight';
 import type { AnalyticsArea, DashboardView, DigestFrequency, Metric, ReportSubscription } from '@gggs/shared/models';
-import { EmptyState, localIsoDate, PageHeader, Skeleton } from '@gggs/shared/ui';
+import { dateTime, EmptyState, localIsoDate, PageHeader, Skeleton } from '@gggs/shared/ui';
 
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
 
@@ -191,7 +191,7 @@ export class DashboardViewPage {
   protected readonly digest = computed(() => this.subscriptions().find((subscription) => subscription.area === this.area())?.frequency ?? '');
   protected readonly subtitle = computed(() => {
     const view = this.view();
-    return view ? `As of ${new Date(view.generatedAt).toLocaleString()}` : 'Loading figures...';
+    return view ? `As of ${dateTime(view.generatedAt)}` : 'Loading figures...';
   });
 
   constructor() {

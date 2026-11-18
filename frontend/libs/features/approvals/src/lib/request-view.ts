@@ -46,7 +46,7 @@ const ACTION_TONES: Partial<Record<WorkflowActionKind, TimelineEntry['tone']>> =
         <dt>Kind</dt><dd>{{ r.subjectName }}</dd>
         <dt>Status</dt><dd><gggs-status-badge [status]="r.status" /> @if (r.round > 1) { <span class="muted">round {{ r.round }}</span> }</dd>
         <dt>Raised by</dt><dd>{{ r.requesterName ?? '—' }}</dd>
-        <dt>Submitted</dt><dd>{{ r.submittedDate | date: 'medium' }}</dd>
+        <dt>Submitted</dt><dd>{{ r.submittedDate | date: 'd MMM y, h:mm a' }}</dd>
         @for (field of detail().fields | keyvalue; track field.key) {
           <dt>{{ field.key }}</dt><dd>{{ field.value }}</dd>
         }

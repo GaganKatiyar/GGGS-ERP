@@ -420,7 +420,7 @@ public sealed class ComplianceRegistration : TenantAggregateRoot
 
     public string? StateCode { get; private set; }
 
-    public Guid? LegalEntityId { get; private set; }
+    public Guid? CompanyId { get; private set; }
 
     public DateOnly? IssuedOn { get; private set; }
 
@@ -458,7 +458,7 @@ public sealed class ComplianceRegistration : TenantAggregateRoot
         Number = string.IsNullOrWhiteSpace(details.Number) ? null : Guard.MaxLength(details.Number.Trim(), 100);
         Authority = string.IsNullOrWhiteSpace(details.Authority) ? null : Guard.MaxLength(details.Authority.Trim(), 200);
         StateCode = string.IsNullOrWhiteSpace(details.StateCode) ? null : Guard.MaxLength(details.StateCode.Trim().ToUpperInvariant(), 16);
-        LegalEntityId = details.LegalEntityId;
+        CompanyId = details.CompanyId;
         if (details.ExpiresOn != ExpiresOn)
         {
             RemindedOn = null;
@@ -489,7 +489,7 @@ public sealed record RegistrationDetails(
     string? Number,
     string? Authority,
     string? StateCode,
-    Guid? LegalEntityId,
+    Guid? CompanyId,
     DateOnly? IssuedOn,
     DateOnly? ExpiresOn,
     int RenewalLeadDays,

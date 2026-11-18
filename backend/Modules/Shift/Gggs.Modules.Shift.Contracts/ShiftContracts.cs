@@ -1,4 +1,13 @@
+using Gggs.BuildingBlocks.Messaging;
+
 namespace Gggs.Modules.Shift.Contracts;
+
+/// <summary>
+/// A shift's rules changed - timings, thresholds, weekly offs, whether a punch out is required - or
+/// it became the default. Days already judged against it may now be judged differently.
+/// </summary>
+[MessageType("gggs.shift.shift-changed")]
+public sealed record ShiftChangedIntegrationEvent(Guid ShiftId) : IntegrationEvent;
 
 /// <summary>
 /// One employee's working day as scheduled: the shift, its timings and thresholds, or a day off.

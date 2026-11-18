@@ -11,13 +11,17 @@ interface Card extends ChannelCopy {
   readonly channel: MessageChannel;
 }
 
-/** Which of the organisation's connections sends its email and text messages. */
+/**
+ * Which of the organisation's connections sends its text messages. Email moved to Email senders, where
+ * each module can have its own sender; the email route this page used to set is still honoured there.
+ */
 @Component({
   selector: 'gggs-sending-page',
   imports: [RouterLink, PageHeader, Skeleton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <gggs-page-header title="Sending" subtitle="Send Nuts and Bolts email from your own domain, and reach people by text message." />
+    <gggs-page-header title="Text messages" subtitle="Reach people by text message through your own SMS gateway." />
+    <p class="muted">Email is set up under <a routerLink="../email-senders">Email senders</a>, where each module can send as its own address.</p>
 
     @if (error()) {
       <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
@@ -66,7 +70,7 @@ interface Card extends ChannelCopy {
             }
 
             @if (card.channel.channel === 'sms') {
-              <p class="muted sending__note">Choose which notifications go by text under <a routerLink="/admin/notifications">Notifications</a>. None do until you switch them on. They go to the mobile number on each person's record, and people can opt out in My preferences.</p>
+              <p class="muted sending__note">Choose which notifications go by text under <a routerLink="/admin/notifications">Email templates</a>. None do until you switch them on. They go to the mobile number on each person's record, and people can opt out in My preferences.</p>
             }
           </section>
         }
@@ -97,7 +101,9 @@ export class SendingPage {
   protected readonly testTo = signal<Readonly<Record<string, string>>>({});
   protected readonly results = signal<Readonly<Record<string, ChannelSendOutcome | undefined>>>({});
 
-  protected readonly cards = computed<readonly Card[]>(() => this.channels().flatMap((channel) => (CHANNELS[channel.channel] ? [{ ...CHANNELS[channel.channel], channel }] : [])));
+  protected readonly cards = computed<readonly Card[]>(() =>
+    this.channels().flatMap((channel) => (channel.channel !== 'email' && CHANNELS[channel.channel] ? [{ ...CHANNELS[channel.channel], channel }] : [])),
+  );
 
   constructor() {
     void this.load();

@@ -8,7 +8,7 @@ namespace Gggs.Modules.Organization.Domain;
 /// <para>
 /// The code is unique per tenant within its kind and is what imports and integrations match on, so
 /// it is trimmed and upper-cased once here rather than compared loosely everywhere else. Records are
-/// deactivated rather than deleted: employees, positions and history point at them.
+/// deactivated rather than deleted: employees and history point at them.
 /// </para>
 /// </summary>
 public abstract class OrgUnit : TenantAggregateRoot
@@ -34,6 +34,12 @@ public abstract class OrgUnit : TenantAggregateRoot
 
     public void Rename(string name) => Name = Guard.MaxLength(Guard.NotNullOrWhiteSpace(name).Trim(), 200);
 
+    /// <summary>
+    /// Gives the record a new code. Other records point at it by id, so nothing breaks inside the
+    /// app; only imports and integrations that name it by the old code need the new one.
+    /// </summary>
+    public void ChangeCode(string code) => Code = NormalizeCode(code);
+
     public void Activate() => IsActive = true;
 
     public void Deactivate() => IsActive = false;
@@ -51,9 +57,9 @@ public sealed record PostalAddress(
 /// <summary>
 /// A registered company - the employer of record, the payroll and statutory boundary (spec §7, §10).
 /// </summary>
-public sealed class LegalEntity : OrgUnit
+public sealed class Company : OrgUnit
 {
-    private LegalEntity()
+    private Company()
     {
     }
 
@@ -74,9 +80,9 @@ public sealed class LegalEntity : OrgUnit
 
     public string? Tan { get; private set; }
 
-    public static LegalEntity Create(string code, string name, string countryCode, string currencyCode)
+    public static Company Create(string code, string name, string countryCode, string currencyCode)
     {
-        var entity = new LegalEntity();
+        var entity = new Company();
         entity.SetIdentity(code, name);
         entity.CountryCode = Guard.MaxLength(Guard.NotNullOrWhiteSpace(countryCode).Trim().ToUpperInvariant(), 8);
         entity.CurrencyCode = Guard.MaxLength(Guard.NotNullOrWhiteSpace(currencyCode).Trim().ToUpperInvariant(), 3);
@@ -114,89 +120,86 @@ public sealed class BusinessUnit : OrgUnit
     {
     }
 
-    public Guid? LegalEntityId { get; private set; }
+    public Guid? CompanyId { get; private set; }
 
     public Guid? HeadEmployeeId { get; private set; }
 
-    public static BusinessUnit Create(string code, string name, Guid? legalEntityId, Guid? headEmployeeId)
+    public static BusinessUnit Create(string code, string name, Guid? companyId, Guid? headEmployeeId)
     {
         var unit = new BusinessUnit();
         unit.SetIdentity(code, name);
-        unit.Assign(legalEntityId, headEmployeeId);
+        unit.Assign(companyId, headEmployeeId);
         return unit;
     }
 
-    public void Assign(Guid? legalEntityId, Guid? headEmployeeId)
+    public void Assign(Guid? companyId, Guid? headEmployeeId)
     {
-        LegalEntityId = legalEntityId;
+        CompanyId = companyId;
         HeadEmployeeId = headEmployeeId;
     }
 }
 
-/// <summary>A grouping of departments inside a business unit.</summary>
-public sealed class Division : OrgUnit
-{
-    private Division()
-    {
-    }
-
-    public Guid? BusinessUnitId { get; private set; }
-
-    public Guid? HeadEmployeeId { get; private set; }
-
-    public static Division Create(string code, string name, Guid? businessUnitId, Guid? headEmployeeId)
-    {
-        var division = new Division();
-        division.SetIdentity(code, name);
-        division.Assign(businessUnitId, headEmployeeId);
-        return division;
-    }
-
-    public void Assign(Guid? businessUnitId, Guid? headEmployeeId)
-    {
-        BusinessUnitId = businessUnitId;
-        HeadEmployeeId = headEmployeeId;
-    }
-}
-
-/// <summary>Where a cost is booked.</summary>
+/// <summary>
+/// The company name an office works under: what offer letters and payslips print, and where its
+/// costs are booked. Each company has one default cost center, carrying the company's own name, that
+/// anyone without an office-specific one falls back to. The default cannot be deactivated.
+/// </summary>
 public sealed class CostCenter : OrgUnit
 {
     private CostCenter()
     {
     }
 
+    /// <summary>The parent company.</summary>
+    public Guid? CompanyId { get; private set; }
+
+    public bool IsDefault { get; private set; }
+
     public Guid? OwnerEmployeeId { get; private set; }
 
-    public static CostCenter Create(string code, string name, Guid? ownerEmployeeId)
+    /// <summary>Registration of this office's company, when it has its own. Public registry data.</summary>
+    public string? Gstin { get; private set; }
+
+    public string? Pan { get; private set; }
+
+    public PostalAddress? Address { get; private set; }
+
+    public static CostCenter Create(string code, string name, Guid? companyId, Guid? ownerEmployeeId)
     {
         var center = new CostCenter();
         center.SetIdentity(code, name);
+        center.CompanyId = companyId;
         center.OwnerEmployeeId = ownerEmployeeId;
         return center;
     }
 
-    public void SetOwner(Guid? ownerEmployeeId) => OwnerEmployeeId = ownerEmployeeId;
-}
-
-/// <summary>Where revenue and margin are reported.</summary>
-public sealed class ProfitCenter : OrgUnit
-{
-    private ProfitCenter()
+    /// <summary>The default cost center a new company starts with, named after it.</summary>
+    public static CostCenter DefaultFor(Company company)
     {
-    }
-
-    public Guid? OwnerEmployeeId { get; private set; }
-
-    public static ProfitCenter Create(string code, string name, Guid? ownerEmployeeId)
-    {
-        var center = new ProfitCenter();
-        center.SetIdentity(code, name);
-        center.OwnerEmployeeId = ownerEmployeeId;
+        ArgumentNullException.ThrowIfNull(company);
+        CostCenter center = Create(company.Code, company.Name, company.Id, null);
+        center.IsDefault = true;
+        center.UpdateRegistration(company.Gstin, company.Pan, company.Address);
         return center;
     }
 
-    public void SetOwner(Guid? ownerEmployeeId) => OwnerEmployeeId = ownerEmployeeId;
+    public void Update(Guid? companyId, Guid? ownerEmployeeId)
+    {
+        Guard.Against(IsDefault && companyId != CompanyId, "COST_CENTER_DEFAULT_COMPANY", "A company's default cost center stays with that company.");
+        CompanyId = companyId;
+        OwnerEmployeeId = ownerEmployeeId;
+    }
+
+    public void UpdateRegistration(string? gstin, string? pan, PostalAddress? address)
+    {
+        Gstin = string.IsNullOrWhiteSpace(gstin) ? null : Guard.MaxLength(gstin.Trim().ToUpperInvariant(), 15);
+        Pan = string.IsNullOrWhiteSpace(pan) ? null : Guard.MaxLength(pan.Trim().ToUpperInvariant(), 10);
+        Address = address;
+    }
+
+    public void MakeDefault() => IsDefault = true;
+
+    public void ClearDefault() => IsDefault = false;
 }
 
 /// <summary>A physical or virtual place people work from.</summary>
@@ -206,60 +209,90 @@ public sealed class Location : OrgUnit
     {
     }
 
-    public Guid? LegalEntityId { get; private set; }
+    public Guid? CompanyId { get; private set; }
+
+    /// <summary>The company name people at this office work under; null means the company default.</summary>
+    public Guid? CostCenterId { get; private set; }
 
     public PostalAddress? Address { get; private set; }
 
     public string? TimeZone { get; private set; }
 
-    public static Location Create(string code, string name, Guid? legalEntityId, PostalAddress? address, string? timeZone)
+    public static Location Create(string code, string name, Guid? companyId, PostalAddress? address, string? timeZone, Guid? costCenterId = null)
     {
         var location = new Location();
         location.SetIdentity(code, name);
-        location.Update(legalEntityId, address, timeZone);
+        location.Update(companyId, address, timeZone, costCenterId);
         return location;
     }
 
-    public void Update(Guid? legalEntityId, PostalAddress? address, string? timeZone)
+    public void Update(Guid? companyId, PostalAddress? address, string? timeZone, Guid? costCenterId)
     {
-        LegalEntityId = legalEntityId;
+        CompanyId = companyId;
+        CostCenterId = costCenterId;
         Address = address;
         TimeZone = string.IsNullOrWhiteSpace(timeZone) ? null : Guard.MaxLength(timeZone.Trim(), 64);
     }
 }
 
-/// <summary>A pay and seniority band. <see cref="Rank"/> orders grades from junior to senior.</summary>
-public sealed class Grade : OrgUnit
+/// <summary>
+/// A title people hold - what offer letters, payslips and the directory print ("Senior Software
+/// Engineer"). Most designations are a role at a level ("Business Analyst L2"): <see cref="RoleId"/>
+/// and <see cref="LevelId"/> name both, and the role keeps them in step (<see cref="ForRole"/>).
+/// One without a role is a free-standing title someone keeps by hand.
+/// </summary>
+public sealed class Designation : OrgUnit
 {
-    private Grade()
+    private Designation()
     {
     }
 
-    public int Rank { get; private set; }
+    public Guid? LevelId { get; private set; }
 
-    public static Grade Create(string code, string name, int rank)
+    /// <summary>The role this designation is a level of; null for a free-standing title.</summary>
+    public Guid? RoleId { get; private set; }
+
+    public static Designation Create(string code, string name, Guid? levelId, Guid? roleId = null)
     {
-        var grade = new Grade();
-        grade.SetIdentity(code, name);
-        grade.Rank = rank;
-        return grade;
+        var designation = new Designation();
+        designation.SetIdentity(code, name);
+        designation.LevelId = levelId;
+        designation.RoleId = roleId;
+        return designation;
     }
 
-    public void SetRank(int rank) => Rank = rank;
+    /// <summary>The designation for <paramref name="role"/> at <paramref name="level"/>: code "TS-BA-L2", name "Business Analyst L2".</summary>
+    public static Designation ForRole(Role role, Level level)
+    {
+        ArgumentNullException.ThrowIfNull(role);
+        ArgumentNullException.ThrowIfNull(level);
+        return Create(RoleCode(role, level), RoleName(role, level), level.Id, role.Id);
+    }
+
+    public static string RoleCode(Role role, Level level) => NormalizeCode($"{role.Code}-{level.Code}");
+
+    /// <summary>Whether "role code-level code" fits in a code (32 characters); a role whose code is too long gets no designations.</summary>
+    public static bool FitsRoleCode(Role role, Level level) => role.Code.Length + 1 + level.Code.Length <= 32;
+
+    public static string RoleName(Role role, Level level) => $"{role.Name} {level.Code}";
+
+    public void SetLevel(Guid? levelId) => LevelId = levelId;
+
+    public void SetRole(Guid? roleId) => RoleId = roleId;
 }
 
-/// <summary>A career level (L1 … L8), used by jobs and career paths. <see cref="Rank"/> orders them.</summary>
-public sealed class JobLevel : OrgUnit
+/// <summary>How senior someone is (L1, L2, L3 …). <see cref="Rank"/> orders levels from junior to senior.</summary>
+public sealed class Level : OrgUnit
 {
-    private JobLevel()
+    private Level()
     {
     }
 
     public int Rank { get; private set; }
 
-    public static JobLevel Create(string code, string name, int rank)
+    public static Level Create(string code, string name, int rank)
     {
-        var level = new JobLevel();
+        var level = new Level();
         level.SetIdentity(code, name);
         level.Rank = rank;
         return level;
@@ -269,8 +302,10 @@ public sealed class JobLevel : OrgUnit
 }
 
 /// <summary>
-/// A department, possibly inside another (spec §10). Effective-dated: closing a department ends it
-/// on a date rather than deleting it, so history still says where people sat.
+/// A department or one of its functions (spec §10). The structure is two levels: a department sits
+/// in a business unit, and a function is a department whose <see cref="ParentDepartmentId"/> names
+/// the department it belongs to. A function holds nothing beneath it. Effective-dated: closing ends
+/// it on a date rather than deleting it, so history still says where people sat.
 /// </summary>
 public sealed class Department : OrgUnit
 {
@@ -278,15 +313,18 @@ public sealed class Department : OrgUnit
     {
     }
 
+    /// <summary>The department this function belongs to; null for a department itself.</summary>
     public Guid? ParentDepartmentId { get; private set; }
 
-    public Guid? DivisionId { get; private set; }
+    /// <summary>A function always takes its department's business unit.</summary>
+    public Guid? BusinessUnitId { get; private set; }
+
+    /// <summary>True for a function: a team inside a department.</summary>
+    public bool IsFunction => ParentDepartmentId is not null;
 
     public Guid? HeadEmployeeId { get; private set; }
 
     public Guid? CostCenterId { get; private set; }
-
-    public Guid? ProfitCenterId { get; private set; }
 
     public Guid? LocationId { get; private set; }
 
@@ -304,19 +342,17 @@ public sealed class Department : OrgUnit
 
     public void Place(
         Guid? parentDepartmentId,
-        Guid? divisionId,
+        Guid? businessUnitId,
         Guid? headEmployeeId,
         Guid? costCenterId,
-        Guid? profitCenterId,
         Guid? locationId)
     {
         Guard.Against(parentDepartmentId == Id, "DEPARTMENT_OWN_PARENT", "A department cannot be its own parent.");
 
         ParentDepartmentId = parentDepartmentId;
-        DivisionId = divisionId;
+        BusinessUnitId = businessUnitId;
         HeadEmployeeId = headEmployeeId;
         CostCenterId = costCenterId;
-        ProfitCenterId = profitCenterId;
         LocationId = locationId;
     }
 
@@ -330,21 +366,21 @@ public sealed class Department : OrgUnit
 }
 
 /// <summary>
-/// A role definition (spec §10): what the work is, at what level, needing what experience. Many
-/// <see cref="Position"/>s can be seats for the same job.
+/// A role (spec §10; shown as "Role"): what the work is, at what level, needing what experience.
+/// Someone's role says what they do; their designation says what they are called.
 /// </summary>
-public sealed class Job : OrgUnit
+public sealed class Role : OrgUnit
 {
     private readonly List<string> _requiredSkills = [];
 
-    private Job()
+    private Role()
     {
     }
 
     /// <summary>A <c>job-family</c> lookup code.</summary>
     public string? JobFamilyCode { get; private set; }
 
-    public Guid? JobLevelId { get; private set; }
+    public Guid? LevelId { get; private set; }
 
     public Guid? DepartmentId { get; private set; }
 
@@ -357,16 +393,16 @@ public sealed class Job : OrgUnit
     /// <summary>Skill names until the Skills module (M6) gives them identities.</summary>
     public IReadOnlyList<string> RequiredSkills => _requiredSkills;
 
-    public static Job Create(string code, string title)
+    public static Role Create(string code, string title)
     {
-        var job = new Job();
-        job.SetIdentity(code, title);
-        return job;
+        var role = new Role();
+        role.SetIdentity(code, title);
+        return role;
     }
 
     public void Define(
         string? jobFamilyCode,
-        Guid? jobLevelId,
+        Guid? levelId,
         Guid? departmentId,
         decimal? minimumExperienceYears,
         decimal? maximumExperienceYears,
@@ -375,15 +411,15 @@ public sealed class Job : OrgUnit
     {
         Guard.Against(
             minimumExperienceYears < 0 || maximumExperienceYears < 0,
-            "JOB_EXPERIENCE_NEGATIVE",
+            "ROLE_EXPERIENCE_NEGATIVE",
             "Experience cannot be negative.");
         Guard.Against(
             minimumExperienceYears is not null && maximumExperienceYears is not null && maximumExperienceYears < minimumExperienceYears,
-            "JOB_EXPERIENCE_RANGE",
+            "ROLE_EXPERIENCE_RANGE",
             "Maximum experience cannot be less than minimum experience.");
 
         JobFamilyCode = string.IsNullOrWhiteSpace(jobFamilyCode) ? null : jobFamilyCode.Trim().ToUpperInvariant();
-        JobLevelId = jobLevelId;
+        LevelId = levelId;
         DepartmentId = departmentId;
         MinimumExperienceYears = minimumExperienceYears;
         MaximumExperienceYears = maximumExperienceYears;
@@ -394,74 +430,5 @@ public sealed class Job : OrgUnit
             .Where(skill => !string.IsNullOrWhiteSpace(skill))
             .Select(skill => Guard.MaxLength(skill.Trim(), 100))
             .Distinct(StringComparer.OrdinalIgnoreCase));
-    }
-}
-
-/// <summary>
-/// An actual seat in the organization (spec §10): this job, in this department, reporting to that
-/// position. Budgeted seats count towards headcount plans; occupancy is however many active
-/// employees hold it right now. Effective-dated like departments.
-/// </summary>
-public sealed class Position : OrgUnit
-{
-    private Position()
-    {
-    }
-
-    public Guid JobId { get; private set; }
-
-    public Guid DepartmentId { get; private set; }
-
-    public Guid? LocationId { get; private set; }
-
-    public Guid? GradeId { get; private set; }
-
-    public Guid? ReportsToPositionId { get; private set; }
-
-    public bool IsBudgeted { get; private set; }
-
-    /// <summary>How many people may hold this seat at once - usually one.</summary>
-    public int Headcount { get; private set; } = 1;
-
-    public DateOnly EffectiveFrom { get; private set; }
-
-    public DateOnly? EffectiveTo { get; private set; }
-
-    public static Position Create(string code, string title, Guid jobId, Guid departmentId, DateOnly effectiveFrom)
-    {
-        var position = new Position();
-        position.SetIdentity(code, title);
-        position.JobId = Guard.NotEmpty(jobId);
-        position.DepartmentId = Guard.NotEmpty(departmentId);
-        position.EffectiveFrom = effectiveFrom;
-        return position;
-    }
-
-    public void Configure(
-        Guid jobId,
-        Guid departmentId,
-        Guid? locationId,
-        Guid? gradeId,
-        Guid? reportsToPositionId,
-        bool isBudgeted,
-        int headcount)
-    {
-        Guard.Against(reportsToPositionId == Id, "POSITION_REPORTS_TO_ITSELF", "A position cannot report to itself.");
-        Guard.Against(headcount < 1, "POSITION_HEADCOUNT", "A position needs a headcount of at least one.");
-
-        JobId = Guard.NotEmpty(jobId);
-        DepartmentId = Guard.NotEmpty(departmentId);
-        LocationId = locationId;
-        GradeId = gradeId;
-        ReportsToPositionId = reportsToPositionId;
-        IsBudgeted = isBudgeted;
-        Headcount = headcount;
-    }
-
-    public void Close(DateOnly effectiveTo)
-    {
-        Guard.Against(effectiveTo < EffectiveFrom, "POSITION_CLOSE_BEFORE_START", "A position cannot close before it opened.");
-        EffectiveTo = effectiveTo;
-        Deactivate();
     }
 }

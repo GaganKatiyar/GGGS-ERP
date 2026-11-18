@@ -92,7 +92,7 @@ export interface RegistrationItem {
   readonly number?: string;
   readonly authority?: string;
   readonly stateCode?: string;
-  readonly legalEntityId?: string;
+  readonly companyId?: string;
   readonly issuedOn?: string;
   readonly expiresOn?: string;
   readonly renewalLeadDays: number;
@@ -110,7 +110,7 @@ export interface RegistrationInput {
   readonly number?: string | null;
   readonly authority?: string | null;
   readonly stateCode?: string | null;
-  readonly legalEntityId?: string | null;
+  readonly companyId?: string | null;
   readonly issuedOn?: string | null;
   readonly expiresOn?: string | null;
   readonly renewalLeadDays: number;
@@ -388,7 +388,7 @@ export interface RunItem {
   readonly periodEnd: string;
   readonly label: string;
   readonly payDate: string;
-  readonly legalEntityId?: string;
+  readonly companyId?: string;
   readonly status: RunStatus;
   readonly currency: string;
   readonly employeeCount: number;
@@ -680,8 +680,8 @@ export const AWARD_TYPES: readonly AwardType[] = ['Bonus', 'Commission', 'Incent
 
 export interface BandItem {
   readonly id: string;
-  readonly gradeId: string;
-  readonly gradeName?: string;
+  readonly levelId: string;
+  readonly levelName?: string;
   readonly currency: string;
   readonly minimum: number;
   readonly midpoint: number;
@@ -722,8 +722,8 @@ export interface RevisionItem {
   readonly increasePercent: number;
   readonly currency: string;
   readonly effectiveDate: string;
-  readonly newGradeId?: string;
-  readonly newGradeName?: string;
+  readonly newLevelId?: string;
+  readonly newLevelName?: string;
   readonly newDesignation?: string;
   readonly justification: string;
   readonly performanceRating?: string;
@@ -741,7 +741,7 @@ export interface RevisionDetailsInput {
   readonly type: RevisionType;
   readonly proposedCtc: number;
   readonly effectiveDate: string;
-  readonly newGradeId?: string | null;
+  readonly newLevelId?: string | null;
   readonly newStructureId?: string | null;
   readonly newDesignation?: string | null;
   readonly justification: string;
@@ -821,7 +821,7 @@ export interface TotalRewards {
   readonly currency: string;
   readonly annualCtc: number;
   readonly salaryLines: readonly SalaryLine[];
-  readonly band?: { readonly gradeName?: string; readonly minimum: number; readonly midpoint: number; readonly maximum: number; readonly compaRatio: number; readonly penetration: number; readonly position: 'Below' | 'Within' | 'Above' };
+  readonly band?: { readonly levelName?: string; readonly minimum: number; readonly midpoint: number; readonly maximum: number; readonly compaRatio: number; readonly penetration: number; readonly position: 'Below' | 'Within' | 'Above' };
   readonly variablePayLast12Months: number;
   readonly benefitsEmployerAnnual: number;
   readonly benefits: readonly BenefitCharge[];

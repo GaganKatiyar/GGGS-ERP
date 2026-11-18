@@ -89,6 +89,35 @@ internal sealed class ChannelService(AppDbContext dbContext, IIntegrationConnect
     public async Task<ChannelSendResult?> SendEmailAsync(string recipient, string subject, string body, CancellationToken cancellationToken = default)
         => await SendAsync(IntegrationChannels.Email, new Dictionary<string, string> { ["to"] = recipient, ["subject"] = subject, ["body"] = body }, EmailOperation.Key, cancellationToken);
 
+    public async Task<EmailSendResult?> SendEmailAsync(OutgoingEmail email, Guid? connectionId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(email);
+        IReadOnlyList<ConnectionOption> options = await connections.ListAsync(cancellationToken);
+        ConnectionOption? chosen = connectionId is { } id ? options.FirstOrDefault(option => option.Id == id && option.IsActive && option.Channel == IntegrationChannels.Email) : null;
+        chosen ??= await ActiveConnectionAsync(IntegrationChannels.Email, cancellationToken);
+        if (chosen is null)
+        {
+            return null;
+        }
+
+        var parameters = new Dictionary<string, string> { ["to"] = email.To, ["subject"] = email.Subject, ["body"] = email.Body };
+        AddIfSet(parameters, EmailParameters.Html, email.HtmlBody);
+        AddIfSet(parameters, EmailParameters.FromName, email.FromName);
+        AddIfSet(parameters, EmailParameters.FromAddress, email.FromAddress);
+        AddIfSet(parameters, EmailParameters.ReplyTo, email.ReplyTo);
+        AddIfSet(parameters, EmailParameters.Bcc, email.Bcc);
+
+        ConnectionRunResult result = await connections.RunAsync(chosen.Id, EmailOperation.Key, parameters, cancellationToken);
+        return new EmailSendResult(result.Succeeded, result.Message, chosen.Name);
+    }
+
+    public async Task<EmailConnections> EmailConnectionsAsync(CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<ConnectionOption> options = await connections.ListAsync(cancellationToken);
+        Guid? route = await dbContext.ChannelRoutes.AsNoTracking().Where(row => row.Channel == IntegrationChannels.Email).Select(row => (Guid?)row.ConnectionId).FirstOrDefaultAsync(cancellationToken);
+        return new EmailConnections(route, [.. options.Where(option => option.Channel == IntegrationChannels.Email).Select(option => new EmailConnectionOption(option.Id, option.Name, option.AdapterName, option.IsActive))]);
+    }
+
     public async Task<ChannelSendResult?> SendSmsAsync(string recipient, string text, CancellationToken cancellationToken = default)
         => await SendAsync(IntegrationChannels.Sms, new Dictionary<string, string> { ["to"] = recipient, ["text"] = text }, SmsOperation.Key, cancellationToken);
 
@@ -110,5 +139,13 @@ internal sealed class ChannelService(AppDbContext dbContext, IIntegrationConnect
         return route is null
             ? null
             : (await connections.ListAsync(cancellationToken)).FirstOrDefault(option => option.Id == route.ConnectionId && option.IsActive && option.Channel == channel);
+    }
+
+    private static void AddIfSet(Dictionary<string, string> parameters, string key, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            parameters[key] = value.Trim();
+        }
     }
 }

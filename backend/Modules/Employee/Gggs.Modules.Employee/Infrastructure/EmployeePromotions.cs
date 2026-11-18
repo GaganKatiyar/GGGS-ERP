@@ -21,8 +21,9 @@ internal sealed class EmployeePromotions(AppDbContext dbContext, EmployeeService
                 AssignmentChangeType.Promotion,
                 promotion.EffectiveFrom,
                 new AssignmentInput(
-                    current.DepartmentId, promotion.PositionId ?? current.PositionId, promotion.JobId ?? current.JobId, promotion.GradeId ?? current.GradeId,
-                    current.LocationId, current.LegalEntityId, current.BusinessUnitId, current.DivisionId, current.ManagerEmployeeId, current.HrbpEmployeeId,
+                    current.DepartmentId, promotion.RoleId ?? current.RoleId, promotion.LevelId ?? current.LevelId,
+                    promotion.DesignationId ?? (string.IsNullOrWhiteSpace(promotion.Designation) ? current.DesignationId : null), current.CostCenterId,
+                    current.LocationId, current.CompanyId, current.BusinessUnitId, current.ManagerEmployeeId, current.HrbpEmployeeId,
                     current.EmploymentTypeCode, current.WorkModeCode, string.IsNullOrWhiteSpace(promotion.Designation) ? current.Designation : promotion.Designation),
                 promotion.Reason),
             cancellationToken);

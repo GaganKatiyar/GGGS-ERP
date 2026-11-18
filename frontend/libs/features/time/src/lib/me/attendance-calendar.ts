@@ -2,8 +2,8 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, linkedSignal, output } from '@angular/core';
 import { HasPermissionDirective } from '@gggs/core/permissions';
 import type { AttendanceDay, AttendanceStatus, ScheduledDay } from '@gggs/shared/models';
-import { formatMinutes, shortTime } from '@gggs/shared/models';
-import { DEFAULT_STATUS_VARIANTS, StatusBadge, type BadgeVariant } from '@gggs/shared/ui';
+import { formatMinutes } from '@gggs/shared/models';
+import { clockTime, DEFAULT_STATUS_VARIANTS, StatusBadge, timeRange, type BadgeVariant } from '@gggs/shared/ui';
 import { calendarMonth, isFixable, type CalendarCell } from './attendance-month';
 
 const LABELS: Readonly<Record<AttendanceStatus, string>> = {
@@ -91,11 +91,11 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
             @if (hasTimes(day)) {
               <dl class="details__facts">
                 <dt>Shift</dt>
-                <dd>{{ shortTime(day.scheduledStart) }}–{{ shortTime(day.scheduledEnd) }}</dd>
+                <dd>{{ timeRange(day.scheduledStart, day.scheduledEnd) }}</dd>
                 <dt>In</dt>
-                <dd>{{ shortTime(day.firstIn) || '—' }}</dd>
+                <dd>{{ clockTime(day.firstIn) || '—' }}</dd>
                 <dt>Out</dt>
-                <dd>{{ shortTime(day.lastOut) || '—' }}</dd>
+                <dd>{{ clockTime(day.lastOut) || '—' }}</dd>
                 <dt>Worked</dt>
                 <dd>{{ formatMinutes(day.workedMinutes) || '—' }}</dd>
                 <dt>Late</dt>
@@ -112,7 +112,7 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
               <button type="button" class="btn btn--block" *gggsHasPermission="'attendance.regularization.create'" (click)="fix.emit(day)">Fix this day</button>
             }
           } @else if (cell.scheduled; as shift) {
-            <p class="details__note">{{ shift.isWeeklyOff ? 'A day off.' : 'Scheduled: ' + shift.shiftName + ', ' + shortTime(shift.start) + '–' + shortTime(shift.end) + '.' }}</p>
+            <p class="details__note">{{ shift.isWeeklyOff ? 'A day off.' : 'Scheduled: ' + shift.shiftName + ', ' + timeRange(shift.start, shift.end) + '.' }}</p>
           } @else {
             <p class="details__note">Nothing recorded for this day.</p>
           }
@@ -361,7 +361,8 @@ export class AttendanceCalendar {
   protected readonly labels = LABELS;
   protected readonly shortLabels = SHORT_LABELS;
   protected readonly formatMinutes = formatMinutes;
-  protected readonly shortTime = shortTime;
+  protected readonly clockTime = clockTime;
+  protected readonly timeRange = timeRange;
   protected readonly fixable = isFixable;
 
   protected readonly grid = computed(() => calendarMonth(this.month(), this.days(), this.scheduled(), this.today()));
@@ -391,13 +392,13 @@ export class AttendanceCalendar {
   protected line(cell: CalendarCell): string {
     const day = cell.recorded;
     if (day) {
-      const first = shortTime(day.firstIn);
-      const last = shortTime(day.lastOut);
+      const first = clockTime(day.firstIn);
+      const last = clockTime(day.lastOut);
       return first && last ? `${first}–${last}` : first ? `In ${first}` : (day.status === 'OnLeave' || day.status === 'Holiday' ? (day.note ?? '') : '');
     }
 
     const shift = cell.scheduled;
-    return shift ? (shift.isWeeklyOff ? 'Day off' : `${shortTime(shift.start)}–${shortTime(shift.end)}`) : '';
+    return shift ? (shift.isWeeklyOff ? 'Day off' : `${timeRange(shift.start, shift.end)}`) : '';
   }
 
   protected describe(cell: CalendarCell): string {

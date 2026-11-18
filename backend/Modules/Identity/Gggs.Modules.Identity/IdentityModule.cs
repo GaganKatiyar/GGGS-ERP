@@ -68,6 +68,7 @@ public sealed class IdentityModule : IModule
         services.AddScoped<ApiKeyService>();
         services.AddScoped<PlatformStaffSignInService>();
         services.AddScoped<PlatformStaffManagementService>();
+        services.AddScoped<ITenantUsageProbe, IdentityUsageProbe>();
 
         services.AddSingleton<IInvitationTokenGenerator, InvitationTokenGenerator>();
         services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
@@ -148,9 +149,11 @@ public sealed class IdentityModule : IModule
         endpoints.MapSsoEndpoints();
         endpoints.MapApiKeyEndpoints();
         endpoints.MapUserEndpoints();
+        endpoints.MapPasswordPolicyEndpoints();
         endpoints.MapRoleEndpoints();
         endpoints.MapAccessEndpoints();
-        endpoints.MapTenantBootstrapEndpoints();
-        endpoints.MapPlatformStaffEndpoints();
+
+        // Platform staff management and organisation-administrator invitations are served by the
+        // platform console's own server (see Console/IdentityConsoleModule), not by this API.
     }
 }

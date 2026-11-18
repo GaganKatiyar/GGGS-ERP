@@ -112,6 +112,18 @@ export default [
               ],
             },
             {
+              // The platform console (apps/platform-web) is a separate application for GGGS's own
+              // staff. It shares core and shared with the HR app, and nothing else: it cannot pull
+              // in an HR screen, and since no HR scope lists scope:platform, the HR app cannot pull
+              // in a console screen either.
+              sourceTag: 'scope:platform-app',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:platform'],
+            },
+            {
+              sourceTag: 'scope:platform',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:shared', 'scope:platform'],
+            },
+            {
               sourceTag: 'scope:core',
               onlyDependOnLibsWithTags: ['scope:core', 'scope:shared'],
             },

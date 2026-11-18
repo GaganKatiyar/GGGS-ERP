@@ -95,6 +95,18 @@ public static class ModuleCatalog
         new PerformanceModule(),
     ];
 
+    /// <summary>
+    /// What only the platform console's server (Gggs.PlatformApi) serves: organisations, plans,
+    /// subscriptions, health and platform staff. That server registers <see cref="All"/>'s services
+    /// too (it writes the same database and raises the same events), but maps only these endpoints;
+    /// the HR application's API never lists them.
+    /// </summary>
+    public static IReadOnlyList<IModule> ConsoleModules { get; } =
+    [
+        new Gggs.Modules.Identity.Console.IdentityConsoleModule(),
+        new Gggs.Modules.Platform.Console.PlatformConsoleModule(),
+    ];
+
     /// <summary>The assemblies the shared <c>AppDbContext</c> builds its model from.</summary>
     public static IReadOnlyList<Assembly> ModelAssemblies { get; } = [.. All.Select(module => module.ModelAssembly).Distinct()];
 }

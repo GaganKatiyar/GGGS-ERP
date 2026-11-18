@@ -15,9 +15,14 @@ public sealed record InAppNotificationItem(Guid Id, string EventCode, string Tit
 
 public sealed record UnreadCountResponse(int UnreadCount);
 
-public sealed record NotificationTemplateItem(Guid Id, string Code, string Name, string Subject, string Body, bool SendInApp, bool SendEmail, bool SendSms, bool IsActive);
+public sealed record NotificationTemplateItem(Guid Id, string Code, string Name, string Subject, string Body, bool SendInApp, bool SendEmail, bool SendSms, bool IsActive, string ModuleKey, string? SenderKey)
+{
+    public static NotificationTemplateItem From(NotificationTemplate template)
+        => new(template.Id, template.Code, template.Name, template.Subject, template.Body, template.SendInApp, template.SendEmail, template.SendSms, template.IsActive, EmailModules.KeyFor(template.Code), template.SenderKey);
+}
 
-public sealed record UpdateNotificationTemplateRequest(string Subject, string Body, bool SendInApp, bool SendEmail, bool IsActive, bool SendSms = false);
+/// <summary><c>SenderKey</c>: another module's sender for this one email; null keeps its own module's.</summary>
+public sealed record UpdateNotificationTemplateRequest(string Subject, string Body, bool SendInApp, bool SendEmail, bool IsActive, bool SendSms = false, string? SenderKey = null);
 
 public sealed record InboxQuery
 {
@@ -61,6 +66,28 @@ internal static class NotificationEndpoints
 
         group.MapGet("/templates", ListTemplatesAsync).WithName("ListNotificationTemplates").RequirePermission(Permissions.Notification.TemplateView);
         group.MapPut("/templates/{id:guid}", UpdateTemplateAsync).WithName("UpdateNotificationTemplate").RequirePermission(Permissions.Notification.TemplateManage);
+
+        // Studio > Email senders and Email log. They sit with the mail connections, so they share Studio's permissions.
+        group.MapGet("/senders", async (EmailSenderService senders, CancellationToken ct) => TypedResults.Ok(await senders.ListAsync(ct)))
+            .WithName("ListEmailSenders").RequirePermission(Permissions.DataHub.IntegrationView);
+        group.MapPut("/senders/{key}", async (string key, EmailSenderBody body, EmailSenderService senders, CancellationToken ct) => TypedResults.Ok(await senders.SaveAsync(key, body, ct)))
+            .WithName("SaveEmailSender").RequirePermission(Permissions.DataHub.IntegrationManage);
+        group.MapDelete("/senders/{key}", async (string key, EmailSenderService senders, CancellationToken ct) => TypedResults.Ok(await senders.RemoveAsync(key, ct)))
+            .WithName("RemoveEmailSender").RequirePermission(Permissions.DataHub.IntegrationManage);
+        group.MapPost("/senders/{key}/test", async (string key, EmailSenderTestBody body, EmailSenderService senders, CancellationToken ct) => TypedResults.Ok(await senders.TestAsync(key, body, ct)))
+            .WithName("TestEmailSender").RequirePermission(Permissions.DataHub.IntegrationManage);
+        group.MapGet("/emails", async ([AsParameters] EmailLogQuery query, EmailSenderService senders, CancellationToken ct) => TypedResults.Ok(await senders.LogAsync(query, ct)))
+            .WithName("ListEmailLog").RequirePermission(Permissions.DataHub.IntegrationView);
+        group.MapPost("/emails/{id:guid}/resend", async (Guid id, EmailSenderService senders, CancellationToken ct) => TypedResults.Ok(await senders.ResendAsync(id, ct)))
+            .WithName("ResendEmail").RequirePermission(Permissions.DataHub.IntegrationManage);
+        group.MapPost("/emails/resend-failed", async (string? module, EmailSenderService senders, CancellationToken ct) => TypedResults.Ok(await senders.ResendFailedAsync(module, ct)))
+            .WithName("ResendFailedEmails").RequirePermission(Permissions.DataHub.IntegrationManage);
+
+        // How long the log keeps emails, and whether admins hear about failures.
+        group.MapGet("/emails/settings", async (EmailUpkeep upkeep, CancellationToken ct) => TypedResults.Ok(await upkeep.SettingsAsync(ct)))
+            .WithName("GetEmailLogSettings").RequirePermission(Permissions.DataHub.IntegrationView);
+        group.MapPut("/emails/settings", async (EmailLogSettingsBody body, EmailUpkeep upkeep, CancellationToken ct) => TypedResults.Ok(await upkeep.SaveSettingsAsync(body, ct)))
+            .WithName("SaveEmailLogSettings").RequirePermission(Permissions.DataHub.IntegrationManage);
 
         return endpoints;
     }
@@ -121,12 +148,12 @@ internal static class NotificationEndpoints
     }
 
     private static async Task<Ok<List<NotificationTemplateItem>>> ListTemplatesAsync(AppDbContext database, CancellationToken ct)
-        => TypedResults.Ok(await database.NotificationTemplates
+        => TypedResults.Ok((await database.NotificationTemplates
             .AsNoTracking()
             .OrderBy(template => template.Name)
-            .Select(template => new NotificationTemplateItem(
-                template.Id, template.Code, template.Name, template.Subject, template.Body, template.SendInApp, template.SendEmail, template.SendSms, template.IsActive))
-            .ToListAsync(ct));
+            .ToListAsync(ct))
+            .Select(NotificationTemplateItem.From)
+            .ToList());
 
     private static async Task<Ok<NotificationTemplateItem>> UpdateTemplateAsync(
         Guid id, UpdateNotificationTemplateRequest body, AppDbContext database, CancellationToken ct)
@@ -136,10 +163,16 @@ internal static class NotificationEndpoints
         NotificationTemplate template = await database.NotificationTemplates.FirstOrDefaultAsync(row => row.Id == id, ct)
             ?? throw new NotFoundException(nameof(NotificationTemplate), id);
 
+        string? senderKey = string.IsNullOrWhiteSpace(body.SenderKey) ? null : body.SenderKey.Trim().ToLowerInvariant();
+        if (senderKey is not null && !EmailModules.IsKnown(senderKey))
+        {
+            throw new DomainRuleException("TEMPLATE_SENDER", "Choose one of the senders on the Email senders page.");
+        }
+
         template.Update(body.Subject, body.Body, body.SendInApp, body.SendEmail, body.SendSms, body.IsActive);
+        template.UseSender(senderKey == EmailModules.KeyFor(template.Code) ? null : senderKey);
         await database.SaveChangesAsync(ct);
 
-        return TypedResults.Ok(new NotificationTemplateItem(
-            template.Id, template.Code, template.Name, template.Subject, template.Body, template.SendInApp, template.SendEmail, template.SendSms, template.IsActive));
+        return TypedResults.Ok(NotificationTemplateItem.From(template));
     }
 }

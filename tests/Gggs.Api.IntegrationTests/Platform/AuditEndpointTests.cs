@@ -75,19 +75,19 @@ public sealed class AuditEndpointTests(PeopleOsApiFactory factory)
     public async Task ListingLogs_FiltersByEntityTypeAndAction()
     {
         string entityId = $"probe-{Guid.CreateVersion7():N}";
-        await SeedAsync(TenantId, entityId, "Created", entityType: "LegalEntity");
-        await SeedAsync(TenantId, entityId, "Modified", entityType: "LegalEntity");
+        await SeedAsync(TenantId, entityId, "Created", entityType: "Company");
+        await SeedAsync(TenantId, entityId, "Modified", entityType: "Company");
         await SeedAsync(TenantId, entityId, "Created", entityType: "Department");
 
         using HttpClient client = factory.CreateClientFor(TenantId, Permissions.Audit.LogView);
 
         PagedResult<AuditLogItem>? page = await client.GetFromJsonAsync<PagedResult<AuditLogItem>>(
-            $"/api/v1/audit/logs?entityId={entityId}&entityType=LegalEntity&action=Modified",
+            $"/api/v1/audit/logs?entityId={entityId}&entityType=Company&action=Modified",
             TestContext.Current.CancellationToken);
 
         page.ShouldNotBeNull();
         AuditLogItem item = page.Items.ShouldHaveSingleItem();
-        item.EntityType.ShouldBe("LegalEntity");
+        item.EntityType.ShouldBe("Company");
         item.Action.ShouldBe("Modified");
     }
 
@@ -110,7 +110,7 @@ public sealed class AuditEndpointTests(PeopleOsApiFactory factory)
         Guid tenantId,
         string entityId,
         string action,
-        string entityType = "LegalEntity",
+        string entityType = "Company",
         string? newValuesJson = "{}")
     {
         using IServiceScope scope = factory.Services.CreateScope();

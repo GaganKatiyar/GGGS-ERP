@@ -12,7 +12,7 @@ import { EmployeeAssets, EmployeeExpenses, EmployeeHelpdesk, EmployeeRewards } f
 import { EmployeeCareer, EmployeeGoals, EmployeeLearning, EmployeePerformance } from '@gggs/shared/talent';
 import { EmployeeAttendance, EmployeeLeave } from '@gggs/shared/time';
 import type { Employee360, Employee360Section } from '@gggs/shared/models';
-import { EmptyState, KpiCard, PageHeader, Skeleton, StatusBadge, Tabs, type TabItem } from '@gggs/shared/ui';
+import { EmptyState, PageHeader, Skeleton, StatusBadge, Tabs, type TabItem } from '@gggs/shared/ui';
 import { AccountsTab } from './tabs/accounts-tab';
 import { EducationTab } from './tabs/education-tab';
 import { EmploymentTab } from './tabs/employment-tab';
@@ -29,7 +29,7 @@ import { StatutoryTab } from './tabs/statutory-tab';
  */
 @Component({
   selector: 'gggs-employee-360-page',
-  imports: [DatePipe, RouterLink, PageHeader, KpiCard, StatusBadge, Tabs, Skeleton, EmptyState, AccountsTab, EmployeeDocuments, EmployeeAttendance, EmployeeLeave, EmployeeProjects, EmployeeSkills, EmployeeAllocation, EmployeeTimesheets, EmployeePayroll, EmployeeCompensation, EmployeeBenefits, EmployeeLoans, EmployeeOnboarding, EmployeePerformance, EmployeeGoals, EmployeeLearning, EmployeeCareer, EmployeeRewards, EmployeeAssets, EmployeeExpenses, EmployeeHelpdesk, EmploymentTab, PersonalTab, FamilyTab, EducationTab, ExperienceTab, StatutoryTab, HistoryTab],
+  imports: [DatePipe, RouterLink, PageHeader, StatusBadge, Tabs, Skeleton, EmptyState, AccountsTab, EmployeeDocuments, EmployeeAttendance, EmployeeLeave, EmployeeProjects, EmployeeSkills, EmployeeAllocation, EmployeeTimesheets, EmployeePayroll, EmployeeCompensation, EmployeeBenefits, EmployeeLoans, EmployeeOnboarding, EmployeePerformance, EmployeeGoals, EmployeeLearning, EmployeeCareer, EmployeeRewards, EmployeeAssets, EmployeeExpenses, EmployeeHelpdesk, EmploymentTab, PersonalTab, FamilyTab, EducationTab, ExperienceTab, StatutoryTab, HistoryTab],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (error()) {
@@ -45,11 +45,36 @@ import { StatutoryTab } from './tabs/statutory-tab';
         </div>
       </gggs-page-header>
 
-      <div class="kpi-row e360__kpis">
-        <gggs-kpi-card label="Department" icon="pi pi-share-alt" [value]="p.assignment.department?.name ?? '—'" />
-        <gggs-kpi-card label="Manager" icon="pi pi-user" [value]="p.assignment.manager?.name ?? '—'" />
-        <gggs-kpi-card label="Tenure" icon="pi pi-calendar" [value]="tenure()" />
-        <gggs-kpi-card label="Direct reports" icon="pi pi-users" [value]="data()!.directReportCount" />
+      <!-- Compact facts: four short values, so each card is a single line of label and value beside its icon. -->
+      <div class="e360__facts">
+        <div class="e360__fact" [attr.title]="((p.assignment.parentDepartment ?? p.assignment.department)?.name ?? '') + (p.assignment.parentDepartment ? ' · function: ' + p.assignment.department?.name : '')">
+          <span class="e360__icon" aria-hidden="true"><i class="pi pi-share-alt"></i></span>
+          <div class="e360__text">
+            <span class="e360__label">Department</span>
+            <span class="e360__value">{{ (p.assignment.parentDepartment ?? p.assignment.department)?.name ?? '—' }}</span>
+          </div>
+        </div>
+        <div class="e360__fact" [attr.title]="p.assignment.manager?.name ?? null">
+          <span class="e360__icon" aria-hidden="true"><i class="pi pi-user"></i></span>
+          <div class="e360__text">
+            <span class="e360__label">Manager</span>
+            <span class="e360__value">{{ p.assignment.manager?.name ?? '—' }}</span>
+          </div>
+        </div>
+        <div class="e360__fact">
+          <span class="e360__icon" aria-hidden="true"><i class="pi pi-calendar"></i></span>
+          <div class="e360__text">
+            <span class="e360__label">Tenure</span>
+            <span class="e360__value">{{ tenure() }}</span>
+          </div>
+        </div>
+        <div class="e360__fact">
+          <span class="e360__icon" aria-hidden="true"><i class="pi pi-users"></i></span>
+          <div class="e360__text">
+            <span class="e360__label">Direct reports</span>
+            <span class="e360__value">{{ data()!.directReportCount }}</span>
+          </div>
+        </div>
       </div>
 
       <gggs-tabs [tabs]="tabs()" [(selected)]="selected" />
@@ -82,13 +107,14 @@ import { StatutoryTab } from './tabs/statutory-tab';
           @case ('organization') {
             <section class="panel">
               <dl class="definition-list">
-                <dt>Company</dt><dd>{{ p.assignment.legalEntity?.name ?? '—' }}</dd>
+                <dt>Company</dt><dd>{{ p.assignment.company?.name ?? '—' }}</dd>
                 <dt>Business unit</dt><dd>{{ p.assignment.businessUnit?.name ?? '—' }}</dd>
-                <dt>Division</dt><dd>{{ p.assignment.division?.name ?? '—' }}</dd>
-                <dt>Department</dt><dd>{{ p.assignment.department?.name ?? '—' }}</dd>
-                <dt>Job</dt><dd>{{ p.assignment.job?.name ?? '—' }}</dd>
-                <dt>Position</dt><dd>{{ p.assignment.position?.name ?? '—' }}</dd>
-                <dt>Grade</dt><dd>{{ p.assignment.grade?.name ?? '—' }}</dd>
+                <dt>Department</dt><dd>{{ (p.assignment.parentDepartment ?? p.assignment.department)?.name ?? '—' }}</dd>
+                <dt>Function</dt><dd>{{ p.assignment.parentDepartment ? p.assignment.department?.name : '—' }}</dd>
+                <dt>Role</dt><dd>{{ p.assignment.role?.name ?? '—' }}</dd>
+                <dt>Designation</dt><dd>{{ p.assignment.designation ?? '—' }}</dd>
+                <dt>Level</dt><dd>{{ p.assignment.level?.name ?? '—' }}</dd>
+                <dt>Cost center</dt><dd>{{ p.assignment.costCenter?.name ?? '—' }}</dd>
                 <dt>Manager</dt>
                 <dd>
                   @if (p.assignment.manager; as manager) {
@@ -192,8 +218,64 @@ import { StatutoryTab } from './tabs/statutory-tab';
     }
   `,
   styles: `
-    .e360__kpis {
-      margin-block-end: var(--gggs-space-4);
+    .e360__facts {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--gggs-space-3);
+      margin: 0 0 var(--gggs-space-4);
+    }
+
+    .e360__fact {
+      display: flex;
+      align-items: center;
+      gap: var(--gggs-space-3);
+      min-width: 0;
+      padding: var(--gggs-space-2) var(--gggs-space-3);
+      border: 1px solid var(--gggs-color-border);
+      border-radius: var(--gggs-radius-md);
+      background: var(--gggs-color-surface-raised);
+    }
+
+    .e360__icon {
+      display: inline-grid;
+      flex: none;
+      place-items: center;
+      width: 2rem;
+      height: 2rem;
+      border-radius: var(--gggs-radius-sm);
+      background: var(--gggs-color-surface-selected);
+      color: var(--gggs-color-primary);
+    }
+
+    .e360__text {
+      min-width: 0;
+    }
+
+    .e360__label,
+    .e360__value {
+      display: block;
+    }
+
+    .e360__label {
+      color: var(--gggs-color-text-muted);
+      font-size: var(--gggs-font-size-xs);
+      line-height: 1.3;
+    }
+
+    .e360__value {
+      margin: 0;
+      overflow: hidden;
+      font-size: var(--gggs-font-size-lg);
+      font-weight: var(--gggs-font-weight-semibold);
+      line-height: 1.35;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 760px) {
+      .e360__facts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
     }
 
     .e360__body {

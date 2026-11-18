@@ -11,6 +11,7 @@ import type {
   CareerTrack,
   MyCareer,
   NineBoxView,
+  OrgUnit,
   PromotionDetailsInput,
   PromotionItem,
   PromotionStatus,
@@ -21,7 +22,7 @@ import type {
 } from '@gggs/shared/models';
 import { CRITICALITIES, READINESS, TALENT_LEVELS, humanize } from '@gggs/shared/models';
 import { MoneyPipe } from '@gggs/shared/money';
-import { OrgSelect } from '@gggs/shared/org-reference';
+import { OrgSelect, OrgStructureApi, designationsFor } from '@gggs/shared/org-reference';
 import { CareerApi } from '@gggs/shared/talent';
 import { EmptyState, FormDialog, KpiCard, localIsoDate, PageHeader, Skeleton, StatusBadge } from '@gggs/shared/ui';
 
@@ -31,9 +32,9 @@ const split = (value: string) =>
     .split(',')
     .map((part) => part.trim())
     .filter(Boolean);
-const blankStep = (): CareerStepInput => ({ title: '', jobId: null, gradeId: null, minMonthsInRole: 12, skills: [], description: null });
+const blankStep = (): CareerStepInput => ({ title: '', roleId: null, levelId: null, minMonthsInRole: 12, skills: [], description: null });
 
-/** Career paths: the steps from one role to the next, by job or grade. */
+/** Career paths: the steps from one role to the next, by role or level. */
 @Component({
   selector: 'gggs-career-paths-page',
   imports: [FormsModule, RouterLink, PageHeader, EmptyState, FormDialog, OrgSelect],
@@ -60,7 +61,7 @@ const blankStep = (): CareerStepInput => ({ title: '', jobId: null, gradeId: nul
           @for (step of path.steps; track step.index) {
             <li class="car__step">
               <strong>{{ step.title }}</strong>
-              <span class="muted">{{ step.jobName ?? step.gradeName ?? '' }}{{ step.minMonthsInRole ? ' · ' + step.minMonthsInRole + ' months in role' : '' }}</span>
+              <span class="muted">{{ step.roleName ?? step.levelName ?? '' }}{{ step.minMonthsInRole ? ' · ' + step.minMonthsInRole + ' months in role' : '' }}</span>
               @if (step.skills.length) {
                 <span class="muted">{{ step.skills.join(', ') }}</span>
               }
@@ -96,8 +97,8 @@ const blankStep = (): CareerStepInput => ({ title: '', jobId: null, gradeId: nul
       @for (step of steps(); track $index; let i = $index) {
         <div class="car__edit">
           <input type="text" maxlength="120" placeholder="Title" aria-label="Title" [value]="step.title" (input)="patch(i, { title: $any($event.target).value })" />
-          <gggs-org-select kind="jobs" placeholder="Job" ariaLabel="Job" [ngModel]="step.jobId ?? null" (ngModelChange)="patch(i, { jobId: $event })" />
-          <gggs-org-select kind="grades" placeholder="Grade" ariaLabel="Grade" [ngModel]="step.gradeId ?? null" (ngModelChange)="patch(i, { gradeId: $event })" />
+          <gggs-org-select kind="roles" placeholder="Role" ariaLabel="Role" [ngModel]="step.roleId ?? null" (ngModelChange)="patch(i, { roleId: $event })" />
+          <gggs-org-select kind="levels" placeholder="Level" ariaLabel="Level" [ngModel]="step.levelId ?? null" (ngModelChange)="patch(i, { levelId: $event })" />
           <input type="number" min="0" max="240" aria-label="Months in role" [value]="step.minMonthsInRole" (input)="patch(i, { minMonthsInRole: +$any($event.target).value })" />
           <input type="text" placeholder="Skills, comma-separated" aria-label="Skills" [value]="step.skills.join(', ')" (change)="patch(i, { skills: split($any($event.target).value) })" />
           <button type="button" class="btn btn--link btn--sm" aria-label="Remove step" (click)="remove(i)"><i class="pi pi-trash" aria-hidden="true"></i></button>
@@ -139,7 +140,7 @@ export class CareerPathsPage {
     this.departmentId.set(path?.departmentId ?? null);
     this.steps.set(
       path
-        ? path.steps.map((step) => ({ title: step.title, jobId: step.jobId ?? null, gradeId: step.gradeId ?? null, minMonthsInRole: step.minMonthsInRole, skills: step.skills, description: step.description ?? null }))
+        ? path.steps.map((step) => ({ title: step.title, roleId: step.roleId ?? null, levelId: step.levelId ?? null, minMonthsInRole: step.minMonthsInRole, skills: step.skills, description: step.description ?? null }))
         : [blankStep(), blankStep()],
     );
     this.formError.set(null);
@@ -174,9 +175,9 @@ export class CareerPathsPage {
 
 const blankPromotion = (): PromotionDetailsInput => ({
   proposedDesignation: '',
-  proposedJobId: null,
-  proposedGradeId: null,
-  proposedPositionId: null,
+  proposedRoleId: null,
+  proposedLevelId: null,
+  proposedDesignationId: null,
   proposedAnnualCtc: null,
   effectiveDate: localIsoDate(),
   justification: '',
@@ -227,16 +228,23 @@ const blankPromotion = (): PromotionDetailsInput => ({
       </label>
       <div class="car__grid">
         <label class="field">
+          <span class="field__label">New role</span>
+          <gggs-org-select kind="roles" placeholder="Unchanged" ariaLabel="Role" [ngModel]="form().proposedRoleId ?? null" (ngModelChange)="chooseRoleOrLevel({ proposedRoleId: $event })" />
+          <span class="field__hint">A role of their department.</span>
+        </label>
+        <label class="field">
+          <span class="field__label">New level</span>
+          <gggs-org-select kind="levels" placeholder="Unchanged" ariaLabel="Level" [ngModel]="form().proposedLevelId ?? null" (ngModelChange)="chooseRoleOrLevel({ proposedLevelId: $event })" />
+        </label>
+        <label class="field">
           <span class="field__label">New designation</span>
-          <input type="text" maxlength="200" [value]="form().proposedDesignation" (input)="patch({ proposedDesignation: $any($event.target).value })" />
-        </label>
-        <label class="field">
-          <span class="field__label">New job</span>
-          <gggs-org-select kind="jobs" placeholder="Unchanged" ariaLabel="Job" [ngModel]="form().proposedJobId ?? null" (ngModelChange)="patch({ proposedJobId: $event })" />
-        </label>
-        <label class="field">
-          <span class="field__label">New grade</span>
-          <gggs-org-select kind="grades" placeholder="Unchanged" ariaLabel="Grade" [ngModel]="form().proposedGradeId ?? null" (ngModelChange)="patch({ proposedGradeId: $event })" />
+          <select aria-label="New designation" [value]="form().proposedDesignationId ?? ''" (change)="chooseDesignation($any($event.target).value)">
+            <option value="">Choose a designation</option>
+            @for (designation of designationChoices(); track designation.id) {
+              <option [value]="designation.id" [selected]="designation.id === form().proposedDesignationId">{{ designation.name }}</option>
+            }
+          </select>
+          <span class="field__hint">Picked from the role and level; picking one fills them in.</span>
         </label>
         <label class="field">
           <span class="field__label">New annual CTC</span>
@@ -258,7 +266,10 @@ const blankPromotion = (): PromotionDetailsInput => ({
 })
 export class PromotionsPage {
   private readonly api = inject(CareerApi);
+  private readonly org = inject(OrgStructureApi);
   private readonly router = inject(Router);
+
+  protected readonly designations = signal<readonly OrgUnit[]>([]);
 
   protected readonly canManage = inject(PermissionStore).has('career.promotion.manage');
   protected readonly humanize = humanize;
@@ -281,11 +292,43 @@ export class PromotionsPage {
     this.form.update((form) => ({ ...form, ...change }));
   }
 
-  protected openNominate(): void {
+  protected async openNominate(): Promise<void> {
     this.employeeId.set(null);
     this.form.set(blankPromotion());
     this.formError.set(null);
     this.nominateOpen.set(true);
+    if (!this.designations().length) {
+      this.designations.set(await this.org.active('designations'));
+    }
+  }
+
+  /** The chosen role's designations (and free-standing ones), or all of them before a role is chosen. */
+  protected readonly designationChoices = computed(() => {
+    const filter = designationsFor(this.form().proposedRoleId);
+    return filter ? this.designations().filter(filter) : this.designations();
+  });
+
+  /** A role and a level together pick their designation ("Business Analyst L2"). */
+  protected chooseRoleOrLevel(change: Partial<PromotionDetailsInput>): void {
+    this.patch(change);
+    const { proposedRoleId, proposedLevelId } = this.form();
+    const match = this.designations().find((row) => row['roleId'] === proposedRoleId && row['levelId'] === proposedLevelId);
+    if (proposedRoleId && proposedLevelId && match) {
+      this.patch({ proposedDesignationId: match.id, proposedDesignation: match.name });
+    }
+  }
+
+  /** A designation from the list gives the printed title, and - when it is a role at a level - fills both in. */
+  protected chooseDesignation(id: string): void {
+    const designation = this.designations().find((row) => row.id === id);
+    const role = typeof designation?.['roleId'] === 'string' ? (designation['roleId'] as string) : null;
+    const level = typeof designation?.['levelId'] === 'string' ? (designation['levelId'] as string) : null;
+    this.patch({
+      proposedDesignationId: designation?.id ?? null,
+      proposedDesignation: designation?.name ?? '',
+      ...(role ? { proposedRoleId: role } : {}),
+      ...(level ? { proposedLevelId: level } : {}),
+    });
   }
 
   protected async nominate(): Promise<void> {
@@ -336,7 +379,7 @@ export class PromotionsPage {
       <p><a routerLink="/career/promotions">← Promotions</a></p>
       <section class="panel car__facts">
         <div><span class="field__label">Role</span><p>{{ p.currentDesignation ?? '—' }} → {{ p.proposedDesignation }}</p></div>
-        <div><span class="field__label">Job · grade</span><p>{{ p.proposedJobName ?? 'unchanged' }} · {{ p.proposedGradeName ?? 'unchanged' }}</p></div>
+        <div><span class="field__label">Role · level</span><p>{{ p.proposedRoleName ?? 'unchanged' }} · {{ p.proposedLevelName ?? 'unchanged' }}</p></div>
         <div><span class="field__label">Annual CTC</span><p>{{ p.currentAnnualCtc | gggsMoney }} → {{ p.proposedAnnualCtc | gggsMoney }}{{ p.increasePercent !== undefined ? ' (+' + p.increasePercent + '%)' : '' }}</p></div>
         <div><span class="field__label">Effective</span><p>{{ p.effectiveDate | date: 'd MMM y' }}{{ p.appliedOn ? ' · applied ' + (p.appliedOn | date: 'd MMM y') : '' }}</p></div>
         <div><span class="field__label">Latest rating</span><p>{{ p.rating ? p.rating + ' / 5' : 'none released' }}</p></div>
@@ -383,7 +426,7 @@ export class PromotionPage {
   }
 }
 
-const blankSuccession = (): SuccessionInput => ({ roleTitle: '', positionId: null, departmentId: null, incumbentEmployeeId: null, criticality: 'High', vacancyRisk: 'Medium', notes: null, successors: [] });
+const blankSuccession = (): SuccessionInput => ({ roleTitle: '', departmentId: null, incumbentEmployeeId: null, criticality: 'High', vacancyRisk: 'Medium', notes: null, successors: [] });
 
 /** Succession plans for key roles. */
 @Component({
@@ -507,7 +550,6 @@ export class SuccessionPage {
       plan
         ? {
             roleTitle: plan.roleTitle,
-            positionId: plan.positionId ?? null,
             departmentId: plan.departmentId ?? null,
             incumbentEmployeeId: plan.incumbentEmployeeId ?? null,
             criticality: plan.criticality,
@@ -718,7 +760,7 @@ export class TalentReviewPage {
     <gggs-page-header title="My career" subtitle="Your path, your next step and what it takes." />
     @if (mine(); as m) {
       <div class="xp__kpis">
-        <gggs-kpi-card label="Role" [value]="m.designation ?? '—'" [hint]="(m.jobName ?? '') + (m.gradeName ? ' · ' + m.gradeName : '')" />
+        <gggs-kpi-card label="Role" [value]="m.designation ?? '—'" [hint]="(m.roleName ?? '') + (m.levelName ? ' · ' + m.levelName : '')" />
         <gggs-kpi-card label="Latest rating" [value]="m.latestRating ? m.latestRating.rating + ' / 5' : '—'" [hint]="m.latestRating ? m.latestRating.label + ' · ' + m.latestRating.cycleName : 'No released review yet'" />
         <gggs-kpi-card label="With us since" [value]="m.joiningDate ? (m.joiningDate | date: 'MMM y') : '—'" />
       </div>

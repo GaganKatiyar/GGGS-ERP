@@ -157,6 +157,18 @@ internal static class NotificationTemplateCatalog
         new(NotificationTemplates.SurveyOpened, "Survey open",
             "{{surveyTitle}} - your view counts",
             "Hi {{recipientName}}, please take {{surveyTitle}} by {{closesOn}}. {{anonymity}}", SendInApp: true, SendEmail: true),
+        new(NotificationTemplates.BirthdayWish, "Birthday wish",
+            "Happy birthday, {{recipientName}}!",
+            "Hi {{recipientName}}, wishing you a very happy birthday from all of us at {{companyName}}. Have a wonderful day! {{note}}", SendInApp: true, SendEmail: true),
+        new(NotificationTemplates.BirthdayManagerNotice, "Team member's birthday",
+            "It's {{employeeName}}'s birthday {{when}}",
+            "Hi {{recipientName}}, {{employeeName}} from your team celebrates their birthday {{when}} ({{date}}). A quick word from you would mean a lot.", SendInApp: true, SendEmail: true),
+        new(NotificationTemplates.AnniversaryWish, "Work anniversary wish",
+            "Happy {{years}}-year work anniversary, {{recipientName}}!",
+            "Hi {{recipientName}}, congratulations on completing {{years}} {{yearsWord}} with {{companyName}}. Thank you for everything you bring to the team! {{note}}", SendInApp: true, SendEmail: true),
+        new(NotificationTemplates.AnniversaryManagerNotice, "Team member's work anniversary",
+            "{{employeeName}} completes {{years}} {{yearsWord}} {{when}}",
+            "Hi {{recipientName}}, {{employeeName}} from your team completes {{years}} {{yearsWord}} with {{companyName}} {{when}} ({{date}}). Take a moment to congratulate them.", SendInApp: true, SendEmail: true),
         new(NotificationTemplates.TicketUpdate, "Ticket update",
             "{{number}}: {{status}}",
             "Hi {{recipientName}}, your ticket {{number}} \"{{subject}}\" is {{status}}. {{note}}", SendInApp: true, SendEmail: true),
@@ -241,11 +253,13 @@ public sealed record SmsQueuedIntegrationEvent(Guid SmsMessageId) : IntegrationE
 /// <summary>
 /// Sends straight away rather than queuing, so the secret is never written down: the record kept is
 /// the same message with the secret masked. A tenant that predates a template gets the catalog's wording.
+/// It goes as its module's sender, but a paused module does not hold it back: these must arrive.
 /// </summary>
 internal sealed class OneTimeNotices(
     AppDbContext dbContext,
     INotificationChannel channel,
     ITenantMessageSender sender,
+    EmailSenderResolver senders,
     TimeProvider timeProvider,
     ILogger<OneTimeNotices> logger) : IOneTimeNotices
 {
@@ -262,30 +276,45 @@ internal sealed class OneTimeNotices(
         string subjectTemplate = template?.Subject ?? seed?.Subject ?? throw new InvalidOperationException($"There is no {code} template.");
         string bodyTemplate = template?.Body ?? seed!.Body;
 
+        string moduleKey = EmailModules.KeyFor(code);
         Dictionary<string, string> masked = values.ToDictionary(pair => pair.Key, pair => secrets.Contains(pair.Key) ? Mask : pair.Value, StringComparer.Ordinal);
-        var record = EmailMessage.Queue(address, TemplateRenderer.Render(subjectTemplate, masked), TemplateRenderer.Render(bodyTemplate, masked), code);
+        var record = EmailMessage.Queue(address, TemplateRenderer.Render(subjectTemplate, masked), TemplateRenderer.Render(bodyTemplate, masked), code, moduleKey);
+        if (secrets.Count > 0)
+        {
+            record.MarkMasked();
+        }
+
         dbContext.EmailMessages.Add(record);
 
-        string subject = TemplateRenderer.Render(subjectTemplate, values);
-        string body = TemplateRenderer.Render(bodyTemplate, values);
+        ResolvedSender from = await senders.ResolveAsync(template?.SenderKey ?? moduleKey, cancellationToken);
+        OutgoingEmail outgoing = from.Compose(address, TemplateRenderer.Render(subjectTemplate, values), TemplateRenderer.Render(bodyTemplate, values));
         ChannelSendResult result;
         try
         {
-            result = await sender.SendEmailAsync(address, subject, body, cancellationToken) ?? await SendThroughSystemAsync(address, subject, body, cancellationToken);
+            if (await sender.SendEmailAsync(outgoing, from.ConnectionId, cancellationToken) is { } own)
+            {
+                result = new ChannelSendResult(own.Succeeded, own.Message);
+                Record(record, result, from.Describe(own.ConnectionName));
+            }
+            else
+            {
+                await channel.SendAsync(OutboundMessage.From(outgoing, sensitive: true), cancellationToken);
+                result = new ChannelSendResult(true, "Sent.");
+                if (channel.Delivers)
+                {
+                    record.MarkSent(timeProvider.GetUtcNow().UtcDateTime, from.Describe("the system's sender"));
+                }
+                else
+                {
+                    record.MarkLogged("No working mail connection is set for this sender, so the email was not sent.", from.Describe("the server log"));
+                }
+            }
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             // By type only: an exception's message could quote what it was given.
             logger.LogWarning("A one-time email ({Code}) failed: {Type}", code, exception.GetType().Name);
             result = new ChannelSendResult(false, "The email could not be sent.");
-        }
-
-        if (result.Succeeded)
-        {
-            record.MarkSent(timeProvider.GetUtcNow().UtcDateTime);
-        }
-        else
-        {
             record.MarkFailed(result.Message);
         }
 
@@ -293,10 +322,16 @@ internal sealed class OneTimeNotices(
         return result;
     }
 
-    private async Task<ChannelSendResult> SendThroughSystemAsync(string address, string subject, string body, CancellationToken cancellationToken)
+    private void Record(EmailMessage record, ChannelSendResult result, string sentAs)
     {
-        await channel.SendAsync(new OutboundMessage(address, subject, body, Sensitive: true), cancellationToken);
-        return new ChannelSendResult(true, "Sent.");
+        if (result.Succeeded)
+        {
+            record.MarkSent(timeProvider.GetUtcNow().UtcDateTime, sentAs);
+        }
+        else
+        {
+            record.MarkFailed(result.Message, sentAs);
+        }
     }
 }
 
@@ -364,7 +399,7 @@ internal sealed class Notifier(
             string? address = recipient.Email ?? person?.OfficialEmail;
             if (template.SendEmail && choice?.EmailEnabled != false && !string.IsNullOrWhiteSpace(address))
             {
-                var email = EmailMessage.Queue(address, subject, body, code);
+                var email = EmailMessage.Queue(address, subject, body, code, EmailModules.KeyFor(code));
                 dbContext.EmailMessages.Add(email);
                 publisher.Publish(new EmailQueuedIntegrationEvent(email.Id));
             }

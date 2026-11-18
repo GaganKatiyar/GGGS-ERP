@@ -1,0 +1,22 @@
+@use 'primeicons/primeicons.css';
+@use '@fontsource-variable/inter/index.css';
+@use '@fontsource-variable/plus-jakarta-sans/index.css' as plus-jakarta-sans;
+
+/* The same design system as the HR app (libs/shared/theme), so the two feel like one product. */
+@use '../../../libs/shared/theme/src/gggs';
+
+/*
+ * The console's own accent: indigo instead of the HR app's brand red, so nobody mistakes the
+ * platform console for an organisation's HR screens.
+ */
+:root {
+  --gggs-color-primary: #4f46e5;
+  --gggs-color-primary-hover: #4338ca;
+  --gggs-color-primary-subtle: #eef2ff;
+}
+
+:root.gggs-dark {
+  --gggs-color-primary: #818cf8;
+  --gggs-color-primary-hover: #a5b4fc;
+  --gggs-color-primary-subtle: rgb(99 102 241 / 18%);
+}

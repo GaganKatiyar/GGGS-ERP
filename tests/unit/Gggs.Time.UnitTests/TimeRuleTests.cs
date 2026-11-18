@@ -109,6 +109,30 @@ public sealed class AttendanceEvaluatorTests
     public void OnePunch_IsAMissingPunch()
         => AttendanceEvaluator.Evaluate(Someone, Day, Office(), [At(9, 0)], false, false, null).Status.ShouldBe(AttendanceStatus.MissingPunch);
 
+    [Fact]
+    public void AMissingPunch_IsStillLateFromItsPunchIn()
+    {
+        DayEvaluation late = AttendanceEvaluator.Evaluate(Someone, Day, Office(), [At(9, 42)], false, false, null);
+        late.Status.ShouldBe(AttendanceStatus.MissingPunch);
+        late.LateMinutes.ShouldBe(27, "nine o'clock plus fifteen minutes' grace");
+
+        AttendanceEvaluator.Evaluate(Someone, Day, Office(), [At(9, 10)], false, false, null).LateMinutes.ShouldBe(0);
+    }
+
+    [Fact]
+    public void OnePunchOnADayOff_IsNotAMissingPunch()
+    {
+        DayEvaluation weeklyOff = AttendanceEvaluator.Evaluate(Someone, Day, Office(weeklyOff: true), [At(10, 0)], false, false, null);
+        weeklyOff.Status.ShouldBe(AttendanceStatus.WeeklyOff);
+        weeklyOff.WorkedOnDayOff.ShouldBeFalse("the shift requires a punch out, so one punch is not a day worked");
+        weeklyOff.LateMinutes.ShouldBe(0);
+        weeklyOff.Note.ShouldBe(AttendanceEvaluator.OnePunchOnDayOff);
+
+        DayEvaluation holiday = AttendanceEvaluator.Evaluate(Someone, Day, Office(), [At(10, 0)], false, false, "Diwali");
+        holiday.Status.ShouldBe(AttendanceStatus.Holiday);
+        holiday.Note.ShouldBe($"Diwali · {AttendanceEvaluator.OnePunchOnDayOff}");
+    }
+
     private static DaySchedule PunchInOnly(bool weeklyOff = false) => Office(weeklyOff) with { RequiresPunchOut = false };
 
     [Fact]
@@ -132,11 +156,19 @@ public sealed class AttendanceEvaluatorTests
         => AttendanceEvaluator.Evaluate(Someone, Day, PunchInOnly(), [At(9, 0), At(14, 30)], false, false, null).Status.ShouldBe(AttendanceStatus.HalfDay);
 
     [Fact]
-    public void WithoutAPunchOutRequired_DaysOffAndNoPunchAreUnchanged()
+    public void WithoutAPunchOutRequired_APunchInOnADayOff_IsWorkOnADayOff()
     {
-        AttendanceEvaluator.Evaluate(Someone, Day, PunchInOnly(weeklyOff: true), [At(10, 0)], false, false, null).Status.ShouldBe(AttendanceStatus.MissingPunch);
-        AttendanceEvaluator.Evaluate(Someone, Day, PunchInOnly(), [], false, false, null).Status.ShouldBe(AttendanceStatus.Absent);
+        DayEvaluation weeklyOff = AttendanceEvaluator.Evaluate(Someone, Day, PunchInOnly(weeklyOff: true), [At(10, 0)], false, false, null);
+        weeklyOff.Status.ShouldBe(AttendanceStatus.WeeklyOff);
+        weeklyOff.WorkedOnDayOff.ShouldBeTrue();
+        weeklyOff.Note.ShouldBe(AttendanceEvaluator.WorkedOnDayOffNote);
+
+        AttendanceEvaluator.Evaluate(Someone, Day, PunchInOnly(), [At(10, 0)], false, false, "Diwali").WorkedOnDayOff.ShouldBeTrue();
     }
+
+    [Fact]
+    public void WithoutAPunchOutRequired_NoPunchIsStillAnAbsence()
+        => AttendanceEvaluator.Evaluate(Someone, Day, PunchInOnly(), [], false, false, null).Status.ShouldBe(AttendanceStatus.Absent);
 
     [Fact]
     public void ANightShift_IsJudgedAcrossMidnight()

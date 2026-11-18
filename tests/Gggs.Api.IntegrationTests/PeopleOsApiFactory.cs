@@ -150,6 +150,11 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
             await _worker.DisposeAsync();
         }
 
+        if (_console is not null)
+        {
+            await _console.DisposeAsync();
+        }
+
         await base.DisposeAsync();
 
         try
@@ -419,24 +424,7 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
 
         builder.UseEnvironment("Development");
 
-        builder.ConfigureAppConfiguration((_, configuration) =>
-        {
-            configuration.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                [$"ConnectionStrings:{DataExtensions.ConnectionStringName}"] = ConnectionString,
-                ["ConnectionStrings:Redis"] = string.Empty,
-                ["Gggs:Platform:DeploymentProfile"] = "OnPremise",
-                ["Gggs:Secrets:File:FilePath"] = Path.Combine(Path.GetTempPath(), $"{DatabaseName}-secrets.json"),
-                ["Gggs:Security:EnforceStepUp"] = "false",
-                ["Gggs:Identity:Tokens:Issuer"] = "https://localhost/",
-                ["Gggs:Storage:FileSystem:RootPath"] = FileRoot,
-                ["Gggs:Notifications:EmailProvider"] = "Log",
-
-                // Every test signs in from the same address; the assistant limit stays low enough to test.
-                ["Gggs:RateLimiting:SignInPerMinute"] = "100000",
-                ["Gggs:RateLimiting:AssistantPerMinute"] = "6",
-            });
-        });
+        builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(TestConfiguration()));
 
         builder.ConfigureServices(services =>
         {
@@ -458,26 +446,58 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
                 .ConfigurePrimaryHttpMessageHandler(() => Oidc)
                 .SetHandlerLifetime(Timeout.InfiniteTimeSpan);
 
-            services.AddAuthentication()
-                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
-
-            // Requests carrying the test headers use the test identity; everything else keeps the
-            // production selection between bearer token and session cookie.
-            services.PostConfigure<PolicySchemeOptions>(GggsAuthenticationSchemes.Any, options =>
-            {
-                Func<HttpContext, string?>? production = options.ForwardDefaultSelector;
-                options.ForwardDefaultSelector = context =>
-                    TestAuthHandler.IsTestRequest(context.Request) ? TestAuthHandler.SchemeName : production?.Invoke(context);
-            });
-
-            services.AddScoped<IPermissionProvider>(serviceProvider =>
-                new TestAwarePermissionProvider(
-                    serviceProvider.GetRequiredService<IHttpContextAccessor>(),
-                    ActivatorUtilities.CreateInstance<IdentityPermissionProvider>(serviceProvider),
-                    ActivatorUtilities.CreateInstance<ClaimsPermissionProvider>(serviceProvider)));
+            AddTestIdentity(services);
         });
 
         builder.ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning));
+    }
+
+    /// <summary>
+    /// The platform console's server (Gggs.PlatformApi), hosted in-process against this run's
+    /// database - the same database, as in production. Started on first use.
+    /// </summary>
+    public PlatformConsoleFactory PlatformConsole => _console ??= new PlatformConsoleFactory(this);
+
+    private PlatformConsoleFactory? _console;
+
+    /// <summary>The settings both hosts run with in tests: this run's database, files and secrets.</summary>
+    internal Dictionary<string, string?> TestConfiguration() => new()
+    {
+        [$"ConnectionStrings:{DataExtensions.ConnectionStringName}"] = ConnectionString,
+        ["ConnectionStrings:Redis"] = string.Empty,
+        ["Gggs:Platform:DeploymentProfile"] = "OnPremise",
+        ["Gggs:Secrets:File:FilePath"] = Path.Combine(Path.GetTempPath(), $"{DatabaseName}-secrets.json"),
+        ["Gggs:Security:EnforceStepUp"] = "false",
+        ["Gggs:Identity:Tokens:Issuer"] = "https://localhost/",
+        ["Gggs:Storage:FileSystem:RootPath"] = FileRoot,
+        ["Gggs:Notifications:EmailProvider"] = "Log",
+
+        // Every test signs in from the same address; the assistant limit stays low enough to test.
+        ["Gggs:RateLimiting:SignInPerMinute"] = "100000",
+        ["Gggs:RateLimiting:AssistantPerMinute"] = "6",
+    };
+
+    /// <summary>
+    /// The opt-in test identity: requests carrying the test headers use it; everything else keeps the
+    /// production selection between bearer token and session cookie.
+    /// </summary>
+    internal static void AddTestIdentity(IServiceCollection services)
+    {
+        services.AddAuthentication()
+            .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
+
+        services.PostConfigure<PolicySchemeOptions>(GggsAuthenticationSchemes.Any, options =>
+        {
+            Func<HttpContext, string?>? production = options.ForwardDefaultSelector;
+            options.ForwardDefaultSelector = context =>
+                TestAuthHandler.IsTestRequest(context.Request) ? TestAuthHandler.SchemeName : production?.Invoke(context);
+        });
+
+        services.AddScoped<IPermissionProvider>(serviceProvider =>
+            new TestAwarePermissionProvider(
+                serviceProvider.GetRequiredService<IHttpContextAccessor>(),
+                ActivatorUtilities.CreateInstance<IdentityPermissionProvider>(serviceProvider),
+                ActivatorUtilities.CreateInstance<ClaimsPermissionProvider>(serviceProvider)));
     }
 
     private async Task MigrateAndSeedTenantsAsync()
@@ -537,7 +557,7 @@ public sealed class PeopleOsApiFactory : WebApplicationFactory<Program>, IAsyncL
         foreach (string permission in new[]
         {
             Permissions.MasterData.View, Permissions.MasterData.Manage,
-            Permissions.Organization.View, Permissions.Organization.Manage, Permissions.Organization.LegalEntityManage, Permissions.Organization.DepartmentManage,
+            Permissions.Organization.View, Permissions.Organization.Manage, Permissions.Organization.CompanyManage, Permissions.Organization.DepartmentManage,
             Permissions.Employee.View, Permissions.Employee.Create, Permissions.Employee.Edit, Permissions.Employee.EmploymentManage,
             Permissions.Employee.HistoryView, Permissions.Employee.ExitManage,
             Permissions.Employee.IdentityDocumentView, Permissions.Employee.IdentityDocumentManage,

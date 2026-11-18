@@ -73,8 +73,8 @@ internal sealed class EmployeeSeparations(AppDbContext dbContext, EmployeeServic
                 AssignmentChangeType.ManagerChange,
                 effectiveFrom,
                 new AssignmentInput(
-                    current.DepartmentId, current.PositionId, current.JobId, current.GradeId, current.LocationId, current.LegalEntityId, current.BusinessUnitId,
-                    current.DivisionId, newManagerEmployeeId, current.HrbpEmployeeId, current.EmploymentTypeCode, current.WorkModeCode, current.Designation),
+                    current.DepartmentId, current.RoleId, current.LevelId, current.DesignationId, current.CostCenterId, current.LocationId, current.CompanyId, current.BusinessUnitId,
+                    newManagerEmployeeId, current.HrbpEmployeeId, current.EmploymentTypeCode, current.WorkModeCode, current.Designation),
                 reason),
             cancellationToken);
     }

@@ -110,6 +110,8 @@ public sealed class RecruitmentModule : IModule
         // Offers and hiring.
         group.MapGet("/offers", async (OfferStatus? status, OfferService offers, CancellationToken ct) => TypedResults.Ok(await offers.OffersAsync(status, ct)))
             .WithName("ListOffers").RequirePermission(Permissions.Recruitment.OfferView);
+        group.MapGet("/offers/hireable", async (OfferService offers, CancellationToken ct) => TypedResults.Ok(await offers.HireableAsync(ct)))
+            .WithName("ListHireableOffers").RequirePermission(Permissions.Recruitment.OfferManage);
         group.MapGet("/offers/{id:guid}", async (Guid id, OfferService offers, CancellationToken ct) => TypedResults.Ok(await offers.OfferAsync(id, ct)))
             .WithName("GetOffer").RequirePermission(Permissions.Recruitment.OfferView, Permissions.Workflow.TaskAct);
         group.MapPost("/offers", async (OfferBody body, OfferService offers, CancellationToken ct) => TypedResults.Ok(await offers.DraftAsync(body, ct)))

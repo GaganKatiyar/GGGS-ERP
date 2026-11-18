@@ -23,7 +23,7 @@ import { AuditApi } from './audit-api';
     <form class="filters" [formGroup]="filterForm" (ngSubmit)="applyFilters()">
       <label class="field">
         <span class="field__label">Entity type</span>
-        <input type="text" formControlName="entityType" placeholder="e.g. LegalEntity" />
+        <input type="text" formControlName="entityType" placeholder="e.g. Company" />
       </label>
 
       <label class="field">

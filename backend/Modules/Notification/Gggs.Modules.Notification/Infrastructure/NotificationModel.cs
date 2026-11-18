@@ -20,6 +20,7 @@ internal sealed class NotificationModel : IModuleModel
             entity.Property(template => template.Name).HasMaxLength(200).IsRequired();
             entity.Property(template => template.Subject).HasMaxLength(300).IsRequired();
             entity.Property(template => template.Body).HasMaxLength(4000).IsRequired();
+            entity.Property(template => template.SenderKey).HasMaxLength(32);
             entity.HasIndex(template => new { template.TenantId, template.Code })
                 .HasDatabaseName("UX_NotificationTemplate_TenantId_Code")
                 .IsUnique()
@@ -77,8 +78,45 @@ internal sealed class NotificationModel : IModuleModel
             entity.Property(email => email.EventCode).HasMaxLength(64).IsRequired();
             entity.Property(email => email.Status).HasConversion<byte>();
             entity.Property(email => email.LastError).HasMaxLength(1000);
+            entity.Property(email => email.ModuleKey).HasMaxLength(32);
+            entity.Property(email => email.SentAs).HasMaxLength(300);
             entity.HasIndex(email => new { email.TenantId, email.Status, email.CreatedDate }).HasDatabaseName("IX_EmailMessage_TenantId_Status");
+            entity.HasIndex(email => new { email.TenantId, email.ModuleKey, email.CreatedDate }).HasDatabaseName("IX_EmailMessage_TenantId_Module");
+
+            // The retry sweep's lookup: only the few emails waiting to be tried again.
+            entity.HasIndex(email => new { email.TenantId, email.NextAttemptAt })
+                .HasDatabaseName("IX_EmailMessage_TenantId_NextAttempt")
+                .HasFilter("[NextAttemptAt] IS NOT NULL");
+            entity.Ignore(email => email.CanResend);
+            entity.Ignore(email => email.FailedForGood);
             entity.Ignore(email => email.DomainEvents);
+        });
+
+        modelBuilder.Entity<EmailLogSetting>(entity =>
+        {
+            entity.ToTable("EmailLogSetting", Schema);
+            entity.HasIndex(setting => setting.TenantId)
+                .HasDatabaseName("UX_EmailLogSetting_TenantId")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.Ignore(setting => setting.DomainEvents);
+        });
+
+        modelBuilder.Entity<EmailSender>(entity =>
+        {
+            entity.ToTable("EmailSender", Schema);
+            entity.Property(sender => sender.ModuleKey).HasMaxLength(32).IsRequired();
+            entity.Property(sender => sender.FromName).HasMaxLength(200);
+            entity.Property(sender => sender.FromAddress).HasMaxLength(256);
+            entity.Property(sender => sender.ReplyTo).HasMaxLength(256);
+            entity.Property(sender => sender.Bcc).HasMaxLength(256);
+            entity.Property(sender => sender.Signature).HasMaxLength(1000);
+            entity.Property(sender => sender.BrandColor).HasMaxLength(7);
+            entity.HasIndex(sender => new { sender.TenantId, sender.ModuleKey })
+                .HasDatabaseName("UX_EmailSender_TenantId_Module")
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+            entity.Ignore(sender => sender.DomainEvents);
         });
     }
 }
@@ -96,5 +134,9 @@ internal static class NotificationData
         public DbSet<SmsMessage> SmsMessages => db.Set<SmsMessage>();
 
         public DbSet<NotificationPreference> NotificationPreferences => db.Set<NotificationPreference>();
+
+        public DbSet<EmailSender> EmailSenders => db.Set<EmailSender>();
+
+        public DbSet<EmailLogSetting> EmailLogSettings => db.Set<EmailLogSetting>();
     }
 }

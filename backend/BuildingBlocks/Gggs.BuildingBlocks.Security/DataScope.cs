@@ -22,8 +22,8 @@ public enum DataScope
     /// <summary>Everyone at their branch.</summary>
     Branch = 5,
 
-    /// <summary>Everyone in the legal entity (the payroll boundary).</summary>
-    LegalEntity = 6,
+    /// <summary>Everyone in the company (the legal entity, the payroll boundary).</summary>
+    Company = 6,
 
     /// <summary>Everyone in the business unit.</summary>
     BusinessUnit = 7,

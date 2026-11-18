@@ -15,7 +15,7 @@ public enum PlanStatus
 }
 
 /// <summary>
-/// A workforce plan for a year (spec §11): how many people each department, location and job should
+/// A workforce plan for a year (spec §11): how many people each department, location and role should
 /// have, and the salary and hiring budget behind that - approved before hiring against it.
 /// </summary>
 public sealed class WorkforcePlan : TenantAggregateRoot
@@ -110,7 +110,7 @@ public sealed class WorkforcePlan : TenantAggregateRoot
     }
 }
 
-/// <summary>One line of a plan: a department (optionally a location and job), its headcount today and planned, and the budgets.</summary>
+/// <summary>One line of a plan: a department (optionally a location and role), its headcount today and planned, and the budgets.</summary>
 public sealed class WorkforcePlanLine : TenantAggregateRoot
 {
     private WorkforcePlanLine()
@@ -123,7 +123,7 @@ public sealed class WorkforcePlanLine : TenantAggregateRoot
 
     public Guid? LocationId { get; private set; }
 
-    public Guid? JobId { get; private set; }
+    public Guid? RoleId { get; private set; }
 
     /// <summary>Headcount when the line was last refreshed; the live figure is shown beside it.</summary>
     public int CurrentHeadcount { get; private set; }
@@ -155,7 +155,7 @@ public sealed class WorkforcePlanLine : TenantAggregateRoot
 
         DepartmentId = Guard.NotEmpty(details.DepartmentId);
         LocationId = details.LocationId;
-        JobId = details.JobId;
+        RoleId = details.RoleId;
         CurrentHeadcount = currentHeadcount;
         PlannedHeadcount = details.PlannedHeadcount;
         SalaryBudget = Math.Round(details.SalaryBudget, 2);
@@ -166,7 +166,7 @@ public sealed class WorkforcePlanLine : TenantAggregateRoot
     public void Refresh(int currentHeadcount) => CurrentHeadcount = currentHeadcount;
 }
 
-public sealed record PlanLineDetails(Guid DepartmentId, Guid? LocationId, Guid? JobId, int PlannedHeadcount, decimal SalaryBudget, decimal HiringBudget, string? Notes);
+public sealed record PlanLineDetails(Guid DepartmentId, Guid? LocationId, Guid? RoleId, int PlannedHeadcount, decimal SalaryBudget, decimal HiringBudget, string? Notes);
 
 public enum RequestReason
 {
@@ -215,9 +215,7 @@ public sealed class ManpowerRequest : TenantAggregateRoot
 
     public Guid DepartmentId { get; private set; }
 
-    public Guid? PositionId { get; private set; }
-
-    public Guid? JobId { get; private set; }
+    public Guid? RoleId { get; private set; }
 
     public Guid? LocationId { get; private set; }
 
@@ -296,8 +294,7 @@ public sealed class ManpowerRequest : TenantAggregateRoot
 
         Title = Guard.MaxLength(Guard.NotNullOrWhiteSpace(details.Title).Trim(), 200);
         DepartmentId = Guard.NotEmpty(details.DepartmentId);
-        PositionId = details.PositionId;
-        JobId = details.JobId;
+        RoleId = details.RoleId;
         LocationId = details.LocationId;
         Positions = details.Positions;
         SkillsJson = JsonSerializer.Serialize((details.Skills ?? []).Where(skill => !string.IsNullOrWhiteSpace(skill)).Select(skill => Guard.MaxLength(skill.Trim(), 60)).Distinct(StringComparer.OrdinalIgnoreCase).ToList());
@@ -359,8 +356,7 @@ public sealed class ManpowerRequest : TenantAggregateRoot
 public sealed record RequestDetails(
     string Title,
     Guid DepartmentId,
-    Guid? PositionId,
-    Guid? JobId,
+    Guid? RoleId,
     Guid? LocationId,
     int Positions,
     IReadOnlyList<string>? Skills,

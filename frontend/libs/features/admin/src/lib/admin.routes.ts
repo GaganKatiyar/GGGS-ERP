@@ -85,7 +85,7 @@ export const ADMIN_ROUTES: Routes = [
   {
     path: 'notifications',
     component: NotificationTemplatesPage,
-    title: 'Notifications',
+    title: 'Email templates',
     ...withPermissions(['notification.template.view']),
   },
   {

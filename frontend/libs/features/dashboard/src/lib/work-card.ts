@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signa
 import { RouterLink } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import type { ScheduledDay, TodayAttendance } from '@gggs/shared/models';
-import { shortTime } from '@gggs/shared/models';
+import { clockTime } from '@gggs/shared/ui';
 import { AttendanceApi, ShiftsApi, todayIso } from '@gggs/shared/time';
 import { clockLabel, workedMs } from './work-time';
 
@@ -131,7 +131,7 @@ export class WorkCard {
   private readonly now = signal(Date.now());
 
   protected readonly dateLabel = new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short', weekday: 'long' });
-  protected readonly time = shortTime;
+  protected readonly time = clockTime;
   protected readonly clockedIn = computed(() => (this.today()?.punches.length ?? 0) % 2 === 1);
   protected readonly worked = computed(() => clockLabel(workedMs(this.today()?.punches ?? [], this.now())));
 
@@ -154,7 +154,7 @@ export class WorkCard {
       this.today.set(today);
       this.now.set(Date.now());
       const last = today.punches[today.punches.length - 1];
-      this.status.set(`${today.punches.length % 2 === 1 ? 'Clocked in' : 'Clocked out'} at ${last ? shortTime(last.localTime) : 'now'}.`);
+      this.status.set(`${today.punches.length % 2 === 1 ? 'Clocked in' : 'Clocked out'} at ${last ? clockTime(last.localTime) : 'now'}.`);
     } catch (error) {
       this.status.set(null);
       this.error.set(error instanceof ApiError ? error.message : 'That did not go through. Try again.');

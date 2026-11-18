@@ -1,28 +1,31 @@
-import { describe, expect, it, vi } from 'vitest';
-import { localIsoDate } from './dates';
+import { describe, expect, it } from 'vitest';
+import { clockTime, dateTime, momentTime, timeRange } from './dates';
 
-const at = (utc: string, offsetMinutes: number): Date => {
-  const moment = new Date(utc);
-  vi.spyOn(moment, 'getTimezoneOffset').mockReturnValue(offsetMinutes);
-  return moment;
-};
-
-describe('localIsoDate', () => {
-  it('is already tomorrow in India while UTC is still on today', () => {
-    expect(localIsoDate(at('2026-11-01T20:00:00Z', -330))).toBe('2026-11-02');
-    expect(localIsoDate(at('2026-11-01T18:29:00Z', -330))).toBe('2026-11-01');
-    expect(localIsoDate(at('2026-11-01T18:30:00Z', -330))).toBe('2026-11-02');
+describe('12-hour times', () => {
+  it('reads a time of day as the API sends it', () => {
+    expect(clockTime('13:05:00')).toBe('1:05 PM');
+    expect(clockTime('09:30')).toBe('9:30 AM');
+    expect(clockTime('00:30')).toBe('12:30 AM');
+    expect(clockTime('12:00:00')).toBe('12:00 PM');
+    expect(clockTime('23:59')).toBe('11:59 PM');
+    expect(clockTime(undefined)).toBe('');
+    expect(clockTime('soon')).toBe('');
   });
 
-  it('is still yesterday west of Greenwich', () => {
-    expect(localIsoDate(at('2026-11-02T02:00:00Z', 300))).toBe('2026-11-01');
+  it('shows a shift as a range, or one end when the other is missing', () => {
+    expect(timeRange('09:30:00', '18:30:00')).toBe('9:30 AM – 6:30 PM');
+    expect(timeRange('09:30', null)).toBe('9:30 AM');
+    expect(timeRange(null, null)).toBe('');
   });
 
-  it('crosses a month and a year', () => {
-    expect(localIsoDate(at('2026-12-31T20:00:00Z', -330))).toBe('2027-01-01');
-  });
+  it('shows a moment in the viewer’s zone with AM or PM, reading a zoneless timestamp as UTC', () => {
+    const moment = new Date(Date.UTC(2026, 10, 17, 8, 20));
+    const local = `${moment.getHours() % 12 || 12}:${String(moment.getMinutes()).padStart(2, '0')} ${moment.getHours() < 12 ? 'AM' : 'PM'}`;
 
-  it('defaults to now', () => {
-    expect(localIsoDate()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(dateTime('2026-11-17T08:20:00Z')).toContain(local);
+    expect(dateTime('2026-11-17T08:20:00')).toBe(dateTime('2026-11-17T08:20:00Z'));
+    expect(momentTime(moment)).toBe(local);
+    expect(dateTime('2026-11-17')).toBe('17 Nov 2026');
+    expect(dateTime(null)).toBe('');
   });
 });

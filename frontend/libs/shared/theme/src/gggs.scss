@@ -1,0 +1,20 @@
+/*
+ * The Nuts and Bolts design system, shared by every application in the workspace (the HR app and
+ * the platform console). Tokens first, then element defaults (in a cascade layer, so any component
+ * or PrimeNG rule overrides them), then the shared building blocks every screen uses. Components may
+ * add local styles for what is genuinely theirs - never colours or spacing written out literally.
+ *
+ * An application's styles.scss loads its icon and font packages, then `@use`s this file.
+ */
+@use './styles/tokens';
+@use './styles/base';
+@use './styles/buttons';
+@use './styles/forms';
+@use './styles/table';
+@use './styles/layout';
+@use './styles/feedback';
+@use './styles/xp';
+@use './styles/depth';
+@use './styles/shell';
+@use './styles/overlays';
+@use './styles/utilities';

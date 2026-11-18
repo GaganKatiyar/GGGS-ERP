@@ -101,7 +101,7 @@ internal static class ExitsDemo
             string email = $"{leaver.First.ToLowerInvariant()}.{leaver.Last.ToLowerInvariant()}@gmail.example";
             (Guid person, _) = await hiring.HireAsync(new NewHire(
                 leaver.First, null, leaver.Last, email, $"98450{mobile}", leaver.Joined,
-                template.DepartmentId, null, null, null, template.LocationId, manager, "FULL_TIME", "HYBRID", leaver.Designation));
+                template.DepartmentId, null, null, template.LocationId, manager, "FULL_TIME", "HYBRID", leaver.Designation));
             if (leaver.AnnualCtc is { } ctc)
             {
                 await salaries.ReviseAsync(new SalaryRevisionRequest(person, ctc, leaver.Joined, structure, "Hire", "dev-seed", null));

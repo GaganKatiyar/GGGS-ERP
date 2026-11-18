@@ -33,7 +33,7 @@ type Pane = 'comments' | 'history' | 'files' | 'code';
             <article class="talk__comment">
               <header class="talk__who">
                 <strong>{{ comment.authorName ?? 'Someone' }}</strong>
-                <span class="muted talk__small">{{ comment.postedAt | date: 'd MMM y, HH:mm' }}{{ comment.editedAt ? ' · edited' : '' }}</span>
+                <span class="muted talk__small">{{ comment.postedAt | date: 'd MMM y, h:mm a' }}{{ comment.editedAt ? ' · edited' : '' }}</span>
                 <span class="talk__spacer"></span>
                 @if (comment.canEdit) {
                   <button type="button" class="btn btn--link btn--sm" (click)="startEdit(comment)">Edit</button>
@@ -80,7 +80,7 @@ type Pane = 'comments' | 'history' | 'files' | 'code';
         }
         @case ('history') {
           @for (entry of view()?.activity ?? []; track entry.id) {
-            <p class="talk__line"><strong>{{ entry.actorName ?? 'Someone' }}</strong> {{ line(entry) }} <span class="muted talk__small">{{ entry.at | date: 'd MMM y, HH:mm' }}</span></p>
+            <p class="talk__line"><strong>{{ entry.actorName ?? 'Someone' }}</strong> {{ line(entry) }} <span class="muted talk__small">{{ entry.at | date: 'd MMM y, h:mm a' }}</span></p>
           } @empty {
             <p class="muted talk__small">Nothing recorded yet. Changes made from now on appear here.</p>
           }

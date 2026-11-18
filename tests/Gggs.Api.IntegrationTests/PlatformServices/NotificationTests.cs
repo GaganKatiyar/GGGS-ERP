@@ -39,13 +39,14 @@ public sealed class NotificationTests(PeopleOsApiFactory factory)
         (await manager.PostAsync("/api/v1/notifications/read-all", null, Ct)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
         (await manager.GetFromJsonAsync<JsonElement>("/api/v1/notifications/unread-count", Ct)).GetProperty("unreadCount").GetInt32().ShouldBe(0);
 
-        // The email went through the channel (the logging one in tests) and is on record as sent.
+        // The email went through the channel - the logging one in tests - and is on record as logged, not sent.
         await factory.RunAsWorkerAsync(PeopleOsApiFactory.SeededTenantId, async services =>
         {
             string managerEmail = (await admin.GetFromJsonAsync<JsonElement>($"/api/v1/employees/{org.Manager}", Ct)).GetProperty("officialEmail").GetString()!;
             EmailMessage email = await services.GetRequiredService<AppDbContext>().Set<EmailMessage>()
                 .FirstAsync(message => message.ToAddress == managerEmail && message.EventCode == "workflow.task-assigned", Ct);
-            email.Status.ShouldBe(EmailStatus.Sent);
+            email.Status.ShouldBe(EmailStatus.Logged);
+            email.ModuleKey.ShouldBe("approvals");
             email.Subject.ShouldStartWith("Approval needed:");
         });
     }

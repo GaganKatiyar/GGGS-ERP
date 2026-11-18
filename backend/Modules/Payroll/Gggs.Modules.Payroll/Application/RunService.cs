@@ -27,7 +27,7 @@ public sealed record RunItem(
     DateOnly PeriodEnd,
     string Label,
     DateOnly PayDate,
-    Guid? LegalEntityId,
+    Guid? CompanyId,
     RunStatus Status,
     string Currency,
     int EmployeeCount,
@@ -110,7 +110,7 @@ public sealed record RunItemQuery
     public int? PageSize { get; init; }
 }
 
-public sealed record CreateRunBody(DateOnly Period, DateOnly? PayDate, Guid? LegalEntityId, string? Notes);
+public sealed record CreateRunBody(DateOnly Period, DateOnly? PayDate, Guid? CompanyId, string? Notes);
 
 public sealed record HoldBody(string Reason);
 
@@ -175,7 +175,7 @@ internal sealed class RunService(
         PayrollRun run = await RunAsync(id, tracked: false, cancellationToken);
         List<PayrollRunItem> items = await dbContext.PayrollRunItems.AsNoTracking().Where(item => item.RunId == id).ToListAsync(cancellationToken);
         PayrollRun? previous = await dbContext.PayrollRuns.AsNoTracking()
-            .Where(other => other.Kind == PayrollRunKind.Regular && other.Period < run.Period && other.LegalEntityId == run.LegalEntityId && (other.Status == RunStatus.Finalized || other.Status == RunStatus.Paid))
+            .Where(other => other.Kind == PayrollRunKind.Regular && other.Period < run.Period && other.CompanyId == run.CompanyId && (other.Status == RunStatus.Finalized || other.Status == RunStatus.Paid))
             .OrderByDescending(other => other.Period)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -194,7 +194,7 @@ internal sealed class RunService(
     {
         ArgumentNullException.ThrowIfNull(body);
         DateOnly period = new(body.Period.Year, body.Period.Month, 1);
-        if (await dbContext.PayrollRuns.AnyAsync(run => run.Kind == PayrollRunKind.Regular && run.Period == period && run.LegalEntityId == body.LegalEntityId && run.Status != RunStatus.Cancelled, cancellationToken))
+        if (await dbContext.PayrollRuns.AnyAsync(run => run.Kind == PayrollRunKind.Regular && run.Period == period && run.CompanyId == body.CompanyId && run.Status != RunStatus.Cancelled, cancellationToken))
         {
             throw new DomainRuleException("RUN_EXISTS", $"There is already a payroll run for {period:MMMM yyyy}.");
         }
@@ -202,7 +202,7 @@ internal sealed class RunService(
         PayrollSettings settings = await catalog.SettingsAsync(cancellationToken);
         DateOnly end = period.AddMonths(1).AddDays(-1);
         DateOnly payDate = body.PayDate ?? new DateOnly(end.Year, end.Month, Math.Min(settings.PayDay, end.Day));
-        var run = PayrollRun.Open(period, payDate, body.LegalEntityId, settings.DefaultCurrency, body.Notes);
+        var run = PayrollRun.Open(period, payDate, body.CompanyId, settings.DefaultCurrency, body.Notes);
         dbContext.PayrollRuns.Add(run);
         await dbContext.SaveChangesAsync(cancellationToken);
         return Item(run);
@@ -545,7 +545,7 @@ internal sealed class RunService(
 
     /// <summary>
     /// Everyone with a salary during the month, employed during it, within the caller's reach and the
-    /// run's legal entity - less anyone whose full and final run pays that month. A full and final run
+    /// run's company - less anyone whose full and final run pays that month. A full and final run
     /// pays its leaver alone.
     /// </summary>
     private async Task<List<EmployeeSummary>> PeopleAsync(PayrollRun run, CancellationToken cancellationToken)
@@ -567,7 +567,7 @@ internal sealed class RunService(
         IReadOnlyCollection<Guid>? scope = await employees.InScopeIdsAsync(Permissions.Payroll.RunProcess, cancellationToken);
         return [.. (await employees.GetManyAsync(withSalary.Where(id => (scope is null || scope.Contains(id)) && !settled.Contains(id)), cancellationToken))
             .Where(person => (person.JoiningDate is null || person.JoiningDate <= run.PeriodEnd) && (person.ExitDate is null || person.ExitDate >= run.Period))
-            .Where(person => run.LegalEntityId is null || person.LegalEntityId == run.LegalEntityId)
+            .Where(person => run.CompanyId is null || person.CompanyId == run.CompanyId)
             .OrderBy(person => person.DisplayName, StringComparer.CurrentCulture)];
     }
 
@@ -653,7 +653,7 @@ internal sealed class RunService(
         => birth is { } born ? on.Year - born.Year - (on < born.AddYears(on.Year - born.Year) ? 1 : 0) : null;
 
     internal static RunItem Item(PayrollRun run) => new(
-        run.Id, run.Period, run.PeriodEnd, Label(run.Period), run.PayDate, run.LegalEntityId, run.Status, run.Currency, run.EmployeeCount, run.Gross,
+        run.Id, run.Period, run.PeriodEnd, Label(run.Period), run.PayDate, run.CompanyId, run.Status, run.Currency, run.EmployeeCount, run.Gross,
         run.Deductions, run.Net, run.EmployerCost, run.Warnings, run.Errors, run.CalculatedDate, run.ApprovedDate, run.FinalizedDate, run.PaidDate,
         run.PaymentReference, run.Notes, run.WorkflowInstanceId, run.Kind, run.EmployeeId);
 

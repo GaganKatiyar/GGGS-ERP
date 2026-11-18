@@ -1,6 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Gggs.Data;
+using Gggs.Modules.Attendance.Application;
+using Gggs.Modules.Attendance.Domain;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using static Gggs.Api.IntegrationTests.PlatformServicesApi;
 using static Gggs.Api.IntegrationTests.TimeApi;
@@ -160,6 +165,56 @@ public sealed class AttendanceTests(PeopleOsApiFactory factory)
         day.GetProperty("workedMinutes").GetInt32().ShouldBe(0);
         day.GetProperty("requiresPunchOut").GetBoolean().ShouldBeFalse();
         (await MyDayAsync(employee, tuesday.AddDays(1))).GetProperty("status").GetString().ShouldBe("Absent", "the punch in is still required");
+    }
+
+    [Fact]
+    public async Task TurningOffThePunchOut_RejudgesThisMonthsRecordedDays()
+    {
+        using HttpClient admin = await factory.CreateAdminClientAsync();
+        TestOrg org = await OrgAsync(admin);
+        DateOnly yesterday = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1);
+        object Shift(string code, bool requiresPunchOut) => new
+        {
+            Code = code,
+            Name = "Every day",
+            StartTime = "09:00",
+            EndTime = "18:00",
+            BreakMinutes = 60,
+            GraceMinutes = 15,
+            HalfDayMinutes = 240,
+            FullDayMinutes = 480,
+            WeeklyOff = Array.Empty<string>(),
+            RequiresPunchOut = requiresPunchOut,
+        };
+
+        // No weekly offs, so yesterday is a working day whatever day of the week the suite runs on.
+        string code = CoreHrApi.Unique("DAILY");
+        Guid daily = await CoreHrApi.CreateAsync(admin, "/api/v1/shifts", Shift(code, requiresPunchOut: true));
+        HttpResponseMessage assigned = await admin.PostAsJsonAsync("/api/v1/shifts/assignments", new { EmployeeIds = new[] { org.Requester }, ShiftId = daily, EffectiveFrom = Iso(yesterday) }, Ct);
+        assigned.StatusCode.ShouldBe(HttpStatusCode.OK, await assigned.Content.ReadAsStringAsync(Ct));
+
+        await PunchAtAsync(factory, org.Requester, (yesterday, new TimeOnly(9, 40)));
+        await factory.RunAsWorkerAsync(PeopleOsApiFactory.SeededTenantId, services =>
+            services.GetRequiredService<AttendanceService>().PersistAsync([org.Requester], yesterday, yesterday, Ct));
+        (await RecordedAsync(org.Requester, yesterday)).Status.ShouldBe(AttendanceStatus.MissingPunch);
+
+        HttpResponseMessage updated = await admin.PutAsJsonAsync($"/api/v1/shifts/{daily}", Shift(code, requiresPunchOut: false), Ct);
+        updated.StatusCode.ShouldBe(HttpStatusCode.OK, await updated.Content.ReadAsStringAsync(Ct));
+        await factory.DeliverEventsAsync();
+
+        AttendanceDay recorded = await RecordedAsync(org.Requester, yesterday);
+        recorded.Status.ShouldBe(AttendanceStatus.Present, "the stored day follows the shift's new rule, not only the live view");
+        recorded.LateMinutes.ShouldBe(25);
+        recorded.Note.ShouldBe(AttendanceEvaluator.NoPunchOutNeeded);
+    }
+
+    private async Task<AttendanceDay> RecordedAsync(Guid employeeId, DateOnly date)
+    {
+        AttendanceDay? day = null;
+        await factory.RunAsWorkerAsync(PeopleOsApiFactory.SeededTenantId, async services =>
+            day = await services.GetRequiredService<AppDbContext>().Set<AttendanceDay>().AsNoTracking()
+                .SingleAsync(row => row.EmployeeId == employeeId && row.Date == date, Ct));
+        return day!;
     }
 
     [Fact]

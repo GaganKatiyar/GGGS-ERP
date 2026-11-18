@@ -13,13 +13,13 @@ import { Drawer, EmptyState, FormDialog, localIsoDate, PageHeader, Skeleton, Sta
 const message = (error: unknown, fallback: string) => (error instanceof ApiError ? error.message : fallback);
 const today = () => localIsoDate();
 
-/** Salary bands (spec §23): minimum, midpoint and maximum by grade, with who sits where. */
+/** Salary bands (spec §23): minimum, midpoint and maximum by level, with who sits where. */
 @Component({
   selector: 'gggs-salary-bands-page',
   imports: [DatePipe, DecimalPipe, MoneyPipe, PageHeader, EmptyState, FormDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <gggs-page-header title="Salary bands" subtitle="The pay range for each grade, and how people sit against it.">
+    <gggs-page-header title="Salary bands" subtitle="The pay range for each level, and how people sit against it.">
       @if (canManage) {
         <button type="button" class="btn btn--primary" (click)="edit(null)"><i class="pi pi-plus" aria-hidden="true"></i> New band</button>
       }
@@ -28,14 +28,14 @@ const today = () => localIsoDate();
       <table class="table comp__table">
         <thead>
           <tr>
-            <th scope="col">Grade</th><th scope="col" class="comp__num">Minimum</th><th scope="col" class="comp__num">Midpoint</th><th scope="col" class="comp__num">Maximum</th>
+            <th scope="col">Level</th><th scope="col" class="comp__num">Minimum</th><th scope="col" class="comp__num">Midpoint</th><th scope="col" class="comp__num">Maximum</th>
             <th scope="col">From</th><th scope="col" class="comp__num">People</th><th scope="col" class="comp__num">Avg compa-ratio</th><th scope="col">Outside</th><th scope="col"><span class="muted">Actions</span></th>
           </tr>
         </thead>
         <tbody>
           @for (band of bands(); track band.id) {
             <tr [class.muted]="!band.current">
-              <th scope="row">{{ band.gradeName ?? '?' }} @if (!band.current) {<span class="muted">(history or future)</span>}</th>
+              <th scope="row">{{ band.levelName ?? '?' }} @if (!band.current) {<span class="muted">(history or future)</span>}</th>
               <td class="comp__num">{{ band.minimum | gggsMoney: band.currency }}</td>
               <td class="comp__num">{{ band.midpoint | gggsMoney: band.currency }}</td>
               <td class="comp__num">{{ band.maximum | gggsMoney: band.currency }}</td>
@@ -60,14 +60,14 @@ const today = () => localIsoDate();
       }
     </section>
 
-    <gggs-form-dialog [(visible)]="dialogOpen" [title]="editing() ? 'Edit band' : 'New band'" [busy]="busy()" [error]="formError()" [saveDisabled]="!gradeId() || minimum() <= 0 || midpoint() < minimum() || maximum() < midpoint()" (save)="save()">
+    <gggs-form-dialog [(visible)]="dialogOpen" [title]="editing() ? 'Edit band' : 'New band'" [busy]="busy()" [error]="formError()" [saveDisabled]="!levelId() || minimum() <= 0 || midpoint() < minimum() || maximum() < midpoint()" (save)="save()">
       <div class="comp__grid">
         <label class="field">
-          <span class="field__label">Grade</span>
-          <select [value]="gradeId()" [disabled]="!!editing()" (change)="gradeId.set($any($event.target).value)">
-            <option value="">Choose a grade</option>
-            @for (grade of grades(); track grade.id) {
-              <option [value]="grade.id">{{ grade.name }}</option>
+          <span class="field__label">Level</span>
+          <select [value]="levelId()" [disabled]="!!editing()" (change)="levelId.set($any($event.target).value)">
+            <option value="">Choose a level</option>
+            @for (level of levels(); track level.id) {
+              <option [value]="level.id">{{ level.name }}</option>
             }
           </select>
         </label>
@@ -102,10 +102,10 @@ export class SalaryBandsPage {
 
   protected readonly canManage = inject(PermissionStore).has('compensation.band.manage');
   protected readonly bands = signal<readonly BandItem[]>([]);
-  protected readonly grades = signal<readonly OrgUnit[]>([]);
+  protected readonly levels = signal<readonly OrgUnit[]>([]);
   protected readonly dialogOpen = signal(false);
   protected readonly editing = signal<BandItem | null>(null);
-  protected readonly gradeId = signal('');
+  protected readonly levelId = signal('');
   protected readonly minimum = signal(0);
   protected readonly midpoint = signal(0);
   protected readonly maximum = signal(0);
@@ -120,12 +120,12 @@ export class SalaryBandsPage {
   }
 
   protected async edit(band: BandItem | null): Promise<void> {
-    if (!this.grades().length) {
-      this.grades.set(await this.org.active('grades'));
+    if (!this.levels().length) {
+      this.levels.set(await this.org.active('levels'));
     }
 
     this.editing.set(band);
-    this.gradeId.set(band?.gradeId ?? '');
+    this.levelId.set(band?.levelId ?? '');
     this.minimum.set(band?.minimum ?? 0);
     this.midpoint.set(band?.midpoint ?? 0);
     this.maximum.set(band?.maximum ?? 0);
@@ -140,7 +140,7 @@ export class SalaryBandsPage {
     this.formError.set(null);
     try {
       await this.api.saveBand(this.editing()?.id ?? null, {
-        gradeId: this.gradeId(),
+        levelId: this.levelId(),
         minimum: this.minimum(),
         midpoint: this.midpoint(),
         maximum: this.maximum(),
@@ -229,7 +229,7 @@ export class SalaryBandsPage {
     <section class="panel stack">
       @for (revision of revisions(); track revision.id) {
         <div class="comp__row">
-          <span><strong>{{ revision.employeeName ?? revision.employeeCode }}</strong><br /><span class="muted">{{ humanize(revision.type) }}{{ revision.cycleName ? ' · ' + revision.cycleName : '' }}{{ revision.newGradeName ? ' · to ' + revision.newGradeName : '' }}</span></span>
+          <span><strong>{{ revision.employeeName ?? revision.employeeCode }}</strong><br /><span class="muted">{{ humanize(revision.type) }}{{ revision.cycleName ? ' · ' + revision.cycleName : '' }}{{ revision.newLevelName ? ' · to ' + revision.newLevelName : '' }}</span></span>
           <span>{{ revision.currentCtc | gggsMoney: revision.currency }} → <strong>{{ revision.proposedCtc | gggsMoney: revision.currency }}</strong> ({{ revision.increasePercent > 0 ? '+' : '' }}{{ revision.increasePercent }}%)</span>
           <span class="muted">
             from {{ revision.effectiveDate | date: 'd MMM y' }}

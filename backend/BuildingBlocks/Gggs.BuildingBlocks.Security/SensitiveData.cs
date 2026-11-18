@@ -16,6 +16,11 @@ public interface ISensitiveDataProtector
     ProtectedValue Protect(string purpose, string plain, int visibleCharacters = 4);
 
     string Reveal(string purpose, ProtectedValue value);
+
+    /// <summary>Encrypts a longer block of text that has no masked form to show, such as a saved form.</summary>
+    string ProtectText(string purpose, string plain);
+
+    string RevealText(string purpose, string ciphertext);
 }
 
 /// <summary>The purposes in use. Released values: renaming one makes existing ciphertext unreadable.</summary>
@@ -25,7 +30,14 @@ public static class SensitiveDataPurposes
     public const string Uan = "employee.uan";
     public const string Esic = "employee.esic";
     public const string NationalId = "employee.national-id";
+    public const string Passport = "employee.passport";
     public const string BankAccount = "employee.bank-account";
+
+    /// <summary>A half-filled Hire form, kept whole: it holds Aadhaar, PAN, passport and bank details.</summary>
+    public const string HireDraft = "employee.hire-draft";
+
+    /// <summary>The password of an organisation's dedicated database, set in the platform console.</summary>
+    public const string TenantDatabasePassword = "platform.tenant-database-password";
 }
 
 /// <summary>ASP.NET Data Protection, which handles key rotation and, per profile, key storage.</summary>
@@ -50,6 +62,20 @@ internal sealed class DataProtectionSensitiveDataProtector(IDataProtectionProvid
         ArgumentNullException.ThrowIfNull(value);
 
         return provider.CreateProtector(RootPurpose, purpose).Unprotect(value.Ciphertext);
+    }
+
+    public string ProtectText(string purpose, string plain)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(purpose);
+        ArgumentException.ThrowIfNullOrWhiteSpace(plain);
+        return provider.CreateProtector(RootPurpose, purpose).Protect(plain);
+    }
+
+    public string RevealText(string purpose, string ciphertext)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(purpose);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ciphertext);
+        return provider.CreateProtector(RootPurpose, purpose).Unprotect(ciphertext);
     }
 }
 

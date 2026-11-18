@@ -272,7 +272,7 @@ which then fills the width.
 
 Every master list and setting lives in one group, **Settings**, the last icon on the rail, rather
 than as a tab at the end of each module. Its entries carry a `section` (one of `SETTINGS_SECTIONS`:
-Organization, Time & attendance, Payroll & finance, Hiring & onboarding, Exits, Projects, Lookups,
+Organization, Time & attendance, Payroll & finance, Hiring, Joiners & leavers, Projects, Lookups,
 Access & security, Platform). The Settings home (`/settings`) shows a card per section with the
 pages the user may open and a search across them; `?section=<key>` scrolls to that card and rings
 it. Inside a page, the tabs are its own section's pages only (`moduleTabs(group, entry)`), and the

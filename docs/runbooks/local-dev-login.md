@@ -31,7 +31,7 @@ Everything else in the navigation is marked planned and stays hidden until its m
 ```bash
 # 1. Create/upgrade the database and provision a tenant with a working administrator. Safe to
 #    re-run: it applies pending migrations and leaves an existing tenant and user alone.
-dotnet run --project tools/DevSeed -- acme admin@acme.example "Passw0rd!2026"
+dotnet run --project tools/DevSeed -- gggs admin@gggs.example "Passw0rd!2026"
 
 # 2. The API (terminal 1) - http://localhost:5100
 dotnet run --project backend/Host/Gggs.Api
@@ -50,8 +50,8 @@ Open **http://localhost:4200/sign-in** and sign in with:
 
 | Field | Value |
 |---|---|
-| Organisation code | `acme` |
-| Work email | `admin@acme.example` |
+| Organisation code | `gggs` |
+| Work email | `admin@gggs.example` |
 | Password | `Passw0rd!2026` |
 
 Change any of the three by passing different arguments to DevSeed (tenant code, email, password,
@@ -63,6 +63,48 @@ The API listens on 5100 because `frontend/apps/hrms-web/proxy.conf.json` proxies
 another application already holds the port, run the API elsewhere with
 `ASPNETCORE_URLS=http://localhost:5199 dotnet run --project backend/Host/Gggs.Api --no-launch-profile`
 and point the two proxy entries at the same port (do not commit that change).
+
+## The platform console (GGGS staff)
+
+A separate application for GGGS's own staff: create organisations (tenants), change their plan,
+modules and subscription, invite their first administrator, suspend or offboard them, manage the
+platform team and watch system health. Its code and its server are separate from the HR app; it
+shares only the database, so an organisation created there is a tenant here.
+
+```bash
+# The console's server (terminal 4) - http://localhost:5200, same database as the API
+dotnet run --project backend/Host/Gggs.PlatformApi
+
+# The console (terminal 5) - http://127.0.0.1:4300, proxying /api and /bff to :5200
+cd frontend
+npx nx serve platform-web
+```
+
+Open it at **http://127.0.0.1:4300** - `127.0.0.1`, not `localhost`. Cookies are shared across
+ports on the same host name, so the console on `localhost:4300` would overwrite the HR app's
+session cookie on `localhost:4200`; a different host name keeps the two sign-ins apart.
+
+**The first platform administrator.** While no platform staff account exists, the console offers
+**Create the first administrator** (`/setup`). It asks for the setup key - in development
+`local-platform-setup` (`Gggs:Identity:PlatformBootstrap:SetupKey` in
+`backend/Host/Gggs.PlatformApi/appsettings.Development.json`; in other environments set it from a
+secret store, and leave it empty to keep the page closed). The page closes for good once any
+platform account exists. Platform staff passwords are at least 6 characters.
+
+After that, invite colleagues under **Platform staff › Invite**: the console shows a one-time link
+to pass on yourself (it never emails staff). Four roles are seeded: Platform Staff Administrator
+(everything, the only one that manages staff), Organisation Manager (create and change
+organisations), Billing (subscriptions, suspend/reactivate) and Platform Support (read-only plus
+health).
+
+**Creating an organisation** emails its administrator an invitation once the worker has seeded it
+(locally the email is written to the worker's console unless a mail connection is set up). If the
+link expires, **Organisation › Administrators › Re-send invitation** sends a new one. How that
+organisation's people sign in - password rules or single sign-on - is their own setting, in the HR
+app under Studio.
+
+Figures such as employees, users and sign-ins come from the worker's hourly `platform-usage` job,
+which counts inside each organisation and stores only the totals.
 
 ## What the worker is for
 
@@ -292,7 +334,8 @@ employee, or make Priya the approver of someone else's request.
 - Redis is optional: the cache falls back to in-memory, and so do browser sessions - which is why
   restarting the API signs everyone out locally. The API logs a warning saying so.
 - `Secure` cookies (including `__Host-gggs-session`) work over plain HTTP specifically on
-  `localhost`, which browsers treat as a secure context. Use `localhost`, not `127.0.0.1`.
+  `localhost`, which browsers treat as a secure context. Use `localhost`, not `127.0.0.1`, for the
+  HR app (the platform console deliberately uses `127.0.0.1`, see above).
 
 ## Calling the API without the browser
 
@@ -300,13 +343,13 @@ employee, or make Priya the approver of someone else's request.
 # A session cookie, as the SPA gets one (the X-CSRF header is required on /bff and on any
 # state-changing request that carries the cookie)
 curl -c jar.txt -X POST -H "X-CSRF: 1" -H "Content-Type: application/json" \
-  -d '{"email":"admin@acme.example","password":"Passw0rd!2026","tenantCode":"acme"}' \
+  -d '{"email":"admin@gggs.example","password":"Passw0rd!2026","tenantCode":"gggs"}' \
   http://localhost:5100/bff/login
 curl -b jar.txt http://localhost:5100/bff/user
 
 # Or a bearer token, as an integration would
 curl -X POST http://localhost:5100/connect/token \
-  -d "grant_type=password&username=admin@acme.example&password=Passw0rd!2026&tenant_code=acme" \
+  -d "grant_type=password&username=admin@gggs.example&password=Passw0rd!2026&tenant_code=gggs" \
   -d "client_id=peopleos-api&client_secret=development-only-gateway-secret&scope=gggs.api"
 ```
 

@@ -274,6 +274,58 @@ public static class EmployeeEndpoints
                 => Photo(http, v, await photos.OpenAsync(id, ct)))
             .WithName("GetEmployeePhoto")
             .RequirePermission(Permissions.Employee.View);
+
+        group.MapPut("/{id:guid}/photo", async (Guid id, IFormFile file, EmployeePhotoService photos, CancellationToken ct) =>
+            {
+                ArgumentNullException.ThrowIfNull(file);
+                return TypedResults.Ok(await photos.ReplaceForAsync(id, new IncomingPhoto(file.Length, file.OpenReadStream), ct));
+            })
+            .WithName("ReplaceEmployeePhoto")
+            .RequirePermission(Permissions.Employee.Edit)
+            .DisableAntiforgery(); // Guarded by the X-CSRF header check (BrowserRequestGuard), as every cookie write is.
+
+        MapHireDrafts(group.MapGroup("/hire-drafts"));
+    }
+
+    /// <summary>The Hire form saved part-way: for the people who may hire, and nobody else.</summary>
+    private static void MapHireDrafts(RouteGroupBuilder drafts)
+    {
+        drafts.MapGet("/", async (HireDraftService service, CancellationToken ct) => TypedResults.Ok(await service.ListAsync(ct)))
+            .WithName("ListHireDrafts").RequirePermission(Permissions.Employee.Create);
+        drafts.MapGet("/{id:guid}", async (Guid id, HireDraftService service, CancellationToken ct) => TypedResults.Ok(await service.GetAsync(id, ct)))
+            .WithName("GetHireDraft").RequirePermission(Permissions.Employee.Create);
+        drafts.MapPost("/", async (HireDraftBody body, HireDraftService service, CancellationToken ct) => TypedResults.Ok(await service.SaveAsync(null, body, ct)))
+            .WithName("CreateHireDraft").RequirePermission(Permissions.Employee.Create);
+        drafts.MapPut("/{id:guid}", async (Guid id, HireDraftBody body, HireDraftService service, CancellationToken ct) => TypedResults.Ok(await service.SaveAsync(id, body, ct)))
+            .WithName("UpdateHireDraft").RequirePermission(Permissions.Employee.Create);
+        drafts.MapDelete("/{id:guid}", async (Guid id, HireDraftService service, CancellationToken ct) =>
+            {
+                await service.DeleteAsync(id, ct);
+                return TypedResults.NoContent();
+            })
+            .WithName("DeleteHireDraft").RequirePermission(Permissions.Employee.Create);
+
+        drafts.MapPut("/{id:guid}/files/{slot}", async (Guid id, string slot, IFormFile file, HireDraftService service, CancellationToken ct) =>
+            {
+                ArgumentNullException.ThrowIfNull(file);
+                return TypedResults.Ok(await service.PutFileAsync(id, slot, file.FileName, file.Length, file.OpenReadStream, ct));
+            })
+            .WithName("PutHireDraftFile")
+            .RequirePermission(Permissions.Employee.Create)
+            .DisableAntiforgery(); // Guarded by the X-CSRF header check (BrowserRequestGuard), as every cookie write is.
+        drafts.MapGet("/{id:guid}/files/{slot}", async (Guid id, string slot, HttpContext http, HireDraftService service, CancellationToken ct) =>
+            {
+                HireDraftFileContent file = await service.OpenFileAsync(id, slot, ct);
+                http.Response.Headers.CacheControl = "private, no-store";
+                return TypedResults.File(file.Content, file.ContentType, file.FileName);
+            })
+            .WithName("GetHireDraftFile").RequirePermission(Permissions.Employee.Create);
+        drafts.MapDelete("/{id:guid}/files/{slot}", async (Guid id, string slot, HireDraftService service, CancellationToken ct) =>
+            {
+                await service.RemoveFileAsync(id, slot, ct);
+                return TypedResults.NoContent();
+            })
+            .WithName("RemoveHireDraftFile").RequirePermission(Permissions.Employee.Create);
     }
 
     private static IResult Photo(HttpContext http, Guid? version, PhotoContent? photo)

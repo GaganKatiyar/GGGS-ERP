@@ -83,7 +83,7 @@ const message = (error: unknown, fallback: string) => (error instanceof ApiError
         <div class="xp__row">
           <span><strong>{{ titleOf(run.handlerKey) }}</strong> <span class="muted">{{ run.fileName }}</span></span>
           <span>{{ run.imported }} of {{ run.rows }} row(s) imported</span>
-          <span class="muted">{{ run.createdDate | date: 'd MMM y, HH:mm' }}</span>
+          <span class="muted">{{ run.createdDate | date: 'd MMM y, h:mm a' }}</span>
           <gggs-status-badge [status]="run.imported === run.rows ? 'Completed' : 'Warning'" />
         </div>
       } @empty {

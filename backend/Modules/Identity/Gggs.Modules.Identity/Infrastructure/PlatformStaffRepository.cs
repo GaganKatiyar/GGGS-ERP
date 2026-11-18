@@ -27,5 +27,8 @@ public sealed class PlatformStaffRepository(AppDbContext dbContext) : IPlatformS
     public async Task<bool> EmailExistsAsync(string normalizedEmail, CancellationToken cancellationToken = default)
         => await dbContext.PlatformStaff.AnyAsync(member => member.NormalizedEmail == normalizedEmail, cancellationToken);
 
+    public async Task<bool> AnyAsync(CancellationToken cancellationToken = default)
+        => await dbContext.PlatformStaff.AnyAsync(cancellationToken);
+
     public void Add(PlatformStaffMember member) => dbContext.PlatformStaff.Add(member);
 }

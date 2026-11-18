@@ -25,9 +25,9 @@ const frontend = resolve(here, '..', '..');
 const out = resolve(frontend, '..', '.local', 'role-audit');
 const args = Object.fromEntries(process.argv.slice(2).map((arg) => arg.replace(/^--/, '').split('=')));
 const BASE = process.env.ROLE_AUDIT_BASE ?? 'http://localhost:4200';
-const TENANT = 'acme';
+const TENANT = 'gggs';
 const PASSWORD = 'Passw0rd!2026';
-const ADMIN = 'admin@acme.example';
+const ADMIN = 'admin@gggs.example';
 const PARALLEL = Number(args.parallel ?? 3);
 
 /** Who signs in, linked to which demo employee, holding which roles (by name). */

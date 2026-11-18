@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, model, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, input, model, signal, viewChild } from '@angular/core';
 import { ChartModule } from 'primeng/chart';
 import { SkeletonModule } from 'primeng/skeleton';
+import { dateTime } from './dates';
 
 export interface TimelineEntry {
   readonly date: string;
@@ -86,16 +87,7 @@ export interface TimelineEntry {
 export class Timeline {
   /** Timestamps read as a local date and time, plain dates as a date; anything else as given. */
   protected when(value: string): string {
-    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) {
-      const utc = /[zZ]|[+-]\d{2}:\d{2}$/.test(value) ? value : `${value}Z`;
-      return new Date(utc).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    }
-
-    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-    }
-
-    return value;
+    return dateTime(value);
   }
 
   readonly entries = input.required<readonly TimelineEntry[]>();
@@ -315,28 +307,73 @@ export interface TabItem {
   // A block that never outgrows its container: extra tabs scroll inside the bar.
   host: { style: 'display: block; min-width: 0; max-width: 100%' },
   template: `
-    <div class="tabs" role="tablist">
-      @for (tab of tabs(); track tab.key) {
-        <button
-          type="button"
-          role="tab"
-          class="tabs__tab"
-          [class.tabs__tab--active]="tab.key === selected()"
-          [attr.aria-selected]="tab.key === selected()"
-          [attr.tabindex]="tab.key === selected() ? 0 : -1"
-          [disabled]="tab.disabled"
-          (click)="selected.set(tab.key)"
-          (keydown)="onKey($event)"
-        >
-          {{ tab.label }}
-          @if (tab.note) {
-            <span class="tabs__note">{{ tab.note }}</span>
-          }
+    <div class="tabs-wrap">
+      @if (canLeft()) {
+        <button type="button" class="tabs__more tabs__more--left" tabindex="-1" aria-label="Show earlier tabs" (click)="page(-1)">
+          <i class="pi pi-chevron-left" aria-hidden="true"></i>
+        </button>
+      }
+      <div #bar class="tabs" role="tablist" (scroll)="measure()" (wheel)="onWheel($event)">
+        @for (tab of tabs(); track tab.key) {
+          <button
+            type="button"
+            role="tab"
+            class="tabs__tab"
+            [class.tabs__tab--active]="tab.key === selected()"
+            [attr.aria-selected]="tab.key === selected()"
+            [attr.tabindex]="tab.key === selected() ? 0 : -1"
+            [attr.data-key]="tab.key"
+            [disabled]="tab.disabled"
+            (click)="selected.set(tab.key)"
+            (keydown)="onKey($event)"
+          >
+            {{ tab.label }}
+            @if (tab.note) {
+              <span class="tabs__note">{{ tab.note }}</span>
+            }
+          </button>
+        }
+      </div>
+      @if (canRight()) {
+        <button type="button" class="tabs__more tabs__more--right" tabindex="-1" aria-label="Show more tabs" (click)="page(1)">
+          <i class="pi pi-chevron-right" aria-hidden="true"></i>
         </button>
       }
     </div>
   `,
   styles: `
+    .tabs-wrap {
+      position: relative;
+    }
+
+    /* Shown only while tabs are hidden on that side: a mouse has no other way to reach them. */
+    .tabs__more {
+      position: absolute;
+      inset-block: 0 1px;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.25rem;
+      border: 0;
+      color: var(--gggs-color-text);
+      cursor: pointer;
+    }
+
+    .tabs__more--left {
+      inset-inline-start: 0;
+      background: linear-gradient(to right, var(--gggs-color-surface) 60%, transparent);
+    }
+
+    .tabs__more--right {
+      inset-inline-end: 0;
+      background: linear-gradient(to left, var(--gggs-color-surface) 60%, transparent);
+    }
+
+    .tabs__more:hover {
+      color: var(--gggs-color-primary);
+    }
+
     .tabs {
       display: flex;
       gap: var(--gggs-space-1);
@@ -398,6 +435,67 @@ export interface TabItem {
 export class Tabs {
   readonly tabs = input.required<readonly TabItem[]>();
   readonly selected = model<string>('');
+
+  private readonly bar = viewChild<ElementRef<HTMLElement>>('bar');
+  private readonly destroyRef = inject(DestroyRef);
+  protected readonly canLeft = signal(false);
+  protected readonly canRight = signal(false);
+
+  constructor() {
+    // The arrows follow the bar's size: a wider window may show every tab.
+    afterNextRender(() => {
+      const bar = this.bar()?.nativeElement;
+      if (!bar || typeof ResizeObserver === 'undefined') {
+        return;
+      }
+      const observer = new ResizeObserver(() => this.measure());
+      observer.observe(bar);
+      this.destroyRef.onDestroy(() => observer.disconnect());
+      this.measure();
+    });
+
+    // The selected tab is always in view, also when a link opens one far along the bar.
+    effect(() => {
+      const key = this.selected();
+      this.tabs();
+      queueMicrotask(() => {
+        const bar = this.bar()?.nativeElement;
+        const active = bar ? Array.from(bar.querySelectorAll<HTMLElement>('[data-key]')).find((tab) => tab.dataset['key'] === key) : undefined;
+        if (bar && active && (active.offsetLeft < bar.scrollLeft || active.offsetLeft + active.offsetWidth > bar.scrollLeft + bar.clientWidth)) {
+          bar.scrollTo({ left: Math.max(0, active.offsetLeft - bar.clientWidth / 3) });
+        }
+        this.measure();
+      });
+    });
+  }
+
+  protected measure(): void {
+    const bar = this.bar()?.nativeElement;
+    if (!bar) {
+      return;
+    }
+    this.canLeft.set(bar.scrollLeft > 1);
+    this.canRight.set(bar.scrollLeft + bar.clientWidth < bar.scrollWidth - 1);
+  }
+
+  /** Scrolls most of a bar's width, so the next hidden tabs come into view. */
+  protected page(direction: 1 | -1): void {
+    const bar = this.bar()?.nativeElement;
+    bar?.scrollBy({ left: direction * bar.clientWidth * 0.7, behavior: 'smooth' });
+  }
+
+  /** An ordinary mouse wheel only scrolls up and down: over the tabs, it moves them sideways. */
+  protected onWheel(event: WheelEvent): void {
+    const bar = this.bar()?.nativeElement;
+    if (!bar || bar.scrollWidth <= bar.clientWidth || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) {
+      return;
+    }
+    const before = bar.scrollLeft;
+    bar.scrollLeft += event.deltaY;
+    if (bar.scrollLeft !== before) {
+      event.preventDefault();
+    }
+  }
 
   protected onKey(event: KeyboardEvent): void {
     if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') {

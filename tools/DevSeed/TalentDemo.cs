@@ -12,6 +12,10 @@ using Gggs.Modules.Performance.Application;
 using Gggs.Modules.Performance.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Level = Gggs.Modules.Career.Domain.Level;
+using OrgLevel = Gggs.Modules.Organization.Domain.Level;
+using OrgRole = Gggs.Modules.Organization.Domain.Role;
+using Role = Gggs.Modules.Identity.Domain.Roles.Role;
 
 namespace Gggs.DevSeed;
 
@@ -24,7 +28,7 @@ namespace Gggs.DevSeed;
 internal static class TalentDemo
 {
     private static readonly string[] Roles = ["PERFORMANCE_ADMIN", "LEARNING_ADMIN", "HRBP"];
-    private static readonly string[] LadderJobs = ["DEV", "SR-DEV", "ENG-MGR", "CTO"];
+    private static readonly string[] LadderJobs = ["TS-AIE", "TS-CIH", "MGMT-EVP"];
 
     public static async Task SeedAsync(IServiceProvider scope)
     {
@@ -58,7 +62,7 @@ internal static class TalentDemo
         DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
         var start = new DateOnly(today.Year, today.Month <= 6 ? 1 : 7, 1);
         DateOnly end = start.AddMonths(6).AddDays(-1);
-        Guid? platform = (await db.Set<Department>().AsNoTracking().FirstOrDefaultAsync(row => row.Code == "ENG-PLAT"))?.Id
+        Guid? platform = (await db.Set<Department>().AsNoTracking().FirstOrDefaultAsync(row => row.Code == "ENG"))?.Id
             ?? (await db.Set<Department>().AsNoTracking().FirstAsync()).Id;
 
         var company = Goal.Create(new GoalDetails("Grow delivery revenue 25%", "Through retained clients and two new logos.", GoalType.Okr, GoalLevel.Company, null, null, null, null, start, end, 0), true);
@@ -211,29 +215,32 @@ internal static class TalentDemo
             return;
         }
 
-        Dictionary<string, Guid> jobs = await db.Set<Job>().AsNoTracking().ToDictionaryAsync(row => row.Code, row => row.Id);
-        if (LadderJobs.Any(code => !jobs.TryGetValue(code, out _)))
+        Dictionary<string, Guid> jobs = await db.Set<OrgRole>().AsNoTracking().ToDictionaryAsync(row => row.Code, row => row.Id);
+        Dictionary<string, Guid> levels = await db.Set<OrgLevel>().AsNoTracking().ToDictionaryAsync(row => row.Code, row => row.Id);
+        Dictionary<string, Guid> titles = await db.Set<Designation>().AsNoTracking().ToDictionaryAsync(row => row.Code, row => row.Id);
+        if (LadderJobs.Any(code => !jobs.ContainsKey(code)) || levels.Count < 3)
         {
-            Console.WriteLine("Demo jobs missing; skipping career paths.");
+            Console.WriteLine("Demo roles missing; skipping career paths.");
             return;
         }
 
-        db.Add(CareerPath.Create("Software engineering", "From engineer to senior engineer.", CareerTrack.Individual, null,
+        db.Add(CareerPath.Create("Engineering", "An engineer's three levels.", CareerTrack.Individual, null,
         [
-            new CareerStep("Software engineer", jobs["DEV"], null, 18, [".NET", "Angular"], null),
-            new CareerStep("Senior software engineer", jobs["SR-DEV"], null, 24, ["System design", "SQL Server", "Mentoring"], null),
+            new CareerStep("Engineer L1", jobs["TS-AIE"], levels["L1"], 18, [".NET", "Angular"], null),
+            new CareerStep("Engineer L2", jobs["TS-AIE"], levels["L2"], 24, ["System design", "SQL Server", "Mentoring"], null),
+            new CareerStep("Engineer L3", jobs["TS-AIE"], levels["L3"], 24, ["Architecture"], null),
         ]));
-        db.Add(CareerPath.Create("Engineering leadership", "Leading teams, then the function.", CareerTrack.Management, null,
+        db.Add(CareerPath.Create("Engineering leadership", "Leading a practice, then the company.", CareerTrack.Management, null,
         [
-            new CareerStep("Senior software engineer", jobs["SR-DEV"], null, 24, ["System design"], null),
-            new CareerStep("Engineering manager", jobs["ENG-MGR"], null, 36, ["People management", "Azure"], null),
-            new CareerStep("Chief technology officer", jobs["CTO"], null, 0, ["Architecture", "Leadership"], null),
+            new CareerStep("Engineer L3", jobs["TS-AIE"], levels["L3"], 24, ["System design"], null),
+            new CareerStep("Head of Cloud and Infrastructure", jobs["TS-CIH"], levels["L3"], 36, ["People management", "Azure"], null),
+            new CareerStep("Executive Vice President", jobs["MGMT-EVP"], levels["L3"], 0, ["Strategy", "Leadership"], null),
         ]));
 
         DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
-        db.Add(SuccessionPlan.Create("Platform engineering manager", null, null, people["EMP00002"], Criticality.High, Criticality.Medium, "Owns the Northwind relationship.",
+        db.Add(SuccessionPlan.Create("Platform engineering manager", null, people["EMP00002"], Criticality.High, Criticality.Medium, "Owns the Northwind relationship.",
             [new SuccessorEntry(people["EMP00003"], Readiness.ReadyNow, "Already runs sprint planning."), new SuccessorEntry(people["EMP00004"], Readiness.ThreeToFiveYears, null)]));
-        db.Add(SuccessionPlan.Create("Chief technology officer", null, null, people["EMP00001"], Criticality.Critical, Criticality.Low, null,
+        db.Add(SuccessionPlan.Create("Chief technology officer", null, people["EMP00001"], Criticality.Critical, Criticality.Low, null,
             [new SuccessorEntry(people["EMP00002"], Readiness.OneToTwoYears, "Needs exposure to finance.")]));
 
         db.AddRange(
@@ -244,9 +251,9 @@ internal static class TalentDemo
             TalentAssessment.Record(people["EMP00006"], Level.Low, Level.High, "Has an offer elsewhere.", people["EMP00002"], today));
         await db.SaveChangesAsync();
 
-        // A nomination waiting for submission: Arjun to senior engineer.
-        db.Add(PromotionNomination.Draft(people["EMP00004"], people["EMP00002"], "Engineer, platform", 1_100_000, 3,
-            new PromotionDetails("Senior software engineer", jobs["SR-DEV"], null, null, 1_450_000, new DateOnly(today.Year, today.Month, 1).AddMonths(1), "Owns the payments integration end to end.")));
+        // A nomination waiting for submission: Arjun from engineer L1 to L2.
+        db.Add(PromotionNomination.Draft(people["EMP00004"], people["EMP00002"], "Engineer L1", 1_100_000, 3,
+            new PromotionDetails("Engineer L2", jobs["TS-AIE"], levels["L2"], titles.GetValueOrDefault("TS-AIE-L2"), 1_450_000, new DateOnly(today.Year, today.Month, 1).AddMonths(1), "Owns the payments integration end to end.")));
         await db.SaveChangesAsync();
         Console.WriteLine("Career: two paths, two succession plans, five potential assessments and a promotion nomination.");
     }
