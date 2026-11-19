@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { NAVIGATION, filterNavigation, isBuilt, type NavItem } from '../navigation';
 import { HELP_CONTENT } from './help-content';
-import { answerFor, buildTopics, findTopic, helpText, questionsFor, searchTopics, topicForUrl, topicIdFor } from './help-engine';
+import { answerFor, buildTopics, findTopic, helpText, keyTerms, questionsFor, searchTopics, sharesKeyTerm, topicForUrl, topicIdFor } from './help-engine';
 
 const routesOf = (items: readonly NavItem[]): string[] => items.flatMap((item) => [...(item.route ? [item.route] : []), ...routesOf(item.children ?? [])]);
 const everything = filterNavigation(NAVIGATION, isBuilt);
@@ -101,6 +101,12 @@ describe('the help assistant', () => {
 
   it('says it does not know rather than guess', () => {
     expect(answerFor('book a meeting room for friday', HELP_CONTENT.questions, employeeTopics).kind).toBe('none');
+  });
+
+  it('keeps only company articles that share a meaningful word with the question', () => {
+    expect(keyTerms('how do I book a meeting room')).toEqual(['book', 'meeting', 'room']);
+    expect(sharesKeyTerm('Where is my payslip?', 'how do I book a meeting room')).toBe(false);
+    expect(sharesKeyTerm('Booking meeting rooms', 'how do I book a meeting room')).toBe(true);
   });
 
   it('flags answers that also depend on the company\'s own rules', () => {

@@ -119,6 +119,17 @@ export function words(text: string): string[] {
 
 const STOP_WORDS = new Set(['how', 'do', 'does', 'can', 'the', 'my', 'is', 'to', 'an', 'of', 'in', 'on', 'for', 'and', 'what', 'where', 'when', 'who', 'why', 'it', 'me', 'you', 'we', 'our', 'this', 'that', 'be', 'are', 'with', 'from', 'get', 'want', 'need', 'please', 'there']);
 
+/** The words in a question that carry its meaning ("book a meeting room" → book, meeting, room). */
+export function keyTerms(text: string): string[] {
+  return words(text).filter((word) => word.length > 2 && !STOP_WORDS.has(word));
+}
+
+/** Whether some text shares a meaningful word with a question; a trailing "s" is ignored. */
+export function sharesKeyTerm(text: string, question: string): boolean {
+  const haystack = text.toLowerCase();
+  return keyTerms(question).some((term) => haystack.includes(term.length > 4 ? term.replace(/s$/, '') : term));
+}
+
 function guideText(guide: HelpGuide | undefined): string {
   if (!guide) {
     return '';

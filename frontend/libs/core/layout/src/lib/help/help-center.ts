@@ -5,7 +5,7 @@ import { PermissionStore } from '@gggs/core/permissions';
 import { filter, firstValueFrom } from 'rxjs';
 import { NAVIGATION, filterNavigation, isBuilt } from '../navigation';
 import { VisibleNavigation } from '../visible-navigation';
-import { buildTopics, findTopic, questionsFor, topicForUrl, words } from './help-engine';
+import { buildTopics, findTopic, keyTerms, questionsFor, sharesKeyTerm, topicForUrl } from './help-engine';
 import type { HelpContent, HelpTopic } from './help-model';
 
 /** What the help pages tell the server (`/api/v1/help/feedback`). */
@@ -28,6 +28,7 @@ interface KnowledgeHit {
   readonly id: string;
   readonly title: string;
   readonly categoryName?: string | null;
+  readonly tags?: string | null;
 }
 
 interface MyPolicyHit {
@@ -147,12 +148,11 @@ export class HelpCenter {
    * whose words match. Only searched where the person may read them.
    */
   async companyAnswers(question: string): Promise<CompanyAnswer[]> {
-    const terms = words(question).filter((word) => word.length > 3);
-    if (!terms.length) {
+    if (!keyTerms(question).length) {
       return [];
     }
 
-    const [articles, policies] = await Promise.all([this.searchKnowledge(question), this.matchPolicies(terms)]);
+    const [articles, policies] = await Promise.all([this.searchKnowledge(question), this.matchPolicies(question)]);
     return [...articles, ...policies].slice(0, 4);
   }
 
@@ -166,14 +166,18 @@ export class HelpCenter {
       return [];
     }
     try {
-      const hits = await firstValueFrom(this.http.get<readonly KnowledgeHit[]>('/api/v1/helpdesk/knowledge', { params: { search: question.slice(0, 100) } }));
-      return hits.slice(0, 3).map((hit) => ({ kind: 'article', title: hit.title, summary: hit.categoryName ?? null, link: '/helpdesk/knowledge' }));
+      const hits = await firstValueFrom(this.http.get<readonly KnowledgeHit[]>('/api/v1/helpdesk/knowledge', { params: { search: keyTerms(question).join(' ').slice(0, 100) } }));
+      // The search matches loosely; keep only articles that share a meaningful word with the question.
+      return hits
+        .filter((hit) => sharesKeyTerm(`${hit.title} ${hit.tags ?? ''}`, question))
+        .slice(0, 3)
+        .map((hit) => ({ kind: 'article', title: hit.title, summary: hit.categoryName ?? null, link: '/helpdesk/knowledge' }));
     } catch {
       return [];
     }
   }
 
-  private async matchPolicies(terms: readonly string[]): Promise<CompanyAnswer[]> {
+  private async matchPolicies(question: string): Promise<CompanyAnswer[]> {
     if (!this.permissions.has('self.policy.view')) {
       return [];
     }
@@ -183,10 +187,7 @@ export class HelpCenter {
       return [];
     }
     return this.policies
-      .filter((policy) => {
-        const text = `${policy.title} ${policy.summary ?? ''}`.toLowerCase();
-        return terms.some((term) => text.includes(term.replace(/s$/, '')));
-      })
+      .filter((policy) => sharesKeyTerm(`${policy.title} ${policy.summary ?? ''}`, question))
       .slice(0, 2)
       .map((policy) => ({ kind: 'policy', title: policy.title, summary: policy.summary ?? null, link: '/me/policies' }));
   }
