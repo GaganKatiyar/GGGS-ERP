@@ -224,6 +224,17 @@
       </span>
       }
 
+      <button
+        type="button"
+        class="topbar__icon-button"
+        aria-label="Help for this screen"
+        title="Help for this screen"
+        [attr.aria-expanded]="help.panelOpen()"
+        (click)="help.panelOpen() ? help.panelOpen.set(false) : help.openPanel()"
+      >
+        <i class="pi pi-question-circle" aria-hidden="true"></i>
+      </button>
+
       @if (canSeeNotifications()) {
       <a class="topbar__icon-button" routerLink="/notifications" routerLinkActive="topbar__icon-button--active" aria-label="Notifications">
         <i class="pi pi-bell" aria-hidden="true"></i>
@@ -428,4 +439,12 @@
   </section>
   }
   <ng-container #stepUpHost />
+
+  <!-- Help loads once the page is idle, so it never slows the first screen down. -->
+  @if (session.user()) {
+  @defer (on idle) {
+  <gggs-help-panel />
+  <gggs-help-assistant />
+  }
+  }
 </div>

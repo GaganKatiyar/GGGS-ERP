@@ -1,6 +1,6 @@
 import type { Route } from '@angular/router';
 import { authGuard } from '@gggs/core/auth';
-import { Shell } from '@gggs/core/layout';
+import { HelpPage, Shell } from '@gggs/core/layout';
 import { withPermissions } from '@gggs/core/permissions';
 
 /**
@@ -415,6 +415,12 @@ export const appRoutes: Route[] = [
         ...withPermissions(['ai.assistant.use']),
         loadChildren: () =>
           import('@gggs/features/assistant').then((m) => m.ASSISTANT_ROUTES),
+      },
+      {
+        // For everyone signed in: guides to every screen they can open.
+        path: 'help',
+        title: 'Help & Wiki',
+        component: HelpPage,
       },
       {
         path: 'admin/identity-providers',

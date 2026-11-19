@@ -309,6 +309,7 @@ describe('filterNavigation', () => {
       '/studio/deliveries',
       '/admin/workflows',
       '/studio/api-keys',
+      '/help',
     ]);
   });
 
@@ -374,7 +375,7 @@ describe('department menus', () => {
   it('are in the agreed order among the top-level entries', () => {
     expect(nav.map((group) => group.label)).toEqual([
       'Dashboard', 'Approvals', 'My Profile & Documents', 'My Time & Leave', 'My Pay & Benefits', 'My Appraisal', 'My Growth', 'Star Reward', 'My Workplace', 'My Team', 'HR Portal', 'Appraisal Admin', 'Learning & Development', 'Recruitment', 'Finance & Accounts', 'General Administration',
-      'Exits', 'Clients', 'Projects', 'Resources', 'Analytics', 'Calendar', 'AI Assistant', 'Settings', 'Studio',
+      'Exits', 'Clients', 'Projects', 'Resources', 'Analytics', 'Calendar', 'AI Assistant', 'Settings', 'Studio', 'Help & Wiki',
     ]);
   });
 

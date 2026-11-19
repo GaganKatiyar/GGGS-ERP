@@ -1,7 +1,7 @@
 import { DatePipe, KeyValuePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiError } from '@gggs/core/http';
 import { PermissionStore } from '@gggs/core/permissions';
 import { EmployeeSelect } from '@gggs/shared/employee-reference';
@@ -653,6 +653,15 @@ export class MyTicketsPage {
   constructor() {
     this.api.mine().then((tickets) => this.tickets.set(tickets), (error: unknown) => this.error.set(message(error, 'Your tickets could not be loaded.')));
     this.api.categories().then((categories) => this.categories.set(categories.filter((category) => category.isActive)), () => undefined);
+
+    // Handed over from the help assistant (?raise=...): open the form with the question filled in.
+    const raise = inject(ActivatedRoute).snapshot.queryParamMap.get('raise')?.trim();
+    if (raise) {
+      this.open();
+      this.subject.set(raise.slice(0, 200));
+      this.description.set(`I asked the help assistant: "${raise}" and it had no answer.`);
+      void this.suggest();
+    }
   }
 
   protected open(): void {

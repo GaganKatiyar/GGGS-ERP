@@ -28,6 +28,9 @@ import { PALETTES, ThemeStore, type Palette } from './theme';
 import { EdgeScroll } from './edge-scroll';
 import { GlobalSearch } from './global-search';
 import { refreshSortableTables, sortableHeader, toggleSort } from './table-sort';
+import { HelpAssistant } from './help/help-assistant';
+import { HelpCenter } from './help/help-center';
+import { HelpPanel } from './help/help-panel';
 
 /** How often the header bell's unread count refreshes. There is no push yet (architecture.md
  * §14 puts SignalR in a later phase), so this is the whole story until then. */
@@ -50,7 +53,7 @@ interface Crumb {
  */
 @Component({
   selector: 'gggs-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, GlobalSearch, EdgeScroll, BrandMark, AppArt],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, GlobalSearch, EdgeScroll, BrandMark, AppArt, HelpPanel, HelpAssistant],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell.html',
   // Styled by apps/hrms-web/src/styles/_shell.scss.
@@ -65,6 +68,8 @@ export class Shell {
   private readonly workflowApi = inject(WorkflowApi);
   private readonly router = inject(Router);
   protected readonly session = inject(SessionStore);
+  /** The Help & Wiki: "?" in the header opens help for the screen on show; the assistant floats over every screen. */
+  protected readonly help = inject(HelpCenter);
   private readonly stepUpOpen = inject(StepUpPrompt).open;
   private readonly stepUpHost = viewChild('stepUpHost', { read: ViewContainerRef });
   private readonly userMenu = viewChild<ElementRef<HTMLElement>>('userMenu');

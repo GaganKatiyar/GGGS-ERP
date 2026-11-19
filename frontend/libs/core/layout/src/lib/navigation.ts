@@ -631,4 +631,10 @@ export const NAVIGATION: readonly NavItem[] = [
       { label: 'API keys', icon: 'pi pi-key', route: '/studio/api-keys', permissions: ['admin.user.view'] },
     ],
   },
+  {
+    // Guides to every screen and the help assistant. For everyone: no permission, no plan feature.
+    label: 'Help & Wiki',
+    icon: 'pi pi-book',
+    route: '/help',
+  },
 ];
