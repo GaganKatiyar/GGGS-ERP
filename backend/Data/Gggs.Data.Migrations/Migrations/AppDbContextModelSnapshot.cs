@@ -15607,6 +15607,9 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<string>("ItemsJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<Guid?>("ModifiedBy")
                         .HasColumnType("uniqueidentifier");
 
@@ -15616,6 +15619,10 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<string>("Remarks")
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("ReportsJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -16195,6 +16202,15 @@ namespace Gggs.Data.Migrations.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BgvDefaultChecksJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte>("BgvHireRule")
+                        .HasColumnType("tinyint");
+
+                    b.Property<bool>("BgvStartOnOfferAccepted")
+                        .HasColumnType("bit");
 
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uniqueidentifier");

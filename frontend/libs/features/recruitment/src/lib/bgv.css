@@ -1,0 +1,43 @@
+/* Background verification on the application page: one row per check, with its result and the reports. */
+.bgv {
+  display: grid;
+  gap: var(--gggs-space-2);
+  padding-block-end: var(--gggs-space-3);
+  border-block-end: 1px solid var(--gggs-color-border);
+}
+
+.bgv:last-of-type {
+  border-block-end: 0;
+}
+
+.bgv__checks {
+  display: grid;
+  gap: var(--gggs-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bgv__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gggs-space-1) var(--gggs-space-2);
+}
+
+.bgv__name {
+  flex: 1 1 6rem;
+  min-width: 0;
+  font-weight: var(--gggs-font-weight-medium);
+}
+
+.bgv__note {
+  flex-basis: 100%;
+  font-size: var(--gggs-font-size-sm);
+}
+
+.bgv__reports {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gggs-space-1) var(--gggs-space-2);
+}

@@ -48,7 +48,8 @@ public sealed record RespondBody(bool Accepted, string? Reason);
 /// <see cref="Details"/> carries the rest of the record (addresses, IDs, bank) when HR hires from the
 /// employee directory's hire form.
 /// </summary>
-public sealed record HireBody(Guid? ManagerEmployeeId, Guid? LocationId, string? EmploymentTypeCode, string? WorkModeCode, HireDetails? Details = null);
+/// <summary><c>AcknowledgeBgv</c>: the person hiring saw that background verification is not complete and goes ahead (the "Warn" rule).</summary>
+public sealed record HireBody(Guid? ManagerEmployeeId, Guid? LocationId, string? EmploymentTypeCode, string? WorkModeCode, HireDetails? Details = null, bool AcknowledgeBgv = false);
 
 /// <summary>
 /// An accepted offer whose candidate has not joined yet, with what the hire form fills in from it:
@@ -241,6 +242,10 @@ internal sealed class OfferService(
                     JobApplication application = await dbContext.JobApplications.FirstAsync(row => row.Id == offer.ApplicationId, cancellationToken);
                     application.Reject($"Declined the offer{(string.IsNullOrWhiteSpace(response.Reason) ? string.Empty : ": " + response.Reason.Trim())}", access.Me, Now);
                 }
+                else
+                {
+                    await StartVerificationIfSetAsync(offer, cancellationToken);
+                }
 
                 break;
             case "withdraw":
@@ -289,9 +294,14 @@ internal sealed class OfferService(
             throw new DomainRuleException("CANDIDATE_HIRED", $"{candidate.FullName} has already been hired.");
         }
 
-        if (await dbContext.BackgroundChecks.AnyAsync(row => row.CandidateId == candidate.Id && row.Status == BackgroundCheckStatus.Failed, cancellationToken))
+        // The latest verification decides: a failure stops the hire; the settings say whether an unfinished one does.
+        BackgroundCheck? latest = await dbContext.BackgroundChecks.AsNoTracking()
+            .Where(row => row.CandidateId == candidate.Id)
+            .OrderByDescending(row => row.InitiatedOn).ThenByDescending(row => row.CreatedDate)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (BgvHireGate.Check((await RulesAsync(cancellationToken)).BgvHireRule, latest, body.AcknowledgeBgv) is { } refusal)
         {
-            throw new DomainRuleException("BGV_FAILED", "The candidate's background verification failed.");
+            throw new DomainRuleException(refusal.Code, refusal.Message);
         }
 
         Requisition requisition = await dbContext.Requisitions.FirstAsync(row => row.Id == offer.RequisitionId, cancellationToken);
@@ -440,6 +450,22 @@ internal sealed class OfferService(
 
     private async Task<RecruitmentRules> RulesAsync(CancellationToken cancellationToken)
         => (await dbContext.RecruitmentSettings.AsNoTracking().FirstOrDefaultAsync(cancellationToken))?.ToRules() ?? RecruitmentRules.Default;
+
+    /// <summary>
+    /// When the settings say so, an accepted offer starts verification with the default checks - unless one is
+    /// already under way or has been done for the candidate, which a second order would only duplicate.
+    /// </summary>
+    private async Task StartVerificationIfSetAsync(Offer offer, CancellationToken cancellationToken)
+    {
+        RecruitmentRules rules = await RulesAsync(cancellationToken);
+        if (!rules.BgvStartOnOfferAccepted || await dbContext.BackgroundChecks.AnyAsync(row => row.CandidateId == offer.CandidateId && row.Status != BackgroundCheckStatus.Failed, cancellationToken))
+        {
+            return;
+        }
+
+        dbContext.BackgroundChecks.Add(BackgroundCheck.Initiate(
+            offer.CandidateId, offer.ApplicationId, null, rules.BgvDefaultChecks ?? RecruitmentRules.AllChecks, await clock.TodayAsync(cancellationToken)));
+    }
 
     private async Task<List<OfferItem>> ItemsAsync(IReadOnlyList<Offer> offers, CancellationToken cancellationToken)
     {

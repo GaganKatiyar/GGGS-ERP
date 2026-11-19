@@ -32,9 +32,11 @@ public sealed class CvTextTests
     [Fact]
     public void A_Word_file_comes_back_one_paragraph_per_line()
     {
-        string text = CvText.Extract(Docx("Arjun Nair", "arjun@example.com", "Skills: C#, .NET"), "arjun.docx");
+        MemoryStream file = Docx("Arjun Nair", "arjun@example.com", "Skills: C#, .NET");
+        string text = CvText.Extract(file, "arjun.docx");
 
         text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ShouldBe(["Arjun Nair", "arjun@example.com", "Skills: C#, .NET"]);
+        file.CanRead.ShouldBeTrue("the same bytes still go to storage after reading");
     }
 
     [Fact]

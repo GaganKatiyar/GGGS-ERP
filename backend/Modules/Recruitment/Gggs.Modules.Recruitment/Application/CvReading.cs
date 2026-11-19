@@ -23,6 +23,28 @@ public sealed record CvReadResult(string CvKey, string FileName, bool HasText, i
 /// <summary>A CV read earlier, to attach to a candidate that already exists.</summary>
 public sealed record AttachCvBody(string CvKey, string FileName);
 
+/// <summary>Files Recruitment keeps (CVs, verification reports): safe names and the type they are served as.</summary>
+public static class RecruitmentFiles
+{
+    public static string ContentTypeOf(string fileName, string? given = null) => Path.GetExtension(fileName).ToLowerInvariant() switch
+    {
+        ".pdf" => "application/pdf",
+        ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".txt" => "text/plain",
+        ".jpg" or ".jpeg" => "image/jpeg",
+        ".png" => "image/png",
+        _ => string.IsNullOrWhiteSpace(given) ? "application/octet-stream" : given,
+    };
+
+    /// <summary>Just the file name, without any path a browser might send, and without characters storage dislikes.</summary>
+    public static string SafeName(string? fileName, string fallback)
+    {
+        string name = Path.GetFileName((fileName ?? fallback).Replace('\\', '/'));
+        var clean = new string([.. name.Select(ch => char.IsLetterOrDigit(ch) || ch is '.' or '-' or '_' or ' ' ? ch : '_')]).Trim();
+        return clean.Length == 0 ? fallback : clean.Length > 120 ? clean[^120..] : clean;
+    }
+}
+
 /// <summary>
 /// Takes the text out of a CV on our own server - PDF with PdfPig (Apache-2.0), Word by reading the
 /// .docx's own XML, plain text as it is - so nothing goes to an outside service and nothing is paid per CV.
@@ -100,7 +122,8 @@ public static class CvText
     {
         try
         {
-            using var zip = new ZipArchive(content, ZipArchiveMode.Read);
+            // leaveOpen: the caller still needs the stream (the same bytes go to storage).
+            using var zip = new ZipArchive(content, ZipArchiveMode.Read, leaveOpen: true);
             ZipArchiveEntry entry = zip.GetEntry("word/document.xml") ?? throw new InvalidDataException("Not a Word document.");
             if (entry.Length > 20 * 1024 * 1024)
             {
@@ -165,8 +188,13 @@ internal sealed class CvService(AppDbContext dbContext, IFileStorage files, ISki
         // One copy in memory: the reader needs to seek, and the same bytes go to storage.
         using var buffer = new MemoryStream();
         await content.CopyToAsync(buffer, cancellationToken);
-        buffer.Position = 0;
-        string text = CvText.Extract(buffer, name);
+
+        // The reader gets its own copy: a PDF or zip reader may close the stream it is given.
+        string text;
+        using (var forReading = new MemoryStream(buffer.ToArray(), writable: false))
+        {
+            text = CvText.Extract(forReading, name);
+        }
 
         buffer.Position = 0;
         StoredFile stored = await files.SaveAsync(
@@ -203,25 +231,13 @@ internal sealed class CvService(AppDbContext dbContext, IFileStorage files, ISki
             : throw new DomainRuleException("CV_NONE", "No CV is attached to this candidate.");
     }
 
-    public static string ContentTypeOf(string fileName, string? given = null) => Path.GetExtension(fileName).ToLowerInvariant() switch
-    {
-        ".pdf" => "application/pdf",
-        ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        ".txt" => "text/plain",
-        _ => string.IsNullOrWhiteSpace(given) ? "application/octet-stream" : given,
-    };
+    public static string ContentTypeOf(string fileName, string? given = null) => RecruitmentFiles.ContentTypeOf(fileName, given);
 
     /// <summary>The storage adapter adds the tenant to the key it returns; a key from this feature still names its folder.</summary>
     private static bool IsCvKey(string key)
         => key.Contains(KeyPrefix, StringComparison.Ordinal) && !key.Contains("..", StringComparison.Ordinal);
 
-    /// <summary>Just the file name, without any path a browser might send, and without characters storage dislikes.</summary>
-    private static string SafeName(string? fileName)
-    {
-        string name = Path.GetFileName((fileName ?? "cv").Replace('\\', '/'));
-        var clean = new string([.. name.Select(ch => char.IsLetterOrDigit(ch) || ch is '.' or '-' or '_' or ' ' ? ch : '_')]).Trim();
-        return clean.Length == 0 ? "cv" : clean.Length > 120 ? clean[^120..] : clean;
-    }
+    private static string SafeName(string? fileName) => RecruitmentFiles.SafeName(fileName, "cv");
 
     private async Task<IReadOnlyList<string>> KnownSkillsAsync(CancellationToken cancellationToken)
     {

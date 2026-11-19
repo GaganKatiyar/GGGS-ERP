@@ -1,5 +1,6 @@
 using System.Globalization;
 using Gggs.BuildingBlocks.Domain.Exceptions;
+using Gggs.BuildingBlocks.Files;
 using Gggs.BuildingBlocks.Security;
 using Gggs.Data;
 using Gggs.Modules.Employee.Contracts;
@@ -120,7 +121,15 @@ public sealed record BackgroundCheckItem(
     BackgroundCheckStatus Status,
     DateOnly InitiatedOn,
     DateOnly? CompletedOn,
-    string? Remarks);
+    string? Remarks,
+    IReadOnlyList<BackgroundCheckResult>? Results = null,
+    IReadOnlyList<BackgroundCheckReport>? Reports = null);
+
+/// <summary>One check's result within a verification; Initiated means not started.</summary>
+public sealed record BackgroundCheckResult(string Name, BackgroundCheckStatus Status, string? Remarks, DateOnly? DoneOn);
+
+/// <summary>A report kept with a verification, by its position (download it from <c>…/reports/{index}</c>).</summary>
+public sealed record BackgroundCheckReport(int Index, string FileName, string? CheckName, DateOnly UploadedOn);
 
 public sealed record MatchView(int Score, int SkillsScore, int ExperienceScore, int SalaryScore, IReadOnlyList<string> MatchedSkills, IReadOnlyList<string> MissingSkills);
 
@@ -149,7 +158,8 @@ public sealed record MyInterviewView(InterviewItem Interview, CandidateItem Cand
 
 public sealed record BackgroundCheckBody(Guid CandidateId, Guid? ApplicationId, string? Vendor, IReadOnlyList<string> Checks);
 
-public sealed record BackgroundResultBody(BackgroundCheckStatus Status, string? Remarks);
+/// <summary>A result for one check (<c>Check</c>), or with none named, for every check not yet done.</summary>
+public sealed record BackgroundResultBody(BackgroundCheckStatus Status, string? Remarks, string? Check = null);
 
 public sealed record ReferralBody(CandidateDetails Candidate, Guid? RequisitionId, string? Note);
 
@@ -179,7 +189,8 @@ internal sealed class PipelineService(
     TimeProvider timeProvider,
     Gggs.BuildingBlocks.MultiTenancy.ITenantClock clock,
     Gggs.Modules.Separation.Contracts.IAlumniDirectory alumni,
-    CvService cvs)
+    CvService cvs,
+    IFileStorage files)
 {
     private DateTime Now => timeProvider.GetUtcNow().UtcDateTime;
 
@@ -597,10 +608,52 @@ internal sealed class PipelineService(
         ArgumentNullException.ThrowIfNull(body);
         BackgroundCheck check = await dbContext.BackgroundChecks.FirstOrDefaultAsync(row => row.Id == id, cancellationToken) ?? throw new NotFoundException(nameof(BackgroundCheck), id);
         await VisibleCandidateAsync(check.CandidateId, Permissions.Recruitment.ApplicationManage, cancellationToken);
-        check.Record(body.Status, body.Remarks, await clock.TodayAsync(cancellationToken));
+        check.Record(body.Status, body.Remarks, await clock.TodayAsync(cancellationToken), string.IsNullOrWhiteSpace(body.Check) ? null : body.Check);
         await dbContext.SaveChangesAsync(cancellationToken);
         return await CandidateAsync(check.CandidateId, cancellationToken);
     }
+
+    /// <summary>Keeps a vendor report or piece of evidence with a verification, for one check or all of it.</summary>
+    public async Task<CandidateView> AttachCheckReportAsync(Guid id, Stream content, string fileName, long length, string? checkName, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        BackgroundCheck check = await dbContext.BackgroundChecks.FirstOrDefaultAsync(row => row.Id == id, cancellationToken) ?? throw new NotFoundException(nameof(BackgroundCheck), id);
+        await VisibleCandidateAsync(check.CandidateId, Permissions.Recruitment.ApplicationManage, cancellationToken);
+
+        string name = RecruitmentFiles.SafeName(fileName, "report");
+        if (Path.GetExtension(name).ToLowerInvariant() is not (".pdf" or ".docx" or ".jpg" or ".jpeg" or ".png" or ".txt"))
+        {
+            throw new DomainRuleException("BGV_REPORT_TYPE", "Attach a PDF, Word (.docx), image (JPG or PNG) or text file.");
+        }
+
+        if (length <= 0 || length > MaxReportBytes)
+        {
+            throw new DomainRuleException("BGV_REPORT_SIZE", "The report must be smaller than 10 MB.");
+        }
+
+        StoredFile stored = await files.SaveAsync(
+            new FileToStore { Content = content, RelativeKey = $"recruitment/bgv/{check.Id:N}/{Guid.NewGuid():N}/{name}", ContentType = RecruitmentFiles.ContentTypeOf(name) },
+            cancellationToken);
+        check.AttachReport(stored.StorageKey, name, checkName, await clock.TodayAsync(cancellationToken));
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await CandidateAsync(check.CandidateId, cancellationToken);
+    }
+
+    /// <summary>A report kept with a verification, for whoever may see the candidate.</summary>
+    public async Task<(Stream Content, string FileName, string ContentType)> CheckReportAsync(Guid id, int index, CancellationToken cancellationToken)
+    {
+        BackgroundCheck check = await dbContext.BackgroundChecks.AsNoTracking().FirstOrDefaultAsync(row => row.Id == id, cancellationToken) ?? throw new NotFoundException(nameof(BackgroundCheck), id);
+        await VisibleCandidateAsync(check.CandidateId, Permissions.Recruitment.ApplicationView, cancellationToken);
+        IReadOnlyList<BgvReport> reports = check.Reports;
+        if (index < 0 || index >= reports.Count)
+        {
+            throw new NotFoundException("Report", index);
+        }
+
+        return (await files.OpenReadAsync(reports[index].StorageKey, cancellationToken), reports[index].FileName, RecruitmentFiles.ContentTypeOf(reports[index].FileName));
+    }
+
+    private const long MaxReportBytes = 10 * 1024 * 1024;
 
     // ----- Internals ----------------------------------------------------------------------------
 
@@ -827,7 +880,9 @@ internal sealed class PipelineService(
         scorecard.OverallRating, scorecard.Recommendation, scorecard.Comments, scorecard.SubmittedDate);
 
     private static BackgroundCheckItem CheckItem(BackgroundCheck check) => new(
-        check.Id, check.CandidateId, check.ApplicationId, check.Vendor, check.Checks, check.Status, check.InitiatedOn, check.CompletedOn, check.Remarks);
+        check.Id, check.CandidateId, check.ApplicationId, check.Vendor, check.Checks, check.Status, check.InitiatedOn, check.CompletedOn, check.Remarks,
+        [.. check.Items.Select(item => new BackgroundCheckResult(item.Name, item.Status, item.Remarks, item.DoneOn))],
+        [.. check.Reports.Select((report, index) => new BackgroundCheckReport(index, report.FileName, report.CheckName, report.UploadedOn))]);
 
     private async Task<List<ReferralItem>> ReferralItemsAsync(IReadOnlyList<Referral> referrals, CancellationToken cancellationToken)
     {

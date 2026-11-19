@@ -18,7 +18,7 @@ import type {
   ReferralItem,
   RequisitionItem,
 } from '@gggs/shared/models';
-import { PIPELINE_STAGES, humanize } from '@gggs/shared/models';
+import { BACKGROUND_CHECKS, PIPELINE_STAGES, humanize } from '@gggs/shared/models';
 import { MoneyPipe } from '@gggs/shared/money';
 import { Chart, EmptyState, FormDialog, KpiCard, localIsoDate, PageHeader, Skeleton, StatusBadge, Tabs } from '@gggs/shared/ui';
 import type { TabItem } from '@gggs/shared/ui';
@@ -370,8 +370,14 @@ export class RequisitionPage {
           <h2 class="rec__heading">Background verification</h2>
           @for (check of v.backgroundChecks; track check.id) {
             <div class="rec__row">
-              <span>{{ check.checks.join(', ') }}</span>
-              <span class="muted">{{ check.vendor ?? '' }}</span>
+              <span>
+                @for (item of check.results ?? []; track item.name; let last = $last) {
+                  {{ item.name }} <span class="muted">({{ item.status === 'Initiated' ? 'not started' : humanize(item.status).toLowerCase() }})</span>{{ last ? '' : ', ' }}
+                } @empty {
+                  {{ check.checks.join(', ') }}
+                }
+              </span>
+              <span class="muted">{{ check.vendor ?? 'In-house' }}{{ check.reports?.length ? ' · ' + check.reports?.length + ' report(s)' : '' }}</span>
               <span class="muted">{{ check.initiatedOn | date: 'd MMM y' }}{{ check.completedOn ? ' – ' + (check.completedOn | date: 'd MMM y') : '' }}</span>
               <span class="muted">{{ check.remarks ?? '' }}</span>
               <span><gggs-status-badge [status]="check.status" /></span>
@@ -758,6 +764,32 @@ export class ReferralsPage {
             <input type="text" [value]="r.scorecardCriteria.join(', ')" [disabled]="!canManage" (change)="patch({ scorecardCriteria: split($any($event.target).value) })" />
           </label>
         </div>
+        <h3 class="rec__heading">Background verification</h3>
+        <div class="rec__grid">
+          <label class="field rec__wide">
+            <span class="field__label">Before a hire</span>
+            <select [value]="r.bgvHireRule ?? 'Off'" [disabled]="!canManage" (change)="patch({ bgvHireRule: $any($event.target).value })">
+              <option value="Off">Don't wait: only a failed verification stops a hire</option>
+              <option value="Warn">Warn: ask "Hire anyway?" while verification is not complete</option>
+              <option value="Required">Required: hire only after verification is complete</option>
+            </select>
+          </label>
+          <label class="rec__flag rec__wide">
+            <input type="checkbox" [checked]="r.bgvStartOnOfferAccepted ?? false" [disabled]="!canManage" (change)="patch({ bgvStartOnOfferAccepted: $any($event.target).checked })" />
+            <span>Start verification automatically when a candidate accepts an offer</span>
+          </label>
+          @if (r.bgvStartOnOfferAccepted) {
+            <fieldset class="rec__fieldset rec__wide">
+              <legend class="field__label">Checks it starts with</legend>
+              @for (check of checkTypes; track check) {
+                <label class="rec__flag">
+                  <input type="checkbox" [checked]="defaultChecks(r).includes(check)" [disabled]="!canManage" (change)="toggleDefaultCheck(r, check, $any($event.target).checked)" />
+                  <span>{{ check }}</span>
+                </label>
+              }
+            </fieldset>
+          }
+        </div>
         @if (canManage) {
           <div class="toolbar">
             <button type="button" class="btn btn--primary" [disabled]="busy()" (click)="saveRules(r)">Save rules</button>
@@ -850,8 +882,20 @@ export class RecruitmentSettingsPage {
     );
   }
 
+  protected readonly checkTypes = BACKGROUND_CHECKS;
+
   protected patch(change: Partial<RecruitmentRules>): void {
     this.rules.update((rules) => (rules ? { ...rules, ...change } : rules));
+  }
+
+  /** The checks an automatic verification starts with; none saved means every check. */
+  protected defaultChecks(rules: RecruitmentRules): readonly string[] {
+    return rules.bgvDefaultChecks?.length ? rules.bgvDefaultChecks : BACKGROUND_CHECKS;
+  }
+
+  protected toggleDefaultCheck(rules: RecruitmentRules, check: string, on: boolean): void {
+    const current = this.defaultChecks(rules);
+    this.patch({ bgvDefaultChecks: on ? [...current, check] : current.filter((item) => item !== check) });
   }
 
   protected async saveRules(rules: RecruitmentRules): Promise<void> {

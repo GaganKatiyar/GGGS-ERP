@@ -1051,13 +1051,23 @@ export class HireEmployeePage implements OnInit {
       let id: string;
       let code: string;
       if (offer) {
-        const result = await this.hiring.hire(offer.offerId, {
+        const body = {
           managerEmployeeId: assignment.managerEmployeeId,
           locationId: assignment.locationId,
           employmentTypeCode: assignment.employmentTypeCode,
           workModeCode: assignment.workModeCode,
           details,
-        });
+        };
+        let result;
+        try {
+          result = await this.hiring.hire(offer.offerId, body);
+        } catch (error) {
+          // The "Warn" hiring rule: background verification is not complete, so the person hiring decides.
+          if (!(error instanceof ApiError && error.errorCode === 'BGV_PENDING' && confirm(error.message))) {
+            throw error;
+          }
+          result = await this.hiring.hire(offer.offerId, { ...body, acknowledgeBgv: true });
+        }
         [id, code] = [result.employeeId, result.employeeCode];
       } else {
         const result = await this.directory.hire({

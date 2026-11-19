@@ -426,7 +426,29 @@ export interface BackgroundCheckItem {
   readonly initiatedOn: string;
   readonly completedOn?: string;
   readonly remarks?: string;
+  /** Each check's own result; 'Initiated' means not started. */
+  readonly results?: readonly BackgroundCheckResult[];
+  readonly reports?: readonly BackgroundCheckReport[];
 }
+
+export interface BackgroundCheckResult {
+  readonly name: string;
+  readonly status: BackgroundCheckStatus;
+  readonly remarks?: string;
+  readonly doneOn?: string;
+}
+
+/** A report kept with a verification; download it by its index. */
+export interface BackgroundCheckReport {
+  readonly index: number;
+  readonly fileName: string;
+  /** The check it belongs to; none means the whole verification. */
+  readonly checkName?: string;
+  readonly uploadedOn: string;
+}
+
+/** Whether hiring waits for background verification. */
+export type BgvHireRule = 'Off' | 'Warn' | 'Required';
 
 export interface StageChange {
   readonly stage: ApplicationStage;
@@ -580,6 +602,10 @@ export interface RecruitmentRules {
   readonly offerValidDays: number;
   readonly currency: string;
   readonly scorecardCriteria: readonly string[];
+  readonly bgvHireRule?: BgvHireRule;
+  readonly bgvStartOnOfferAccepted?: boolean;
+  /** The checks a verification started on offer acceptance runs; none means every check. */
+  readonly bgvDefaultChecks?: readonly string[] | null;
 }
 
 export interface CountRow {

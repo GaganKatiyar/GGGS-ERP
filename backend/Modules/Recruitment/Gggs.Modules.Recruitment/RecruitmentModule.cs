@@ -120,6 +120,19 @@ public sealed class RecruitmentModule : IModule
             .WithName("InitiateBackgroundCheck").RequirePermission(Permissions.Recruitment.ApplicationManage);
         group.MapPost("/background-checks/{id:guid}/result", async (Guid id, BackgroundResultBody body, PipelineService pipeline, CancellationToken ct) => TypedResults.Ok(await pipeline.RecordCheckAsync(id, body, ct)))
             .WithName("RecordBackgroundCheck").RequirePermission(Permissions.Recruitment.ApplicationManage);
+        group.MapPost("/background-checks/{id:guid}/reports", async (Guid id, IFormFile file, [Microsoft.AspNetCore.Mvc.FromForm] string? check, PipelineService pipeline, CancellationToken ct) =>
+            {
+                ArgumentNullException.ThrowIfNull(file);
+                await using Stream content = file.OpenReadStream();
+                return TypedResults.Ok(await pipeline.AttachCheckReportAsync(id, content, file.FileName, file.Length, check, ct));
+            })
+            .WithName("AttachBackgroundCheckReport").RequirePermission(Permissions.Recruitment.ApplicationManage).DisableAntiforgery();
+        group.MapGet("/background-checks/{id:guid}/reports/{index:int}", async (Guid id, int index, PipelineService pipeline, CancellationToken ct) =>
+            {
+                (Stream content, string fileName, string contentType) = await pipeline.CheckReportAsync(id, index, ct);
+                return TypedResults.File(content, contentType, fileName);
+            })
+            .WithName("DownloadBackgroundCheckReport").RequirePermission(Permissions.Recruitment.ApplicationView);
 
         group.MapGet("/referrals", async (PipelineService pipeline, CancellationToken ct) => TypedResults.Ok(await pipeline.ReferralsAsync(ct)))
             .WithName("ListReferrals").RequirePermission(Permissions.Recruitment.ApplicationView);

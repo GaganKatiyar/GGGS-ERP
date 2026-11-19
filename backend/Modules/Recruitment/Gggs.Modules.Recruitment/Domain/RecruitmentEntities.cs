@@ -954,13 +954,53 @@ public enum BackgroundCheckStatus
     Failed = 5,
 }
 
-/// <summary>Background verification of a candidate (spec §12): which checks, by whom, and the result.</summary>
+/// <summary>One check within a verification (Identity, Education…): its own result. Initiated means not started.</summary>
+public sealed record BgvItem(string Name, BackgroundCheckStatus Status, string? Remarks, DateOnly? DoneOn)
+{
+    public bool IsDone => Status is BackgroundCheckStatus.Clear or BackgroundCheckStatus.Discrepancy or BackgroundCheckStatus.Failed;
+}
+
+/// <summary>A report or piece of evidence kept with a verification: for one check, or for the whole of it.</summary>
+public sealed record BgvReport(string StorageKey, string FileName, string? CheckName, DateOnly UploadedOn);
+
+/// <summary>Whether hiring waits for background verification (Recruitment settings).</summary>
+public enum BgvHireRule
+{
+    /// <summary>Only a failed verification stops a hire.</summary>
+    Off = 0,
+
+    /// <summary>Hiring before verification is complete asks for a confirmation.</summary>
+    Warn = 1,
+
+    /// <summary>Hiring needs a complete verification that did not fail.</summary>
+    Required = 2,
+}
+
+/// <summary>
+/// Background verification of a candidate (spec §12): which checks, by whom, each check's result and the
+/// reports. The overall status follows the checks: any failed check fails it; when every check is done it is
+/// clear, or discrepancy if any check found one; otherwise it is in progress once any check has started.
+/// </summary>
 public sealed class BackgroundCheck : TenantAggregateRoot
 {
+    public const int MaxReports = 20;
+
     private BackgroundCheck()
     {
         ChecksJson = "[]";
+        ReportsJson = "[]";
     }
+
+    /// <summary>Each check's result; null on verifications started before checks had their own results.</summary>
+    public string? ItemsJson { get; private set; }
+
+    public string ReportsJson { get; private set; }
+
+    public IReadOnlyList<BgvItem> Items => ItemsJson is { } json
+        ? JsonSerializer.Deserialize<List<BgvItem>>(json, RecruitmentJson.Options) ?? []
+        : [.. Checks.Select(name => new BgvItem(name, IsComplete ? Status : Status == BackgroundCheckStatus.InProgress ? BackgroundCheckStatus.InProgress : BackgroundCheckStatus.Initiated, IsComplete ? Remarks : null, CompletedOn))];
+
+    public IReadOnlyList<BgvReport> Reports => JsonSerializer.Deserialize<List<BgvReport>>(ReportsJson, RecruitmentJson.Options) ?? [];
 
     public Guid CandidateId { get; private set; }
 
@@ -996,16 +1036,26 @@ public sealed class BackgroundCheck : TenantAggregateRoot
             ApplicationId = applicationId,
             Vendor = string.IsNullOrWhiteSpace(vendor) ? null : Guard.MaxLength(vendor.Trim(), 200),
             ChecksJson = JsonSerializer.Serialize(list),
+            ItemsJson = JsonSerializer.Serialize(list.Select(name => new BgvItem(name, BackgroundCheckStatus.Initiated, null, null)).ToList(), RecruitmentJson.Options),
             Status = BackgroundCheckStatus.Initiated,
             InitiatedOn = today,
         };
     }
 
-    public void Record(BackgroundCheckStatus status, string? remarks, DateOnly today)
+    /// <summary>
+    /// A result for one check (<paramref name="check"/>), or, with none named, for every check not yet done -
+    /// "the vendor cleared everything". In progress marks checks as started.
+    /// </summary>
+    public void Record(BackgroundCheckStatus status, string? remarks, DateOnly today, string? check = null)
     {
         if (IsComplete)
         {
             throw new DomainRuleException("BGV_STATE", "The verification is already complete.");
+        }
+
+        if (status == BackgroundCheckStatus.Initiated)
+        {
+            throw new DomainRuleException("BGV_RESULT", "Choose in progress, clear, discrepancy or failed.");
         }
 
         if (status is BackgroundCheckStatus.Discrepancy or BackgroundCheckStatus.Failed && string.IsNullOrWhiteSpace(remarks))
@@ -1013,9 +1063,76 @@ public sealed class BackgroundCheck : TenantAggregateRoot
             throw new DomainRuleException("BGV_REMARKS", "Say what the verification found.");
         }
 
-        Status = status;
-        Remarks = string.IsNullOrWhiteSpace(remarks) ? null : Guard.MaxLength(remarks.Trim(), 2000);
-        CompletedOn = IsComplete ? today : null;
+        string? note = string.IsNullOrWhiteSpace(remarks) ? null : Guard.MaxLength(remarks.Trim(), 1000);
+        List<BgvItem> items = [.. Items];
+        if (check is not null)
+        {
+            int index = items.FindIndex(item => item.Name.Equals(check.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (index < 0)
+            {
+                throw new DomainRuleException("BGV_CHECK", $"'{check.Trim()}' is not one of this verification's checks.");
+            }
+
+            if (items[index].IsDone)
+            {
+                throw new DomainRuleException("BGV_CHECK_DONE", $"The {items[index].Name} check already has its result.");
+            }
+
+            items[index] = items[index] with { Status = status, Remarks = note, DoneOn = status == BackgroundCheckStatus.InProgress ? null : today };
+        }
+        else
+        {
+            items = [.. items.Select(item => item.IsDone ? item : item with { Status = status, Remarks = note, DoneOn = status == BackgroundCheckStatus.InProgress ? null : today })];
+        }
+
+        ItemsJson = JsonSerializer.Serialize(items, RecruitmentJson.Options);
+        Recompute(items, today);
+    }
+
+    /// <summary>Keeps a report with the verification, for one of its checks or for all of it.</summary>
+    public void AttachReport(string storageKey, string fileName, string? check, DateOnly today)
+    {
+        List<BgvReport> reports = [.. Reports];
+        if (reports.Count >= MaxReports)
+        {
+            throw new DomainRuleException("BGV_REPORTS", $"A verification keeps at most {MaxReports} reports.");
+        }
+
+        string? checkName = null;
+        if (!string.IsNullOrWhiteSpace(check))
+        {
+            checkName = Items.FirstOrDefault(item => item.Name.Equals(check.Trim(), StringComparison.OrdinalIgnoreCase))?.Name
+                ?? throw new DomainRuleException("BGV_CHECK", $"'{check.Trim()}' is not one of this verification's checks.");
+        }
+
+        reports.Add(new BgvReport(Guard.MaxLength(Guard.NotNullOrWhiteSpace(storageKey), 500), Guard.MaxLength(Guard.NotNullOrWhiteSpace(fileName), 200), checkName, today));
+        ReportsJson = JsonSerializer.Serialize(reports, RecruitmentJson.Options);
+    }
+
+    /// <summary>The overall result from the checks': a failure ends it; all done gives clear or discrepancy.</summary>
+    private void Recompute(List<BgvItem> items, DateOnly today)
+    {
+        static string Notes(IEnumerable<BgvItem> found) => string.Join("; ", found.Select(item => $"{item.Name}: {item.Remarks}"));
+
+        if (items.Any(item => item.Status == BackgroundCheckStatus.Failed))
+        {
+            Status = BackgroundCheckStatus.Failed;
+            Remarks = Guard.MaxLength(Notes(items.Where(item => item.Status is BackgroundCheckStatus.Failed or BackgroundCheckStatus.Discrepancy)), 2000);
+            CompletedOn = today;
+        }
+        else if (items.All(item => item.IsDone))
+        {
+            bool discrepancy = items.Any(item => item.Status == BackgroundCheckStatus.Discrepancy);
+            Status = discrepancy ? BackgroundCheckStatus.Discrepancy : BackgroundCheckStatus.Clear;
+            Remarks = discrepancy ? Guard.MaxLength(Notes(items.Where(item => item.Status == BackgroundCheckStatus.Discrepancy)), 2000) : null;
+            CompletedOn = today;
+        }
+        else
+        {
+            Status = items.Any(item => item.Status != BackgroundCheckStatus.Initiated) ? BackgroundCheckStatus.InProgress : BackgroundCheckStatus.Initiated;
+            Remarks = null;
+            CompletedOn = null;
+        }
     }
 }
 
@@ -1095,6 +1212,15 @@ public sealed class RecruitmentSettings : TenantAggregateRoot
 
     public string CriteriaJson { get; private set; }
 
+    /// <summary>Whether a hire waits for background verification.</summary>
+    public BgvHireRule BgvHireRule { get; private set; }
+
+    /// <summary>Starts verification, with <see cref="BgvDefaultChecksJson"/>, when a candidate accepts an offer.</summary>
+    public bool BgvStartOnOfferAccepted { get; private set; }
+
+    /// <summary>The checks a verification started automatically runs; null is all of them.</summary>
+    public string? BgvDefaultChecksJson { get; private set; }
+
     public static RecruitmentSettings Defaults() => new();
 
     public void Update(RecruitmentRules rules)
@@ -1106,19 +1232,72 @@ public sealed class RecruitmentSettings : TenantAggregateRoot
             throw new DomainRuleException("RECRUITMENT_RULES", "The bonus is not negative, paid within 24 months, offers are valid 1-90 days, and the scorecard has criteria.");
         }
 
+        if (!Enum.IsDefined(rules.BgvHireRule))
+        {
+            throw new DomainRuleException("RECRUITMENT_RULES", "Choose how hiring waits for background verification.");
+        }
+
+        List<string> checks = [.. (rules.BgvDefaultChecks ?? []).Where(item => !string.IsNullOrWhiteSpace(item)).Select(item => Guard.MaxLength(item.Trim(), 60)).Distinct(StringComparer.OrdinalIgnoreCase)];
+        if (rules.BgvStartOnOfferAccepted && rules.BgvDefaultChecks is not null && checks.Count == 0)
+        {
+            throw new DomainRuleException("RECRUITMENT_RULES", "Choose at least one check to start when an offer is accepted.");
+        }
+
         ReferralBonus = rules.ReferralBonus;
         ReferralBonusAfterMonths = rules.ReferralBonusAfterMonths;
         OfferValidDays = rules.OfferValidDays;
         Currency = Guard.MaxLength(Guard.NotNullOrWhiteSpace(rules.Currency).Trim().ToUpperInvariant(), 3);
         CriteriaJson = JsonSerializer.Serialize(criteria);
+        BgvHireRule = rules.BgvHireRule;
+        BgvStartOnOfferAccepted = rules.BgvStartOnOfferAccepted;
+        BgvDefaultChecksJson = checks.Count > 0 ? JsonSerializer.Serialize(checks) : null;
     }
 
-    public RecruitmentRules ToRules() => new(ReferralBonus, ReferralBonusAfterMonths, OfferValidDays, Currency, JsonSerializer.Deserialize<List<string>>(CriteriaJson) ?? []);
+    public RecruitmentRules ToRules() => new(
+        ReferralBonus, ReferralBonusAfterMonths, OfferValidDays, Currency, JsonSerializer.Deserialize<List<string>>(CriteriaJson) ?? [],
+        BgvHireRule, BgvStartOnOfferAccepted, BgvDefaultChecksJson is { } json ? JsonSerializer.Deserialize<List<string>>(json) : null);
 }
 
-public sealed record RecruitmentRules(decimal ReferralBonus, int ReferralBonusAfterMonths, int OfferValidDays, string Currency, IReadOnlyList<string> ScorecardCriteria)
+/// <summary>
+/// <c>BgvDefaultChecks</c>: what a verification started on offer acceptance runs; null is every check.
+/// </summary>
+public sealed record RecruitmentRules(
+    decimal ReferralBonus,
+    int ReferralBonusAfterMonths,
+    int OfferValidDays,
+    string Currency,
+    IReadOnlyList<string> ScorecardCriteria,
+    BgvHireRule BgvHireRule = BgvHireRule.Off,
+    bool BgvStartOnOfferAccepted = false,
+    IReadOnlyList<string>? BgvDefaultChecks = null)
 {
     public static RecruitmentRules Default { get; } = new(25000, 3, 7, "INR", ["Technical skills", "Problem solving", "Communication", "Culture fit"]);
+
+    /// <summary>Every check a verification can run.</summary>
+    public static IReadOnlyList<string> AllChecks { get; } = ["Identity", "Address", "Education", "Employment", "Criminal", "Reference"];
+}
+
+/// <summary>What the hire rule says about a candidate's verification: nothing, a confirmation to ask, or a refusal.</summary>
+public static class BgvHireGate
+{
+    /// <summary>Null when the hire may go ahead; otherwise the error code and message.</summary>
+    public static (string Code, string Message)? Check(BgvHireRule rule, BackgroundCheck? latest, bool acknowledged)
+    {
+        if (latest?.Status == BackgroundCheckStatus.Failed)
+        {
+            return ("BGV_FAILED", "The candidate's background verification failed.");
+        }
+
+        if (rule == BgvHireRule.Off || latest is { IsComplete: true })
+        {
+            return null;
+        }
+
+        string state = latest is null ? "has not been started" : "is not complete yet";
+        return rule == BgvHireRule.Required
+            ? ("BGV_REQUIRED", $"Background verification {state}. Hiring needs a completed verification.")
+            : acknowledged ? null : ("BGV_PENDING", $"Background verification {state}. Hire anyway?");
+    }
 }
 
 internal static class RecruitmentJson

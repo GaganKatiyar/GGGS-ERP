@@ -61,6 +61,27 @@ public sealed class CandidateCvTests(PeopleOsApiFactory factory)
     }
 
     [Fact]
+    public async Task A_Word_CV_is_read_and_stored()
+    {
+        using HttpClient admin = await factory.CreateAdminClientAsync();
+        var docx = new MemoryStream();
+        using (var zip = new System.IO.Compression.ZipArchive(docx, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+        {
+            using var writer = new StreamWriter(zip.CreateEntry("word/document.xml").Open(), Encoding.UTF8);
+            writer.Write("<?xml version=\"1.0\"?><w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>"
+                + "<w:p><w:r><w:t>Arjun Nair</w:t></w:r></w:p><w:p><w:r><w:t>arjun.nair@cv.example</w:t></w:r></w:p></w:body></w:document>");
+        }
+
+        var file = new ByteArrayContent(docx.ToArray());
+        file.Headers.ContentType = new MediaTypeHeaderValue("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        using var form = new MultipartFormDataContent { { file, "file", "arjun-nair.docx" } };
+        JsonElement read = await OkAsync(await admin.PostAsync("/api/v1/recruitment/cv/read", form, Ct));
+
+        read.GetProperty("fields").GetProperty("firstName").GetString().ShouldBe("Arjun");
+        read.GetProperty("cvKey").GetString()!.ShouldEndWith("arjun-nair.docx");
+    }
+
+    [Fact]
     public async Task Only_PDF_Word_and_text_CVs_are_taken_and_only_ones_this_feature_stored_can_be_attached()
     {
         using HttpClient admin = await factory.CreateAdminClientAsync();

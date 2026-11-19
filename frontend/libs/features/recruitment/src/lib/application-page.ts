@@ -2,10 +2,11 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { ApiError } from '@gggs/core/http';
 import { PermissionStore } from '@gggs/core/permissions';
 import { EmployeeSelect } from '@gggs/shared/employee-reference';
 import { RecruitmentApi } from '@gggs/shared/hiring';
-import type { ApplicationStage, ApplicationView, BackgroundCheckItem, BackgroundCheckStatus, InterviewItem, InterviewMode, OfferItem, OfferTermsInput } from '@gggs/shared/models';
+import type { ApplicationStage, ApplicationView, BackgroundCheckItem, BackgroundCheckReport, BackgroundCheckStatus, InterviewItem, InterviewMode, OfferItem, OfferTermsInput } from '@gggs/shared/models';
 import { BACKGROUND_CHECKS, INTERVIEW_MODES, PIPELINE_STAGES, humanize } from '@gggs/shared/models';
 import { MoneyPipe } from '@gggs/shared/money';
 import { FormDialog, localIsoDate, PageHeader, Skeleton, StatusBadge, Timeline } from '@gggs/shared/ui';
@@ -174,15 +175,42 @@ const localInput = (date: Date) => new Date(date.getTime() - date.getTimezoneOff
               }
             </div>
             @for (check of v.backgroundChecks; track check.id) {
-              <div>
+              <div class="bgv">
                 <div class="toolbar">
-                  <span>{{ check.checks.join(', ') }}</span>
+                  <span class="muted">{{ check.vendor ?? 'In-house' }} · started {{ check.initiatedOn | date: 'd MMM' }}{{ check.completedOn ? ' · done ' + (check.completedOn | date: 'd MMM') : '' }}</span>
                   <span class="rec__spacer"></span>
                   <gggs-status-badge [status]="check.status" />
                 </div>
-                <p class="muted">{{ check.vendor ?? 'In-house' }} · {{ check.initiatedOn | date: 'd MMM' }}{{ check.completedOn ? ' – ' + (check.completedOn | date: 'd MMM') : '' }}{{ check.remarks ? ' · ' + check.remarks : '' }}</p>
-                @if (v.canManage && (check.status === 'Initiated' || check.status === 'InProgress')) {
-                  <button type="button" class="btn btn--link btn--sm" (click)="openResult(check)">Record result</button>
+                <ul class="bgv__checks">
+                  @for (item of check.results ?? []; track item.name) {
+                    <li class="bgv__row">
+                      <span class="bgv__name">{{ item.name }}</span>
+                      <gggs-status-badge [status]="item.status === 'Initiated' ? 'Not started' : item.status" />
+                      @if (v.canManage && isOpen(check) && !isDone(item.status)) {
+                        <button type="button" class="btn btn--link btn--sm" [attr.aria-label]="'Record the ' + item.name + ' result'" (click)="openResult(check, item.name)">Record</button>
+                      }
+                      @if (item.remarks) {
+                        <span class="muted bgv__note">{{ item.remarks }}</span>
+                      }
+                    </li>
+                  }
+                </ul>
+                @if (check.reports?.length) {
+                  <div class="bgv__reports">
+                    @for (report of check.reports ?? []; track report.index) {
+                      <button type="button" class="btn btn--link btn--sm" (click)="openReport(check, report)">
+                        <i class="pi pi-file" aria-hidden="true"></i> {{ report.fileName }}{{ report.checkName ? ' · ' + report.checkName : '' }}
+                      </button>
+                    }
+                  </div>
+                }
+                @if (v.canManage) {
+                  <div class="toolbar">
+                    @if (isOpen(check)) {
+                      <button type="button" class="btn btn--link btn--sm" (click)="openResult(check, null)">Record all open checks</button>
+                    }
+                    <button type="button" class="btn btn--link btn--sm" (click)="openReportUpload(check)">Attach report</button>
+                  </div>
                 }
               </div>
             } @empty {
@@ -305,7 +333,24 @@ const localInput = (date: Date) => new Date(date.getTime() - date.getTimezoneOff
         </fieldset>
       </gggs-form-dialog>
 
-      <gggs-form-dialog [(visible)]="resultOpen" title="Verification result" [busy]="busy()" [error]="formError()" [saveDisabled]="(result() === 'Discrepancy' || result() === 'Failed') && !reason().trim()" (save)="recordCheck()">
+      <gggs-form-dialog [(visible)]="reportOpen" title="Attach a verification report" saveLabel="Attach" [busy]="busy()" [error]="formError()" [saveDisabled]="!reportFile()" (save)="attachReport()">
+        <label class="field">
+          <span class="field__label">Report for</span>
+          <select [value]="reportCheck()" (change)="reportCheck.set($any($event.target).value)">
+            <option value="">The whole verification</option>
+            @for (item of checking()?.results ?? []; track item.name) {
+              <option [value]="item.name">{{ item.name }} check</option>
+            }
+          </select>
+        </label>
+        <label class="field">
+          <span class="field__label">File</span>
+          <input type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.txt" (change)="reportFile.set($any($event.target).files?.[0] ?? null)" />
+          <span class="muted rec__small">PDF, Word, JPG, PNG or text, up to 10 MB.</span>
+        </label>
+      </gggs-form-dialog>
+
+      <gggs-form-dialog [(visible)]="resultOpen" [title]="resultFor() ? resultFor() + ' check result' : 'Result for all open checks'" [busy]="busy()" [error]="formError()" [saveDisabled]="(result() === 'Discrepancy' || result() === 'Failed') && !reason().trim()" (save)="recordCheck()">
         <label class="field">
           <span class="field__label">Result</span>
           <select [value]="result()" (change)="result.set($any($event.target).value)">
@@ -327,7 +372,7 @@ const localInput = (date: Date) => new Date(date.getTime() - date.getTimezoneOff
       <p class="alert alert--danger" role="alert"><i class="pi pi-exclamation-circle" aria-hidden="true"></i><span>{{ error() }}</span></p>
     }
   `,
-  styleUrl: './recruitment.css',
+  styleUrls: ['./recruitment.css', './bgv.css'],
 })
 export class ApplicationPage {
   private readonly api = inject(RecruitmentApi);
@@ -375,6 +420,11 @@ export class ApplicationPage {
   protected readonly checks = signal<readonly string[]>(['Identity', 'Education', 'Employment']);
   protected readonly checking = signal<BackgroundCheckItem | null>(null);
   protected readonly result = signal<BackgroundCheckStatus>('Clear');
+  /** The check a result is for; null records every check not yet done. */
+  protected readonly resultFor = signal<string | null>(null);
+  protected readonly reportOpen = signal(false);
+  protected readonly reportCheck = signal('');
+  protected readonly reportFile = signal<File | null>(null);
 
   protected readonly open = computed(() => {
     const stage = this.view()?.application.stage;
@@ -559,7 +609,15 @@ export class ApplicationPage {
     this.busy.set(true);
     this.formError.set(null);
     try {
-      await this.api.hire(offer.id, { managerEmployeeId: this.managerId() });
+      try {
+        await this.api.hire(offer.id, { managerEmployeeId: this.managerId() });
+      } catch (error) {
+        // The "Warn" hiring rule: verification is not complete, so the person hiring decides.
+        if (!(error instanceof ApiError && error.errorCode === 'BGV_PENDING' && confirm(error.message))) {
+          throw error;
+        }
+        await this.api.hire(offer.id, { managerEmployeeId: this.managerId(), acknowledgeBgv: true });
+      }
       this.hireOpen.set(false);
       await this.reload();
     } catch (error) {
@@ -598,8 +656,17 @@ export class ApplicationPage {
     }
   }
 
-  protected openResult(check: BackgroundCheckItem): void {
+  protected isOpen(check: BackgroundCheckItem): boolean {
+    return check.status === 'Initiated' || check.status === 'InProgress';
+  }
+
+  protected isDone(status: BackgroundCheckStatus): boolean {
+    return status === 'Clear' || status === 'Discrepancy' || status === 'Failed';
+  }
+
+  protected openResult(check: BackgroundCheckItem, name: string | null): void {
     this.checking.set(check);
+    this.resultFor.set(name);
     this.result.set('Clear');
     this.reason.set('');
     this.formError.set(null);
@@ -615,13 +682,65 @@ export class ApplicationPage {
     this.busy.set(true);
     this.formError.set(null);
     try {
-      await this.api.recordCheck(check.id, this.result(), this.reason() || null);
+      await this.api.recordCheck(check.id, this.result(), this.reason() || null, this.resultFor());
       this.resultOpen.set(false);
       await this.reload();
     } catch (error) {
       this.formError.set(errorText(error, 'The result could not be recorded.'));
     } finally {
       this.busy.set(false);
+    }
+  }
+
+  protected openReportUpload(check: BackgroundCheckItem): void {
+    this.checking.set(check);
+    this.reportCheck.set('');
+    this.reportFile.set(null);
+    this.formError.set(null);
+    this.reportOpen.set(true);
+  }
+
+  protected async attachReport(): Promise<void> {
+    const check = this.checking();
+    const file = this.reportFile();
+    if (!check || !file) {
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      this.formError.set('The report must be smaller than 10 MB.');
+      return;
+    }
+
+    this.busy.set(true);
+    this.formError.set(null);
+    try {
+      await this.api.attachCheckReport(check.id, file, this.reportCheck() || null);
+      this.reportOpen.set(false);
+      await this.reload();
+    } catch (error) {
+      this.formError.set(errorText(error, 'The report could not be attached.'));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** Fetched with the signed-in session: a PDF or image opens in a new tab, other files download. */
+  protected async openReport(check: BackgroundCheckItem, report: BackgroundCheckReport): Promise<void> {
+    this.error.set(null);
+    try {
+      const url = URL.createObjectURL(await this.api.checkReport(check.id, report.index));
+      const link = document.createElement('a');
+      link.href = url;
+      if (/\.(pdf|jpe?g|png)$/i.test(report.fileName)) {
+        link.target = '_blank';
+        link.rel = 'noopener';
+      } else {
+        link.download = report.fileName;
+      }
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      this.error.set(errorText(error, 'The report could not be opened.'));
     }
   }
 

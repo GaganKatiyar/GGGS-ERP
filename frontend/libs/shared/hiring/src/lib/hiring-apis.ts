@@ -230,8 +230,23 @@ export class RecruitmentApi {
     return firstValueFrom(this.http.post<CandidateView>(`${this.base}/background-checks`, body));
   }
 
-  recordCheck(id: string, status: BackgroundCheckStatus, remarks: string | null): Promise<CandidateView> {
-    return firstValueFrom(this.http.post<CandidateView>(`${this.base}/background-checks/${id}/result`, { status, remarks }));
+  /** A result for one check, or with none named, for every check not yet done. */
+  recordCheck(id: string, status: BackgroundCheckStatus, remarks: string | null, check: string | null = null): Promise<CandidateView> {
+    return firstValueFrom(this.http.post<CandidateView>(`${this.base}/background-checks/${id}/result`, { status, remarks, check }));
+  }
+
+  /** Keeps a vendor report or piece of evidence with a verification, for one check or all of it. */
+  attachCheckReport(id: string, file: File, check: string | null): Promise<CandidateView> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    if (check) {
+      form.append('check', check);
+    }
+    return firstValueFrom(this.http.post<CandidateView>(`${this.base}/background-checks/${id}/reports`, form));
+  }
+
+  checkReport(id: string, index: number): Promise<Blob> {
+    return firstValueFrom(this.http.get(`${this.base}/background-checks/${id}/reports/${index}`, { responseType: 'blob' }));
   }
 
   referrals(): Promise<readonly ReferralItem[]> {
@@ -265,7 +280,15 @@ export class RecruitmentApi {
 
   hire(
     id: string,
-    body: { managerEmployeeId?: string | null; locationId?: string | null; employmentTypeCode?: string | null; workModeCode?: string | null; details?: HireDetails | null } = {},
+    body: {
+      managerEmployeeId?: string | null;
+      locationId?: string | null;
+      employmentTypeCode?: string | null;
+      workModeCode?: string | null;
+      details?: HireDetails | null;
+      /** Hire although background verification is not complete (the "Warn" rule asks first). */
+      acknowledgeBgv?: boolean;
+    } = {},
   ): Promise<HireResult> {
     return firstValueFrom(this.http.post<HireResult>(`${this.base}/offers/${id}/hire`, body));
   }

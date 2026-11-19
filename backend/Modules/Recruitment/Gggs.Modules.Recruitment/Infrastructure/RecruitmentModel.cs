@@ -160,7 +160,10 @@ internal sealed class RecruitmentModel : IModuleModel
             entity.Property(row => row.Remarks).HasMaxLength(2000);
             entity.HasOne<Candidate>().WithMany().HasForeignKey(row => row.CandidateId).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(row => new { row.TenantId, row.CandidateId }).HasDatabaseName("IX_BackgroundCheck_TenantId_Candidate");
+            entity.Property(row => row.ReportsJson).IsRequired();
             entity.Ignore(row => row.Checks);
+            entity.Ignore(row => row.Items);
+            entity.Ignore(row => row.Reports);
             entity.Ignore(row => row.IsComplete);
             entity.Ignore(row => row.DomainEvents);
         });
@@ -183,6 +186,7 @@ internal sealed class RecruitmentModel : IModuleModel
             entity.Property(row => row.ReferralBonus).HasPrecision(18, 2);
             entity.Property(row => row.Currency).HasMaxLength(3);
             entity.Property(row => row.CriteriaJson).IsRequired();
+            entity.Property(row => row.BgvHireRule).HasConversion<byte>();
             entity.HasIndex(row => row.TenantId).HasDatabaseName("UX_RecruitmentSettings_TenantId").IsUnique().HasFilter("[IsDeleted] = 0");
             entity.Ignore(row => row.DomainEvents);
         });
